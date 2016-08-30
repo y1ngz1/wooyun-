@@ -112,7 +112,7 @@
 
                     </ul>
 
-                    <<!-- div class="load-more">
+                    <!-- div class="load-more">
                         <button class="ladda-button " data-style="slide-left" data-type="script" data-remote="" data-size="medium" data-url="/top/daily?note_ids%5B%5D=5529382&amp;note_ids%5B%5D=5439417&amp;note_ids%5B%5D=5520646&amp;note_ids%5B%5D=5517872&amp;note_ids%5B%5D=5526423&amp;note_ids%5B%5D=5527566&amp;note_ids%5B%5D=5497143&amp;note_ids%5B%5D=5529213&amp;note_ids%5B%5D=5481659&amp;note_ids%5B%5D=5529144&amp;note_ids%5B%5D=5476405&amp;note_ids%5B%5D=5522785&amp;note_ids%5B%5D=5510914&amp;note_ids%5B%5D=5526745&amp;note_ids%5B%5D=5517989&amp;note_ids%5B%5D=5526649&amp;note_ids%5B%5D=5529400&amp;note_ids%5B%5D=5524109&amp;note_ids%5B%5D=5513248&amp;note_ids%5B%5D=5514524&amp;page=2" data-color="maleskine" data-method="get">
                             <span class="ladda-label">点击查看更多</span>
                             <span class="ladda-spinner"></span>
@@ -132,27 +132,6 @@
 
     </div>
     @include('footer')
-
-    <div id="flash" class="hide"></div>
-
-    <div id="view-mode-modal" tabindex="-1" class="modal hide read-modal" aria-hidden="false" data-js-module="view-mode-modal">
-        <div class="btn-group change-background" data-toggle="buttons-radio">
-            <a class="btn btn-daytime active" data-mode="day" href="javascript:void(null);">
-                <i class="fa fa-sun-o"></i>
-            </a>
-            <a class="btn btn-nighttime " data-mode="night" href="javascript:void(null);">
-                <i class="fa fa-moon-o"></i>
-            </a>
-        </div>
-        <div class="btn-group change-font" data-toggle="buttons-radio">
-            <a class="btn font " data-font="font1" href="javascript:void(null);">宋体</a>
-            <a class="btn font hei active" data-font="font2" href="javascript:void(null);">黑体</a>
-        </div>
-        <div class="btn-group change-locale" data-toggle="buttons-radio">
-            <a class="btn font active" data-locale="zh-CN" href="javascript:void(null);">简</a>
-            <a class="btn font hei " data-locale="zh-TW" href="javascript:void(null);">繁</a>
-        </div>
-    </div>
 
     <!-- Javascripts
     ================================================== -->

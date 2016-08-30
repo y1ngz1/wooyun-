@@ -17,11 +17,11 @@
 </div>
 <div class="navbar navbar-jianshu expanded">
     <div class="dropdown">
-        <a class="active logo" role="button" data-original-title="个人主页" data-container="div.expanded" href="http://www.jianshu.com/"> <b>简</b>
+        <a class="active logo" role="button" data-original-title="个人主页" data-container="div.expanded" href="/"> <b>简</b>
             <i class="fa fa-home"></i>
             <span class="title">首页</span>
         </a>
-        <a data-toggle="tooltip" data-placement="right" data-original-title="专题" data-container="div.expanded" href="http://www.jianshu.com/collections">
+        <a data-toggle="tooltip" data-placement="right" data-original-title="专题" data-container="div.expanded" href="javascript:void(0)">
             <i class="fa fa-th"></i>
             <span class="title">专题</span>
         </a>

@@ -111,16 +111,48 @@ class HomeController extends Controller{
         DB::table("article")->insert($data);
     }
 
-
     /**
-     * Display a listing of the resource.
+     * Bug列表
      *
      * @return \Illuminate\Http\Response
      */
     public function getIndex()
     {
-        $articles = DB::table("article")->get();
-        return view("articles", compact("articles"));
+        $column = "bugs";
+        $keyword = "";
+        $articles = DB::table("article")->where('column', $column)->take(30)->get();
+        return view("articles", compact("articles","column","keyword"));
+    }
+
+    /**
+     * 知识库列表
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getDrops()
+    {
+        $column = "drops";
+        $keyword = "";
+        $articles = DB::table("article")->where('column', $column)->take(30)->get();
+        return view("articles", compact("articles","column","keyword"));
+    }
+
+    /**
+     * 检索
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getSearch()
+    {
+        $column = I('column');
+        $column = $column != 'drops' ? 'bugs' : 'drops';
+        $keyword = I('q');
+        $db_obj = DB::table("article")->where('column',$column);
+        if(!is_null($keyword)){
+            $db_obj->where('title','like','%'.$keyword.'%');
+        }
+        $articles = $db_obj->get();
+        return view("articles", compact("articles","column","keyword"));
     }
 
     /**
