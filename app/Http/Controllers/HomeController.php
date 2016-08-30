@@ -167,7 +167,9 @@ class HomeController extends Controller{
             abort(404);
         }
         $article->content = file_get_contents(base_path().'\public\\'.$article->path);
-        return view("article", compact("article"));
+        $column = $article->column;
+        $keyword = "";
+        return view("article", compact("article","column","keyword"));
     }
 
     /**
