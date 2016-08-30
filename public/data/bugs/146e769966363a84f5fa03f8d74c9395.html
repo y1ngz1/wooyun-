@@ -1,0 +1,221 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		沦陷学生之家，一次漂亮的渗透与源码分析  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		沦陷学生之家，一次漂亮的渗透与源码分析  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/剑心">剑心</a> 
+</li><li>提交时间：		2012-09-14 15:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-14：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-10-29：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某某河畔是郫县男子dota技术专修学校里各种骚男闷女无聊打发时间的地方。使用的是pw+php bluster搭建的。负责维护的童鞋几乎把pw的基础代码都改写过了，代码安全性还是比较高的。但是这次无情的被沦陷了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 沦陷备份服务器<br />
+<br />
+<br />
+<br />
+	各种弱口令+cacti拿shell<br />
+<br />
+	访问http://xxx.xxxhome.net，使用弱密码admin/admin进入管理页面<br />
+<br />
+	上网找了几个cacti的漏洞，都没能利用上。于是自己开始下了一套cacti开始折磨。<br />
+<br />
+	看到install目录下有几个.php文件，顿时眼前一亮<br />
+<br />
+</p><p class="detail"><a href="../images/14152224ea13b9fef39f650aa87c75a682537a68.png" target="_blank"><img src="../images/14152224ea13b9fef39f650aa87c75a682537a68.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+	把cacti的日志文件设置为这几个文件中的一个，重新登陆一下，可以看到日志确实被写进去了，那么只要想办法产生一些&lt;?php这样的日志，就能执行代码了。最直接的想法那就是用&lt;?php这样的用户去登录，有兴趣的同学可以继续深入，我反正没成功，cacti把尖括号神马的都过滤掉了。这条路暂时封死了。<br />
+<br />
+</p><p class="detail"><a href="../images/14152241dfb1654e79f45f0b0d477c82fc1a124e.png" target="_blank"><img src="../images/14152241dfb1654e79f45f0b0d477c82fc1a124e.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/14152259f7eb13afed2813ebc04f285c162fd36a.png" target="_blank"><img src="../images/14152259f7eb13afed2813ebc04f285c162fd36a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+	无聊之中，发现了同机器上竟然装了pma，尝试了下，默认密码竟然进去了。<br />
+<br />
+</p><p class="detail"><a href="../images/14152722982d3a36a10ad4ef5281f5ce7db011df.png" target="_blank"><img src="../images/14152722982d3a36a10ad4ef5281f5ce7db011df.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+	数据库中的poller_command引起了我的兴趣，照理说这应该是一个会导致命令执行的地方。大致看了下源码，水平搓，没有看懂究竟是执行shell命令还是php命令，实践出真知，直接写一句吧。<br />
+<br />
+</p><p class="detail"><a href="../images/1415231617c5b4e1585854a55dacadc61ae3000e.png" target="_blank"><img src="../images/1415231617c5b4e1585854a55dacadc61ae3000e.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/14152330947c0823199444e1750db58f81ccbe5a.png" target="_blank"><img src="../images/14152330947c0823199444e1750db58f81ccbe5a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+	等了5分钟，poller执行（试过的童鞋应该知道，啥命令都不会被执行，不知道为啥），虽然没有直接效果，但是却在log中成功写入了php代码。Then，get shell<br />
+<br />
+</p><p class="detail"><a href="../images/14152355d6d15b83663c41920177fdaf4b846f40.png" target="_blank"><img src="../images/14152355d6d15b83663c41920177fdaf4b846f40.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 代码漏洞，拿到bbs的shell<br />
+<br />
+	通过观察，可以知道cacti的服务器同时还是备份服务器，bbs的代码被同步到了这个机器上。然后就是长期而苦逼的读代码的过程了。当然最直接的想法是去找调用了eval或者preg_replace这类直接能执行代码的地方。<br />
+<br />
+</p><p class="detail"><a href="../images/1415242750d9a92518776358a6ea65fa95b4e6c4.png" target="_blank"><img src="../images/1415242750d9a92518776358a6ea65fa95b4e6c4.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+	下面要扯一下某某河畔的论坛的登录。某某河畔论坛登录采用的是usercenter方式认证，bbs作为uc的一个application存在，每次需要认证的时候产生一个rand，记录在session中，并把需要的相关参数拼接上rand、app_key计算md5散列后作为附加参数，通过用户浏览器GET传递给uc；uc验证用户登录授权是否合法之后，将用户uid拼接上rand和app_key计算md5作为附加参数，通过用户浏览器GET回bbs。<br />
+<br />
+	仔细观察登录验证的api代码，惊喜的发现一个eval。<br />
+<br />
+</p><p class="detail"><a href="../images/14152540c688ac465371e989b36d88ac97b3ff95.png" target="_blank"><img src="../images/14152540c688ac465371e989b36d88ac97b3ff95.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+	回查调用代码，只要通过下面代码的检查就会执行到eval，数据库密码明写在代码中，那么只要在数据库中添加一个名为“xxx.eval($_REQUEST[cmd]);//”的api就可以执行代码了。接下来的写一句话，自是不提。<br />
+<br />
+</p><p class="detail"><a href="../images/14152604589ec1072c4afd863adaa947c4e0844c.png" target="_blank"><img src="../images/14152604589ec1072c4afd863adaa947c4e0844c.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/141526281a218b99a2e958a9159b446f8c697ad8.png" target="_blank"><img src="../images/141526281a218b99a2e958a9159b446f8c697ad8.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这次检测有几点感觉：<br />
+<br />
+<br />
+<br />
+1. 很过管理密码保持默认的危害性非常大，你完全不知道什么时候这个应用会被发现并威胁到服务器安全。特别是各种内部系统会对外开放的时候。<br />
+<br />
+2. 很多应用都是对外部数据防护得很好，而内部数据过于信任，根本就没有任何过滤措施。如这次cacti，可以任意指定log文件的位置，没有检查拓展名；没有检查数据库中commad的内容，直接将错误信息输出到log中；uc没有对api名做基本的检查，导致任意代码执行。<br />
+<br />
+3. 很多机器web目录权限总是设置不当<br />
+<br />
+4. APT攻击几乎总能成功<br />
+<br />
+5. 安全问题总是很难防护得很完善，一处被击破，处处都受影响 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见漏洞详情 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. cacti不用就卸载掉<br />
+<br />
+2. web目录的除了上传目录，都不应该让www用户有写权限，而上传目录应该限制死不能执行脚本<br />
+<br />
+3. bbs验证登录时，需要判断referer，从非用户渠道获取是否真正成功登陆，以避免app_key泄漏带来的各种风险<br />
+<br />
+4. 仅仅对于用户提交的数据严格过滤是不够的，对于来自数据库，session，文件这样的内部数据也要进行安全检查 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/剑心" title="剑心">剑心</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012209" title="沦陷学生之家，一次漂亮的渗透与源码分析">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12209";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

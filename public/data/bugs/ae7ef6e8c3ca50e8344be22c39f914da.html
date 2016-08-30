@@ -1,0 +1,284 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		一个XSS获得海量用户淘宝+支付宝详细信息（闷声作大死系列1）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		一个XSS获得海量用户淘宝+支付宝详细信息（闷声作大死系列1）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/专注XSS三十年">专注XSS三十年</a> 
+</li><li>提交时间：		2014-01-20 19:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-31：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-10：	细节向普通白帽子公开<br/>
+									2014-02-20：	细节向实习白帽子公开<br/>
+									2014-03-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">都是一些很容易取得的API的一个组合应用。<br />
+从技术角度说也就1RANK，不过从综合起来的危害性来说，20也不过分。<br />
+<br />
+从一个普通的反射型XSS注入点，获取用户淘宝资料（详细地址，联系人，联系电话，购买记录）及支付宝资料（余额，银行卡绑定信息，联系人信息，近期转账账户）。<br />
+这其实是2013年1月份发现并调试的，如今整整一年过去了，我回头再看，居然一切还在。<br />
+<br />
+获取支付宝信息不需要用户登录支付宝，只需要淘宝是登陆状态。<br />
+<br />
+最终包装完是一个简单的IFREAME，直接挂在任何流量广告位上即可坐收帐号。[当然不会给你这个成品，不过我是实际测试过的]<br />
+<br />
+*** 不仅仅是支付宝，包括其它同行业也请重视这个问题。虽然拿不到淘宝密码和支付宝密码，可是能得到的所有信息已经足够造成很大危害了，特别是详细地址和电话已经威胁到用户线下的人身安全 希望引起重视！！！ *****</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">先说一下思路。不感兴趣的直接跳到下面看漏洞证明。<br />
+<br />
+<br />
+<br />
+XSS最大的困难在于突破域名。淘宝和支付宝是在两个不同的主域名下，可以说几乎没有可能从本域名下取得其它域名的内容。<br />
+<br />
+<br />
+<br />
+但是淘宝后台提供了一个方便用户的功能，可以让淘宝已登录用户直接一键免登转入支付宝，新版淘宝更是直接嵌入了登录转向页面，登录到淘宝后台就直接等于登录了支付宝后台。<br />
+<br />
+<br />
+<br />
+这样就使得在淘宝下的XSS获取支付宝的敏感信息成为了可能。而悲哀的是，支付宝域名下的所有API都没有加TOKEN认证，而且没有做域名限制，我们可以在外网任意引用。我完全想不通支付宝为何是这样设置的，难道是认为HTTPS连接很安全？<br />
+<br />
+<br />
+<br />
+测试1：外网查询你的支付宝余额：<br />
+<br />
+将以下代码保存成HTML文件，支付宝登陆状态下打开即可显示。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot;&gt;  <br />
+            function xss(result)  <br />
+            {  <br />
+                alert(&quot;money:&quot; + result.availableAmount);<br />
+            }  <br />
+        &lt;/script&gt;  <br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;https://lab.alipay.com/user/assets/queryBalance.json?_callback=xss&quot;&gt;&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这是支付宝若干API中最重要也是调用最简单的一个。其它包括转账列表啊，最近转账用户啊，等等这些API随便抓一下都能直接用。<br />
+<br />
+<br />
+<br />
+那么有人说这要限制支付宝登陆状态才能获得，而且支付宝登陆大家都知道过期是很快的，根本不实用，谁会随时随地登录着支付宝。<br />
+<br />
+<br />
+<br />
+是的，没错，所以就涉及到下一个重要的API，也就是从淘宝登陆转向到支付宝登陆状态。<br />
+<br />
+<br />
+<br />
+对于淘宝卖家帐号来说很容易，因为卖家后台直接有一个API转向支付宝。但是我们要考虑淘宝普通用户，所以使用下面这个方法。<br />
+<br />
+<br />
+<br />
+http://member1.taobao.com/member/fresh/account_management.htm<br />
+<br />
+<br />
+<br />
+在淘宝的这个页面上，有显示淘宝所绑定的支付宝，并且有一个很和善的按钮，写着“进入支付宝”，点击了就能变成支付宝登陆的状态。<br />
+<br />
+<br />
+<br />
+那我们所要做的就是弄一IFRAME，来直接框架转向之后的地址。我们不需要知道它转向之后的页面内容，只是要让它转向而已，所以用IFRAME就行了，没必要死在AJAX跨域上。<br />
+<br />
+<br />
+<br />
+但是要转向之前必须要取得一个关键参数，因为转向的连接大概是这样：<br />
+<br />
+https://lab.alipay.com/user/i.htm?src=yy_taobao_gl_01&amp;sign_from=3000&amp;sign_account_no=XXXXXXXXXXX<br />
+<br />
+<br />
+<br />
+其中有个 sign_account_no ，这个玩意我们要取得。这个其实就在按钮连接的源码里，所以读取这个页面的源码就行了。AJAX我们都知道不能跨域，所以就涉及到我们需要一个淘宝下的XSS注入点。<br />
+<br />
+<br />
+<br />
+换句话说，只要我们取得了任何一个taobao.com域名下的XSS，我们就能获得我简介之中所说的一切。而我找的更简单，我找了member1.taobao.com 下的一个注入点，这样就更加完全不用考虑domain了。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://member1.taobao.com/member/autoReglogin/auto_reglogin.htm?reg_type=0&amp;is_need_login=false&amp;is_need_reg=false&amp;from=autoReglogin&amp;dis_title=false&amp;callback=a()};eval(location.hash.slice(1));a=function(){alert&amp;auto_iframe_height=#alert(1)</code></pre><p class='detail'><br />
+<br />
+这就是注入点。XSS脚本在最后#号后面，通过前面的eval(location.hash.slice(1))来执行。<br />
+<br />
+在这里可以构造一个XSS读取支付宝绑定信息页面的源码，进而取得关键的sign_account_no，然后同样利用这个页面，把这个地址框架进去，做一点延时来等待支付宝转入完毕，然后再通过CSRF读取支付宝下的API来获取大量详细信息。同时这个淘宝的注入点可以读取任意淘宝下的页面，所以用户的淘宝设置也全是透明的。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+这就是一切的开端。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">说明：以下数据在当时截图后就已删除！仅为安全研究测试，去年到现在期间辗转多个服务器，早已未有任何数据留存！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/201944395adc16223250a6afd4503aeed0a73b89.jpg" target="_blank"><img src="../images/201944395adc16223250a6afd4503aeed0a73b89.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/201944551aa6e4618a7b29078ae17b022f4991b3.jpg" target="_blank"><img src="../images/201944551aa6e4618a7b29078ae17b022f4991b3.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/201945093fc90c150dfd50bc7f480461ed3a7660.jpg" target="_blank"><img src="../images/201945093fc90c150dfd50bc7f480461ed3a7660.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20194522acc42591827da82fcf41bfd4ccd3abc3.jpg" target="_blank"><img src="../images/20194522acc42591827da82fcf41bfd4ccd3abc3.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">。。。。。为何支付宝API不放任何限制？这些数据完全可以做很多事情，而且是不限于线上的。<br />
+<br />
+<br />
+<br />
+年底了，求个礼物不过分吧。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/专注XSS三十年" title="专注XSS三十年">专注XSS三十年</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049380" title="一个XSS获得海量用户淘宝+支付宝详细信息（闷声作大死系列1）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2014-01-21 13:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢你对我们的支持与关注，该问题我们正在修复中。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49380";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

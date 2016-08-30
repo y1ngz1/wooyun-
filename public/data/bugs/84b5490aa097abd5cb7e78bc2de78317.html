@@ -1,0 +1,185 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		查找心中女神照片的坎坷之路  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		查找心中女神照片的坎坷之路  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/zazaz">zazaz</a> 
+</li><li>提交时间：		2013-07-08 18:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-01：	细节向普通白帽子公开<br/>
+									2013-08-11：	细节向实习白帽子公开<br/>
+									2013-08-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">女神不肯给我照片，迫不得已，我只能自己想办法了<br />
+struts2命令执行+Tomcat弱口令+SQL注入+任意文件下载</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">google搜索了一下分站，没找到什么漏洞，从C段入手，查看idtag.cn的mx服务器是mail.idtag.cn,ip 211.151.123.250，扫描了一下这个段，找到了http://211.151.123.232/desktop/parse.action<br />
+<br />
+</p><p class="detail"><a href="../images/081739046f89885d8f0d37f86f97c4a5f8f845fc.png" target="_blank"><img src="../images/081739046f89885d8f0d37f86f97c4a5f8f845fc.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+struts2执行漏洞,这个站是原来的dt.id5.cn，新的网站架构换了，没这个漏洞。拿下shell后，研究网站，这网站是可以用身份证号码+姓名查照片的，不过是老的，所以接口没用了。<br />
+<br />
+扫描内网，找到了一个Tomcat，http://192.168.1.151:8080/<br />
+<br />
+</p><p class="detail"><a href="../images/081741118aa7381e40ccd13045f9a1fa652c9a6f.png" target="_blank"><img src="../images/081741118aa7381e40ccd13045f9a1fa652c9a6f.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+admin,admin进去了，拿下shell后发现，此服务器是gboss.id5.cn国政通综合业务平台的测试服务器，登录测试系统后，发现里面有身份证查询接口的配置，不过这是测试的系统，很多东西都不对，要拿到gboss才行。用测试系统的帐号去登录gboss，都进不去。研究源码后发现，他有些页面不用登录也可以访问，http://gboss.id5.cn/empQuery.do?operate=list，这里可以看到用户列表，查询用户这个有注入<br />
+<br />
+</p><p class="detail"><a href="../images/08175557c0b1ceb424217fda505206c949d01f6b.png" target="_blank"><img src="../images/08175557c0b1ceb424217fda505206c949d01f6b.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+读admin密码，32位的MD5一位一位的猜，十分钟过后，终于读出来了，倒霉，不能破解，换个管理员，又是半天，还是无法破解。没办法，查看首页登录的代码，发现它首先把密码MD5了一下，再去验证的，刚好不用破解，另存为本地文件，我直接本地提交HASH，登录成功。<br />
+<br />
+接着想办法拿shell，找遍了所有功能，上传绕不过去，不过发现了他有下载客户上传的文件的功能，看下URL,http://gboss.id5.cn/business/webBatchUpload.do?operate=download&amp;type=1&amp;thrId=120944358&amp;callType=2&amp;url=filepath,试下下载/etc/passwd，成功。扫描到他开放了7001端口，访问http://gboss.id5.cn:7001/console/，weblogic的后台，试了下默认密码，进不去，用之前的文件下载漏洞，下载到weblogic的配置文件，本地搭环境，把密码解密了出来，进weblogic后台，部署war，成功拿下shell。然后反编译网站的class，找到了接口的调用方法，和接口的授权文件。在网上找了个身份证号来测试，成功看到照片。照片用base64解密下就行了<br />
+<br />
+</p><p class="detail"><a href="../images/0818270710fd0bdafa248c1845f9d9c6b4182707.png" target="_blank"><img src="../images/0818270710fd0bdafa248c1845f9d9c6b4182707.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+剩下的就是看女神的了，但是不知道女神的身份证号啊，身份证前六位是地区，这个可以确定，然后后面8位是出生日期，这个也可以确定，最后一位是校验码，根据前面17个数得来，那么只有三位数不知道了，身份证倒数第二位偶数是女性，这样，这样就只有500个号了，用PHP写好，提交，很不幸，没有找到，后来我才知道，这是2008年的老数据，当时女神还没身份证呢，哎，过程这么坎坷，最终还是没有看到。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">看上面 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂的 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/zazaz" title="zazaz">zazaz</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-028203" title="查找心中女神照片的坎坷之路">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-07-12 23:48</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">  </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="28203";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

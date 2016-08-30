@@ -1,0 +1,170 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Smarty3远程代码执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Smarty3远程代码执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/BNE">BNE</a> 
+</li><li>提交时间：		2011-08-08 14:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-08-08：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-08-08：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Smarty是PHP下广泛使用的前端模板框架。但由于Smarty3引入了新的特性，导致在某些情况下，可以利用特性组合直接远程执行任意代码。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">此漏洞原作者：cly，我代为发布而已:)<br />
+<br />
+<br />
+<br />
+由于Smarty3中引入了两个特性：<br />
+<br />
+1、如果display,fetch等方法的模板路径参数接受到的模板文件名是以“string:”或者“eval:”开头的，smarty3就会将此后的字符串值作为模板文件内容，重新编译并执行之。参考连接：http://www.smarty.net/docs/en/template.resources.tpl#templates.from.string<br />
+<br />
+2、smarty3的模板语言中，可以利用{phpfunction()}等方式直接在smarty tag中执行php表达式。而smarty2中则不支持。参考连接：http://www.smarty.net/docs/en/language.syntax.variables.tpl<br />
+<br />
+<br />
+<br />
+因此，利用以上两个特性相结合，如果用户可以控制模板文件名，即可执行任意php表达式。<br />
+<br />
+<br />
+<br />
+同样的，利用smarty3的resource特性，还可以直接利用“file:”协议直接远程包含任意文件。因为底层是使用fopen函数实现的文件打开，而默认的php配置中，虽然禁止了remote_file_include，但是对于remote_file_open却是允许的。利用这一个特性，让早已消失已久的RFI经典漏洞类型重见天日了。:) </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1、如果在编写代码的过程中存在如下逻辑的代码，即将用户输入带入代码逻辑获取：<br />
+<br />
+</p><pre><code>$smarty-&gt;display($_REQUEST[&#039;tpl&#039;].”.tpl”);</code></pre><p class='detail'><br />
+<br />
+2、用户可以在访问脚本时，在URL中指定特定参数，如“?tpl=string:{phpinfo()}”，即可执行phpinfo代码。<br />
+<br />
+</p><p class="detail"><a href="../images/081504409fdaf67da396733863346504ff46a4c4.jpg" target="_blank"><img src="../images/081504409fdaf67da396733863346504ff46a4c4.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">去除所有使用用户输入作为模板名进行渲染的代码，使用白名单方式限制只允许载入已知的tpl文件。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/BNE" title="BNE">BNE</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02648" title="Smarty3远程代码执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2648";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

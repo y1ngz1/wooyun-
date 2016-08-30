@@ -1,0 +1,357 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 14. Flash Xss入门 [navigateToURL]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 14. Flash Xss入门 [navigateToURL]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-26 01:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-15：	细节向普通白帽子公开<br/>
+									2013-01-25：	细节向实习白帽子公开<br/>
+									2013-02-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">接下来，我们将讲解Flash Xss。由于乌云及社会各界的白帽子的上报，腾讯目前已经对绝大多数可能存在问题的Flash进行了修复。使得我在寻找真实案例时着实麻烦了不少。但是为了使得本教程足够完善和系统，我还是很艰难的找出了一些可以参考的例子。例子本身危害可能不大，但是希望能够借助例子给新手们描述清楚比较基本的东西。<br />
+<br />
+Flash的actionscript脚本目前网络上存在2种版本，即2.0与3.0，本次教程先以as3.0为例。同时教程还会在如何使用搜索引擎搜索，如何查找关键词及构造利用代码方面进行详细的讲解。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 首先，第一步，我们需要找到存在缺陷的FLASH文件。如何找到这类文件呢？最好的办法，当然是GOOGLE搜索。但是其实很多人是不太会用搜索引擎。或者知道怎么用，但是不知道该如何搜索关键词。因而教程的开始，我们来说一说，如何搜索关键词。<br />
+<br />
+<br />
+<br />
+2. 基本语句肯定是  site:qq.com filetype:swf<br />
+<br />
+<br />
+<br />
+意思是，限定域名为qq.com 文件类型为FLASH文件。<br />
+<br />
+<br />
+<br />
+3. 显然这样会搜索出很多FLASH文件，不利于我们后续的漏洞查找，所以我们需要输入某个关键词来进一步缩小范围。这里我列举一些寻找关键词的方式。<br />
+<br />
+<br />
+<br />
+3.1 已知存在缺陷的FLASH文件名或参数名，如：swfupload,jwplayer等<br />
+<br />
+3.2 多媒体功能的FLASH文件名，如：upload，player, music, video等<br />
+<br />
+3.3 调用的外部配置或数据文件后缀，如: xml, php 等<br />
+<br />
+3.4 前期经验积累下来的程序员特征参数名用词，如: callback, cb , function 等<br />
+<br />
+<br />
+<br />
+4. 结合以上经验，本例使用其中第三条：<br />
+<br />
+<br />
+<br />
+我们搜索： site:qq.com filetype:swf inurl:xml<br />
+<br />
+<br />
+<br />
+可以找到这个FLASH<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://imgcache.qq.com/liveportal_v1/swf/carousel.swf?v=20101111&amp;dp=http://v.qq.com/doco/pic.xml</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+5. 如果你对FLASH有一定了解或者你天资聪慧的话，通过以上地址，你或许能猜到这个FLASH会调用http://v.qq.com/doco/pic.xml这个XML文件的数据，为了看看是什么数据，我们可以使用抓包软件【这里我使用的是charles web proxy】来看看。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2523315098e76b7506e0d32413fcd275f86fa893.jpg" target="_blank"><img src="../images/2523315098e76b7506e0d32413fcd275f86fa893.jpg" alt="68.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 我们看看http://v.qq.com/doco/pic.xml的内容，对应着FLASH来看。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/252332025da2e93afb09068f4fdbeda374c93a2a.jpg" target="_blank"><img src="../images/252332025da2e93afb09068f4fdbeda374c93a2a.jpg" alt="69.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7. 这里我们重点关注的是xml里的&lt;link&gt;结点。也就是当我们点击图片时，会跳转到link所指向的地址。<br />
+<br />
+<br />
+<br />
+8.接着我们先说下基础知识。要实现上面点击图片，打开链接的功能，在FLASH里通常以以下代码来实现的。<br />
+<br />
+<br />
+<br />
+当图片点击时执行 函数A<br />
+<br />
+<br />
+<br />
+函数A内容如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>//as3.0版本<br />
+navigateToURL(new URLRequest(link), &quot;_self&quot;);<br />
+<br />
+//as2.0版本<br />
+getURL(link,&quot;_self&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+其中link就是被打开的链接。<br />
+<br />
+<br />
+<br />
+9. 但是这里存在一个问题，如果link是 &quot;javascript:alert(1)&quot;<br />
+<br />
+<br />
+<br />
+那么就可以执行JS代码了。这里的点击执行代码的效果类似于网页里的<br />
+<br />
+<br />
+<br />
+&lt;a href=&quot;javascript:alert(1)&quot;&gt;点我弹出1&lt;/a&gt;<br />
+<br />
+<br />
+<br />
+10. 基于以上基础知识，我们可以先来反编译一下腾讯的FLASH文件，看看是不是上面这样的。<br />
+<br />
+<br />
+<br />
+这里我用到的反编译软件是 actionscript viewer 2009。<br />
+<br />
+<br />
+<br />
+把下载好的FLASH文件，拖到软件里，然后把AS都保存出来，保存为文本文件。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/25233218976ed0160889307b39749a85f29115ad.jpg" target="_blank"><img src="../images/25233218976ed0160889307b39749a85f29115ad.jpg" alt="71.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如上图，我们可以看到AS代码具有目录结构，这种是AS3的。如果不是这样目录的样子，则是AS2的代码。<br />
+<br />
+<br />
+<br />
+由于我们要定位的是使用到 link 的代码。 我们打开保存的as代码，进行搜索。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/25233230972ea04bb613c3230632e6f8bb2ef9f8.jpg" target="_blank"><img src="../images/25233230972ea04bb613c3230632e6f8bb2ef9f8.jpg" alt="70.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，当点击图片时，直接将数据里的link作为参数传递到了 URLRequest中。<br />
+<br />
+<br />
+<br />
+11. 既然如此，我们把http://v.qq.com/doco/pic.xml 给下载下来，<br />
+<br />
+<br />
+<br />
+将xml文件里的 &lt;link&gt; 部分修改一下。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/25233240ba209f911764c1d9270a3cd4e9f9775f.jpg" target="_blank"><img src="../images/25233240ba209f911764c1d9270a3cd4e9f9775f.jpg" alt="72.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+12. 上传修改后的pic.xml到我们自己的服务器。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2523324949a4f13d5b89947e128011ff1eba52e4.jpg" target="_blank"><img src="../images/2523324949a4f13d5b89947e128011ff1eba52e4.jpg" alt="73.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+13. 这样一来， 腾讯的http://imgcache.qq.com/liveportal_v1/swf/carousel.swf 就会跨域加载我们的 http://itsokla.duapp.com/pic.xml 文件。<br />
+<br />
+<br />
+<br />
+14. 既然是跨域加载，有必要说点基础知识。 FLASH跨域请求的流程大致如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/252333004f2d21cfc1e3270d0ce495c2296da875.jpg" target="_blank"><img src="../images/252333004f2d21cfc1e3270d0ce495c2296da875.jpg" alt="74.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+15. 因而，我们要允许来自imgcache.qq.com的FLASH文件，访问我们的xml文件才行。<br />
+<br />
+<br />
+<br />
+在我们自己网站的根目录下，放置一个 crossdomain.xml<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?xml version=&quot;1.0&quot;?&gt;<br />
+&lt;cross-domain-policy&gt;<br />
+	&lt;allow-access-from domain=&quot;*.qq.com&quot; /&gt;<br />
+&lt;/cross-domain-policy&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+16. 最后，看看我们的效果。点击图片时，触发。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/25233313b66f8fdd0928580a279927658a2451c8.jpg" target="_blank"><img src="../images/25233313b66f8fdd0928580a279927658a2451c8.jpg" alt="75.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+危害较小，仅供学习。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对XML中传入的link url进行正则判断<br />
+<br />
+或者<br />
+<br />
+限制加载第三方网站的XML文件 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016512" title="[腾讯实例教程] 那些年我们一起学XSS - 14. Flash Xss入门 [navigateToURL]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：4 </p>
+													<p class="detail">确认时间：2012-12-26 10:55</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16512";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

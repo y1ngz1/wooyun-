@@ -1,0 +1,260 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ShopEx收货地址可任意查看修改删除  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ShopEx收货地址可任意查看修改删除  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Steven">Steven</a> 
+</li><li>提交时间：		2012-10-18 10:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-23：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">普通会员登录网站后，通过恶意构造的URL可以实现对整个网站的收货地址查看、修改、和删除。<br />
+造成用户敏感隐私泄漏和网站不必要的损失。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">core/shop/controller/ctl.member.php文件<br />
+<br />
+<br />
+<br />
+</p><pre><code>//修改收货地址<br />
+    function modifyReceiver($addrId){<br />
+        $oMem = &amp;$this-&gt;system-&gt;loadModel(&#039;member/member&#039;);<br />
+        if($aRet = $oMem-&gt;getAddrById($addrId)){<br />
+            $aRet[&#039;defOpt&#039;] = array(&#039;0&#039;=&gt;__(&#039;否&#039;), &#039;1&#039;=&gt;__(&#039;是&#039;));<br />
+            $this-&gt;pagedata = $aRet;<br />
+        }else{<br />
+            $this-&gt;system-&gt;error(404);<br />
+            exit;<br />
+        }<br />
+<br />
+        $this-&gt;_output();<br />
+    }<br />
+<br />
+    function saveRec(){<br />
+        $this-&gt;begin($this-&gt;system-&gt;mkUrl(&#039;member&#039;,&#039;modifyReceiver&#039;,array($_POST[&#039;addr_id&#039;])));<br />
+        $oMem = &amp;$this-&gt;system-&gt;loadModel(&#039;member/member&#039;);<br />
+        if($oMem-&gt;saveRec($_POST,$this-&gt;member[&#039;member_id&#039;],$message)){<br />
+            $this-&gt;redirect(&#039;member&#039;,&#039;receiver&#039;);<br />
+        }<br />
+        trigger_error($message, E_USER_ERROR);<br />
+        $this-&gt;end(false,__(&#039;修改失败&#039;),$this-&gt;system-&gt;mkUrl(&#039;member&#039;,&#039;modifyReceiver&#039;,array($_POST[&#039;addr_id&#039;])));<br />
+    }<br />
+<br />
+    //删除收货地址<br />
+    function delRec($addrId){<br />
+        $oMem = &amp;$this-&gt;system-&gt;loadModel(&#039;member/member&#039;);<br />
+        if($oMem-&gt;delRec($addrId)){<br />
+            $this-&gt;redirect(&#039;member&#039;,&#039;receiver&#039;);<br />
+        }<br />
+        $this-&gt;_output();<br />
+    }</code></pre><p class='detail'><br />
+<br />
+以上三个函数没有对所修改的地址所属用户ID进行判断，造成用户信息泄漏和安全隐患。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">打开任意shopex4.85网站，注册会员登录后，<br />
+<br />
+修改以下URL中的ID属性<br />
+<br />
+/?member-21-modifyReceiver.html 可显示和修改其他用户的地址<br />
+<br />
+/?member-21-delRec.html  可删除其他用户的地址 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">函数添加对用户ID的判断<br />
+<br />
+</p><pre><code>//修改收货地址<br />
+    function modifyReceiver($addrId){<br />
+        $oMem = &amp;$this-&gt;system-&gt;loadModel(&#039;member/member&#039;);<br />
+		<br />
+        if($aRet = $oMem-&gt;getAddrById($addrId)){	<br />
+			 if($aRet[&#039;member_id&#039;]!=$this-&gt;member[&#039;member_id&#039;]){<br />
+				 $this-&gt;system-&gt;error(404);<br />
+           		 exit;<br />
+			 }else{<br />
+				$aRet[&#039;defOpt&#039;] = array(&#039;0&#039;=&gt;__(&#039;否&#039;), &#039;1&#039;=&gt;__(&#039;是&#039;));<br />
+				$this-&gt;pagedata = $aRet;<br />
+			 }<br />
+        }else{<br />
+            $this-&gt;system-&gt;error(404);<br />
+            exit;<br />
+        }<br />
+<br />
+        $this-&gt;_output();<br />
+    }<br />
+<br />
+    function saveRec(){<br />
+        $this-&gt;begin($this-&gt;system-&gt;mkUrl(&#039;member&#039;,&#039;modifyReceiver&#039;,array($_POST[&#039;addr_id&#039;])));<br />
+        $oMem = &amp;$this-&gt;system-&gt;loadModel(&#039;member/member&#039;);<br />
+        foreach($_POST as $ke=&gt;$ve){<br />
+            $_POST[$ke] = strip_tags($ve);<br />
+        }<br />
+		if($aRet = $oMem-&gt;getAddrById($_POST[&#039;addr_id&#039;])){	<br />
+		  if($aRet[&#039;member_id&#039;]!=$this-&gt;member[&#039;member_id&#039;]){<br />
+				 $this-&gt;system-&gt;error(404);<br />
+           		 exit;<br />
+			}<br />
+		}<br />
+        if($oMem-&gt;saveRec($_POST,$this-&gt;member[&#039;member_id&#039;],$message)){<br />
+            $this-&gt;redirect(&#039;member&#039;,&#039;receiver&#039;);<br />
+        }<br />
+        trigger_error($message, E_USER_ERROR);<br />
+        $this-&gt;end(false,__(&#039;修改失败&#039;),$this-&gt;system-&gt;mkUrl(&#039;member&#039;,&#039;modifyReceiver&#039;,array($_POST[&#039;addr_id&#039;])));<br />
+    }<br />
+<br />
+    //删除收货地址<br />
+    function delRec($addrId){<br />
+        $oMem = &amp;$this-&gt;system-&gt;loadModel(&#039;member/member&#039;);<br />
+		if($aRet = $oMem-&gt;getAddrById($_POST[&#039;addr_id&#039;])){	<br />
+		  if($aRet[&#039;member_id&#039;]!=$this-&gt;member[&#039;member_id&#039;]){<br />
+				 $this-&gt;system-&gt;error(404);<br />
+           		 exit;<br />
+			}<br />
+		}<br />
+        if($oMem-&gt;delRec($addrId)){<br />
+            $this-&gt;redirect(&#039;member&#039;,&#039;receiver&#039;);<br />
+        }<br />
+        $this-&gt;_output();<br />
+    }</code></pre><p class='detail'> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Steven" title="Steven">Steven</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013491" title="ShopEx收货地址可任意查看修改删除">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-10-18 10:54</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-10-23： 额。。貌似没收到通知邮件
+不好意思。这个问题一直存在，在修改
+感谢您的提交
+非常感谢</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13491";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

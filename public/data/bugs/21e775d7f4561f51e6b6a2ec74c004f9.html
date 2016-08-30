@@ -1,0 +1,346 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		咕咚运动应用设计缺陷以及XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		咕咚运动应用设计缺陷以及XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/imlonghao">imlonghao</a> 
+</li><li>提交时间：		2013-07-16 16:16</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-06：	细节向普通白帽子公开<br/>
+									2013-08-16：	细节向实习白帽子公开<br/>
+									2013-08-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">咕咚网是由成都乐动信息技术有限公司创立的将运动与网络结合，分享运动快乐的新社区，倡导运动，环保，有趣，简单，持续。被誉为运动者的facebook。成都乐动是一家基于互联网技术个人电子产品研发、生产、销售并提供对应网络社区服务和娱乐产品的高科技企业，已经完成致力于健身追踪器的硬件研发生产销售和“咕咚网”平台的开发与运营。无线心率表，网络瘦身秤等全新的网络健身产品也将在2011年面世。咕咚网已经获得多项新型专利和外观专利，并获得“2010年度中国中小企业创新基金”。<br />
+<br />
+手机上装了咕咚运动，看到配件都很贵，于是就电脑上官网了，没想到...........<br />
+DNSPod付费用户，就用域名提交了</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">Part1:已知EMAIL/手机号任意密码修改<br />
+<br />
+找回密码接口处，提交一个通过EMAIL或者手机号的密码重置申请后，系统会给发送一个4位的验证码（仅在EMAIL处测试，没有手机测试不了手机），然后通过这个4位的验证码即可找回用户密码。<br />
+<br />
+而找回密码的接口中，只检查了email以及验证码是否正确，没有检查其他随机参数是否正确，同时，系统不限制次数的尝试验证码是否正确。<br />
+<br />
+因此，只有我们知道了用户的EMAIL或者手机，就可以通过穷举的方式来修改用户的密码。<br />
+<br />
+4位数哦...<br />
+<br />
+<br />
+<br />
+------------------------------------------------<br />
+<br />
+Part2:已知用户名任意密码修改(建议先看Part3.4)<br />
+<br />
+通过Part3,4的漏洞结合，通过xss提交web请求要求绑定手机，并获取验证码，并再次提交成功修改为我们的手机，手机收到短信后，就可以通过官方接口来通过手机号来找回密码<br />
+<br />
+<br />
+<br />
+------------------------------------------------<br />
+<br />
+Part3:私信处XSS漏洞<br />
+<br />
+在发送私信给别人的过程中，未对私信的内容进行过滤，导致在发送私信给别人的时候可以插入xss代码来对用户进行下一步的操作！<br />
+<br />
+<br />
+<br />
+------------------------------------------------<br />
+<br />
+Part4:任意手机绑定<br />
+<br />
+绑定手机过程如下：输入号码——发送号码——返回发送成功，并且附带验证码——输入验证码——验证成功！<br />
+<br />
+而这一过程，就是不科学的，返回成功为什么要附带上发送的验证码呢？<br />
+<br />
+<br />
+<br />
+------------------------------------------------ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">Part1:已知EMAIL/手机号任意密码修改<br />
+<br />
+在官方找回密码通过EMAIL找回，你会收到这样一封邮件<br />
+<br />
+</p><p class="detail"><a href="../images/1218042943f12fe6d49177f419115d563d1f983f.png" target="_blank"><img src="../images/1218042943f12fe6d49177f419115d563d1f983f.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+红码的部分就是4为的验证码，这里假设我们不知道这4个数字<br />
+<br />
+随便访问一个验证码，会出现这种页面<br />
+<br />
+</p><pre><code>http://www.codoon.com/verify_email?email=[EMAIL]&amp;code=[4位码]</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/12180616511e915cfa0864f773d0af62f100b97d.png" target="_blank"><img src="../images/12180616511e915cfa0864f773d0af62f100b97d.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+导入进行破解<br />
+<br />
+</p><p class="detail"><a href="../images/121807228e2b8f4122bd67fed00fd0edfeadb43d.png" target="_blank"><img src="../images/121807228e2b8f4122bd67fed00fd0edfeadb43d.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+1000-9999只有9000个可能，很快就可以破完<br />
+<br />
+成功的验证码的回包是一个302的请求，很容易分辨出来<br />
+<br />
+</p><p class="detail"><a href="../images/121807388bfae758a38a07c9a90959212144ce99.png" target="_blank"><img src="../images/121807388bfae758a38a07c9a90959212144ce99.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后通过我们就可以找回用户的密码了！<br />
+<br />
+</p><p class="detail"><a href="../images/12180856cf31e916017f400d137ea0c84e25e3a8.png" target="_blank"><img src="../images/12180856cf31e916017f400d137ea0c84e25e3a8.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/12180908d39c8057600c7666311f42d8ac3b8b43.png" target="_blank"><img src="../images/12180908d39c8057600c7666311f42d8ac3b8b43.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+------------------------------------------------<br />
+<br />
+Part2:已知用户名任意密码修改(建议先看Part3.4)<br />
+<br />
+这part比较理论..技术不精，还请包含！<br />
+<br />
+分为两个部分：构造代码——等待上线<br />
+<br />
+构造：<br />
+<br />
+修改的过程就是：<br />
+<br />
+发送验证码<br />
+<br />
+</p><pre><code>POST http://www.codoon.com/user/send_verify_sms HTTP/1.1<br />
+mobile=12345679812</code></pre><p class='detail'><br />
+<br />
+回包<br />
+<br />
+</p><pre><code>{&quot;info&quot;: &quot;[六位验证码]&quot;, &quot;rs&quot;: true}</code></pre><p class='detail'><br />
+<br />
+通过这个验证码就可以再次发包修改手机号<br />
+<br />
+<br />
+<br />
+------------------------------------------------<br />
+<br />
+Part3:私信处XSS漏洞<br />
+<br />
+给任意人发送一封私信，同时在内容中直接插入XSS代码<br />
+<br />
+</p><p class="detail"><a href="../images/12181320f8d6af852d2e8c4731f58315b7129d03.png" target="_blank"><img src="../images/12181320f8d6af852d2e8c4731f58315b7129d03.png" alt="10.png" width="600"/></a></p><p class="detail"><br />
+<br />
+发送，乓的一声！就被X了。<br />
+<br />
+</p><p class="detail"><a href="../images/12181341ec4487d50641b311bc78ce9e4b3fed0d.png" target="_blank"><img src="../images/12181341ec4487d50641b311bc78ce9e4b3fed0d.png" alt="11.png" width="600"/></a></p><p class="detail"><br />
+<br />
+尝试性地给一个客服发了私信，简单修改自己的sessionid，即可登陆<br />
+<br />
+</p><pre><code>set-cookie: sessionid=***************</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/121814355c4381fc5fc1bad325fd6ca42958ac37.png" target="_blank"><img src="../images/121814355c4381fc5fc1bad325fd6ca42958ac37.png" alt="12.png" width="600"/></a></p><p class="detail"><br />
+<br />
+同时，这是一个云服务，就可以看到用户之前的运动轨迹，通过都是从家出发！<br />
+<br />
+</p><p class="detail"><a href="../images/12181514ccd59d2104960e26576e97583b68bb7c.png" target="_blank"><img src="../images/12181514ccd59d2104960e26576e97583b68bb7c.png" alt="13.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+------------------------------------------------<br />
+<br />
+Part4:任意手机绑定<br />
+<br />
+不论是之前有无绑定，均可以使用此方法。<br />
+<br />
+启动Fiddler2抓包，提交一个手机号，发送验证码<br />
+<br />
+</p><p class="detail"><a href="../images/121811009243d7e0cd1ae1f6b75bd730aa5f7c22.png" target="_blank"><img src="../images/121811009243d7e0cd1ae1f6b75bd730aa5f7c22.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+回到Fiddler2，我们发现发送验证码的包中服务器回复了JSON数据，其中的info就记录了刚刚发送的验证码<br />
+<br />
+</p><p class="detail"><a href="../images/121812287005e1c8fe9ec90dedd6d17d898821b0.png" target="_blank"><img src="../images/121812287005e1c8fe9ec90dedd6d17d898821b0.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+通过这个验证码，就可以成功绑定手机！<br />
+<br />
+</p><p class="detail"><a href="../images/12181217a6be22e39fe81df668dc827f754d54a9.png" target="_blank"><img src="../images/12181217a6be22e39fe81df668dc827f754d54a9.png" alt="9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后我们就可以知道妹子的家了！<br />
+<br />
+<br />
+<br />
+------------------------------------------------ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">首先赞一赞厂商，在我编辑漏洞的时候就补了任意手机绑定 - -;;;<br />
+<br />
+本来还想截个修改手机号的包的，没截下来！！！<br />
+<br />
+<br />
+<br />
+作为一个“云”厂商，安全十分重要，比可以想你的合作伙伴tower学习，参与乌云众测，可以联系root@wooyun.org<br />
+<br />
+<br />
+<br />
+Part1:已知EMAIL/手机号任意密码修改<br />
+<br />
+加强验证码，最好为16为字母+数字<br />
+<br />
+限制一个验证码的尝试次数<br />
+<br />
+<br />
+<br />
+------------------------------------------------<br />
+<br />
+Part3:私信处XSS漏洞<br />
+<br />
+过滤不合法的参数<br />
+<br />
+全局httponly！！！<br />
+<br />
+<br />
+<br />
+------------------------------------------------<br />
+<br />
+Part4:任意手机绑定<br />
+<br />
+就像现在这样修复即可！<br />
+<br />
+<br />
+<br />
+------------------------------------------------ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/imlonghao" title="imlonghao">imlonghao</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-028706" title="咕咚运动应用设计缺陷以及XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-07-17 16:15</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢，修复中.....</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="28706";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

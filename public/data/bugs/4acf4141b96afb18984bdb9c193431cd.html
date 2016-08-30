@@ -1,0 +1,232 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国邮政某分站从目录遍历到服务器沦陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国邮政某分站从目录遍历到服务器沦陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/超威蓝猫">超威蓝猫</a> 
+</li><li>提交时间：		2014-04-11 13:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-04-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-04-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-04-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-05-04：	细节向普通白帽子公开<br/>
+									2014-05-14：	细节向实习白帽子公开<br/>
+									2014-05-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">中国邮政某分站从目录遍历到服务器沦陷</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://hotel.11185.cn/<br />
+<br />
+这个站看上去很简陋，而且服务端用的是IIS，于是习惯性地在地址栏敲了/admin<br />
+<br />
+</p><p class="detail"><a href="../images/09131758447ca0fff1c19c384363e19e40f8b49c.jpg" target="_blank"><img src="../images/09131758447ca0fff1c19c384363e19e40f8b49c.jpg" alt="01.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+一番搜寻，发现/admin/Image/Images.aspx或许可以上传文件。<br />
+<br />
+</p><p class="detail"><a href="../images/09132438170148434a701c6ef5f7e2e5d050704f.jpg" target="_blank"><img src="../images/09132438170148434a701c6ef5f7e2e5d050704f.jpg" alt="02.jpg" width="600"/></a></p><p class="detail">访问该页面马上就跳转到了/admin/Login.aspx。虽然跳转地很快但还是能看到原页面闪了一下，于是猜测是js控制的跳转。我们打开chrome的F12，禁用js后再访问这个页面就不会跳转啦。<br />
+<br />
+</p><p class="detail"><a href="../images/09132532d4a29a40d8c5dae4218ce63da9ff40b8.jpg" target="_blank"><img src="../images/09132532d4a29a40d8c5dae4218ce63da9ff40b8.jpg" alt="03.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/091326177b307b10e1c8999792496d6e4c55e39b.jpg" target="_blank"><img src="../images/091326177b307b10e1c8999792496d6e4c55e39b.jpg" alt="04.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+再看看上传图片的js段:天了噜居然是本地验证?<br />
+<br />
+</p><pre><code>$(&quot;#btnUpload&quot;).click(function() {<br />
+                var patn = /\.jpg$|\.jpeg$|\.gif$|\.png$/i;<br />
+                var allowString = &quot;jpg,jpeg,gif,png&quot;;<br />
+                var wbproimage = document.getElementById(&quot;ImgPath&quot;).value;<br />
+                if (wbproimage.length &gt; 0) {<br />
+                    var index = wbproimage.lastIndexOf(&quot;\\&quot;);<br />
+                    var filename = wbproimage.substr(index + 1);<br />
+                    if (!patn.test(filename)) {<br />
+                        alert(&quot;图片格式不正确，只能上传以下图片格式：&quot; + allowString);<br />
+                        return false;<br />
+                    }<br />
+                } else {<br />
+                    alert(&quot;请选择图片地址!&quot;);<br />
+                    return false;<br />
+                }</code></pre><p class='detail'><br />
+<br />
+我们传一个图片马，用burp抓包把后缀改成.asp看看:<br />
+<br />
+</p><p class="detail"><a href="../images/091342298d85975edf93730bd0f5199febe39fe9.jpg" target="_blank"><img src="../images/091342298d85975edf93730bd0f5199febe39fe9.jpg" alt="05.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/091342366cc050e120552a0bf3850ca3de4a3010.jpg" target="_blank"><img src="../images/091342366cc050e120552a0bf3850ca3de4a3010.jpg" alt="06.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+成功上传:<br />
+<br />
+</p><p class="detail"><a href="../images/09134325e06cb7be1c7a6e5eac01d116a4a5e247.jpg" target="_blank"><img src="../images/09134325e06cb7be1c7a6e5eac01d116a4a5e247.jpg" alt="07.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+但是图片被服务器压缩了，插入的一句话也被压没了..<br />
+<br />
+</p><p class="detail"><a href="../images/091344306585bdeb7346003c344f86f12db5ddca.jpg" target="_blank"><img src="../images/091344306585bdeb7346003c344f86f12db5ddca.jpg" alt="08.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+接着我又试了直接传不带图片头的一句话、png头的一句话、gif头、bmp头的都会被服务器压缩，天了噜我简直快绝望惹<br />
+<br />
+回到/admin/下看看还有没有什么东西，在/admin/old目录下居然发现了许多asp文件，日期还都是刚刚的，于是与刚才刚才测试的asp进行比对:<br />
+<br />
+</p><p class="detail"><a href="../images/09140124baa937fe1ade2a9125ae73a67d58195a.jpg" target="_blank"><img src="../images/09140124baa937fe1ade2a9125ae73a67d58195a.jpg" alt="09.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/09140131b6b69458b6cfd6d79ac7513acdb7acce.jpg" target="_blank"><img src="../images/09140131b6b69458b6cfd6d79ac7513acdb7acce.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+咦文件大小怎么不一样呢?我怀疑/old目录下的是上传的原文件。菜刀连接，密码ws<br />
+<br />
+</p><p class="detail"><a href="../images/09140511bdafd63966c94363c9f1dc2bc0b0e733.jpg" target="_blank"><img src="../images/09140511bdafd63966c94363c9f1dc2bc0b0e733.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+成功连接。<br />
+<br />
+系统补丁不及时 可以提权哦<br />
+<br />
+</p><p class="detail"><a href="../images/091405352cf1aa6a0a7660ed55260fe228495951.jpg" target="_blank"><img src="../images/091405352cf1aa6a0a7660ed55260fe228495951.jpg" alt="12.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如上。<br />
+<br />
+未做任何破坏。<br />
+<br />
+</p><p class="detail"><a href="../images/091407026e31b0f0f2ae9ba237bc17eadc528880.jpg" target="_blank"><img src="../images/091407026e31b0f0f2ae9ba237bc17eadc528880.jpg" alt="13.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">虽然是外包的站，也没什么重要业务在上面，但都能getshell了如果还给10分那也太不够意思了吧=.=<br />
+<br />
+求礼物 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/超威蓝猫" title="超威蓝猫">超威蓝猫</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-056392" title="中国邮政某分站从目录遍历到服务器沦陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-04-14 17:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢，我们会联系相关负责人进行处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="56392";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

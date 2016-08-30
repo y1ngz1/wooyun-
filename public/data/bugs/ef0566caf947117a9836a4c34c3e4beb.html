@@ -1,0 +1,293 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Cmseasy sql注入一枚  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Cmseasy sql注入一枚  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/′  雨。">′  雨。</a> 
+</li><li>提交时间：		2014-02-11 19:23</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-21：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-05-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">无视gpc 无需登录。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">昨天下的。 <br />
+<br />
+\lib\plugins\pay\alipay.php<br />
+<br />
+<br />
+<br />
+因为是调用的respond 类<br />
+<br />
+<br />
+<br />
+</p><pre><code>function respond() {<br />
+	    <br />
+		<br />
+        if (!empty($_POST)) {<br />
+            foreach($_POST as $key =&gt;$data) {<br />
+                $_GET[$key] = $data;<br />
+            }<br />
+        }<br />
+        $payment  = pay::get_payment($_GET[&#039;code&#039;]);<br />
+        $seller_email = rawurldecode($_GET[&#039;seller_email&#039;]);<br />
+        $order_sn = str_replace($_GET[&#039;subject&#039;],&#039;&#039;,$_GET[&#039;out_trade_no&#039;]);<br />
+        $order_sn = trim($order_sn);<br />
+        if (!pay::check_money($order_sn,$_GET[&#039;total_fee&#039;])) {<br />
+            return false;<br />
+        }<br />
+		<br />
+        if($_GET[&#039;trade_status&#039;] == &quot;WAIT_SELLER_SEND_GOODS&quot;||$_GET[&#039;trade_status&#039;] == &quot;TRADE_FINISHED&quot; || $_GET[&#039;trade_status&#039;] == &quot;TRADE_SUCCESS&quot;) {<br />
+            pay::changeorders($order_sn,$_GET);<br />
+            return true;<br />
+        }else {<br />
+            return false;<br />
+        }<br />
+    }<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+挺多可控的<br />
+<br />
+<br />
+<br />
+</p><pre><code>public static function changeorders($id,$orderlog) {<br />
+    	//file_put_contents(&#039;logs.txt&#039;, $id);<br />
+        $where=array();<br />
+        $where[&#039;id&#039;]=$id;<br />
+        $where[&#039;status&#039;]=4;<br />
+        //$where[&#039;orderlog&#039;]=serialize($orderlog);<br />
+        $update=orders::getInstance()-&gt;rec_update($where,$id);<br />
+        if($update&lt;1) {<br />
+            exit(&#039;改变订单状态出错，请联系管理员&#039;);<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$orderlog 基本没怎么用到 - -<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>public  function rec_update($row , $where){<br />
+		if(empty($this-&gt;tablename)) return;<br />
+		if(!empty($row) &amp;&amp; !empty($where)){<br />
+			<br />
+	        $sqlud=&#039;&#039;;<br />
+            foreach ($row as $key=&gt;$value) {<br />
+        		$key = $this-&gt;simpledb-&gt;escape_string($key);<br />
+        		$value = $this-&gt;simpledb-&gt;escape_string($value);                <br />
+                $sqlud .= &quot;`$key`&quot;.&quot;= &#039;&quot;.$value.&quot;&#039;,&quot;;<br />
+            }<br />
+	        $sqlud=rtrim($sqlud);<br />
+	        $sqlud=rtrim($sqlud,&#039;,&#039;);<br />
+	        $where = $this-&gt;webscandb_condtion($where);<br />
+	        $sql=&quot;UPDATE `&quot;.$this-&gt;tablename.&quot;` SET &quot;.$sqlud.&quot; WHERE &quot;.$where;<br />
+			return $this-&gt;simpledb-&gt;execute($sql);<br />
+		}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到 where 是没有单引号的  开始利用把。<br />
+<br />
+<br />
+<br />
+ $order_sn = str_replace($_GET[&#039;subject&#039;],&#039;&#039;,$_GET[&#039;out_trade_no&#039;]);<br />
+<br />
+<br />
+<br />
+UPDATE `cmseasy_p_orders` SET `id`= &#039;123&#039;,`status`= &#039;4&#039; WHERE 123<br />
+<br />
+<br />
+<br />
+然后让他延时 需要id=123 sleep(10) 这样<br />
+<br />
+<br />
+<br />
+但是发现$_GET 过滤了 =  对&lt;&gt; urlencode。。<br />
+<br />
+<br />
+<br />
+不知道怎么办了。  想了很久。  后面才看到。<br />
+<br />
+<br />
+<br />
+</p><pre><code>if (!empty($_POST)) {<br />
+            foreach($_POST as $key =&gt;$data) {<br />
+                $_GET[$key] = $data;<br />
+            }<br />
+        }</code></pre><p class='detail'><br />
+<br />
+ 就那用post来提交把 post未过滤= &lt;&gt;之类的。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/11183737402d79a6d18a8a0c1e3064bbec8b50a1.jpg" target="_blank"><img src="../images/11183737402d79a6d18a8a0c1e3064bbec8b50a1.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/111836567aa94562f976651783f779e6048640a6.jpg" target="_blank"><img src="../images/111836567aa94562f976651783f779e6048640a6.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/11183749a8316c89a29f87148ca8e288a18ac204.jpg" target="_blank"><img src="../images/11183749a8316c89a29f87148ca8e288a18ac204.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0811245511f58259c155a302b06cf2f722218765.jpg" target="_blank"><img src="../images/0811245511f58259c155a302b06cf2f722218765.jpg" alt="IMG_20140308_111824.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/10184618b53f0b52c39643acb791d5662373e005.jpg" target="_blank"><img src="../images/10184618b53f0b52c39643acb791d5662373e005.jpg" alt="111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1018463089bce03a402d126c430ee942aed25bd2.jpg" target="_blank"><img src="../images/1018463089bce03a402d126c430ee942aed25bd2.jpg" alt="222.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+  OK咯。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">求过滤 <br />
+<br />
+<br />
+<br />
+求20分。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/′  雨。" title="′  雨。">′  雨。</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050679" title="Cmseasy sql注入一枚">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-02-21 19:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2014-02-28：感谢提交漏洞，官方已经修正，望尽快下载更新。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50679";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

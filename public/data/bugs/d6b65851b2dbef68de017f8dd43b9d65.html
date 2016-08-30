@@ -1,0 +1,252 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		cutecms_v3.5 SQL Injection Vulnerability  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		cutecms_v3.5 SQL Injection Vulnerability  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/knife">knife</a> 
+</li><li>提交时间：		2013-04-08 10:43</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-08：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-05-23：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">算高危了</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/*******************************************************/<br />
+<br />
+/* cutecms_v3.5  SQL Injection Vulnerability<br />
+<br />
+<br />
+<br />
+/* ========================         <br />
+<br />
+<br />
+<br />
+/* By:     : Kn1f3     <br />
+<br />
+<br />
+<br />
+/* E-Mail   : 681796@qq.com<br />
+<br />
+<br />
+<br />
+/*******************************************************/<br />
+<br />
+/* Welcome to http://www.90sec.com */<br />
+<br />
+/*******************************************************/<br />
+<br />
+首先看首页文件<br />
+<br />
+<br />
+<br />
+index.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>&gt;&gt;&gt;&gt;/**/无关代码省略/**/<br />
+<br />
+ define(&#039;IN_CUTECMS&#039;, true);<br />
+<br />
+ if(!file_exists(&quot;include/install.lock&quot;)) {<br />
+	 header(&quot;location:install/&quot;);exit;<br />
+ }<br />
+<br />
+ require_once(&#039;include/helper.php&#039;);<br />
+ require_once(&#039;include/generate_static.inc.php&#039;);   //包含文件<br />
+<br />
+&gt;&gt;&gt;&gt;/**/无关代码省略/**/<br />
+<br />
+	 if($staticUrl &amp;&amp; $staticUrl!=&#039;index&#039;) {    <br />
+<br />
+<br />
+		 if(preg_match(&quot;/^(.*)_page([0-9]{1,})$/i&quot;,   $staticUrl)) {<br />
+<br />
+		   $url = substr($staticUrl, 0, strpos($staticUrl, &quot;_page&quot;)).&quot;.html&quot;;<br />
+		   $staticUrlRow = getStaticUrlRow($db, $url);<br />
+		   $action = $staticUrlRow[&#039;action&#039;];<br />
+		   $urlChannelId = $urlContentId = $staticUrlRow[&#039;rid&#039;];<br />
+		   $urlPageNum = substr($staticUrl, strpos($staticUrl, &quot;_page&quot;)+5);<br />
+<br />
+		 }<br />
+		 <br />
+		 else {<br />
+<br />
+			 $url = $staticUrl.&quot;.html&quot;;<br />
+<br />
+			 $staticUrlRow = getStaticUrlRow($db, $url);  //发现带入了数据库查询，看看getStaticUrlRow函数<br />
+<br />
+	         if(!$staticUrlRow) {<br />
+<br />
+			   $pathPartsArr = pathinfo($url);<br />
+              <br />
+			   $staticPathArr = explode(&quot;/&quot;, $pathPartsArr[&#039;dirname&#039;]);<br />
+	           $staticChannelHtmlName = array_pop($staticPathArr);<br />
+<br />
+&gt;&gt;&gt;&gt;/**/无关代码省略/**/<br />
+<br />
+//跟入helper.php<br />
+<br />
+require_once( BASE.&quot;lang.inc.php&quot; );<br />
+require_once( BASE.&quot;base.inc.php&quot; );<br />
+require_once( BASE.&quot;validate.inc.php&quot; );<br />
+require_once( BASE.&quot;elements.inc.php&quot; );<br />
+require_once( BASE.&quot;template.inc.php&quot; );<br />
+<br />
+//继续跟入base.inc.php<br />
+<br />
+function getStaticUrlRow( $db, $url = &quot;&quot;, $rid = &quot;&quot; )<br />
+{<br />
+				$sql = &quot;SELECT * FROM &quot;.PREFIX.&quot;static_url WHERE 1&quot;;<br />
+				if ( $url ) //带入查询没有任何过滤<br />
+				{<br />
+								$sql .= &quot; AND url = &#039;&quot;.$url.&quot;&#039;&quot;;<br />
+				}<br />
+				if ( $rid )<br />
+				{<br />
+								$sql .= &quot; AND rid = &quot;.$rid;<br />
+				}<br />
+				$sql .= &quot; LIMIT 1&quot;;<br />
+				$re = $db-&gt;getRow( $sql );<br />
+				return $re;<br />
+}<br />
+<br />
+//以为把文件加密了，就能把漏洞给修补？作者太2了吧<br />
+ <br />
+<br />
+&gt;&gt;&gt;&gt;/**/无关代码省略/**/<br />
+<br />
+http://127.0.0.1/cutecms_free_v3.5/index.php?staticUrl=[sql]</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/080055176233d3a11208dd68d3ff62f0c176bf86.jpg" target="_blank"><img src="../images/080055176233d3a11208dd68d3ff62f0c176bf86.jpg" alt="1304010332f93905ca9a2784bd.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">:) 可以用80sec那段防注入代码 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/knife" title="knife">knife</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021364" title="cutecms_v3.5 SQL Injection Vulnerability">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21364";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

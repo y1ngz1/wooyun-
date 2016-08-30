@@ -1,0 +1,503 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		韵达快递快件查询算法设计缺陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		韵达快递快件查询算法设计缺陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/e.t.">e.t.</a> 
+</li><li>提交时间：		2013-01-17 10:39</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-17：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-03-03：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">快件查询部分设计存在缺陷和不严密，可能造成批量单号查询甚至DOS攻击</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 韵达快递的单号查询可能通过官网主页操作 (http://www.yundaex.com/)<br />
+<br />
+首先登陆主页，在查询栏里填入单号<br />
+<br />
+</p><p class="detail"><a href="../images/170100527f1eaec1e8229343f4df7608dc61297d.png" target="_blank"><img src="../images/170100527f1eaec1e8229343f4df7608dc61297d.png" alt="query.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 接下来会转入验证码输入页面<br />
+<br />
+</p><p class="detail"><a href="../images/170102167104447bb3a24e775956c97f032a800f.png" target="_blank"><img src="../images/170102167104447bb3a24e775956c97f032a800f.png" alt="code.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 验证码填写正确后，会再转入查询结果页面并输出结果<br />
+<br />
+</p><p class="detail"><a href="../images/170103021a747ab337b273b4e08c366f61bf0f29.png" target="_blank"><img src="../images/170103021a747ab337b273b4e08c366f61bf0f29.png" alt="result.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 最后显示查询结果的link为:<br />
+<br />
+http://qz.yundasys.com:18090/ws/ykjcx/cxend.jsp?wen=36676eece664166e6252a1264d<br />
+<br />
+其中参数wen的值是一串26位16进制字符，这串字符与13位单号存在一一映射关系<br />
+<br />
+(1) 26位字符中从左至右奇数位字符固定，分别为 3?6?6?e?e?6?1?6?6?5?a?2?4?<br />
+<br />
+(2) 26位字符中从左至右偶数位字符，即上一行中表示为?的字符，第2n位是订单号中的第n位字符决定的<br />
+<br />
+(3) 具体的对应关系为:<br />
+<br />
+单号第1位对应wen值第2位<br />
+<br />
+0 - 7<br />
+<br />
+1 - 6<br />
+<br />
+2 - 5<br />
+<br />
+3 - 4<br />
+<br />
+4 - 3<br />
+<br />
+5 - 2<br />
+<br />
+6 - 1<br />
+<br />
+7 - 0<br />
+<br />
+8 - f<br />
+<br />
+9 - e<br />
+<br />
+<br />
+<br />
+单号第2位对应wen值第4位<br />
+<br />
+0 - 7 <br />
+<br />
+1 - 6<br />
+<br />
+2 - 5<br />
+<br />
+3 - 4<br />
+<br />
+4 - 3<br />
+<br />
+5 - 2<br />
+<br />
+6 - 1<br />
+<br />
+7 - 0<br />
+<br />
+8 - f<br />
+<br />
+9 - e<br />
+<br />
+<br />
+<br />
+单号第3位对应wen值第6位<br />
+<br />
+0 - e<br />
+<br />
+1 - f<br />
+<br />
+2 - c<br />
+<br />
+3 - d<br />
+<br />
+4 - a<br />
+<br />
+5 - b<br />
+<br />
+6 - 8<br />
+<br />
+7 - 9<br />
+<br />
+8 - 6<br />
+<br />
+9 - 7<br />
+<br />
+<br />
+<br />
+单号第4位对应wen值第8位<br />
+<br />
+0 - c<br />
+<br />
+1 - d<br />
+<br />
+2 - e<br />
+<br />
+3 - f<br />
+<br />
+4 - 8<br />
+<br />
+5 - 9<br />
+<br />
+6 - a<br />
+<br />
+7 - b<br />
+<br />
+8 - 4<br />
+<br />
+9 - 5<br />
+<br />
+<br />
+<br />
+单号第5位对应wen值第10位<br />
+<br />
+0 - 6<br />
+<br />
+1 - 7<br />
+<br />
+2 - 4<br />
+<br />
+3 - 5<br />
+<br />
+4 - 2<br />
+<br />
+5 - 3<br />
+<br />
+6 - 0<br />
+<br />
+7 - 1<br />
+<br />
+8 - e<br />
+<br />
+9 - f<br />
+<br />
+<br />
+<br />
+单号第6位对应wen值第12位<br />
+<br />
+0 - 4<br />
+<br />
+1 - 5<br />
+<br />
+2 - 6<br />
+<br />
+3 - 7<br />
+<br />
+4 - 0<br />
+<br />
+5 - 1<br />
+<br />
+6 - 2<br />
+<br />
+7 - 3<br />
+<br />
+8 - c<br />
+<br />
+9 - d<br />
+<br />
+<br />
+<br />
+单号第7位对应wen值第14位<br />
+<br />
+0 - 6<br />
+<br />
+1 - 7<br />
+<br />
+2 - 4<br />
+<br />
+3 - 5<br />
+<br />
+4 - 2<br />
+<br />
+5 - 3<br />
+<br />
+6 - 0<br />
+<br />
+7 - 1<br />
+<br />
+8 - e<br />
+<br />
+9 - f<br />
+<br />
+<br />
+<br />
+单号第8位对应wen值第16位<br />
+<br />
+0 - e<br />
+<br />
+1 - f<br />
+<br />
+2 - c<br />
+<br />
+3 - d<br />
+<br />
+4 - a<br />
+<br />
+5 - b<br />
+<br />
+6 - 8<br />
+<br />
+7 - 9<br />
+<br />
+8 - 6<br />
+<br />
+9 - 7<br />
+<br />
+<br />
+<br />
+单号第9位对应wen值第18位<br />
+<br />
+0 - 2<br />
+<br />
+1 - 3<br />
+<br />
+2 - 0<br />
+<br />
+3 - 1<br />
+<br />
+4 - 6<br />
+<br />
+5 - 7<br />
+<br />
+6 - 4<br />
+<br />
+7 - 5<br />
+<br />
+8 - a<br />
+<br />
+9 - b<br />
+<br />
+<br />
+<br />
+单号第10位对应wen值第20位<br />
+<br />
+0 - 2<br />
+<br />
+1 - 3<br />
+<br />
+2 - 0<br />
+<br />
+3 - 1<br />
+<br />
+4 - 6<br />
+<br />
+5 - 7<br />
+<br />
+6 - 4<br />
+<br />
+7 - 5<br />
+<br />
+8 - a<br />
+<br />
+9 - b<br />
+<br />
+<br />
+<br />
+单号第11位对应wen值第22位<br />
+<br />
+0 - 1<br />
+<br />
+1 - 0<br />
+<br />
+2 - 3<br />
+<br />
+3 - 2<br />
+<br />
+4 - 5<br />
+<br />
+5 - 4<br />
+<br />
+6 - 7<br />
+<br />
+7 - 6<br />
+<br />
+8 - 9<br />
+<br />
+9 - 8<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+单号第12位对应wen值第24位<br />
+<br />
+0 - 6<br />
+<br />
+1 - 7<br />
+<br />
+2 - 4<br />
+<br />
+3 - 5<br />
+<br />
+4 - 2<br />
+<br />
+5 - 3<br />
+<br />
+6 - 0<br />
+<br />
+7 - 1<br />
+<br />
+8 - e<br />
+<br />
+9 - f<br />
+<br />
+<br />
+<br />
+单号第13位对应wen值第26位<br />
+<br />
+0 - d<br />
+<br />
+1 - c<br />
+<br />
+2 - f<br />
+<br />
+3 - e<br />
+<br />
+4 - 9<br />
+<br />
+5 - 8<br />
+<br />
+6 - b<br />
+<br />
+7 - a<br />
+<br />
+8 - 5<br />
+<br />
+9 - 4<br />
+<br />
+<br />
+<br />
+5. 根据这样的对应关系可以在知道单号的情况下转过填写认证码的过程直接构造出可呈现订单状态结果的页面，从而可以实现批量的订单查询，甚至可以通过这种方式向查询服务器发动DOS攻击。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">假如我们要查询一个号码为1234567899876的订单，只需要根据上述规则就可以构造成链接:<br />
+<br />
+http://qz.yundasys.com:18090/ws/ykjcx/cxend.jsp?wen=36656de8e36211666b5ba9214b<br />
+<br />
+<br />
+<br />
+直接呈现出查询结果，无需输入认证码<br />
+<br />
+</p><p class="detail"><a href="../images/170123432b412133ba4cd1f1e360f7c29ab874dd.png" target="_blank"><img src="../images/170123432b412133ba4cd1f1e360f7c29ab874dd.png" alt="verify.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修改业务逻辑，向查询者隐藏订单在内部记录里的标志符 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/e.t." title="e.t.">e.t.</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017413" title="韵达快递快件查询算法设计缺陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17413";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

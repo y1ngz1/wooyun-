@@ -1,0 +1,202 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Chrome 浏览器 iframe 跨域访问安全漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Chrome 浏览器 iframe 跨域访问安全漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Jam">Jam</a> 
+</li><li>提交时间：		2012-05-22 12:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-22：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-05-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Chrome 浏览器的iframe跨域访问处理存在安全问题，可导致那些使用iframe进行跨域数据传送的网站受到攻击，跨域传送的数据可被恶意网站获取。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试用的Chrome 浏览器版本：18.0<br />
+<br />
+<br />
+<br />
+iframe.contentWindow.name在iframe里的页面切换之后，仍然可以保留以前的内容，此种方法常被用来作JS的跨域数据获取。<br />
+<br />
+<br />
+<br />
+正常通过iframe.contentWindow.name跨域数据获取的方法为：<br />
+<br />
+1. www.jamcode.org上的页面中的JS创建一个iframe，src为google.com/test.html<br />
+<br />
+2. google.com/test.html中的JS设置了window.name=&quot;数据内容&quot;<br />
+<br />
+3. 然后需要google.com/test.html中的JS*主动*location.replace跳转到jamcode.org/blank.html<br />
+<br />
+这样跳转之后，iframe.contentWindow.name的内容不会丢失，并且，由于跳转完成之后，iframe与宿主页面已同域，www.jamcode.org中的JS就可以获取到iframe.contentWindow.name的内容，完成跨域数据的获取。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+Chrome的安全漏洞：<br />
+<br />
+通过iframe.name跨域获取数据的一个必要信任步骤是，必须是iframe中的页面主动跳转到一个和宿主页面同域的页面。但在Chrome中，可以通过宿主页面的JS去设置iframe.src为自己域的一个页面，iframe.contentWindow.name仍然会保留着，导致任意恶意页面可以获取iframe.contentWindow.name上的数据。<br />
+<br />
+利用漏洞的步骤：<br />
+<br />
+1. www.jamcode.org上的页面中的JS创建一个iframe，src为google.com/test.html<br />
+<br />
+2. google.com/test.html中的JS设置了window.name=&quot;数据内容&quot;<br />
+<br />
+3. www.jamcode.org在监听到iframe.onload事件之后，JS直接将iframe.src设置成www.jamcode.org/blank.html不必等待iframe中主动跳转，即可将iframe设置成同域的一个页面，并且window.name的数据不会丢失。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">google.com/test.html页面的代码：<br />
+<br />
+</p><pre><code>&lt;script&gt;<br />
+window.name=&quot;uid=xxx; friends=1,23,44;...&quot;;<br />
+location.replace(&quot;plus.google.com/blank.html&quot;);<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+www.jamcode.org/evil.html的代码：<br />
+<br />
+</p><pre><code>&lt;script&gt;<br />
+var iframe=document.createElement(&quot;iframe&quot;);<br />
+iframe.onload=function () {<br />
+  iframe.src=&quot;/blank.html&quot;;<br />
+  alert(iframe.contentWindow.name);<br />
+};<br />
+iframe.src=&quot;google.com/test.html&quot;;<br />
+&lt;/script&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">限制为必须iframe中的页面主动中转才保留window.name的内容<br />
+<br />
+ 或<br />
+<br />
+iframe页面变化后即不再保留iframe.contentWindow.name的内容 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Jam" title="Jam">Jam</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07404" title="Chrome 浏览器 iframe 跨域访问安全漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：3 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7404";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

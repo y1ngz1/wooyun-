@@ -1,0 +1,255 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某省地税局ORACLE注入以及奇葩文件泄露漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某省地税局ORACLE注入以及奇葩文件泄露漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/luwikes">luwikes</a> 
+</li><li>提交时间：		2013-12-06 10:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-30：	细节向普通白帽子公开<br/>
+									2014-01-09：	细节向实习白帽子公开<br/>
+									2014-01-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">注入很一般啦，但是这个文件泄露特别奇葩</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">无意中发现正常访问jsp文件，正常显示。在路径后面加两个点就侧漏了，你见到过吗？<br />
+<br />
+http://www.gz-l-tax.gov.cn/conn.jsp..<br />
+<br />
+数据库配置信息<br />
+<br />
+</p><p class="detail"><a href="../images/060910458461043cb3a5db08479aac24e80c0c48.png" target="_blank"><img src="../images/060910458461043cb3a5db08479aac24e80c0c48.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+搜索页面http://www.gz-l-tax.gov.cn/search.jsp..<br />
+<br />
+</p><p class="detail"><a href="../images/06091105e9901623941dffaa32710f8e5aa2365e.png" target="_blank"><img src="../images/06091105e9901623941dffaa32710f8e5aa2365e.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+相关代码，没有任何过滤，各种侧漏：<br />
+<br />
+</p><pre><code>&lt;%@ include file=&quot;top.jsp&quot; %&gt;<br />
+&lt;%<br />
+   String key=request.getParameter(&quot;key&quot;);//获取表单中输入的值<br />
+   String term=request.getParameter(&quot;term&quot;);<br />
+   String colu=request.getParameter(&quot;colu&quot;);<br />
+   String inta=request.getParameter(&quot;inta&quot;);<br />
+   String insert=request.getParameter(&quot;insert&quot;);<br />
+   <br />
+   <br />
+if(insert!=null&amp;&amp;insert.equals(&quot;a&quot;)){<br />
+if(key.trim().length()!=0){<br />
+   byte  c[]=key.getBytes(&quot;ISO-8859-1&quot;);<br />
+   key=new String(c);}  <br />
+else{out.println(&quot;&lt;script&gt;alert(&#039;错误,请输入查询关键字&#039;);history.back();&lt;/script&gt;&quot;);  <br />
+	return;}<br />
+	if(inta==null){out.println(&quot;&lt;script&gt;alert(&#039;错误,请选择查询范围&#039;);history.back();&lt;/script&gt;&quot;);  <br />
+	return;}<br />
+	inta=inta.trim();<br />
+	String entry=&quot;&quot;;<br />
+	String entry1=&quot;&quot;;<br />
+	<br />
+	if(inta.equals(&quot;artic&quot;)&amp;&amp;term.equals(&quot;local&quot;)){entry=&quot;and carry like &#039;%&quot;+carry+&quot;%&#039;&quot;;}<br />
+	if(term.equals(&quot;all&quot;)){entry=&quot;&quot;;}<br />
+	if(colu.trim().length()!=0){entry1=&quot;and the_colu=&#039;&quot;+colu+&quot;&#039;&quot;;}<br />
+	if(inta.equals(&quot;laws&quot;)&amp;&amp;term.equals(&quot;local&quot;)){entry=&quot;and area=&#039;&quot;+area0+&quot;&#039;&quot;;}<br />
+%&gt;<br />
+<br />
+ &lt;% <br />
+ResultSet rt=null;<br />
+rt=sql.executeQuery(&quot;select count(*) from talent.&quot;+inta+&quot;  where   title like &#039;%&quot;+key+&quot;%&#039;  and state=&#039;pub&#039;  &quot;+entry+&quot; &quot;+entry1+&quot;  order by id desc&quot; );<br />
+rt.next();<br />
+int total=rt.getInt(1);//取得整数保存在total变量中<br />
+<br />
+<br />
+String start;//定义变量用来传递page<br />
+int starset;//页面参数<br />
+start=request.getParameter(&quot;starset&quot;);//取得当前的页码<br />
+if(start==null){starset=1;}//判断初始页面,如果没有显示记录,就置为第一页<br />
+else{<br />
+starset=Integer.parseInt(start);//将start转化为整数<br />
+if(starset&lt;1) starset=1;<br />
+}<br />
+int pageSize=20;//每页显示信息条数<br />
+int span=starset+pageSize;<br />
+int pageCount=(total%pageSize==0)?(total/pageSize):(total/pageSize+1);//计算分页后的总页数<br />
+<br />
+ResultSet re=null;<br />
+re=sql.executeQuery(&quot;select * from ( select row_.*, rownum rownum_ from (select * from talent.&quot;+inta+&quot; where  title like &#039;%&quot;+key+&quot;%&#039; and state=&#039;pub&#039; &quot;+entry+&quot;  &quot;+entry1+&quot; order by id desc) row_ where rownum &lt;&quot;+span+&quot;) where rownum_ &gt;=&quot;+starset);<br />
+		while(re.next()){<br />
+		String art_id=re.getString(&quot;id&quot;);<br />
+ String art_title=re.getString(&quot;title&quot;);<br />
+ if(art_title.trim().length()&gt;43){art_title=art_title.substring(0,41)+&quot;...&quot;;}//首页显示的标题最多为19个字<br />
+ String art_time=re.getString(&quot;pubtime&quot;);<br />
+ art_time=art_time.substring(5,10);<br />
+%&gt;<br />
+&lt;%<br />
+sql.close();<br />
+con.close();<br />
+%&gt;<br />
+&lt;%@ include file=&quot;food.jsp&quot; %&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">报错界面：<br />
+<br />
+</p><p class="detail"><a href="../images/06091127674a742c0266cffd265ae89c5d9675ea.png" target="_blank"><img src="../images/06091127674a742c0266cffd265ae89c5d9675ea.png" alt="0.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+类型：<br />
+<br />
+</p><p class="detail"><a href="../images/06091146b16060f81488249f8b381ade3d57d9b8.png" target="_blank"><img src="../images/06091146b16060f81488249f8b381ade3d57d9b8.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+数据库：<br />
+<br />
+</p><p class="detail"><a href="../images/06091205f302db34c7a17ca6f2ffec9d1df814f3.png" target="_blank"><img src="../images/06091205f302db34c7a17ca6f2ffec9d1df814f3.png" alt="4.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">同一IP下有四个市级地税网站，问题应该是出自apache的配置上，所以都有影响<br />
+<br />
+。。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/luwikes" title="luwikes">luwikes</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-045087" title="某省地税局ORACLE注入以及奇葩文件泄露漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2013-12-10 22:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="45087";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

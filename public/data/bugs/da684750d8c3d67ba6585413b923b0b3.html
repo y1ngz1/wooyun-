@@ -1,0 +1,200 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		简单CMS Getshell漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		简单CMS Getshell漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2013-08-01 10:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-01：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-10-30：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">简单cms getshell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>public function saveAvatar() {<br />
+		session_start ();<br />
+		define ( &#039;SD_ROOT&#039;, dirname ( __FILE__ ) . &#039;/&#039; );<br />
+		@header ( &quot;Expires: 0&quot; );<br />
+		@header ( &quot;Cache-Control: private, post-check=0, pre-check=0, max-age=0&quot;, FALSE );<br />
+		@header ( &quot;Pragma: no-cache&quot; );<br />
+		<br />
+		// 这里传过来会有两种类型，一先一后, big和small, 保存成功后返回一个json字串，客户端会再次post下一个.<br />
+		$type = isset ( $_GET [&#039;type&#039;] ) ? trim ( $_GET [&#039;type&#039;] ) : &#039;tupian&#039;;<br />
+		$orgin_pic_path = $_GET [&#039;photoServer&#039;]; // 原始图片地址，备用.//文件名<br />
+		                                         // $from = $_GET[&#039;from&#039;];<br />
+		                                         // //原始图片地址，备用.<br />
+		$_path = explode ( &#039;/&#039;, $orgin_pic_path );<br />
+		$num = count ( $_path );<br />
+		$path = &#039;/&#039;;<br />
+		foreach ( $_path as $k =&gt; $v ) {<br />
+			if (($k + 1) == $num) {<br />
+				$filename = $v;//赋值<br />
+			} else {<br />
+				$path .= $v . &#039;/&#039;;<br />
+			}<br />
+		}<br />
+		if ($type == &#039;big&#039;) {<br />
+			$pic_path = &#039;../../../../Uploads/avatar_big/&#039; . $filename;//文件名<br />
+		} elseif ($type == &#039;small&#039;) {<br />
+			$pic_path = &#039;../../../../Uploads/avatar_small/&#039; . $filename;<br />
+		} else {<br />
+			$msg = json_encode ( &#039;error img!&#039; );<br />
+			echo $msg;<br />
+			exit ();<br />
+		}<br />
+		$new_avatar_path = $pic_path;<br />
+		$len = file_put_contents ( SD_ROOT . $new_avatar_path, file_get_contents ( &quot;php://input&quot; ) );//写出<br />
+		$avtar_img = imagecreatefromjpeg ( SD_ROOT . $new_avatar_path );<br />
+		imagejpeg ( $avtar_img, SD_ROOT . $new_avatar_path, 80 );<br />
+		<br />
+		// 输出新保存的图片位置, 测试时注意改一下域名路径, 后面的statusText是成功提示信息.<br />
+		// status 为1 是成功上传，否则为失败.<br />
+		$d = new pic_data ();<br />
+		// $d-&gt;data-&gt;urls[0] = &#039;http://sns.com/avatar_test/&#039;.$new_avatar_path;<br />
+		$d-&gt;data-&gt;urls [0] = $new_avatar_path;<br />
+		$d-&gt;status = 1;<br />
+		$d-&gt;statusText = &#039;上传成功!&#039;;<br />
+		<br />
+		$msg = json_encode ( $d );<br />
+		<br />
+		echo $msg;<br />
+		$user_mod = M ( &quot;User&quot; );<br />
+		$user_mod-&gt;where ( &quot;is_del=0 and id=&quot; . $_COOKIE [&#039;id&#039;] )-&gt;setField ( &#039;img&#039;, $filename );<br />
+		<br />
+		@unlink ( SD_ROOT . &quot;../../../../Uploads/avatar_original/&quot; . $_SESSION [&#039;user_img&#039;] );<br />
+		@unlink ( SD_ROOT . &quot;../../../../Uploads/avatar_big/&quot; . $_SESSION [&#039;user_img&#039;] );<br />
+		@unlink ( SD_ROOT . &quot;../../../../Uploads/avatar_small/&quot; . $_SESSION [&#039;user_img&#039;] );<br />
+	}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/31221500ba3b06bee99e4574d42f2f94db2e5d56.png" target="_blank"><img src="../images/31221500ba3b06bee99e4574d42f2f94db2e5d56.png" alt="QQ截图20130703183129.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033068" title="简单CMS Getshell漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33068";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

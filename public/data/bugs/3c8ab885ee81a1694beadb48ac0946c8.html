@@ -1,0 +1,224 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		运维安全系列1#：蓝汛cdn若干安全问题可造成敏感信息泄露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		运维安全系列1#：蓝汛cdn若干安全问题可造成敏感信息泄露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/winsyk">winsyk</a> 
+</li><li>提交时间：		2013-07-24 17:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-13：	细节向普通白帽子公开<br/>
+									2013-08-23：	细节向实习白帽子公开<br/>
+									2013-09-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">蓝汛的安全做的不错，看了下最近都没人来提交漏洞，于是我补上一枪，希望蓝汛的安全可以做的更好。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">蓝汛的cdn节点比较多，略微看了下发现了几个安全问题；<br />
+<br />
+1、python djano未屏蔽报错造成可查看敏感信息（包含服务器内网ip等敏感信息）；<br />
+<br />
+2、mysql未授权访问（安全上做的比较好，帐号只有登录权限）；<br />
+<br />
+3、某地址存在弱口令，可直接登录到系统内查看较为敏感数据；<br />
+<br />
+4、蓝汛还找绿盟做过服务，但扫描的页面还存在，会给攻击者带来极大方面，建议删除；<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">问题1、python django报错信息，django配置错误，导致敏感信息泄漏；<br />
+<br />
+主要泄漏信息的地址：/accounts/profile/，当然其他页面也有，你们自己找。<br />
+<br />
+111.1.32.99<br />
+<br />
+111.1.32.99:8080<br />
+<br />
+111.1.32.98<br />
+<br />
+111.1.32.100<br />
+<br />
+111.1.32.100:8080<br />
+<br />
+111.1.32.98<br />
+<br />
+111.1.32.154:8080<br />
+<br />
+不想贴图，以这里为例http://111.1.32.99/accounts/profile/，可看到的敏感信息：<br />
+<br />
+</p><pre><code>{&#039;default&#039;: {&#039;ENGINE&#039;: &#039;django.db.backends.mysql&#039;, &#039;HOST&#039;: &#039;localhost&#039;, &#039;NAME&#039;: &#039;scm&#039;, &#039;OPTIONS&#039;: {}, &#039;PASSWORD&#039;: &#039;********************&#039;, &#039;PORT&#039;: &#039;3306&#039;, &#039;TEST_CHARSET&#039;: None, &#039;TEST_COLLATION&#039;: None, &#039;TEST_MIRROR&#039;: None, &#039;TEST_NAME&#039;: None, &#039;TIME_ZONE&#039;: &#039;Asia/Shanghai&#039;, &#039;USER&#039;: &#039;fdns_lqs&#039;}}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>TM_IP&#039;192.168.100.197&#039;</code></pre><p class='detail'><br />
+<br />
+好像这个是你们的开发email?<br />
+<br />
+</p><pre><code>ADMINS	((&#039;xingbo.zhou&#039;, &#039;xingbo.zhou@chinacache.com&#039;),)</code></pre><p class='detail'><br />
+<br />
+问题2、111.1.32.157 未授权访问：<br />
+<br />
+</p><pre><code>mysql -h 111.1.32.157 -uroot -p</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/241727545294be869d702cf92c62627ef7e24249.png" target="_blank"><img src="../images/241727545294be869d702cf92c62627ef7e24249.png" alt="mysql.png" width="600"/></a></p><p class="detail"><br />
+<br />
+问题3：http://221.130.162.204/ 登录帐号:test test<br />
+<br />
+</p><p class="detail"><a href="../images/241714271499aabbc1e0ff236bc76f992ca5184e.jpg" target="_blank"><img src="../images/241714271499aabbc1e0ff236bc76f992ca5184e.jpg" alt="chinacache.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+问题4：http://121.14.235.246/ 绿盟科技&quot;远程安全评估系统&quot;安全评估报告 这个玩意就删除了吧。。<br />
+<br />
+</p><p class="detail"><a href="../images/2417285602d95fdef75b6791df3a02ea1a7bce63.png" target="_blank"><img src="../images/2417285602d95fdef75b6791df3a02ea1a7bce63.png" alt="nsfocus.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、django屏蔽错误；<br />
+<br />
+2、建议Mysql只限制登录还远不够，建议直接disable掉登录；<br />
+<br />
+3、改密码；<br />
+<br />
+4、删除这个扫描页面； </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/winsyk" title="winsyk">winsyk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-032127" title="运维安全系列1#：蓝汛cdn若干安全问题可造成敏感信息泄露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-07-24 18:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">万分感谢 @winsyk 提报的这些问题，目前漏洞我们正在积极封堵。<br />
+<br />
+这是当前刚上线测试的新系统，系统中没有敏感信息，但为了表示感谢，将危害等级定为“中”，并给与“中”的最高分 10 分。<br />
+<br />
+再次感谢！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="32127";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

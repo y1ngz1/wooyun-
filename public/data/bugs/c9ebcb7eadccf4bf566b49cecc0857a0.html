@@ -1,0 +1,304 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		一次失败的漫游百度内部网络过程  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		一次失败的漫游百度内部网络过程  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/3King">3King</a> 
+</li><li>提交时间：		2014-02-14 04:16</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-06：	细节向普通白帽子公开<br/>
+									2014-03-16：	细节向实习白帽子公开<br/>
+									2014-03-31：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">安全是一个整体，保证安全不在于强大的地方有多强大，而在于真正薄弱的地方在哪里。<br />
+<br />
+本实例从一个不起眼的细节展开，发现致命漏洞后，为了检测百度内部是否有完善的监控报警机制，便尝试进行渗透挖掘，最终被系统规则检测到，暴漏了整个测试行为。<br />
+<br />
+本次渗透的心得在于，无论对于厂商还是渗透人员来说，细节是多么重要。<br />
+<br />
+欢迎百度选择忽略此漏洞，让基友们提前围观到细节。<br />
+<br />
+（猪猪侠：你妹....）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 猜测及发现隐患<br />
+<br />
+<br />
+<br />
+今晚在给手机上的应用升级时，闲着无聊打开了Wireshark进行抓包。就当升级完准备拔线时，窗口里突然蹦出了几个发向百度二三级域名的连接：loc.map.baidu.com、mobads.baidu.com、mobads-logs.baidu.com（原图已无法复现）<br />
+<br />
+</p><p class="detail"><a href="../images/14030010954f1f345c13c86fa4a15b68db41a44e.jpg" target="_blank"><img src="../images/14030010954f1f345c13c86fa4a15b68db41a44e.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+想起昨天和剑心聊（gao）天（ji）时谈到的一些企业高层对安全的态度，便下意识地ping了这三个域名一下。<br />
+<br />
+前两个都解析到了cdn上，但是当ping到mobads-logs.baidu.com时，却发现并未到cdn，而是解析到了一个真实地址。<br />
+<br />
+</p><p class="detail"><a href="../images/14030721f6db0c3725319466e5c22f965d26d1b2.jpg" target="_blank"><img src="../images/14030721f6db0c3725319466e5c22f965d26d1b2.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#2 IP段扫描及发现漏洞<br />
+<br />
+<br />
+<br />
+于是利用扫描工具，对123.125.114段进行全面的扫描。<br />
+<br />
+<br />
+<br />
+最终在123.125.114.213，发现开放了web服务，而且疑似是内部测试系统的对外。<br />
+<br />
+</p><p class="detail"><a href="../images/14031347f8a3ebfdb3504a37aa023a7135465493.jpg" target="_blank"><img src="../images/14031347f8a3ebfdb3504a37aa023a7135465493.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+首先是在模板下载链接处发现任意文件下载漏洞。<br />
+<br />
+</p><p class="detail"><a href="../images/14031928bcc8f711815b5f738bbca60a3573b8e6.jpg" target="_blank"><img src="../images/14031928bcc8f711815b5f738bbca60a3573b8e6.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1403320436239e1fa9ea745984b2977409f83e52.jpg" target="_blank"><img src="../images/1403320436239e1fa9ea745984b2977409f83e52.jpg" alt="t1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/140324087de10b4167c58bc7b5b52124025bae3c.jpg" target="_blank"><img src="../images/140324087de10b4167c58bc7b5b52124025bae3c.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+随后又发现有一处上传点。<br />
+<br />
+</p><p class="detail"><a href="../images/140324335d0724297a12cb6b0c07889bdf310a02.jpg" target="_blank"><img src="../images/140324335d0724297a12cb6b0c07889bdf310a02.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上传后虽然未返回上传地址，但通过查看源码之后发现了这个<br />
+<br />
+</p><p class="detail"><a href="../images/140326399e163d8eb9213364761e25681ea3fedb.jpg" target="_blank"><img src="../images/140326399e163d8eb9213364761e25681ea3fedb.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+从这里可以看出，文件传上去后是存储在了heat-map/upload里，而不是临时存储。<br />
+<br />
+接着便猜测，是否上传效验了文件类型，并且上传后有没有改名。<br />
+<br />
+<br />
+<br />
+做一个简单的验证：上传一个文件名为2.jsp的输出“Helloworld”jsp程序，然后尝试访问http://123.125.114.213/heat-map/upload/2.jsp，发现返回“Helloworld”，由此证明上传漏洞存在。<br />
+<br />
+</p><p class="detail"><a href="../images/1403323517eb86093fff3a4a85124b0ce73b4cc4.jpg" target="_blank"><img src="../images/1403323517eb86093fff3a4a85124b0ce73b4cc4.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#3 内网基础信息的获取及触发报警<br />
+<br />
+<br />
+<br />
+在进一步测试前，曾经考虑过百度很可能有较健全监控报警机制。为了测试是否存在，便上传了菜刀JSPShell进行渗透挖掘。通过目录和文件信息可以看到，此服务器有多名百度员工在使用，存在大量脚本和相关信息。<br />
+<br />
+</p><p class="detail"><a href="../images/14033700c8711162a6ade683023e8dbd785e02bd.jpg" target="_blank"><img src="../images/14033700c8711162a6ade683023e8dbd785e02bd.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+通过netstat可以看到，此服务器有往百度多个内网B段的连接，如果能够获得这台服务器的高权限，将极有可能进一步深入百度内网。<br />
+<br />
+</p><p class="detail"><a href="../images/140340135dbf089246a7ab79d67f5475994af681.jpg" target="_blank"><img src="../images/140340135dbf089246a7ab79d67f5475994af681.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+同时，从员工留下的脚本内发现了多处映射在根目录的FTP匿名和数据库信息。<br />
+<br />
+</p><p class="detail"><a href="../images/140405537bc84a93b5d61c7fb4d9fdc3da427c5e.jpg" target="_blank"><img src="../images/140405537bc84a93b5d61c7fb4d9fdc3da427c5e.jpg" alt="11.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+对服务器进行遍历后，mongo发现，百度服务器上安装了waf软件。<br />
+<br />
+</p><p class="detail"><a href="../images/140348471b120fa5d06021dfc1f40593ee3aa59c.jpg" target="_blank"><img src="../images/140348471b120fa5d06021dfc1f40593ee3aa59c.jpg" alt="12.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14034919340613124389f37b87ca5c82af7182ff.jpg" target="_blank"><img src="../images/14034919340613124389f37b87ca5c82af7182ff.jpg" alt="13.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>sms_cmd=&quot;gsmsend -s 10.23.199.131:15008 -s 10.23.248.104:15008&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+跟踪链接后，到达百度短信报警平台。<br />
+<br />
+</p><p class="detail"><a href="../images/140408044d407e8bd672847a92b99b2e89a965de.jpg" target="_blank"><img src="../images/140408044d407e8bd672847a92b99b2e89a965de.jpg" alt="15.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/14040823699e67ea8b78f907715e5bd54348f09c.jpg" target="_blank"><img src="../images/14040823699e67ea8b78f907715e5bd54348f09c.jpg" alt="16.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+目的已经达到，百度服务器有健全的监控机制，便没有进一步检测。由于JSPShell返回的部分信息触发报警，没过多久，Shell被清除，服务器下线，渗透结束。<br />
+<br />
+<br />
+<br />
+另外，同段中的123.125.114.240疑似出现注入漏洞，请注意。<br />
+<br />
+</p><p class="detail"><a href="../images/14035549a5c9b863b8d209d1e4f7436f8852c09f.jpg" target="_blank"><img src="../images/14035549a5c9b863b8d209d1e4f7436f8852c09f.jpg" alt="14.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+申明：后部分的挖掘是和先与剑心沟通后，征得同意才进行的。如有欠妥之处，还望原谅。<br />
+<br />
+<br />
+<br />
+另外，感谢mongo基友的协♂助♂测♂试~ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">略 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">·测试站点不要暴露在外网。<br />
+<br />
+<br />
+<br />
+·任何情况下，都要注意外部信息不要被暴露。<br />
+<br />
+<br />
+<br />
+·进一步加强网络安全，继续为上亿网络用户提供安全，优质的服务！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/3King" title="3King">3King</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050906" title="一次失败的漫游百度内部网络过程">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-02-14 13:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢3King的友情检测，我们会继续提升能力，也请各位白帽子在安全测试中注意遵守国家相关法律。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50906";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

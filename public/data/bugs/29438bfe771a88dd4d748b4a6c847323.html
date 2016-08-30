@@ -1,0 +1,262 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯电脑管家 TSKsp.sys拒绝服务漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯电脑管家 TSKsp.sys拒绝服务漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/n0bele">n0bele</a> 
+</li><li>提交时间：		2013-08-13 16:31</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-13：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-11-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">早上起来，也搞了下就出来了.顺带问一下wooyun提交和腾讯漏洞提交的区别是什么?</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"> TSKsp.sys发生未处理的ExRaiseDatatypeMisalignment异常。<br />
+<br />
+</p><p class="detail"><a href="../images/13103746b7eba2f15823a6ec78af74a4c98e0267.jpg" target="_blank"><img src="../images/13103746b7eba2f15823a6ec78af74a4c98e0267.jpg" alt="QQ2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第1帧可以看到原来是ProbeForWrite函数抛出了Data misaligned - code 80000002这个异常<br />
+<br />
+kd&gt;  .frame 1<br />
+<br />
+01 f3cac838 f4945b53 nt!ProbeForWrite+0x54<br />
+<br />
+kd&gt; dds f3cac838 l 10<br />
+<br />
+f3cac838  f3cac974<br />
+<br />
+f3cac83c  f4945b53 afd!AfdFastIoDeviceControl+0x4b3<br />
+<br />
+f3cac840  d40d73e7 //address<br />
+<br />
+f3cac844  00000004 //Length<br />
+<br />
+f3cac848  00000004 //Alignment<br />
+<br />
+f3cac84c  8644d288<br />
+<br />
+f3cac850  86261250<br />
+<br />
+f3cac854  f4943030 afd!AfdFastIoDispatch<br />
+<br />
+f3cac858  f3cac7e0<br />
+<br />
+f3cac85c  00000009<br />
+<br />
+f3cac860  f3cac8cc<br />
+<br />
+f3cac864  80536e40 nt!_except_handler3<br />
+<br />
+f3cac868  f3cac8c8<br />
+<br />
+f3cac86c  867ec000<br />
+<br />
+f3cac870  805460fe nt!ExAllocatePoolWithTag+0x27e<br />
+<br />
+f3cac874  00000009<br />
+<br />
+<br />
+<br />
+可以看到是地址参数出了问题，d40d73e7。那这个参数是从哪里来的呢？<br />
+<br />
+我首先想到的是去对比NtDeviceIoControlFile传入的InputBuffer，那就去对比一下：<br />
+<br />
+<br />
+<br />
+kd&gt; .frame 4<br />
+<br />
+04 f3caca58 f48f4a46 nt!NtDeviceIoControlFile+0x2a<br />
+<br />
+kd&gt; dds f3caca58 l 10<br />
+<br />
+f3caca58  f3cacaa4<br />
+<br />
+f3caca5c  f48f4a46 TSKsp+0x14a46<br />
+<br />
+f3caca60  0000022c // FileHandle<br />
+<br />
+f3caca64  00000000 // Event<br />
+<br />
+f3caca68  00000000 // ApcRoutine<br />
+<br />
+f3caca6c  00000000 // IoStatusBlock<br />
+<br />
+f3caca70  00d7fd4c // ApcContext<br />
+<br />
+f3caca74  000120cf // IoControlCode<br />
+<br />
+f3caca78  00d7fd20 // InputBuffer<br />
+<br />
+f3caca7c  00000024 // InputBufferLength<br />
+<br />
+f3caca80  00000000 // OutputBuffer<br />
+<br />
+f3caca84  00000000 // OutputBufferLength<br />
+<br />
+f3caca88  eeee0000<br />
+<br />
+f3caca8c  805436d8 nt!__InterlockedDecrement<br />
+<br />
+<br />
+<br />
+传入的InputBuffer并不是我们所期望的d40d73e7<br />
+<br />
+<br />
+<br />
+为了进一步确认，我们还是把内存数据dump出来看看.<br />
+<br />
+</p><p class="detail"><a href="../images/131039011d92ec913f15610aafe0fe677b4a22ed.jpg" target="_blank"><img src="../images/131039011d92ec913f15610aafe0fe677b4a22ed.jpg" alt="QQ3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+InputBuffer+0x20处的一个DWORD会被当做用户空间地址去进行可写验证，但是却没有进行异常处理.ProbeForWrite没有放在try/except块中么?<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">已经说了. </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">他们懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/n0bele" title="n0bele">n0bele</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034219" title="腾讯电脑管家 TSKsp.sys拒绝服务漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-08-13 17:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">这是xp下afd.sys驱动本身的问题，但微软不认为是漏洞并拒绝修复，因此忽略，非常感谢您的反馈。</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34219";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

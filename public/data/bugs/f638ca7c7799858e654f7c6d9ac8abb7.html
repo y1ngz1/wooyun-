@@ -1,0 +1,191 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		爱奇艺某分站敏感信息泄露导致酷6躺枪  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		爱奇艺某分站敏感信息泄露导致酷6躺枪  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2014-02-14 21:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-06：	细节向普通白帽子公开<br/>
+									2014-03-16：	细节向实习白帽子公开<br/>
+									2014-03-31：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">恢复恢复。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">起因就是无聊的蛋疼，想检测下奇艺，恢复吧，先扫了下二级域名发现目标omov1.iqiyi.com。<br />
+<br />
+开始收集信息，SuperScan无条件扫描1-9000端口，边扫边看web,用御剑扫了下敏感文件</p><p class="detail"><a href="../images/1420505894ee00b21f84677b7b84a4822fe025ed.png" target="_blank"><img src="../images/1420505894ee00b21f84677b7b84a4822fe025ed.png" alt="0.png" width="600"/></a></p><p class="detail"><br />
+<br />
+发现配置文件，没有发现svn泄露，我猜测可能用了其他工具进行编辑，试着访问config.inc.php.bak，确实存在，根据配置文件发现了数据库敏感信息，尝试telnet上面的ip结果失败，往下看看到了编码是GBK，又想到了宽字节注射，检测了一圈并未发现。</p><p class="detail"><a href="../images/14205436d02ba1faf873708b97842f7b134fe0c2.png" target="_blank"><img src="../images/14205436d02ba1faf873708b97842f7b134fe0c2.png" alt="01.png" width="600"/></a></p><p class="detail">返回到superscan结果也出来了，有几个特定端口，telnet了下收集了各自端口的信息，</p><p class="detail"><a href="../images/14210751a74eb0e77aeba3be6b148d7a1b093519.png" target="_blank"><img src="../images/14210751a74eb0e77aeba3be6b148d7a1b093519.png" alt="0.png" width="600"/></a></p><p class="detail">发现有个ftp,于是乎自定义添加到x-scan里面跑服务器的漏洞。</p><p class="detail"><a href="../images/14205751fbb1f45971ea2c2ee3df18adc93b58bf.png" target="_blank"><img src="../images/14205751fbb1f45971ea2c2ee3df18adc93b58bf.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+web层搞不定，系统层还在收集信息，前面telnet得到了ftp的信息，现在就从ftp入手吧。<br />
+<br />
+ProFTPD 1.3.2 Server,记得在zone里有个基友谈到过这个版本有个proftpd mod_sql injection,但是exp我没有现成的环境啊，妹的操起dw写了段，先测试看能不能绕过登陆。<br />
+<br />
+</p><pre><code>&lt;?php<br />
+$user = &quot;USER %&#039;) and 1=2 union select 1,1,uid,gid,homedir,shell from users; --&quot;; <br />
+$pass = &#039;1&#039;; <br />
+$conn = ftp_connect(&quot;omov1.iqiyi.com&quot;,2024,5);<br />
+ftp_login($conn,$user,$pass);<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+运行后</p><p class="detail"><a href="../images/14211322fa1bf184ebda5ddfdf2f9130ec5478a0.png" target="_blank"><img src="../images/14211322fa1bf184ebda5ddfdf2f9130ec5478a0.png" alt="0.png" width="600"/></a></p><p class="detail">靠坑爹啊，这是登陆失败的节奏，肯定打补丁了。。。<br />
+<br />
+这个时候x-scan报告也出来了，总结了下信息，系统层估计搞不定了。转回web吧，看到有omov1肯定有omov2啊，尝试了下果然有。</p><p class="detail"><a href="../images/1421245691f016b22ddcfea262cffe649910a052.png" target="_blank"><img src="../images/1421245691f016b22ddcfea262cffe649910a052.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+但是是内网连接，没办法。这两套系统都是一样的，我想用迂回战术吧，就来看看omov2的服务器安全效果怎么样，扫描发现FTP存在匿名登录，也存在cwd越权跳转目录。cwd命令式telnet下交互用的，就用telnet连接ftp开始尝试漏洞。port方式不显示数据，就改用pasv方式吧。<br />
+<br />
+</p><p class="detail"><a href="../images/14212732d50aaf716bd75af8fe056270bfb5e03c.png" target="_blank"><img src="../images/14212732d50aaf716bd75af8fe056270bfb5e03c.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/14212811bf4c59892fbda8705bced23d4a74b828.png" target="_blank"><img src="../images/14212811bf4c59892fbda8705bced23d4a74b828.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+发现并不能跳转出pub目录，应该是误报，在检测的时候只要cwd执行成功可能就提示为漏洞。看来还得从web入手。突然想起来3306不是可以外连么，试试从敏感信息文件上获取的数据库信息，结果omov1.iqiyi.com,root,svod3edcvfr4进去了。妹的折腾这么久。select load_file(&#039;/etc/sysconfig/network-scripts/ifcfg-eth0&#039;);确实是本机ip，然后结合phpinfo的信息导出shell,结果没权限，找上传目录呢发现是另外一个域名，http://pic1.svod.cn/,ping了下发现是同一个ip，并且爆出了路径，就不用去load_file配置文件了。直接写一个一句话完事。</p><p class="detail"><a href="../images/142144362b43a1e64b16d4aac7222c7f2de8e9a4.png" target="_blank"><img src="../images/142144362b43a1e64b16d4aac7222c7f2de8e9a4.png" alt="0.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/142147119c79d703c9cc14c29eede2b366fa5073.png" target="_blank"><img src="../images/142147119c79d703c9cc14c29eede2b366fa5073.png" alt="1.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/14214721b1d5c8edaac910b7766d2df3155c7405.png" target="_blank"><img src="../images/14214721b1d5c8edaac910b7766d2df3155c7405.png" alt="2.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/142147301cdadab53c882b75c120f043576fbed3.png" target="_blank"><img src="../images/142147301cdadab53c882b75c120f043576fbed3.png" alt="3.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050990" title="爱奇艺某分站敏感信息泄露导致酷6躺枪">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-02-14 23:43</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">多谢白帽子,这是合作方的漏洞.</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50990";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

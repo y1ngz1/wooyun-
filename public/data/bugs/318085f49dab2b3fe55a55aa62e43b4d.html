@@ -1,0 +1,462 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		TUNet的拒绝服务漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		TUNet的拒绝服务漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/cssembly">cssembly</a> 
+</li><li>提交时间：		2013-04-23 11:08</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-30：	细节向第三方安全合作伙伴开放<br/>
+									2013-05-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-17：	细节向普通白帽子公开<br/>
+									2013-06-06：	细节向实习白帽子公开<br/>
+									2013-07-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">TUNet存在拒绝服务漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>size_t __thiscall sub_4015C0(void *this, int a2, char a3, int a4)<br />
+{<br />
+  void *v4; // esi@1<br />
+  SOCKET v5; // ebx@2<br />
+  const char *v6; // eax@4<br />
+  unsigned __int32 v7; // eax@4<br />
+  u_short v8; // dx@4<br />
+  size_t v9; // ebp@6<br />
+  char *v11; // eax@9<br />
+  char *v12; // esi@10<br />
+  const char v13; // al@13<br />
+  int *v14; // ecx@14<br />
+  const char *v15; // esi@18<br />
+  unsigned int v16; // kr18_4@18<br />
+  struct sockaddr name; // [sp+10h] [bp-9BCh]@4<br />
+  int v18; // [sp+20h] [bp-9ACh]@13<br />
+  int v19; // [sp+24h] [bp-9A8h]@13<br />
+  int v20; // [sp+28h] [bp-9A4h]@13<br />
+  int v21; // [sp+2Ch] [bp-9A0h]@13<br />
+  char Str[1024]; // [sp+30h] [bp-99Ch]@6<br />
+  char Src; // [sp+430h] [bp-59Ch]@6<br />
+  struct WSAData WSAData; // [sp+830h] [bp-19Ch]@1<br />
+  int v25; // [sp+9C8h] [bp-4h]@1<br />
+<br />
+  v4 = this;<br />
+  v25 = 1;<br />
+  if ( WSAStartup(0x202u, &amp;WSAData) )<br />
+    goto LABEL_8;<br />
+  v5 = socket(2, 1, 0);<br />
+  if ( (v5 &amp; 0x80000000u) != 0 )<br />
+  {<br />
+    CString::operator_(&quot;创建SOCKET失败&quot;);<br />
+LABEL_8:<br />
+    WSACleanup();<br />
+    LOBYTE(v25) = 0;<br />
+    sub_515C81(&amp;a2);<br />
+    v25 = -1;<br />
+    sub_515C81(&amp;a3);<br />
+    return 0;<br />
+  }<br />
+  v6 = (const char *)*((_DWORD *)v4 + 4);<br />
+  *(_DWORD *)&amp;name.sa_family = 0;<br />
+  *(_DWORD *)&amp;name.sa_data[2] = 0;<br />
+  name.sa_family = 2;<br />
+  *(_DWORD *)&amp;name.sa_data[6] = 0;<br />
+  *(_DWORD *)&amp;name.sa_data[10] = 0;<br />
+  v7 = inet_addr(v6);<br />
+  v8 = *((_WORD *)v4 + 2);<br />
+  *(_DWORD *)&amp;name.sa_data[2] = v7;<br />
+  *(_WORD *)&amp;name.sa_data[0] = htons(v8);<br />
+  if ( connect(v5, &amp;name, 16) &lt; 0 )<br />
+  {<br />
+    CString::operator_((LPCSTR)&amp;unk_571438);<br />
+    goto LABEL_8;<br />
+  }<br />
+  memset(Str, 0, sizeof(Str));<br />
+  sprintf(Str, &quot;GET %s HTTP/1.1\r\nHost: %s\r\nConnection: Close\r\n\r\n&quot;, a2, *((_DWORD *)v4 + 4));<br />
+  send(v5, Str, strlen(Str) + 1, 0);<br />
+  memset(Str, 0, sizeof(Str));<br />
+  memset(&amp;Src, 0, 0x400u);<br />
+  v9 = recv(v5, Str, 0x3FFu, 0);<br />
+  Str[v9] = 0;<br />
+  if ( (v9 &amp; 0x80000000u) != 0 )<br />
+  {<br />
+    CString::operator_(&quot;无数据&quot;);<br />
+    goto LABEL_8;<br />
+  }<br />
+  v11 = strstr(Str, &quot;\r\n\r\n&quot;);<br />
+  if ( v11 )<br />
+  {<br />
+    v12 = v11 + 4;<br />
+    v9 = strlen(v11 + 4);<br />
+  }<br />
+  else<br />
+  {<br />
+    v12 = Str;<br />
+  }<br />
+  if ( strstr(Str, &quot;Transfer-Encoding: chunked&quot;) )<br />
+  {<br />
+    v13 = *v12;<br />
+    v18 = 0;<br />
+    v19 = 0;<br />
+    v20 = 0;<br />
+    v21 = 0;<br />
+    if ( v13 )<br />
+    {<br />
+      v14 = &amp;v18;<br />
+      do<br />
+      {<br />
+        if ( v13 == &#039;\r&#039; )<br />
+          break;<br />
+        if ( v13 == &#039;\n&#039; )<br />
+          break;<br />
+        *(_BYTE *)v14 = v13;<br />
+        v13 = v12[1];<br />
+        v14 = (int *)((char *)v14 + 1);<br />
+        ++v12;<br />
+      }<br />
+      while ( v13 );<br />
+    }<br />
+    v15 = v12 + 2;<br />
+    v9 = strtol((const char *)&amp;v18, 0, 0x10u);<br />
+    v16 = strlen(v15) + 1;<br />
+    if ( (signed int)v9 &gt; (signed int)(v16 - 1) )<br />
+      v9 = v16 - 1;<br />
+    strncpy(&amp;Src, v15, v9);<br />
+  }<br />
+  else<br />
+  {<br />
+    strcpy(&amp;Src, v12);<br />
+  }<br />
+  CString::operator_(&amp;Src);<br />
+  closesocket(v5);<br />
+  WSACleanup();<br />
+  LOBYTE(v25) = 0;<br />
+  sub_515C81(&amp;a2);<br />
+  v25 = -1;<br />
+  sub_515C81(&amp;a3);<br />
+  return v9;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+可以看到在接受到数据后，查找strstr(Str, &quot;Transfer-Encoding: chunked&quot;)，然后根据数据格式，查找长度字段，调用v9 = strtol((const char *)&amp;v18, 0, 0x10u)获取长度，并未校验，如果长度字符串为-1，最终if ( (signed int)v9 &gt; (signed int)(v16 - 1) )条件不成立，因此strncpy(&amp;Src, v15, v9)拷贝的字节数为0xFFFFFFFF，最终导致拒绝服务。<br />
+<br />
+同时还发现一个小bug。<br />
+<br />
+<br />
+<br />
+</p><pre><code>signed int __cdecl sub_406810(int a1)<br />
+{<br />
+  SOCKET v1; // esi@4<br />
+  signed int v3; // edx@10<br />
+  signed int i; // esi@10<br />
+  char v5; // al@11<br />
+  char *v6; // edx@17<br />
+  const char *v7; // edi@17<br />
+  int fromlen; // [sp+4h] [bp-11BCh]@8<br />
+  SOCKET s; // [sp+8h] [bp-11B8h]@4<br />
+  int v10; // [sp+Ch] [bp-11B4h]@10<br />
+  struct sockaddr name; // [sp+10h] [bp-11B0h]@4<br />
+  struct sockaddr from; // [sp+20h] [bp-11A0h]@9<br />
+  char lParam[2048]; // [sp+30h] [bp-1190h]@9<br />
+  struct WSAData WSAData; // [sp+830h] [bp-990h]@1<br />
+  char v15[2048]; // [sp+9C0h] [bp-800h]@10<br />
+<br />
+  if ( WSAStartup(0x202u, &amp;WSAData)<br />
+    || (_BYTE)WSAData.wVersion != 2<br />
+    || HIBYTE(WSAData.wVersion) != (_BYTE)WSAData.wVersion )<br />
+  {<br />
+    sub_5138E0((void *)a1, &quot;监听初始化失败&quot;, 0, 0);<br />
+    goto LABEL_37;<br />
+  }<br />
+  v1 = socket(2, 2, 0);<br />
+  s = v1;<br />
+  *(_DWORD *)&amp;name.sa_data[2] = 0;<br />
+  name.sa_family = 2;<br />
+  *(_WORD *)&amp;name.sa_data[0] = ntohs(10333u);<br />
+  if ( v1 != -1 )<br />
+  {<br />
+    if ( bind(v1, &amp;name, 16) )<br />
+    {<br />
+      sub_5138E0((void *)a1, &quot;SOCKET 绑定失败&quot;, 0, 0);<br />
+      WSACleanup();<br />
+      return -1;<br />
+    }<br />
+    fromlen = 16;<br />
+    while ( 1 )<br />
+    {<br />
+      do<br />
+      {<br />
+        memset(lParam, 0, sizeof(lParam));<br />
+        memset(&amp;from, 0, fromlen);<br />
+        recvfrom(s, lParam, 2048, 0, &amp;from, &amp;fromlen);<br />
+      }<br />
+      while ( strcmp(cp, inet_ntoa(*(struct in_addr *)&amp;from.sa_data[2])) );<br />
+      memset(v15, 0, sizeof(v15));<br />
+      sscanf(lParam, &quot;%d&amp;%s&quot;, &amp;v10, v15);<br />
+      memset(lParam, 0, sizeof(lParam));<br />
+      v3 = 0;<br />
+      for ( i = 0; i &lt; (signed int)strlen(v15); ++i )<br />
+      {<br />
+        v5 = v15[i];<br />
+        if ( v5 == &#039;`&#039; )<br />
+        {<br />
+          lParam[v3++] = &#039;\r&#039;;<br />
+          lParam[v3] = &#039;\n&#039;;<br />
+        }<br />
+        else<br />
+        {<br />
+          lParam[v3] = v5;<br />
+        }<br />
+        ++v3;<br />
+        if ( v3 &gt;= 2048 )<br />
+          break;<br />
+      }<br />
+      if ( strcmp(lParam, &quot;timeout_error&quot;) )<br />
+      {<br />
+        if ( strcmp(lParam, &quot;time_policy_error&quot;) )<br />
+        {<br />
+          if ( strcmp(lParam, &quot;max_flux_error&quot;) )<br />
+          {<br />
+            if ( strcmp(lParam, &quot;max_hours_error&quot;) )<br />
+            {<br />
+              if ( strcmp(lParam, &quot;remain_seconds_error&quot;) )<br />
+              {<br />
+                if ( strcmp(lParam, &quot;remain_flux_error&quot;) )<br />
+                {<br />
+                  if ( strcmp(lParam, &quot;flux_switch_error&quot;) )<br />
+                  {<br />
+                    if ( strcmp(lParam, &quot;timelong_switch_error&quot;) )<br />
+                      goto LABEL_33;<br />
+                    v6 = lParam;<br />
+                    v7 = &quot;额定时长用尽，计费组已切换。&quot;;<br />
+                  }<br />
+                  else<br />
+                  {<br />
+                    v6 = lParam;<br />
+                    v7 = &quot;额定流量用尽，计费组已切换。&quot;;<br />
+                  }<br />
+                }<br />
+                else<br />
+                {<br />
+                  v6 = lParam;<br />
+                  v7 = (const char *)&amp;unk_571FB0;<br />
+                }<br />
+              }<br />
+              else<br />
+              {<br />
+                v6 = lParam;<br />
+                v7 = (const char *)&amp;unk_571FEC;<br />
+              }<br />
+            }<br />
+            else<br />
+            {<br />
+              v6 = lParam;<br />
+              v7 = (const char *)&amp;unk_57202C;<br />
+            }<br />
+          }<br />
+          else<br />
+          {<br />
+            v6 = lParam;<br />
+            v7 = (const char *)&amp;unk_57206C;<br />
+          }<br />
+        }<br />
+        else<br />
+        {<br />
+          v6 = lParam;<br />
+          v7 = (const char *)&amp;unk_5720AC;<br />
+        }<br />
+      }<br />
+      else<br />
+      {<br />
+        v6 = lParam;<br />
+        v7 = (const char *)&amp;unk_5720FC;<br />
+      }<br />
+      strcpy(v6, v7);<br />
+LABEL_33:<br />
+      if ( !v10 )<br />
+      {<br />
+        SendMessageA(*(HWND *)(a1 + 28), 0x465u, 5u, 0);<br />
+        SendMessageA(*(HWND *)(*(_DWORD *)(a1 + 596) + 28), 0x465u, 5u, 0);<br />
+      }<br />
+      SendMessageA(*(HWND *)(a1 + 28), 0x465u, 3u, (LPARAM)lParam);<br />
+    }<br />
+  }<br />
+  sub_5138E0((void *)a1, &quot;SOCKET创建失败&quot;, 0, 0);<br />
+LABEL_37:<br />
+  WSACleanup();<br />
+  return -1;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+其中for循环处理过程存在bug，能够覆盖返回地址的一个字节。当v15的数据为&#039;\x60&#039; * 1023 + &#039;A&#039; + &#039;\x60&#039;时就能触发此bug<br />
+<br />
+<br />
+<br />
+</p><pre><code>for ( i = 0; i &lt; (signed int)strlen(v15); ++i )<br />
+      {<br />
+        v5 = v15[i];<br />
+        if ( v5 == 0x60 )<br />
+        {<br />
+          lParam[v3++] = &#039;\r&#039;;<br />
+          lParam[v3] = &#039;\n&#039;;<br />
+        }<br />
+        else<br />
+        {<br />
+          lParam[v3] = v5;<br />
+        }<br />
+        ++v3;<br />
+        if ( v3 &gt;= 2048 )<br />
+          break;<br />
+      }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">依旧没有POC </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/cssembly" title="cssembly">cssembly</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022356" title="TUNet的拒绝服务漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2013-04-27 22:37</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22356";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

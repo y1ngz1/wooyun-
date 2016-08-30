@@ -1,0 +1,291 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 5  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 5  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2013-03-19 14:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-08：	细节向普通白帽子公开<br/>
+									2013-04-18：	细节向实习白帽子公开<br/>
+									2013-05-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">日志的功能都快被测光了。。。只好把目光放在了一个不是很可能出XSS的地方，还是有，有木有！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 发布一个日志，插入一张图片，保存日志。当鼠标移动到图片上时，可以看到下面的东东。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191432398f14c3a0bbeff08068cc75e75b526081.jpg" target="_blank"><img src="../images/191432398f14c3a0bbeff08068cc75e75b526081.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 查看对应部分的源码，可以看到 转发部分的代码里，有这个图片的URL。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191434505e207a2b8be49bbf3d1901021193b916.jpg" target="_blank"><img src="../images/191434505e207a2b8be49bbf3d1901021193b916.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 这里可以猜测到，这部分代码的实现，大概是将图片的src取出来，然后通过字符串连接到代码里。<br />
+<br />
+<br />
+<br />
+如果图片的地址里带有 &quot; ，并且没有被过滤的话，是不是就可以导致XSS了呢？<br />
+<br />
+<br />
+<br />
+4. 我们来试试。<br />
+<br />
+<br />
+<br />
+日志，HTML模式，写入以下代码。<br />
+<br />
+<br />
+<br />
+&lt;div style=&quot;text-align:center&quot;&gt;&lt;img src=&quot;http://xsst.sinaapp.com/img.jpg#&amp;quot;&amp;gt;&amp;lt;img style=display:none src=1 onerror=&amp;quot;alert(1)//&quot; alt=&quot;图片&quot; style=&quot;width:466px;height:700px&quot;&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+5. 没弹出，查看DOM代码，可以看到，腾讯对外部图片做了一定的措施。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19143526bb2cff169a26a6610e81092587447996.jpg" target="_blank"><img src="../images/19143526bb2cff169a26a6610e81092587447996.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 要绕过这个限制，我们到相册里自己上传以下，得到一个腾讯站内地址试试。<br />
+<br />
+<br />
+<br />
+&lt;div style=&quot;text-align:center&quot;&gt;&lt;img src=&quot;http://b254.photo.store.qq.com/psb?/01d1295e-6c2f-4efd-825e-e15c2a77c787/mPEZeaUmy4PfIqxb9UclFShCdxmBJup1fOa6uKTgL80!/b/dJyTa5cOCQAA&amp;bo=0gG8AgAAAAABAEo!#&amp;quot;&amp;gt;&amp;lt;img style=display:none src=1 onerror=&amp;quot;alert(1)//&quot; alt=&quot;图片&quot; style=&quot;width:466px;height:700px&quot;&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+7. 再次查看日志，当鼠标移动到【日志内的美女图片上时】，可以看到，弹出了1。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19143542e612b18bcdc9504bf939ed9848139ab4.jpg" target="_blank"><img src="../images/19143542e612b18bcdc9504bf939ed9848139ab4.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8.  通过DOM代码附近的 InfoManager.twitterImage ，我们可以定位到 http://ctc.qzs.qq.com/qzone/app/blog/v6/script/blog_content.js<br />
+<br />
+<br />
+<br />
+</p><pre><code>..<br />
+tip_str += ([&#039;&lt;a id=&quot;qzblog_twitter_img_btn&quot; class=&quot;forward&quot; href=&quot;javascript:void(0);&quot; onclick=&quot;InfoManager.twitterImage(\&#039;{0}\&#039;);return false;&quot;&gt;&lt;i class=&quot;icon_forward&quot;&gt;&lt;/i&gt;转发&lt;/a&gt;&#039;]).join(&#039;&#039;);<br />
+..<br />
+oTip.innerHTML = QZBlog.Util.formatMsg(tip_str, [imgObj.src]);<br />
+..<br />
+<br />
+(In http://ctc.qzs.qq.com/qzone/newblog/v5/script/common.js)<br />
+QZBlog.Util.formatMsg = (function(msg, values, filter) {<br />
+    var pattern = /\{([\w-]+)?\}/g;<br />
+    return function(msg, values, filter) {<br />
+        return msg.replace(pattern, <br />
+        function(match, key) {<br />
+            return filter ? filter(values[key], key) : values[key];<br />
+        });<br />
+    }<br />
+} ());</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+进一步可以看出，图片的src取出后，经过formatMsg函数，进入tip_str最终进入oTip.innerHTML<br />
+<br />
+<br />
+<br />
+9. 最后补充下一个小细节，在本地XSS中，图片地址后面，我们用#，而没有用 ?，这是为什么呢？<br />
+<br />
+<br />
+<br />
+因为在chrome下，xxx.src取出图片地址时，会对地址进行编码，<br />
+<br />
+<br />
+<br />
+如果用  xxx.jpg?&quot;&gt;&lt;img 就会变成  xxx.jpg?%22%3E%3cimg，如下图。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19143605b45a8f2260b7e0e2fc279faacd4b411e.jpg" target="_blank"><img src="../images/19143605b45a8f2260b7e0e2fc279faacd4b411e.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+而用#号则不会被编码。 这也是决定是否可以利用成功的一个小技巧，故在此说明一下。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1. IE和chrome下均可， <br />
+<br />
+<br />
+<br />
+2. 当用户进入日志后，鼠标移动到日志中插入的图片上时，即会触发XSS。<br />
+<br />
+<br />
+<br />
+3. 虽然这是一个 onmouseover xss，但是从用户查看日志的习惯上来说，<br />
+<br />
+<br />
+<br />
+当图片SIZE非常大，图片内容有吸引力，以及用户一些移动鼠标的误操作， 会使得该XSS的触发成功率会非常高，和自动触发差距不大。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19144140a008bbe250b4e726a9500843d1ebf456.jpg" target="_blank"><img src="../images/19144140a008bbe250b4e726a9500843d1ebf456.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">缺陷文件及代码位置已给出，<br />
+<br />
+<br />
+<br />
+取出 imgObj.src 进行 encode一次。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020303" title="QQ空间某功能缺陷导致日志存储型XSS - 5">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2013-03-19 15:13</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20303";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

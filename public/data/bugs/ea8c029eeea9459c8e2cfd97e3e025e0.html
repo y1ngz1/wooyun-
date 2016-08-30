@@ -1,0 +1,228 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		无需client_sec可用QQ登录平台发表空间日志等高权限操作（WooYun-2012-11314衍生）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		无需client_sec可用QQ登录平台发表空间日志等高权限操作（WooYun-2012-11314衍生）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/horseluke">horseluke</a> 
+</li><li>提交时间：		2012-09-20 14:16</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-09-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-10：	细节向普通白帽子公开<br/>
+									2012-10-20：	细节向实习白帽子公开<br/>
+									2012-11-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">WooYun-2012-11314（http://www.wooyun.org/bugs/wooyun-2010-011314 ）的报告者@Tater 在阐述漏洞成因时没有说透，其实这是OAuth 2.0中Client-side Implicit Grant潜在的安全隐患，各个支持OAuth 2.0的开放平台都有这问题，其中就包括QQ登录。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">该隐患就是，OAuth 2.0中Client-side Implicit Grant获取的access token可以用在Server-side通讯中，而且由于在访问受保护资源时无需传递app secret，而app key又是公开的，结果就由于这种“无绑定token”，导致api无法分辨合法的请求来源，而出现了问题。<br />
+<br />
+（详细将在zone.wooyun.org有详文）<br />
+<br />
+<br />
+<br />
+以腾讯的QQ登录开放平台为例，发表空间日志接口（add_one_blog）是需要高权限的。普通人申请的当然不可能有的，不过成功案例就一定有的了。看了看，点点应该是最佳选择。<br />
+<br />
+<br />
+<br />
+到它的登录页面查看，记下其client_id：216028<br />
+<br />
+</p><p class="detail"><a href="../images/20141259d23cee46467a2c393d3f89201313bbdc.png" target="_blank"><img src="../images/20141259d23cee46467a2c393d3f89201313bbdc.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接下来，就是走OAuth 2.0中Client-side Implicit Grant流程了。<br />
+<br />
+首先就是根据文档：<br />
+<br />
+http://wiki.opensns.qq.com/wiki/%E3%80%90QQ%E7%99%BB%E5%BD%95%E3%80%91%E4%BD%BF%E7%94%A8Implicit_Grant%E6%96%B9%E5%BC%8F%E8%8E%B7%E5%8F%96Access_Token <br />
+<br />
+<br />
+<br />
+构造出如下url（scope参数猜死人啊…...）：<br />
+<br />
+https://graph.qq.com/oauth2.0/authorize?response_type=token&amp;client_id=216028&amp;redirect_uri=http://open.z.qq.com/moc2/success.jsp&amp;scope=get_user_info,add_one_blog,do_like,add_t,list_album<br />
+<br />
+<br />
+<br />
+访问之：<br />
+<br />
+</p><p class="detail"><a href="../images/201413361a21ea390808114f238a6f1701169432.png" target="_blank"><img src="../images/201413361a21ea390808114f238a6f1701169432.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+一切顺利的话，抓包会发现回调的授权中转页会有access token：<br />
+<br />
+</p><p class="detail"><a href="../images/201414114aae798befe8a22eddd80b127de863cc.png" target="_blank"><img src="../images/201414114aae798befe8a22eddd80b127de863cc.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+好了，请出server-side脚本（请放置在php服务器上运行）：<br />
+<br />
+http://horseluke-code.googlecode.com/svn/trunk/draftCode/oauth2_client_side_side_effect/qq_oauth2.php <br />
+<br />
+<br />
+<br />
+填入参数，submit：<br />
+<br />
+</p><p class="detail"><a href="../images/20141510643bdec87d3eb073d6cd9a0821af60bb.png" target="_blank"><img src="../images/20141510643bdec87d3eb073d6cd9a0821af60bb.png" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">调用成功~<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20141223b554003af9f6cff56083e25eccc680a3.png" target="_blank"><img src="../images/20141223b554003af9f6cff56083e25eccc680a3.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">我也想知道怎么解决啊，怎么兼顾client-side和server-side这两个场景真的好考人智慧啊，这个协议如果再改真的害死开发者啊，难怪Eran Hammer要画圈圈诅咒…...<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/horseluke" title="horseluke">horseluke</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012462" title="无需client_sec可用QQ登录平台发表空间日志等高权限操作（WooYun-2012-11314衍生）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2012-09-20 16:11</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，我们已同步给业务进行处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12462";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

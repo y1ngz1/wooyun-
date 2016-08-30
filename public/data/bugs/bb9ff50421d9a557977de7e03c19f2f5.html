@@ -1,0 +1,252 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360webscan检测脚本可绕过  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360webscan检测脚本可绕过  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/phith0n">phith0n</a> 
+</li><li>提交时间：		2014-02-10 14:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-10：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-05-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">全面绕过~360webscan.php见cmseasy、phpyun<br />
+虽然我知道360肯定会忽略，但我还是要继续@mramydnei 的事业~~<br />
+http://wooyun.org/bugs/wooyun-2010-049051<br />
+http://wooyun.org/bugs/wooyun-2010-049161<br />
+<br />
+这个漏洞暴露出一个细节问题，可能会影响很多cms。这个靠大家发掘了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">借用cmseasy中的360webscan来说明。<br />
+<br />
+其中有一个白名单函数：<br />
+<br />
+</p><pre><code>/**<br />
+ *  拦截目录白名单<br />
+ */<br />
+function webscan_white($webscan_white_name,$webscan_white_url_t=array()) {<br />
+  $url_path=$_SERVER[&#039;PHP_SELF&#039;];<br />
+  $url_var=$_SERVER[&#039;QUERY_STRING&#039;];<br />
+  if (preg_match(&quot;/&quot;.$webscan_white_name.&quot;/is&quot;,$url_path)==1) {<br />
+    return false;<br />
+  }<br />
+  foreach ($webscan_white_url_t as $webscan_white_url) {<br />
+	  foreach ($webscan_white_url as $key =&gt; $value) {<br />
+		if(!empty($url_var)&amp;&amp;!empty($value)){<br />
+		  if (stristr($url_path,$key)&amp;&amp;stristr($url_var,$value)) {<br />
+			return false;<br />
+		  }<br />
+		}<br />
+		elseif (empty($url_var)&amp;&amp;empty($value)) {<br />
+		  if (stristr($url_path,$key)) {<br />
+			return false;<br />
+		  }<br />
+		}<br />
+<br />
+	  }<br />
+  }<br />
+  return true;<br />
+}</code></pre><p class='detail'><br />
+<br />
+这个函数在后面的过滤中起着至关重要的作用，因为过滤的时候判断如果webscan_white返回false就不执行过滤。<br />
+<br />
+也就是说，我们如果能让这个函数返回false，那么就能轻松绕过360webscan的过滤。<br />
+<br />
+那我们来看这个函数，这个函数第一个字段是白名单内容，我们在webscan_cache.php中可以找到：<br />
+<br />
+</p><pre><code>//后台白名单,后台操作将不会拦截,添加&quot;|&quot;隔开白名单目录下面默认是网址带 admin  /dede/ 放行<br />
+$webscan_white_directory=&#039;admin|\/dede\/|\/install\/&#039;;</code></pre><p class='detail'><br />
+<br />
+然后再看到下面：<br />
+<br />
+</p><pre><code>$url_path=$_SERVER[&#039;PHP_SELF&#039;];<br />
+  $url_var=$_SERVER[&#039;QUERY_STRING&#039;];<br />
+  if (preg_match(&quot;/&quot;.$webscan_white_name.&quot;/is&quot;,$url_path)==1) {<br />
+    return false;<br />
+  }</code></pre><p class='detail'><br />
+<br />
+当$_SERVER[&#039;PHP_SELF&#039;]中能正则匹配出&#039;admin|\/dede\/|\/install\/&#039;的时候，就返回false，就绕过了检测。<br />
+<br />
+<br />
+<br />
+然后再给大家说明一下$_SERVER[&#039;PHP_SELF&#039;]是什么：<br />
+<br />
+PHP_SELF指当前的页面地址，比如我们的网站：<br />
+<br />
+http://www.leavesongs.com/hehe/index.php<br />
+<br />
+那么PHP_SELF就是/hehe/index.php。<br />
+<br />
+但有个小问题很多人没有注意到，当url是PATH_INFO的时候，比如<br />
+<br />
+http://www.leavesongs.com/hehe/index.php/phithon<br />
+<br />
+那么PHP_SELF就是/hehe/index.php/phithon<br />
+<br />
+也就是说，其实PHP_SELF有一部分是我们可以控制的。<br />
+<br />
+<br />
+<br />
+说到这里大家应该知道怎么绕过360webscan了吧？只要PHP_SELF中含有白名单字段即可。<br />
+<br />
+这也可以发散到很多cms上，php_self也是可控变量，注意过滤。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">官网的demo不知道为何不成功，但是我下载了最新版20140118，本地搭建。<br />
+<br />
+比如我们提交一个含有敏感字符union select的查询，被360拦截了：<br />
+<br />
+</p><p class="detail"><a href="../images/10141437f930327c7ccad870d6d996f6d9566b54.jpg" target="_blank"><img src="../images/10141437f930327c7ccad870d6d996f6d9566b54.jpg" alt="01.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+那我们修改一下path_info,其中带有白名单字段“/admin/”：<br />
+<br />
+</p><p class="detail"><a href="../images/1014180420880317cc130b92330ea9cdb7a53ac4.jpg" target="_blank"><img src="../images/1014180420880317cc130b92330ea9cdb7a53ac4.jpg" alt="02.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+果断页面变了，绕过了拦截。不过这个时候css和js也变了（因为基地址有问题），但并不影响sql语句和xss的执行，注入什么的还是能继续的。<br />
+<br />
+我们再随便试一个不知什么版本的cmseasy，都没有拦截：<br />
+<br />
+</p><p class="detail"><a href="../images/10142314b458bedb99cf6f64c2b50401e153cf27.jpg" target="_blank"><img src="../images/10142314b458bedb99cf6f64c2b50401e153cf27.jpg" alt="03.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">如果考虑简便性与性能的话，可以选择不修复 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/phith0n" title="phith0n">phith0n</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050576" title="360webscan检测脚本可绕过">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-02-10 14:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注和反馈，该问题在新版中进行修复。考虑到性能和简单性，这个脚本只提供了基础的功能防护，目标是为了进行最基础的SQL注入和XSS防护。完整功能请使用360网站卫士：</p>
+													<p class="detail">漏洞Rank：6 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50576";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

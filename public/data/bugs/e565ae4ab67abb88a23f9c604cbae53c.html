@@ -1,0 +1,222 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		雪球Android客户端空指针异常及信息泄露漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		雪球Android客户端空指针异常及信息泄露漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Bincker">Bincker</a> 
+</li><li>提交时间：		2014-01-06 15:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-11：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-04-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">雪球最新Android客户端存在空指针异常及信息泄露漏洞。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">雪球客户端版本：4.1<br />
+<br />
+<br />
+<br />
+adb shell 下执行下面命令，虚拟机将崩溃。愿意在于空指针调用<br />
+<br />
+简单测试:<br />
+<br />
+am startservice -n com.xueqiu.android/com.umeng.common.net.DownloadingService<br />
+<br />
+</p><pre><code>D/AndroidRuntime(  856): <br />
+D/AndroidRuntime(  856): &gt;&gt;&gt;&gt;&gt;&gt; AndroidRuntime START com.android.internal.os.RuntimeInit &lt;&lt;&lt;&lt;&lt;&lt;<br />
+D/AndroidRuntime(  856): CheckJNI is ON<br />
+D/ReadThread(  545): decode fragment : 125<br />
+D/AndroidRuntime(  856): Calling main entry com.android.commands.am.Am<br />
+D/AndroidRuntime(  856): Shutting down VM<br />
+D/dalvikvm(  856): GC_CONCURRENT freed 98K, 77% free 477K/2048K, paused 0ms+1ms<br />
+I/AndroidRuntime(  856): NOTE: attach of thread &#039;Binder Thread #3&#039; failed<br />
+W/System.err(  701): java.lang.NullPointerException<br />
+W/System.err(  701): 	at com.umeng.common.net.k.a(DownloadTool.java:367)<br />
+W/System.err(  701): 	at com.umeng.common.net.DownloadingService.onStart(DownloadingService.java:251)<br />
+W/System.err(  701): 	at android.app.Service.onStartCommand(Service.java:438)<br />
+W/System.err(  701): 	at android.app.ActivityThread.handleServiceArgs(ActivityThread.java:2358)<br />
+W/System.err(  701): 	at android.app.ActivityThread.access$1900(ActivityThread.java:122)<br />
+W/System.err(  701): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1209)<br />
+W/System.err(  701): 	at android.os.Handler.dispatchMessage(Handler.java:99)<br />
+W/System.err(  701): 	at android.os.Looper.loop(Looper.java:137)<br />
+W/System.err(  701): 	at android.app.ActivityThread.main(ActivityThread.java:4340)<br />
+W/System.err(  701): 	at java.lang.reflect.Method.invokeNative(Native Method)<br />
+W/System.err(  701): 	at java.lang.reflect.Method.invoke(Method.java:511)<br />
+W/System.err(  701): 	at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:784)<br />
+W/System.err(  701): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:551)<br />
+W/System.err(  701): 	at dalvik.system.NativeStart.main(Native Method)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+信息泄露：<br />
+<br />
+App代码中多出有测试代码出现，如sys.out.print 等信息泄露。<br />
+<br />
+测试方法：<br />
+<br />
+logcat中可直接输出。<br />
+<br />
+<br />
+<br />
+还有一些接口中未引入验证IP地址，token可被滥用危险<br />
+<br />
+https://mas.xueqiu.com/allocate.json?client=1&amp;access_token=CINudeAODMNoyPuxwoeObu <br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/06141435fc2d9f8098c34f598a5edfd85cd07f18.jpg" target="_blank"><img src="../images/06141435fc2d9f8098c34f598a5edfd85cd07f18.jpg" alt="20140106141038.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/061414466fda60ab0aedf7536e1c9b8e2656047a.jpg" target="_blank"><img src="../images/061414466fda60ab0aedf7536e1c9b8e2656047a.jpg" alt="api-leak.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06141830ad4c9ac374369125e18187a551bb8eaa.jpg" target="_blank"><img src="../images/06141830ad4c9ac374369125e18187a551bb8eaa.jpg" alt="token.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1：改成service exported false<br />
+<br />
+2：删除多余测试代码，验证token </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Bincker" title="Bincker">Bincker</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048028" title="雪球Android客户端空指针异常及信息泄露漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-01-11 15:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48028";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

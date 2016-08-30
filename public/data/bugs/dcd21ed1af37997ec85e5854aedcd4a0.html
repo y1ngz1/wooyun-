@@ -1,0 +1,196 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Android 8219321 - 漏洞分析分享  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Android 8219321 - 漏洞分析分享  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/SeaRobber">SeaRobber</a> 
+</li><li>提交时间：		2013-07-10 13:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-10：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-07-10：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">漏洞位置：<br />
+Android系统中java.util.zip工具包下ZipFile.java文件中的语句“mEntries.put(newEntry.getName(), newEntry);”没有进行校验重名entry逻辑漏洞。<br />
+ZipFile.java文件如下连接：<br />
+http://www.java2s.com/Open-Source/Android/android-core/platform-libcore/java/util/zip/ZipFile.java.htm</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞利用分析：<br />
+<br />
+zipFile.java文件是用于根据不同打开模式(如read\write等)进行解压apk应用文件的；如下<br />
+<br />
+	</p><pre><code>/**<br />
+     * Opens a file as &lt;i&gt;ZIP-archive&lt;/i&gt;. &quot;mode&quot; must be {@code OPEN_READ} or<br />
+     * {@code OPEN_DELETE} . The latter sets the &quot;delete on exit&quot; flag through a<br />
+     * file.<br />
+     * ...<br />
+     */<br />
+	public ZipFile(File file, int mode) throws IOException {<br />
+		...<br />
+		readCentralDir();<br />
+		...<br />
+	}</code></pre><p class='detail'><br />
+<br />
+其中有函数readCentralDir(),其作用为根据apk压缩包的结构进行读取压缩包内容,如下：<br />
+<br />
+	</p><pre><code>/**<br />
+     * Find the central directory and read the contents.<br />
+	 * ...<br />
+     */<br />
+    private void readCentralDir() throws IOException {<br />
+		...<br />
+        rafs = new RAFStream(mRaf, centralDirOffset);<br />
+        bin = new BufferedInputStream(rafs, 4096);<br />
+        for (int i = 0; i &lt; numEntries; i++) {<br />
+            ZipEntry newEntry = new ZipEntry(ler, bin);<br />
+            mEntries.put(newEntry.getName(), newEntry);<br />
+        }<br />
+	}</code></pre><p class='detail'><br />
+<br />
+其中在遍历整个apk压缩包文件的每个entry节点并读取其内容时，语句&quot;mEntries.put(newEntry.getName(), newEntry);&quot;<br />
+<br />
+没有进行重名entry节点校验，从而导致apk文件在被加入重名的（并被加入了恶意代码的）Class.dex文件后，<br />
+<br />
+其校验签名时还是用第一个拥有正确签名的Class.dex文件，而在解压读取时却被加入的重名文件把正确的内容进行了覆盖执行；从而产生的攻击行为。<br />
+<br />
+<br />
+<br />
+目前google给出的补丁为对此语句进行重名entry校验并抛出异常：如下：<br />
+<br />
+	</p><pre><code>if (mEntries.put(entryName, newEntry) != null) {<br />
+		throw new ZipException(&quot;Duplicate entry name: &quot; + entryName);<br />
+	}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">目前网上已经出现POC代码：<br />
+<br />
+https://gist.github.com/poliva/36b0795ab79ad6f14fd8 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/SeaRobber" title="SeaRobber">SeaRobber</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-028389" title="Android 8219321 - 漏洞分析分享">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="28389";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

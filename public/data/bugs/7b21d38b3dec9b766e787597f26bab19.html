@@ -1,0 +1,292 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ECShop GBK版json解析模块可致拒绝服务  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ECShop GBK版json解析模块可致拒绝服务  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/monster">monster</a> 
+</li><li>提交时间：		2013-08-01 18:39</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-05：	细节向第三方安全合作伙伴开放<br/>
+									2013-08-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-22：	细节向普通白帽子公开<br/>
+									2013-09-11：	细节向实习白帽子公开<br/>
+									2013-10-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ECShop GBK版json解析模块有点问题<br />
+当提交恶意json数据时可致php死循环。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">includes/cls_json.php文件<br />
+<br />
+</p><pre><code>212     function str()<br />
+213     {<br />
+214         $i = &#039;&#039;;<br />
+215         $s = &#039;&#039;;<br />
+216         $t = &#039;&#039;;<br />
+217         $u = &#039;&#039;;<br />
+218 <br />
+219         if ($this-&gt;ch == &#039;&quot;&#039;)<br />
+220         {<br />
+221             while ($this-&gt;next() !== null)<br />
+222             {<br />
+223                 if ($this-&gt;ch == &#039;&quot;&#039;)<br />
+224                 {<br />
+225                     $this-&gt;next();<br />
+226 <br />
+227                     return $s;<br />
+228                 }<br />
+229                 elseif ($this-&gt;ch == &#039;\\&#039;)<br />
+230                 {<br />
+231                     switch ($this-&gt;next())<br />
+232                     {<br />
+233                         case &#039;b&#039;:<br />
+234                             $s .= &#039;\b&#039;;<br />
+235                             break;<br />
+236 <br />
+237                         case &#039;f&#039;:<br />
+238                             $s .= &#039;\f&#039;;<br />
+239                             break;<br />
+240 <br />
+241                         case &#039;n&#039;:<br />
+242                             $s .= &#039;\n&#039;;<br />
+243                             break;<br />
+244 <br />
+245                         case &#039;r&#039;:<br />
+246                             $s .= &#039;\r&#039;;<br />
+247                             break;<br />
+248 <br />
+249                         case &#039;t&#039;:<br />
+250                             $s .= &#039;\t&#039;;<br />
+251                             break;<br />
+252 <br />
+253                         case &#039;u&#039;:<br />
+254                             $u = 0;<br />
+255 <br />
+256                             for ($i = 0; $i &lt; 4; $i++)<br />
+257                             {<br />
+258                                 $t = (integer) sprintf(&#039;%01c&#039;, hexdec($this-&gt;next()));<br />
+259 <br />
+260                                 if (!is_numeric($t))<br />
+261                                 {<br />
+262                                     break 2;<br />
+263                                 }<br />
+264                                 $u = $u * 16 + $t;<br />
+265                             }<br />
+266 <br />
+267                             $s .= chr($u);<br />
+268                             break;<br />
+269                         case &#039;\&#039;&#039;:<br />
+270                             $s .= &#039;\&#039;&#039;;<br />
+271                             break;<br />
+272                         default:<br />
+273                             $s .= $this-&gt;ch;<br />
+274                     }<br />
+275                 }<br />
+276                 else<br />
+277                 {<br />
+278                     $s .= $this-&gt;ch;<br />
+279                 }<br />
+280             }<br />
+281         }<br />
+282 <br />
+283         $this-&gt;error(&#039;Bad string&#039;);<br />
+284     }</code></pre><p class='detail'><br />
+<br />
+注意221行。next()的返回值与null是三等号。。。<br />
+<br />
+再看next()的代码<br />
+<br />
+</p><pre><code>197     function next()<br />
+198     {<br />
+199         $this-&gt;ch = !isset($this-&gt;text{$this-&gt;at}) ? &#039;&#039; : $this-&gt;text{$this-&gt;at};<br />
+200         $this-&gt;at++;<br />
+201 <br />
+202         return $this-&gt;ch;<br />
+203     }</code></pre><p class='detail'><br />
+<br />
+这里当at索引的值不存在时返回的是&#039;&#039;。。。<br />
+<br />
+再回到上面。221行就死循环了 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">随便找个用到json的地方测试。。以/flow.php?step=add_to_cart为例<br />
+<br />
+够造如下表单<br />
+<br />
+</p><pre><code>&lt;form action=&quot;http://xxx.com/shop/flow.php?step=add_to_cart&quot; method=&quot;post&quot;&gt;<br />
+	&lt;input name=&quot;goods_id&quot; value=&quot;1&quot;&gt;&lt;br&gt;<br />
+	&lt;input name=&quot;goods&quot; value=&quot;&amp;quot;&quot;&gt;&lt;br&gt;<br />
+	&lt;input type=&quot;submit&quot;&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+。。。提交后卡了30秒。然后返回了。。（返回的时候还报了sql错误。不知道这是为什么，我本地测试是没有的）<br />
+<br />
+</p><p class="detail"><a href="../images/01174729d09a0f20fdf21bce898a896e19ce0ad6.png" target="_blank"><img src="../images/01174729d09a0f20fdf21bce898a896e19ce0ad6.png" alt="10046399-665D-4BAB-B4AD-DB2F6B1910CE.png" width="600"/></a></p><p class="detail"><br />
+<br />
+本地测试下。。。原来cpu0.0%<br />
+<br />
+</p><p class="detail"><a href="../images/01174932a9c240338cc09c1705c703f07ebd38f4.png" target="_blank"><img src="../images/01174932a9c240338cc09c1705c703f07ebd38f4.png" alt="111.png" width="600"/></a></p><p class="detail"><br />
+<br />
+..请求一次以后<br />
+<br />
+</p><p class="detail"><a href="../images/01175107aad45f2cf1b7b635c7eb2039cf6d0b41.png" target="_blank"><img src="../images/01175107aad45f2cf1b7b635c7eb2039cf6d0b41.png" alt="222.png" width="600"/></a></p><p class="detail"><br />
+<br />
+CPU瞬间98%。。。<br />
+<br />
+趁页面卡在那里不动。。。多点几次提交按钮。。大概狂点了20秒。。<br />
+<br />
+再访问一次主页<br />
+<br />
+</p><p class="detail"><a href="../images/0117543385e377afc94f3e2a436c4ca7417e5ef7.png" target="_blank"><img src="../images/0117543385e377afc94f3e2a436c4ca7417e5ef7.png" alt="3333.png" width="600"/></a></p><p class="detail"><br />
+<br />
+已经死了的样子。。mysql连不了了。。<br />
+<br />
+我机器风扇已经转地和狗一样了。。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">用二等号就好了。。不要用三等号 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/monster" title="monster">monster</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033188" title="ECShop GBK版json解析模块可致拒绝服务">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：7 </p>
+													<p class="detail">确认时间：2013-08-02 23:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33188";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

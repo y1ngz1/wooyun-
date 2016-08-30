@@ -1,0 +1,294 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		5UCMS &lt;= v1.2.2024 SQL注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		5UCMS &lt;= v1.2.2024 SQL注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/asmc">asmc</a> 
+</li><li>提交时间：		2011-03-06 17:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-03-06：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-03-06：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">5UCMS&lt;=v1.2.2024 注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">最近在测试一个网站时，提交/admin/，浏览器闪现了&quot;无忧网络管理系统&quot;,GOOGLE搜索下载了一份最新版的源代码，发现问题如下：<br />
+<br />
+<br />
+<br />
+文件..\plus\comment\save.asp<br />
+<br />
+<br />
+<br />
+23行：Dim Comment_Aid,Comment_User,Comment_Content<br />
+<br />
+<br />
+<br />
+24行：Comment_Aid = Request(&quot;id&quot;)                  <br />
+<br />
+<br />
+<br />
+此外部提交的id值会被插入SQL语句中如下：<br />
+<br />
+<br />
+<br />
+55行：Set Ns = DB(&quot;Select [ID],[Cid],[Comments],[IsComment] From [{pre}Content] Where [ID]=&quot; &amp; Comment_Aid,3)<br />
+<br />
+<br />
+<br />
+24到55行之间开发人员加了伪过滤代码如下：<br />
+<br />
+<br />
+<br />
+44行：if Len(Comment_Aid) = 0 Or Not IsNumeric(Comment_Aid) Then Call Alert(Plus.Lang(&quot;iderr&quot;),Gourl)<br />
+<br />
+<br />
+<br />
+45I行：f Len(Comment_User) &lt; 2 Then Comment_User = &quot;Guest&quot;<br />
+<br />
+<br />
+<br />
+46行：If Len(Comment_Content) &lt; Plus.Config(&quot;contentmin&quot;) Then Call Alert(replace(Plus.Lang(&quot;contentmin&quot;),&quot;$1&quot;,Plus.Config(&quot;contentmin&quot;)),Gourl)<br />
+<br />
+<br />
+<br />
+44行的要求是id必须有值，且必须是数字型，否则将会调用Alert()，搜索该函数如下：<br />
+<br />
+<br />
+<br />
+文件..\inc\function.asp<br />
+<br />
+<br />
+<br />
+193行： function Alert(byval Msgstr,byval  Url)<br />
+<br />
+<br />
+<br />
+if len(Url) &gt; 0 then<br />
+<br />
+<br />
+<br />
+on error resume next<br />
+<br />
+<br />
+<br />
+if Isobject(conn) then conn.close &#039; 关闭数据库链接<br />
+<br />
+<br />
+<br />
+if len(Msgstr) &gt; 0 then response.write &quot;&lt;Script&gt;alert(&#039;&quot; &amp; Msgstr &amp; &quot;&#039;);&lt;/Script&gt;&quot; &#039; 提示<br />
+<br />
+<br />
+<br />
+response.write &quot;&lt;Script&gt;location.href=&#039;&quot; &amp; Url &amp; &quot;&#039;;&lt;/Script&gt;&quot; &#039; 跳转<br />
+<br />
+<br />
+<br />
+response.end<br />
+<br />
+<br />
+<br />
+else<br />
+<br />
+<br />
+<br />
+if len(Msgstr) &gt; 0 then response.write &quot;&lt;Script&gt;alert(&#039;&quot; &amp; Msgstr &amp; &quot;&#039;);&lt;/Script&gt;&quot; &#039; 提示<br />
+<br />
+<br />
+<br />
+end if<br />
+<br />
+<br />
+<br />
+end function<br />
+<br />
+<br />
+<br />
+该函数里是一个嵌套的if结构，如果Url为空,那么执行else之后的代码:<br />
+<br />
+<br />
+<br />
+if len(Msgstr) &gt; 0 then response.write &quot;&lt;Script&gt;alert(&#039;&quot; &amp; Msgstr &amp; &quot;&#039;);&lt;/Script&gt;&quot; &#039; 提示<br />
+<br />
+<br />
+<br />
+此语句仅仅打印了错误信息，并没有执行response.end，所以导致Alert()对id的数据类型检测失败,,,最终导致了SQL注入的发生<br />
+<br />
+<br />
+<br />
+那么Url这个关键的跳转变量怎么来的呢，回去看save.asp文件<br />
+<br />
+<br />
+<br />
+9行：Dim Gourl : Gourl = Request.ServerVariables(&quot;HTTP_REFERER&quot;)<br />
+<br />
+<br />
+<br />
+这个就是罪魁祸首了,以下内容摘自网络：<br />
+<br />
+<br />
+<br />
+“asp中Request.ServerVariables(&quot;HTTP_REFERER&quot;)可以取得来源地址。<br />
+<br />
+以下情况可以取得值：<br />
+<br />
+1.直接用&lt;a href&gt;<br />
+<br />
+2.用Submit或&lt;input type=image&gt;提交的表单(POST or GET)<br />
+<br />
+3.使用Jscript提交的表单(POST or GET)<br />
+<br />
+以下情况不能取得值：<br />
+<br />
+1.从收藏夹链接<br />
+<br />
+2.单击&#039;主页&#039;或者自定义的地址<br />
+<br />
+3.利用Jscript的location.href or location.replace()<br />
+<br />
+4.在浏览器直接输入地址<br />
+<br />
+5.&lt;%Response.Redirect%&gt;<br />
+<br />
+6.&lt;%Response.AddHeader%&gt;或&lt;meta http-equiv=refresh&gt;转向<br />
+<br />
+7.用XML加载地址 ”<br />
+<br />
+在上面不可取值的第4条中，说明了，直接构造的该访问路径，使得Gourl 为空 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试：<br />
+<br />
+（access 数据库）http://www.xxxx.com/plus/comment/save.asp?user=test&amp;content=aaaaaa&amp;id=1 and 0&lt;&gt;(select count(*) from 5U_Admin)<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/asmc" title="asmc">asmc</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01513" title="5UCMS &lt;= v1.2.2024 SQL注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：6 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1513";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

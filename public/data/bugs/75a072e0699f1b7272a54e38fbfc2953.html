@@ -1,0 +1,248 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		V5SHOP某分站SQL注入以及程序泄露发现多处注射(大量代理商数据)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		V5SHOP某分站SQL注入以及程序泄露发现多处注射(大量代理商数据)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小痞子">小痞子</a> 
+</li><li>提交时间：		2013-08-09 12:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-29：	细节向普通白帽子公开<br/>
+									2013-09-08：	细节向实习白帽子公开<br/>
+									2013-09-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">V5SHOP 某分站注入 以及某处敏感信息泄露</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://service.v5shop.com/statistics.aspx <br />
+<br />
+这里未设置权限访问 泄露1150条客户信息 同时一些代理商登录账号也暴露了<br />
+<br />
+</p><p class="detail"><a href="../images/091239076374a3f587929b10562afe530ad32b30.jpg" target="_blank"><img src="../images/091239076374a3f587929b10562afe530ad32b30.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+http://service.v5shop.com/system/system.rar<br />
+<br />
+</p><p class="detail"><a href="../images/09124359fda821bdaf722f217199650c221e079f.jpg" target="_blank"><img src="../images/09124359fda821bdaf722f217199650c221e079f.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这里源码包没有删除 可以下载源码包。包内有几处可能存在注入<br />
+<br />
+例如页面 AgentAccount_SelectS.aspx<br />
+<br />
+protected void Page_Load(object sender, EventArgs e)<br />
+<br />
+        {<br />
+<br />
+            if (!IsPostBack)<br />
+<br />
+            {<br />
+<br />
+                agentID = Request[&quot;AgentName&quot;];<br />
+<br />
+                Bind();<br />
+<br />
+            }<br />
+<br />
+        }<br />
+<br />
+<br />
+<br />
+        private void Bind()<br />
+<br />
+        {<br />
+<br />
+            DataSet ds = IoCFactory.Instance.Container.Resolve&lt;IAgentService&gt;().GetOneAgentList(agentID);<br />
+<br />
+            if (ds.Tables.Count &gt; 0 &amp;&amp; ds.Tables[0].Rows.Count &gt; 0)<br />
+<br />
+            {<br />
+<br />
+                agentName = ds.Tables[0].Rows[0][&quot;LoginName&quot;].ToString();<br />
+<br />
+            }<br />
+<br />
+<br />
+<br />
+            ds = IoCFactory.Instance.Container.Resolve&lt;IAgentService&gt;().GetAgentPriceListS(agentName);<br />
+<br />
+            if (ds != null &amp;&amp; ds.Tables[0] != null &amp;&amp; ds.Tables[0].Rows.Count &gt; 0)<br />
+<br />
+            {<br />
+<br />
+                GridViewList.DataSource = ds.Tables[0].DefaultView;<br />
+<br />
+                GridViewList.DataBind();<br />
+<br />
+            }<br />
+<br />
+        }<br />
+<br />
+<br />
+<br />
+参数未进行任何过滤<br />
+<br />
+<br />
+<br />
+http://root.v5shop.com.cn/Admin/Managementlogin.aspx<br />
+<br />
+此处登录存在sql 注入构造 admin&#039; or 1=1-- 输入任意密码即可登录<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0912382924e88201601872ad6c7ebfca5155e97c.jpg" target="_blank"><img src="../images/0912382924e88201601872ad6c7ebfca5155e97c.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+进入后台也存在多处注入 权限较高可垮裤 可拿shell<br />
+<br />
+</p><p class="detail"><a href="../images/091242148a0fa36726453ddaf2803eb5b599fe4d.jpg" target="_blank"><img src="../images/091242148a0fa36726453ddaf2803eb5b599fe4d.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+存在了250个库 危害较大..<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">求多给点rank ~ 谢谢  </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小痞子" title="小痞子">小痞子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033938" title="V5SHOP某分站SQL注入以及程序泄露发现多处注射(大量代理商数据)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-08-09 13:00</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">这个漏洞很给力,可是跨库什么的菜菜不是提交了吗</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33938";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

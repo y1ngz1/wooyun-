@@ -1,0 +1,236 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpmpsV2.3 用户cookies伪造漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpmpsV2.3 用户cookies伪造漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/knife">knife</a> 
+</li><li>提交时间：		2013-04-08 10:41</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-08：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-07-07：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">只是提个醒</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>问题出在member.php<br />
+.................../**/省略无关代码./**/<br />
+require dirname(__FILE__) . &#039;/include/common.php&#039;;<br />
+if($CFG[&#039;uc&#039;])require PHPMPS_ROOT . &#039;include/uc.inc.php&#039;;<br />
+require PHPMPS_ROOT . &#039;include/json.class.php&#039;;<br />
+require PHPMPS_ROOT . &#039;include/pay.fun.php&#039;;<br />
+.................../**/省略无关代码./**/<br />
+if(empty($_userid)) { &#039;判断userid<br />
+    if (!in_array($act, $not_login)) {<br />
+        if (in_array($act, $must_login)) {<br />
+            showmsg(&#039;请先登录&#039;, &#039;member.php?act=login&amp;refer=&#039;.$PHP_URL);<br />
+        } else {<br />
+			showmsg(&#039;请不要提交非法请求！&#039;);<br />
+		}<br />
+    }<br />
+}<br />
+.................../**/省略无关代码./**/<br />
+查看include/common.php<br />
+if(!get_magic_quotes_gpc()) {<br />
+	if (!empty($_GET))$_GET  = addslashes_deep($_GET);<br />
+    if (!empty($_POST))$_POST = addslashes_deep($_POST);<br />
+    $_COOKIE   = addslashes_deep($_COOKIE);<br />
+    $_REQUEST  = addslashes_deep($_REQUEST);<br />
+}<br />
+<br />
+&#039;get_magic_quotes_gpc  ╮(╯▽╰)╭<br />
+.................../**/省略无关代码./**/<br />
+&#039;关键的部分<br />
+<br />
+$_userid = 0; &#039;初始化 <br />
+$_username = &#039;&#039;;<br />
+$uid = $_SESSION[&#039;userid&#039;] ? $_SESSION[&#039;userid&#039;] : $_COOKIE[&#039;userid&#039;]; ‘cookie 你懂的啦~<br />
+if(!empty($uid)) {<br />
+	$user_info = $db-&gt;getRow(&quot;select userid,username,lastposttime,status from {$table}member where userid=&#039;$uid&#039; &quot;);<br />
+	if($user_info) {<br />
+		$_userid = $user_info[&#039;userid&#039;];<br />
+		$_username = $user_info[&#039;username&#039;];<br />
+		$_lastposttime = $user_info[&#039;lastposttime&#039;];<br />
+		$_status = $user_info[&#039;status&#039;];<br />
+	}<br />
+}<br />
+<br />
+userid=1 ~</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>问题出在member.php<br />
+.................../**/省略无关代码./**/<br />
+require dirname(__FILE__) . &#039;/include/common.php&#039;;<br />
+if($CFG[&#039;uc&#039;])require PHPMPS_ROOT . &#039;include/uc.inc.php&#039;;<br />
+require PHPMPS_ROOT . &#039;include/json.class.php&#039;;<br />
+require PHPMPS_ROOT . &#039;include/pay.fun.php&#039;;<br />
+.................../**/省略无关代码./**/<br />
+if(empty($_userid)) { &#039;判断userid<br />
+    if (!in_array($act, $not_login)) {<br />
+        if (in_array($act, $must_login)) {<br />
+            showmsg(&#039;请先登录&#039;, &#039;member.php?act=login&amp;refer=&#039;.$PHP_URL);<br />
+        } else {<br />
+			showmsg(&#039;请不要提交非法请求！&#039;);<br />
+		}<br />
+    }<br />
+}<br />
+.................../**/省略无关代码./**/<br />
+查看include/common.php<br />
+if(!get_magic_quotes_gpc()) {<br />
+	if (!empty($_GET))$_GET  = addslashes_deep($_GET);<br />
+    if (!empty($_POST))$_POST = addslashes_deep($_POST);<br />
+    $_COOKIE   = addslashes_deep($_COOKIE);<br />
+    $_REQUEST  = addslashes_deep($_REQUEST);<br />
+}<br />
+<br />
+&#039;get_magic_quotes_gpc  ╮(╯▽╰)╭<br />
+.................../**/省略无关代码./**/<br />
+&#039;关键的部分<br />
+<br />
+$_userid = 0; &#039;初始化 <br />
+$_username = &#039;&#039;;<br />
+$uid = $_SESSION[&#039;userid&#039;] ? $_SESSION[&#039;userid&#039;] : $_COOKIE[&#039;userid&#039;]; ‘cookie 你懂的啦~<br />
+if(!empty($uid)) {<br />
+	$user_info = $db-&gt;getRow(&quot;select userid,username,lastposttime,status from {$table}member where userid=&#039;$uid&#039; &quot;);<br />
+	if($user_info) {<br />
+		$_userid = $user_info[&#039;userid&#039;];<br />
+		$_username = $user_info[&#039;username&#039;];<br />
+		$_lastposttime = $user_info[&#039;lastposttime&#039;];<br />
+		$_status = $user_info[&#039;status&#039;];<br />
+	}<br />
+}<br />
+<br />
+userid=1 ~</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">$uid = $_SESSION[&#039;userid&#039;] ? $_SESSION[&#039;userid&#039;]<br />
+<br />
+<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/knife" title="knife">knife</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021363" title="phpmpsV2.3 用户cookies伪造漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21363";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

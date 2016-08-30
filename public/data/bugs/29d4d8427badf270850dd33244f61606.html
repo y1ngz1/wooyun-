@@ -1,0 +1,207 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		UCloud 订单处理严重逻辑错误 可刷余额(已证明)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		UCloud 订单处理严重逻辑错误 可刷余额(已证明)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪猪侠">猪猪侠</a> 
+</li><li>提交时间：		2014-01-16 01:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-16：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-26：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-05：	细节向普通白帽子公开<br/>
+									2014-02-15：	细节向实习白帽子公开<br/>
+									2014-03-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">UCloud 订单处理严重逻辑错误 可刷余额(已证明)<br />
+为了客户使用得爽，果然还是得付出惨重的安全代价！！！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 问题描述<br />
+<br />
+https://uhost.ucloud.cn/bandwidth/create_shared_bandwidth_package<br />
+<br />
+升级网络共享带宽处，如果以购买过的主机含有带宽，系统将自动创建一个退款的订单，而后再让用户购买一个更高级的带宽包（价格更高）。<br />
+<br />
+</p><p class="detail"><a href="../images/160125505cfef6c0a30335e2d3f25ce2926f784c.jpg" target="_blank"><img src="../images/160125505cfef6c0a30335e2d3f25ce2926f784c.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+#2 重复这个动作，获得一堆退款的订单<br />
+<br />
+</p><p class="detail"><a href="../images/16012820ea4682d4b44aed2db66e8568700a1be4.jpg" target="_blank"><img src="../images/16012820ea4682d4b44aed2db66e8568700a1be4.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+当我以为每个订单都可以支付的时候，系统给我返回错误，说同样类型的订单只能支付一次，在这里我差点就放弃继续测试了。<br />
+<br />
+</p><p class="detail"><a href="../images/1601303289e15e5ace93301f98a5522087ba3c84.jpg" target="_blank"><img src="../images/1601303289e15e5ace93301f98a5522087ba3c84.jpg" alt="ucloud_内部错误.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+也就是说，服务器做了判断，确保只能退一次款。<br />
+<br />
+#3 华丽的功能带来华丽的漏洞<br />
+<br />
+当我发现能够成功创建一堆退款订单，但是不能每个都支付的时候，着实让我蛋疼了一把，当时还想着，要不多线程利用数据库事务反应的时间差来刷点钱？<br />
+<br />
+</p><p class="detail"><a href="../images/1601324372ec90ebe405b67f21d5e72fc5f803a9.jpg" target="_blank"><img src="../images/1601324372ec90ebe405b67f21d5e72fc5f803a9.jpg" alt="UCloud_支付列表.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这时候发现自己50K的ADSL小猫，也能玩高富帅才能耍的多线程并发请求吗？<br />
+<br />
+想想还是算了（真的也就算了，有那个资源的高富帅们可以尝试一下！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#4 最后还是被我找到了另外一个功能<br />
+<br />
+UCloud为了客户爽，搞了个订单批量支付的玩意，结果那个判断是否重复退款的功能就失效了！<br />
+<br />
+https://account.ucloud.cn/account/order?order_no[]=201401161705090997&amp;order_no[]=201401161703727504&amp;order_no[]=201401161699962185&amp;order_no[]=201401161692556875&amp;return_url=https://uhost.ucloud.cn/bandwidth<br />
+<br />
+</p><p class="detail"><a href="../images/16014146d740dc66a9f7d18fd3e13097797a3cdd.jpg" target="_blank"><img src="../images/16014146d740dc66a9f7d18fd3e13097797a3cdd.jpg" alt="ucloud_批量支付.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+#5 看到执行错误，我以为又失败了<br />
+<br />
+结果无意间看到余额，你懂得！只要多退了余额回来就行了，执行成功不成功你还关心吗？<br />
+<br />
+</p><p class="detail"><a href="../images/160144024be72633619c0ba194c900556c9acfbe.jpg" target="_blank"><img src="../images/160144024be72633619c0ba194c900556c9acfbe.jpg" alt="ucloud_余额.jpg" width="600"/></a></p><p class="detail">）。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"># 华丽的功能需要做华丽的判断。<br />
+<br />
+~! 我是用正常用户做的测试，请别封号呀，里面还有我自己的余额的！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪猪侠" title="猪猪侠">猪猪侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049030" title="UCloud 订单处理严重逻辑错误 可刷余额(已证明)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-16 16:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您的报告，问题已经修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49030";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

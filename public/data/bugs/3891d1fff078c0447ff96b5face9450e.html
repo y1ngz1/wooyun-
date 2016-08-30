@@ -1,0 +1,200 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯某处存储型XSS，且看我如何利用来定向劫持用户腾讯微博  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯某处存储型XSS，且看我如何利用来定向劫持用户腾讯微博  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/se55i0n">se55i0n</a> 
+</li><li>提交时间：		2013-03-16 21:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-07：	细节向普通白帽子公开<br/>
+									2013-04-17：	细节向实习白帽子公开<br/>
+									2013-04-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">TSRC的同学你们好，我是来自WooYun的白帽子！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">还是iweibo的问题，虽然限制了某参数的httponly不能直接劫持iweibo，但是我们却能利用这个反过来劫持t.qq.com的用户！！！<br />
+<br />
+<br />
+<br />
+1）这里以我自己的微博帐号&quot;se55i0n&quot;进行演示,利用上个洞借来的帐号先收听se55i0n,然后广播里@se55ion 输入以下内容；<br />
+<br />
+</p><pre><code>123&lt;/textarea&gt;&lt;iframe src=javascript:alert(/1/)&gt;</code></pre><p class='detail'><br />
+<br />
+2)登录se55i0n帐号，在广播里发现这里对关键的字符是做了过滤的，不存在直接的跨站，但是我不小心点到我的听众，却出现了下面的情况；<br />
+<br />
+</p><p class="detail"><a href="../images/161751542d2011e310cb421ad6ce040985b753cb.png" target="_blank"><img src="../images/161751542d2011e310cb421ad6ce040985b753cb.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+3)哈哈，腾讯这里的贴心功能造就了该安全问题，应该是想给用户显示每个听众最后@自己的内容，但是这里却没有对内容进行过滤直接显示了出来 -_-||；<br />
+<br />
+4)知道漏洞产生的原因，那我们就看看能不能利用这个xss劫持用户的帐号吧，进行一番测试发现在广播栏里插入普通的劫持cookie的代码会被腾讯过滤导致代码不完整，但是在广播里输入以下代码，成功绕过防御并执行；<br />
+<br />
+</p><p class="detail"><a href="../images/16180605922185397a9a791d6ca5c330bfd9afb3.png" target="_blank"><img src="../images/16180605922185397a9a791d6ca5c330bfd9afb3.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+5）登录se55i0n的帐号，点击我的听众，于是乎；<br />
+<br />
+</p><p class="detail"><a href="../images/16180816dfbb5438c09bf0711fc2c0d39cd75d96.png" target="_blank"><img src="../images/16180816dfbb5438c09bf0711fc2c0d39cd75d96.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+6）难道就这么就成功劫持了用户的微博帐号么，NO！使用获取到的cookie登录依然提示输入用户名、密码，当然第一个反应是做了httponly,打开firebug一看，果不其然看参数&quot;t_skey&quot;-_-||<br />
+<br />
+</p><p class="detail"><a href="../images/16181124fa82fcd24cc7f9e1d20fd820a83762bf.png" target="_blank"><img src="../images/16181124fa82fcd24cc7f9e1d20fd820a83762bf.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+7）难道就木有办法了么！！！非也，前面有童鞋提到过腾讯的cookie具有通用性，而且查看了本站cookie就一个参数做了httponly，于是我打开了xsser.me分析收到cookie值；<br />
+<br />
+</p><p class="detail"><a href="../images/16181659dcc71d3158caac1b3bfff7f217691884.png" target="_blank"><img src="../images/16181659dcc71d3158caac1b3bfff7f217691884.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+8）我手工提权了se55i0n登录t.qq.com后的cookie值，跟收到iweibo的cookie值进行了下对比，于是我找到了突破口，收到的iweibo的cookie值居然跟t.qq.com下的一模一样，仅仅多了两个无关痛痒的参数值&quot;ts_last&quot;&quot;ts_sid&quot;，所以我们利用这个cookie成功登录到了腾讯微博；<br />
+<br />
+</p><p class="detail"><a href="../images/16182250cf727f2dc96ecf7aedab9fb1c46edfc9.png" target="_blank"><img src="../images/16182250cf727f2dc96ecf7aedab9fb1c46edfc9.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/se55i0n" title="se55i0n">se55i0n</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020167" title="腾讯某处存储型XSS，且看我如何利用来定向劫持用户腾讯微博">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-03-18 12:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。我们会马上安排专人跟进确认处理，有新的情况会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20167";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

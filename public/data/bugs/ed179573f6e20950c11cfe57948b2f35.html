@@ -1,0 +1,206 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯所有版本都存在的一个拒绝服务bug详细分析  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯所有版本都存在的一个拒绝服务bug详细分析  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/n0bele">n0bele</a> 
+</li><li>提交时间：		2013-08-08 15:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-08：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-11-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQ“莫名其妙”的崩溃问题分析，不对之处还望指出</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">据说QQ老有崩溃问题，好不容易被我逮到一次岂能错过。问题是都崩溃这么久了为啥这个bug还不改掉？我很困惑。最近脚本玩惯了，windbg快生锈了，就用用吧！<br />
+<br />
+<br />
+<br />
+先把dump拷贝出来<br />
+<br />
+</p><p class="detail"><a href="../images/081453276f26331fe119c852f485a6e813e7f1ac.jpg" target="_blank"><img src="../images/081453276f26331fe119c852f485a6e813e7f1ac.jpg" alt="QQ1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+打开dump<br />
+<br />
+</p><p class="detail"><a href="../images/0814543517d4a9e58e55d9ce857fddf3909b8036.jpg" target="_blank"><img src="../images/0814543517d4a9e58e55d9ce857fddf3909b8036.jpg" alt="QQ2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+引用了一个空指针导致的崩溃.看看堆栈。<br />
+<br />
+</p><p class="detail"><a href="../images/08145524ca151a4ffcefcab7156ae647578dab55.jpg" target="_blank"><img src="../images/08145524ca151a4ffcefcab7156ae647578dab55.jpg" alt="QQ3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+问题出在PreloginLogic.dll里,edi为空啊.<br />
+<br />
+</p><p class="detail"><a href="../images/08145611f21bb3cf5a7ffe1a97188ddd1fe321f5.jpg" target="_blank"><img src="../images/08145611f21bb3cf5a7ffe1a97188ddd1fe321f5.jpg" alt="QQ4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+看到这里初步断定这是一个自动更新校验的线程,在校验的时候挂掉了.<br />
+<br />
+QQVIP调用PreloginLogic.dll里的函数CreateDRCSProcessor,传了3个结构,而CreateDRCSProcessor又调用了Common.dll的若干函数<br />
+<br />
+<br />
+<br />
+同一个场景发生的事:<br />
+<br />
+</p><p class="detail"><a href="../images/08145744c5ba0b14831c6f7d83d01887472843d1.jpg" target="_blank"><img src="../images/08145744c5ba0b14831c6f7d83d01887472843d1.jpg" alt="QQ5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+看来可能是TerminateThread或SuspendThread引起的问题了.而一般靠dump”确定”这类问题真的很不靠谱.<br />
+<br />
+<br />
+<br />
+当我们不清楚自己线程(事实上也很难清楚)在干嘛的时候请不要TerminateThread、SuspendThread请使用同步对象. 当应用程序希望关闭线程时，只要设置这个同步对象，等待线程退出。之后，线程把这个同步对象作为它周期性监测的一部分，定期检查，或者如果这个同步对象的状态改变的话，就可以执行清理操作并退出了.<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">不能传dmp文件，需要的站内短信 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">他们懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/n0bele" title="n0bele">n0bele</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033837" title="腾讯所有版本都存在的一个拒绝服务bug详细分析">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-08-08 15:53</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">这是个多线程逻辑bug，已在最新版本中修复，可到im.qq.com上下载最新版，非常感谢您的反馈。</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33837";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

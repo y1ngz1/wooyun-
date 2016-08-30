@@ -1,0 +1,516 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		国内外多家vpn设备厂商批量漏洞(续集二)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		国内外多家vpn设备厂商批量漏洞(续集二)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/felixk3y">felixk3y</a> 
+</li><li>提交时间：		2014-01-15 10:43</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-23：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-09：	细节向普通白帽子公开<br/>
+									2014-03-01：	细节向实习白帽子公开<br/>
+									2014-04-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">暂时不出续集三了,将发现的问题一起放出来...<br />
+经测试,此系列漏洞任然普遍存在,成功利用此系列漏洞有下列威胁<br />
+1.任意文件上传;<br />
+2.任意代码/命令执行;<br />
+3.任意文件下载/删除<br />
+4.严重敏感信息泄露<br />
+4.整个源代码泄露等等等...<br />
+倘若进一步利用,危害性将非常大。<br />
+同时该漏洞涉及到包括网御神州、天融信、西安网赢、卫士通、吉大正元、美国凹凸、德国 ANIX等多家VPN厂商设备在政务、地产、运营商、政府部门、高校、企业、公安、司法、银行等行业存在的任意文件下载、远程命令执行、维护后门、三方平台帐号泄漏、恶意客户端下发等高位漏洞。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 同样请先看<br />
+<br />
+</p><pre><code> <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2014-048202">WooYun: 国内外多家vpn设备厂商批量漏洞(续集一)</a> </code></pre><p class='detail'><br />
+<br />
+在测试的过程中,我大概看了下源代码，于是就有了这个漏洞...<br />
+<br />
+#2 系列漏洞---任意文件上传漏洞<br />
+<br />
+先列举其一<br />
+<br />
+/admin/system/cert_request_import_action.php 代码如下<br />
+<br />
+</p><pre><code>&lt;?<br />
+include_once &quot;management/certificate.php&quot;;//此文件没有权限的验证,SO...<br />
+<br />
+$MAX_SIZE= 2*1000*1000;<br />
+if ($_FILES[&#039;gw_cert&#039;]) {<br />
+	$file_size = $_FILES[&#039;gw_cert&#039;][&#039;size&#039;];<br />
+	$file_type = $_FILES[&#039;gw_cert&#039;][&#039;type&#039;];<br />
+	<br />
+	$temp_name = $_FILES[&#039;gw_cert&#039;][&#039;tmp_name&#039;];<br />
+	$gw_file_name = $_FILES[&#039;gw_cert&#039;][&#039;name&#039;];<br />
+	$gw_file_name = str_replace(&quot;\\&quot;,&quot;&quot;,$gw_file_name);<br />
+	$gw_file_name = str_replace(&quot;&#039;&quot;,&quot;&quot;,$gw_file_name);<br />
+	$gw_file_name = str_replace(&quot; &quot;,&quot;&quot;,$gw_file_name);<br />
+<br />
+	$file_path = $CFG_UPLOAD_PATH.$gw_file_name;<br />
+<br />
+	//File Name Check<br />
+	if ( $gw_file_name == &quot;&quot; ) { <br />
+		include &quot;include/error.php&quot;;<br />
+		return;<br />
+	}<br />
+	$gw_file_name = $file_path;<br />
+<br />
+	$result  =  move_uploaded_file($temp_name, $file_path);<br />
+	chmod($file_path, $CFG_UPLOAD_MOD);<br />
+} else {<br />
+	include &quot;include/error.php&quot;;<br />
+	return;<br />
+}<br />
+<br />
+if ($_FILES[&#039;iss_cert&#039;]) {<br />
+	$file_size = $_FILES[&#039;iss_cert&#039;][&#039;size&#039;];<br />
+	$file_type = $_FILES[&#039;iss_cert&#039;][&#039;type&#039;];<br />
+	<br />
+	$temp_name = $_FILES[&#039;iss_cert&#039;][&#039;tmp_name&#039;];<br />
+	$iss_file_name = $_FILES[&#039;iss_cert&#039;][&#039;name&#039;];<br />
+	$iss_file_name = str_replace(&quot;\\&quot;,&quot;&quot;,$iss_file_name);<br />
+	$iss_file_name = str_replace(&quot;&#039;&quot;,&quot;&quot;,$iss_file_name);<br />
+	$iss_file_name = str_replace(&quot; &quot;,&quot;&quot;,$iss_file_name);<br />
+<br />
+	$file_path = $CFG_UPLOAD_PATH.$iss_file_name;<br />
+<br />
+	//File Name Check<br />
+	if ( $iss_file_name == &quot;&quot; ) { <br />
+		include &quot;include/error.php&quot;;<br />
+		return;<br />
+	}<br />
+	$iss_file_name = $file_path;<br />
+<br />
+	$result  =  move_uploaded_file($temp_name, $file_path);<br />
+	chmod($file_path, 0777);<br />
+}<br />
+<br />
+$CM = new CertificateManager;<br />
+if ($_FILES[&#039;iss_cert&#039;])<br />
+	$msg = $CM-&gt;Import_GW_CA_Cert($ticket, $gw_file_name, $iss_file_name);<br />
+else<br />
+	$msg = $CM-&gt;Import_GW_CA_Cert($ticket, $gw_file_name, &quot;&quot;);<br />
+<br />
+$RURL = &quot;?body=3&quot;;<br />
+$RURL1 = &quot;?body=4&quot;;<br />
+if ($msg != &quot;OK&quot;)<br />
+	include &quot;include/error.php&quot;;<br />
+else<br />
+	echo &quot;&lt;META HTTP-EQUIV=\&quot;REFRESH\&quot; CONTENT=\&quot;0; URL=&quot;.$RURL.&quot;\&quot;&gt;&quot;;<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+我们来看下其上传的代码是怎样写的<br />
+<br />
+</p><pre><code>if ($_FILES[&#039;gw_cert&#039;]) {<br />
+	$file_size = $_FILES[&#039;gw_cert&#039;][&#039;size&#039;];<br />
+	$file_type = $_FILES[&#039;gw_cert&#039;][&#039;type&#039;];<br />
+	<br />
+	$temp_name = $_FILES[&#039;gw_cert&#039;][&#039;tmp_name&#039;];<br />
+	$gw_file_name = $_FILES[&#039;gw_cert&#039;][&#039;name&#039;];<br />
+	$gw_file_name = str_replace(&quot;\\&quot;,&quot;&quot;,$gw_file_name);<br />
+	$gw_file_name = str_replace(&quot;&#039;&quot;,&quot;&quot;,$gw_file_name);<br />
+	$gw_file_name = str_replace(&quot; &quot;,&quot;&quot;,$gw_file_name);<br />
+<br />
+	$file_path = $CFG_UPLOAD_PATH.$gw_file_name;<br />
+<br />
+	//File Name Check<br />
+	if ( $gw_file_name == &quot;&quot; ) { <br />
+		include &quot;include/error.php&quot;;<br />
+		return;<br />
+	}<br />
+	$gw_file_name = $file_path;<br />
+<br />
+	$result  =  move_uploaded_file($temp_name, $file_path);<br />
+	chmod($file_path, $CFG_UPLOAD_MOD);<br />
+} else {<br />
+	include &quot;include/error.php&quot;;<br />
+	return;<br />
+}</code></pre><p class='detail'><br />
+<br />
+看见了吧,只要稍有代码编写能力的人都可以看出来有问题，完全没有经过任何的安全检查便把文件写入的对方硬盘..对此我不想多说什么,更不想去做测试,因为那简直就是浪费时间..(我表示很无语啊,这样的代码写的东西至少我不敢用,你们敢吗?)<br />
+<br />
+存在同样问题的地方还有如下文件：<br />
+<br />
+</p><pre><code>/sub_ca_action.php<br />
+/admin/system/gw_cert_import_action.php<br />
+/admin/account/admin_add_action.php<br />
+/admin/account/group_batch_add_action.php<br />
+/admin/authentication/mini_ca_action.php<br />
+/admin/authentication/mini_ca_action.php<br />
+....</code></pre><p class='detail'><br />
+<br />
+还有很多,还请都检查下...<br />
+<br />
+#2 系列漏洞---任意文件下载/删除<br />
+<br />
+问题出现在：/admin/system/backup_down.php 代码如下<br />
+<br />
+</p><pre><code>&lt;?<br />
+if (isset($_POST[&quot;file_name&quot;]))<br />
+	$file_name = &quot;/data/upload/sysbackup_&quot;.$_POST[&quot;file_name&quot;].&quot;.bin&quot;;<br />
+else {<br />
+	header(&quot;Location: ../login.php&quot;);<br />
+	return;<br />
+}<br />
+header(&quot;Pragma: &quot;); <br />
+header(&quot;Cache-Control: &quot;); <br />
+header(&quot;Content-type: application/octet-stream&quot;);<br />
+header(&quot;Content-Length: &quot;.filesize($file_name));<br />
+header(&quot;Content-Disposition: attachment; filename=\&quot;sysbackup.bin\&quot;&quot;);<br />
+readfile($file_name);<br />
+@unlink($file_name);<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+看见了吧，没有任何的权限验证,没有任何的安全检查...这个也不想多说,不测试,真的是浪费时间...<br />
+<br />
+#2 系列漏洞---配置信息泄露<br />
+<br />
+根目录下的 htdocs 中的文件<br />
+<br />
+</p><pre><code>2014/01/09  16:40    &lt;DIR&gt;          .<br />
+2014/01/09  16:40    &lt;DIR&gt;          ..<br />
+2014/01/07  14:00             3,550 httpd-mpm.conf.big<br />
+2014/01/07  14:00             3,550 httpd-mpm.conf.small<br />
+2014/01/07  14:00             3,089 httpd.conf<br />
+2014/01/07  14:00             3,148 httpd.conf-80<br />
+2014/01/07  14:00             2,183 index.php<br />
+               5 个文件         15,520 字节<br />
+               2 个目录 105,551,912,960 可用字节</code></pre><p class='detail'><br />
+<br />
+能过Web可以访问,此处以httpd.conf为例：<br />
+<br />
+</p><p class="detail"><a href="../images/15102351a6feac305f2547118a40eb54f1af45c8.jpg" target="_blank"><img src="../images/15102351a6feac305f2547118a40eb54f1af45c8.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>ServerRoot &quot;/usr&quot;<br />
+<br />
+Listen 127.0.0.1:1<br />
+#Listen 80<br />
+<br />
+LoadModule auth_basic_module lib/httpd/modules/mod_auth_basic.so<br />
+LoadModule include_module lib/httpd/modules/mod_include.so<br />
+LoadModule env_module lib/httpd/modules/mod_env.so<br />
+LoadModule mime_magic_module lib/httpd/modules/mod_mime_magic.so<br />
+LoadModule expires_module lib/httpd/modules/mod_expires.so<br />
+LoadModule headers_module lib/httpd/modules/mod_headers.so<br />
+LoadModule setenvif_module lib/httpd/modules/mod_setenvif.so<br />
+LoadModule mime_module lib/httpd/modules/mod_mime.so<br />
+LoadModule autoindex_module lib/httpd/modules/mod_autoindex.so<br />
+LoadModule cgi_module lib/httpd/modules/mod_cgi.so<br />
+LoadModule vhost_alias_module lib/httpd/modules/mod_vhost_alias.so<br />
+LoadModule dir_module lib/httpd/modules/mod_dir.so<br />
+LoadModule actions_module lib/httpd/modules/mod_actions.so<br />
+LoadModule alias_module lib/httpd/modules/mod_alias.so<br />
+LoadModule rewrite_module lib/httpd/modules/mod_rewrite.so<br />
+<br />
+User root<br />
+Group root<br />
+<br />
+ServerAdmin cheng.zhang@o2micro.com<br />
+<br />
+#ServerName www.example.com:80<br />
+ServerName 127.0.0.1<br />
+<br />
+DocumentRoot &quot;/ssl/www&quot;<br />
+<br />
+&lt;Directory /&gt;<br />
+    Options FollowSymLinks ExecCGI<br />
+    AllowOverride None<br />
+#    Order deny,allow<br />
+#    Deny from all<br />
+&lt;/Directory&gt;<br />
+<br />
+&lt;Directory &quot;/ssl/www&quot;&gt;<br />
+    Options -Indexes FollowSymLinks MultiViews ExecCGI<br />
+    AllowOverride None<br />
+&lt;/Directory&gt;<br />
+<br />
+&lt;IfModule dir_module&gt;<br />
+    DirectoryIndex index.html index.php login.php<br />
+&lt;/IfModule&gt;<br />
+<br />
+ErrorLog /dev/null<br />
+#ErrorLog /var/log/httpd/error_log<br />
+#LogLevel warn<br />
+<br />
+DefaultType text/plain<br />
+<br />
+&lt;IfModule mime_module&gt;<br />
+    TypesConfig /etc/httpd/mime.types<br />
+<br />
+    AddType application/x-compress .Z<br />
+    AddType application/x-gzip .gz .tgz<br />
+<br />
+    AddHandler cgi-script .cgi<br />
+&lt;/IfModule&gt;<br />
+<br />
+#MIMEMagicFile /etc/httpd/magic<br />
+<br />
+# Server-pool management (MPM specific)<br />
+Include /etc/httpd/extra/httpd-mpm.conf<br />
+<br />
+# Multi-language error messages<br />
+#Include /etc/httpd/extra/httpd-multilang-errordoc.conf<br />
+<br />
+# Fancy directory listings<br />
+#Include /etc/httpd/extra/httpd-autoindex.conf<br />
+<br />
+# Language settings<br />
+#Include /etc/httpd/extra/httpd-languages.conf<br />
+<br />
+# User home directories<br />
+#Include /etc/httpd/extra/httpd-userdir.conf<br />
+<br />
+# Real-time info on requests and configuration<br />
+#Include /etc/httpd/extra/httpd-info.conf<br />
+<br />
+# Virtual hosts<br />
+#Include /etc/httpd/extra/httpd-vhosts.conf<br />
+<br />
+# Local access to the Apache HTTP Server Manual<br />
+#Include /etc/httpd/extra/httpd-manual.conf<br />
+<br />
+# Distributed authoring and versioning (WebDAV)<br />
+#Include /etc/httpd/extra/httpd-dav.conf<br />
+<br />
+# Various default settings<br />
+Include /etc/httpd/extra/httpd-default.conf<br />
+<br />
+# Override the setting in httpd-default.conf<br />
+KeepAlive Off<br />
+ServerSignature Off<br />
+ServerTokens Prod <br />
+Timeout 180  <br />
+<br />
+# Uncomment the following line to enable PHP:<br />
+#<br />
+Include /etc/httpd/mod_php.conf<br />
+<br />
+&lt;VirtualHost 127.0.0.1:1&gt;<br />
+	ServerName 127.0.0.1<br />
+	DocumentRoot &quot;/ssl/www&quot;<br />
+	RewriteEngine on <br />
+	RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK)<br />
+	RewriteRule .* -[F]<br />
+	RewriteRule ^/admin$ /admin/ [R] <br />
+&lt;/VirtualHost&gt;<br />
+<br />
+#&lt;VirtualHost _default_:80&gt;<br />
+#	ServerName 127.0.0.1<br />
+#	DocumentRoot &quot;/ssl/www/htdocs&quot;<br />
+#	Alias /admin/ &quot;/ssl/www/htdocs/&quot;<br />
+#	RewriteEngine on <br />
+#	RewriteRule ^/admin$ /admin/ [R] <br />
+#&lt;/VirtualHost&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#4 系列漏洞---源代码泄露<br />
+<br />
+在整个系统中,有很多的重要php文件,配置文件以.inc的文件格式存放,恰巧,几乎所有的站点都没有对其进行安全处理,造成了严重的安全漏洞<br />
+<br />
+例如：<br />
+<br />
+/filepass/  目录下的filepass_helper.inc<br />
+<br />
+/filepass/ftp/目录下的ftp_cmd.inc  ftp_user.inc<br />
+<br />
+</p><pre><code>2014/01/07  14:00             6,585 ftp_cmd.inc<br />
+2014/01/07  14:00             3,531 ftp_***.php<br />
+2014/01/07  14:00             4,358 ftp_***.php<br />
+2014/01/07  14:00               702 ftp_***.php<br />
+2014/01/07  14:00            21,572 ftp_helper.inc<br />
+2014/01/07  14:00             4,653 ftp_***.php<br />
+2014/01/07  14:00            10,056 ftp_***.php<br />
+2014/01/07  14:00            11,489 ftp_screen_pda.php<br />
+2014/01/07  14:00             3,031 ftp_***.php<br />
+2014/01/07  14:00            11,703 ftp_user.inc</code></pre><p class='detail'><br />
+<br />
+/filepass/share/目录下的share_user.inc等<br />
+<br />
+2014/01/07  14:03    &lt;DIR&gt;          conf<br />
+<br />
+2014/01/07  14:00             4,173 share_***.php<br />
+<br />
+2014/01/07  14:00             8,898 share_***.php<br />
+<br />
+2014/01/07  14:00               711 share_***.php<br />
+<br />
+2014/01/07  14:00            16,977 share_helper.inc<br />
+<br />
+2014/01/07  14:00             3,960 share_***.php<br />
+<br />
+2014/01/07  14:00             9,383 share_***.php<br />
+<br />
+2014/01/07  14:00            11,620 share_***.php<br />
+<br />
+2014/01/07  14:00            19,769 share_***.php<br />
+<br />
+2014/01/07  14:00             3,162 share_***.php<br />
+<br />
+2014/01/07  14:00            13,136 share_user.inc<br />
+<br />
+其他的差不多都忘了...<br />
+<br />
+还有很多都请好好检查下，下面给一个例子，请看.<br />
+<br />
+https://vpn.mcut.edu.tw//filepass/ftp/ftp_user.inc<br />
+<br />
+</p><p class="detail"><a href="../images/15103152fef96c65a75ba9380d65dc42aa86238f.jpg" target="_blank"><img src="../images/15103152fef96c65a75ba9380d65dc42aa86238f.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+https://vpn.mcut.edu.tw//filepass/share/share_user.inc<br />
+<br />
+</p><p class="detail"><a href="../images/1510382300092dbac197896357ecd2a26808ca16.jpg" target="_blank"><img src="../images/1510382300092dbac197896357ecd2a26808ca16.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+好了,暂时就到这里,不继续深入了<br />
+<br />
+对了,我想问一下，用该VPN系统的用户有Windwos环境搭建的吗?<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/felixk3y" title="felixk3y">felixk3y</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048960" title="国内外多家vpn设备厂商批量漏洞(续集二)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-01-20 09:43</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">cnvd确认并复现所述情况，已经分别根据测试用例按厂商整理通报，拟联系软件生产厂商处置，由于存在代码同源情况，对于oem源暂不认定。同时对电信，教育，政府部门案例进行分类整理，拟分别通报基础电信企业，教育网应急组织和下发各分中心处置。<br />
+<br />
+rank 40+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48960";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

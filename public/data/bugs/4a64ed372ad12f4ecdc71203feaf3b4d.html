@@ -1,0 +1,632 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		去哪儿任意文件读取（基本可重构该系统原工程）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		去哪儿任意文件读取（基本可重构该系统原工程）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/shine">shine</a> 
+</li><li>提交时间：		2012-05-19 22:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-05-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-05-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-08：	细节向普通白帽子公开<br/>
+									2012-06-18：	细节向实习白帽子公开<br/>
+									2012-07-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"> <br />
+ 配置失误导致任意文件读取（除了web容器能解析的脚本文件类型！）。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"> <br />
+<br />
+ 看这个漏洞（以后不要忽视小问题哦！）： <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-06843">WooYun: 去哪儿网某分站SVN信息泄露</a> （核心的优势体现出来了！^-^）<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（@xsser 这样不算是重复提交同一个问题吧？也算是发现新危害了（每个人的认识是不一样的），十天了漏洞还未修复。）<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ 可读取到WEB-INF目录下文件,那么这个系统结构基本就明朗了（同时分层结构的缺点也体现出来了！）<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+先读取Tomcat容器的web.xml（因为你们网站web服务器架构基本都是Nginx + Tomcat），以便了解应用框架类型及结构：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+http://affiliate.qunar.com/affiliate/WEB-INF/web.xml<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1921030174d6a0742cb2693d4a749b26e0b561f5.png" target="_blank"><img src="../images/1921030174d6a0742cb2693d4a749b26e0b561f5.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+里面一共有两个struts1的配置文件：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+/WEB-INF/struts-config.xml,/WEB-INF/struts-front-config.xml<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+一个是管理应用的配置文件；另一个用户应用的配置文件<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+只看管理应用的配置文件：struts-config.xml，这样我们就可以遍历所有的class文件了，找到登录Action的class文件（所以重构这个小应用系统就轻松加愉快了！<br />
+<br />
+<br />
+<br />
+Action（反编译）、DTO（配置文件中字段及反编译dto类均可获得，）、DAO（不喜欢用hibernate，可自己写jdbc）整个工程就出来了！哈哈！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+）：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+http://affiliate.qunar.com/affiliate/WEB-INF/struts-config.xml<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19211343f360e9e43d7877195bc997b334ae5ff7.png" target="_blank"><img src="../images/19211343f360e9e43d7877195bc997b334ae5ff7.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+下载该类文件并反编译：<br />
+<br />
+<br />
+<br />
+http://affiliate.qunar.com/affiliate/WEB-INF/classes/com/qunar/affiliate/actions/LogonAction.class<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>package com.qunar.affiliate.actions;<br />
+<br />
+import com.qunar.affiliate.controller.UserController;<br />
+import com.qunar.affiliate.model.User;<br />
+import javax.servlet.http.HttpServletRequest;<br />
+import javax.servlet.http.HttpServletResponse;<br />
+import javax.servlet.http.HttpSession;<br />
+import org.apache.struts.action.Action;<br />
+import org.apache.struts.action.ActionForm;<br />
+import org.apache.struts.action.ActionForward;<br />
+import org.apache.struts.action.ActionMapping;<br />
+import org.apache.struts.action.DynaActionForm;<br />
+<br />
+public class LogonAction extends Action<br />
+{<br />
+  static final String logon_user = &quot;affiliate_user&quot;;<br />
+<br />
+  public ActionForward execute(ActionMapping arg0, ActionForm arg1, HttpServletRequest arg2, HttpServletResponse arg3)<br />
+    throws Exception<br />
+  {<br />
+    DynaActionForm aform = (DynaActionForm)arg1;<br />
+    UserController uc = new UserController();<br />
+    User user = uc.validateUser(aform.getString(&quot;name&quot;), aform.getString(&quot;password&quot;));<br />
+    if (user != null)<br />
+    {<br />
+      arg2.getSession().setAttribute(&quot;affiliate_user&quot;, user);<br />
+      return arg0.findForward(&quot;success&quot;);<br />
+    }<br />
+<br />
+    return arg0.findForward(&quot;failed&quot;);<br />
+  }<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+然后，找到UserController这个类文件并反编译，得到了惊喜：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>package com.qunar.affiliate.controller;<br />
+<br />
+import com.qunar.affiliate.model.User;<br />
+import com.qunar.affiliate.util.Encrypt;<br />
+import com.qunar.affiliate.util.HibernateUtil;<br />
+import org.apache.log4j.Logger;<br />
+import org.hibernate.Criteria;<br />
+import org.hibernate.SessionFactory;<br />
+import org.hibernate.Transaction;<br />
+import org.hibernate.classic.Session;<br />
+import org.hibernate.criterion.Example;<br />
+<br />
+public class UserController<br />
+{<br />
+  static Logger logger = Logger.getLogger(UserController.class);<br />
+<br />
+  public static void main(String[] args)<br />
+  {<br />
+    UserController controller = new UserController();<br />
+    if (args[0].equals(&quot;store&quot;)) {<br />
+      controller.createAndStoreUser(&quot;jingyi.zhang&quot;, &quot;密码隐藏&quot;);<br />
+    }<br />
+    else if (args[0].equals(&quot;list&quot;))<br />
+    {<br />
+      User localUser = controller.validateUser(&quot;qiang.zhou&quot;, &quot;密码隐藏&quot;);<br />
+    }<br />
+  }<br />
+<br />
+  public User createAndStoreUser(String name, String password)<br />
+  {<br />
+    Session session = null;<br />
+    try {<br />
+      session = HibernateUtil.getSessionFactory().openSession();<br />
+      session.beginTransaction();<br />
+      User user = new User();<br />
+      user.setName(name);<br />
+      user.setHashed_password(Encrypt.change(&quot;SHA&quot;, password));<br />
+      session.save(user);<br />
+      session.getTransaction().commit();<br />
+      User localUser1 = user;<br />
+      return localUser1;<br />
+    }<br />
+    finally {<br />
+      if (session != null) try { session.close(); } catch (Throwable t) { logger.error(&quot;UserController close session failed!&quot;, t); } <br />
+    }<br />
+    throw localObject;<br />
+  }<br />
+<br />
+  public User validateUser(String name, String password) {<br />
+    Session session = null;<br />
+    try {<br />
+      session = HibernateUtil.getSessionFactory().openSession();<br />
+      session.beginTransaction();<br />
+      User user = new User();<br />
+      user.setName(name);<br />
+      user.setHashed_password(Encrypt.change(&quot;SHA&quot;, password));<br />
+      User vu = (User)session.createCriteria(User.class).add(Example.create(user)).uniqueResult();<br />
+      session.getTransaction().commit();<br />
+      User localUser1 = vu;<br />
+      return localUser1;<br />
+    }<br />
+    finally {<br />
+      if (session != null) try { session.close(); } catch (Throwable t) { logger.error(&quot;UserController close session failed!&quot;, t); } <br />
+    }<br />
+    throw localObject;<br />
+  }<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+调试用的两个管理员帐号都在里面，未去掉!<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+进入去哪儿联盟推广管理页面，只看图，危害自己看：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+http://affiliate.qunar.com/affiliate/logon.jsp<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19213029fa370675205aa1feebfdd909c5db95af.png" target="_blank"><img src="../images/19213029fa370675205aa1feebfdd909c5db95af.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/192130567622aa4bfb8c358e2d1a8cb483ed2721.png" target="_blank"><img src="../images/192130567622aa4bfb8c358e2d1a8cb483ed2721.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/192131258d5df901deebb4513b966a7d1cc0fc83.png" target="_blank"><img src="../images/192131258d5df901deebb4513b966a7d1cc0fc83.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19213145cc8751a5198a8179c70ef3e55408be73.png" target="_blank"><img src="../images/19213145cc8751a5198a8179c70ef3e55408be73.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1921320538e435912e3aaea030e7d71d2b716c6d.png" target="_blank"><img src="../images/1921320538e435912e3aaea030e7d71d2b716c6d.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（这要是拿去挂点什么就挣了！开个玩笑！）<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+我们继续！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+同时又发现了这行代码，数据层用的是hibernate框架：<br />
+<br />
+<br />
+<br />
+</p><pre><code>session = HibernateUtil.getSessionFactory().openSession();</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+那数据库配置就暴露了，根据通常hibernate配置文件位置习惯找到了它：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+http://affiliate.qunar.com/affiliate/WEB-INF/classes/hibernate.cfg.xml<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;hibernate-configuration&gt;<br />
+&lt;session-factory&gt;<br />
+&lt;!-- Database connection settings --&gt;<br />
+&lt;property name=&quot;connection.driver_class&quot;&gt;com.mysql.jdbc.Driver&lt;/property&gt;<br />
+&lt;property name=&quot;connection.url&quot;&gt;jdbc:mysql://l-aff2.隐藏.隐藏.qunar.com/affiliate?characterEncoding=utf-8&lt;/property&gt;<br />
+&lt;property name=&quot;connection.username&quot;&gt;affiliate_new&lt;/property&gt;<br />
+&lt;property name=&quot;connection.password&quot;&gt;密码隐藏&lt;/property&gt;<br />
+&lt;!-- JDBC connection pool (use the built-in) --&gt;<br />
+&lt;!--&lt;property name=&quot;connection.pool_size&quot;&gt;10&lt;/property&gt;--&gt;<br />
+<br />
+&lt;!--  hibernate c3p0  --&gt;<br />
+&lt;property name=&quot;hibernate.connection.provider_class&quot;&gt;org.hibernate.connection.C3P0ConnectionProvider&lt;/property&gt;<br />
+&lt;property name=&quot;hibernate.c3p0.max_size&quot;&gt;10&lt;/property&gt;<br />
+&lt;property name=&quot;hibernate.c3p0.min_size&quot;&gt;2&lt;/property&gt;<br />
+&lt;property name=&quot;hibernate.c3p0.timeout&quot;&gt;1800&lt;/property&gt;<br />
+&lt;property name=&quot;hibernate.c3p0.max_statements&quot;&gt;100&lt;/property&gt;&lt;property name=&quot;hibernate.c3p0.idle_test_period&quot;&gt;3000&lt;/property&gt;&lt;property name=&quot;hibernate.c3p0.acquire_increment&quot;&gt;2&lt;/property&gt;<br />
+&lt;!-- SQL dialect --&gt;<br />
+&lt;property name=&quot;dialect&quot;&gt;org.hibernate.dialect.MySQLDialect&lt;/property&gt;<br />
+&lt;!-- Enable Hibernate&#039;s automatic session context management --&gt;<br />
+&lt;property name=&quot;current_session_context_class&quot;&gt;thread&lt;/property&gt;<br />
+&lt;!-- Disable the second-level cache  --&gt;<br />
+&lt;property name=&quot;cache.provider_class&quot;&gt;org.hibernate.cache.NoCacheProvider&lt;/property&gt;<br />
+&lt;!-- Echo all executed SQL to stdout --&gt;<br />
+&lt;property name=&quot;show_sql&quot;&gt;true&lt;/property&gt;<br />
+&lt;!-- Drop and re-create the database schema on startup --&gt;<br />
+&lt;!--&lt;property name=&quot;hbm2ddl.auto&quot;&gt;create&lt;/property&gt;--&gt;<br />
+&lt;mapping resource=&quot;com/qunar/affiliate/model/user.hbm.xml&quot;/&gt;<br />
+&lt;/session-factory&gt;<br />
+&lt;/hibernate-configuration&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+不过数据连接域名指向的是内网，让哥失望了：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1921493616ec9a947c7ea6d59d9fb4a474d7ea68.png" target="_blank"><img src="../images/1921493616ec9a947c7ea6d59d9fb4a474d7ea68.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+没什么技巧，不了解j2ee体系的可以普及一下！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">另外，附带几处小问题：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+1、页面访问权限控制问题<br />
+<br />
+<br />
+<br />
+http://u.qunar.com/left.jsp<br />
+<br />
+<br />
+<br />
+http://u.qunar.com/direct/regUnion.jsp<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2、又一处test站长弱口令：<br />
+<br />
+<br />
+<br />
+test test<br />
+<br />
+<br />
+<br />
+ <br />
+<br />
+3、一处js回调时xss<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19215823034a6095994c1875594ca3c81b13243e.png" target="_blank"><img src="../images/19215823034a6095994c1875594ca3c81b13243e.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">发现你们应用层的安全问题很严重（整体安全架构相对还可以），开发及维护人员都要普及一下安全意识！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+这次准备送什么礼物了（上次听说有别的东西送的）？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/shine" title="shine">shine</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07329" title="去哪儿任意文件读取（基本可重构该系统原工程）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-05-19 22:26</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢，我们会尽快处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7329";
+var bugRating="2";
+var myRating="";
+var ratingCount="5";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

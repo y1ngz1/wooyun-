@@ -1,0 +1,424 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		我是如何秒杀纽曼K1的  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		我是如何秒杀纽曼K1的  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/horseluke">horseluke</a> 
+</li><li>提交时间：		2013-04-01 17:08</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-06：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">如果说网站本身不包含显著高危漏洞的话，那么业务逻辑流程漏洞一定会上升为困扰之最。纵观各种业务流程漏洞，可以看出它与高危漏洞有所不同的是：（1）问题表现多种多样，无法标准化检测，以及标准化修复；（2）证明或者影响过程往往更易被用户参与感知，也因此更容易为媒体描述和报道，从而造成更加不良的影响；（3）其它等等…...<br />
+<br />
+从跟踪了几天的情况来看，纽曼为了这次K1秒杀，做了不少架构上、甚至技术对抗上的准备，技术人员甚至于周日接近晚上11点还进行了一次服务器维护，可以肯定的说，确实是非常用心，确实希望做到公平。但很不幸，业务逻辑漏洞毁了一切梦想，虽然也顺带把我给愚人了一把，以为漏洞没戏了 -_-|| 。<br />
+<br />
+在这次实践TK的&quot;焉知攻，未知防&quot;、站在前端攻击者角度进行后端防御的思考，也让自己受益匪浅。虽然此处不讨论这种秒杀这种营销策略对企业的影响，但真心说一句：企业还是不要随便自己搞秒杀，问题多多。<br />
+<br />
+这次秒杀仅使用浏览器+前端js简易脚本（各位别见笑我的脚本写得差…...）。欲知如何操作，请看下文。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">（PS：纽曼看此文前请把这个大漏洞给修了，否则这个洞修了等于没修： <a target="_blank" href=" <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-020845">WooYun: 纽曼手机官网注入可致秒杀插队（或用户地址泄露）</a> ">WooYun: 纽曼手机官网注入可致秒杀插队（或用户地址泄露）</a>  ）<br />
+<br />
+===========================<br />
+<br />
+<br />
+<br />
+问题根源：www.newman.mobi 的纠结业务体系和不当的程序结合<br />
+<br />
+<br />
+<br />
+从www.newman.mobi 的摸底情况来看，用户订单和商品管理采用了改动过的ecshop，而秒杀项目“午市”则采取了精简过的phpcms。两者的逻辑通过某些共用的session和缓存等传递。而且还有一个大家可能都想不到的亮点，那就是用了redis作缓存器和k-v存储（其实我很惊叹传统企业敢起用nosql）。<br />
+<br />
+<br />
+<br />
+以上架构表明，程序员还是有功底的，做过程序结合的人都深感不易（所以认真建议，不要炒人）。但问题是，过分关注架构，可能会导致程序结合不当，导致马奇诺防线问题的产生——你以为大家都会走设定好的通道，结果人家可以抄另一条路达到目的。<br />
+<br />
+<br />
+<br />
+当然不排除做这种结合，也是因为业务体系的纠结所致——我总不能废掉旧项目啊？！所以说，程序员其实很惨的，经常面临历史遗留的情况。当然，攻击者可不管你这些，目的达到，就OK。<br />
+<br />
+<br />
+<br />
+那么，导致这次秒杀的业务逻辑漏洞，出现了几条通道呢？答案是，两条。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+===========================<br />
+<br />
+<br />
+<br />
+问题具体分析：逻辑“生成纽曼K1订单”出现了两条截然不同的通道<br />
+<br />
+<br />
+<br />
+通道一问题：秒杀通道逻辑过早暴露、验证码可多次使用、没有限制重试次数<br />
+<br />
+<br />
+<br />
+纽曼K1秒杀在前几天就进行了宣传，为此，许多人跑去秒杀频道进行秒杀，不过直到2013-3-31之前，都没发现要输入验证码。其实，K1秒杀的逻辑，已经隐藏页面里面了，只不过关键逻辑注释掉了。而且注释的逻辑中出现了“qiangflow.php”，表明后面要走ecshop的通道，间接显示了和通道二的关系。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0116491222ec2c76480212207d9936bfa0c6a2e8.png" target="_blank"><img src="../images/0116491222ec2c76480212207d9936bfa0c6a2e8.png" alt="tongdao1_code.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+虽然这段逻辑在4.1的凌晨时分，替换成正式的版本，不过，大体逻辑没变，所以半自动秒杀脚本就在上班的公交车上，修改完毕。这个半自动秒杀脚本的作用，就是输入验证码后，重复快速提交抢位。由于验证码只要输入正确、且不刷新区域，就可多次使用，并且程序似乎没有限制重试次数，所以设想的通道一攻击逻辑是，到了11点58分00秒，就拉一次验证码，填写后等待12点整点快速重复提交。<br />
+<br />
+<br />
+<br />
+不过这里纽曼的程序员做了一次挺奇葩、但不得不说颇为有效的防御：没在秒杀时间内，这个验证码是空白的。这个应该是防御提前进行自动化验证码破解的尝试，也导致了后面攻击的时候，由于通道一的高并发堵塞，再加上服务器配置不当，导致验证码多次502，获取得太慢了，导致攻击最终失败……想法是美好的，现实是悲惨的...<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+通道二问题：ecshop购买商品逻辑通道仍有效、没有限制重试次数<br />
+<br />
+<br />
+<br />
+通道二其实是在通道一上发现的。在通道一的秒杀页面中，点击商品图片，可以跳到另外一个页面。更确切点来讲，在2013-3-31及之前的秒杀中，都是跳到通道二来完成的，通道一只是负责展现操作：<br />
+<br />
+<br />
+<br />
+http://www.newman.mobi/default.php?m=default&amp;c=shop&amp;a=item&amp;id=xx<br />
+<br />
+<br />
+<br />
+这个页面也可以秒杀商品，提交的通道正是ecshop的购买商品通道，还没有限制重试次数，这样就华丽绕过了用精简版phpcms的秒杀程序的后端限制；并且更为重要的是，它的限制重复提交逻辑放在前端，还非常简单，攻击者最喜欢了：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01164925e679601051d8af9cc2c30fbcdf51a53d.png" target="_blank"><img src="../images/01164925e679601051d8af9cc2c30fbcdf51a53d.png" alt="tongdao2_common_js.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+所以，设想的通道二攻击手法，是到了那天的11点20分00秒，直接打开通道二页面，然后到了11点59分59秒，将cTime重置到-100000，再重复提交addToCart即可。<br />
+<br />
+<br />
+<br />
+但是，高并发的问题，导致了这条通道也差点夭折…...<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+===========================<br />
+<br />
+<br />
+<br />
+其他问题：<br />
+<br />
+<br />
+<br />
+（1）redis端口对外暴露可访问<br />
+<br />
+<br />
+<br />
+www.newman.mobi 和 bbs.newman.mobi 的redis端口6379，可以任意telnet进入操作管理。不过，在2013年3月31日22点50分前后，线上貌似切换到其它有auth的端口了（这就是之前说“周日接近晚上11点还进行了一次服务器维护”的猜测来由）。这是切换前进行monitor的输出：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01164945541a1450420ffaead8f1d246feeee138.png" target="_blank"><img src="../images/01164945541a1450420ffaead8f1d246feeee138.png" alt="redis_1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（2）mysql端口对外暴露，并且留下一个高权限无限制连接账号<br />
+<br />
+<br />
+<br />
+承接 <a target="_blank" href=" <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-020845">WooYun: 纽曼手机官网注入可致秒杀插队（或用户地址泄露）</a> ">WooYun: 纽曼手机官网注入可致秒杀插队（或用户地址泄露）</a>  ，进行了一些更细致的分析，发现mysql端口对外暴露，且留下一个极危险的高权限无限制连接账号：&#039;newmantest&#039;@&#039;%&#039;。虽然无法得知密码，但如果有足够的时间、或者为离职员工，也许就能够知道这个账号的密码是什么，从而在不知情的情况下对数据库产生破坏。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（3）精简版phpcms、ecshop均没有关闭错误，攻击者可借此了解系统运作情况。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0116495817ccfa8725de7d64bbe0fbc6f8bc0308.png" target="_blank"><img src="../images/0116495817ccfa8725de7d64bbe0fbc6f8bc0308.png" alt="redis_exception.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">前期准备：<br />
+<br />
+<br />
+<br />
+（1）注册两个测试账号<br />
+<br />
+（2）安装chrome浏览器、安装插件Tampermonkey<br />
+<br />
+（3）编写测试脚本，然后让Tampermonkey以&lt;script&gt;插入到对应通道的页面上。<br />
+<br />
+<br />
+<br />
+通道一（http://www.newman.mobi/miaosha/ ）的测试脚本，关键点是如何自动弹出验证码和自动重复提交。代码见：http://t.cn/zTAyftL<br />
+<br />
+<br />
+<br />
+通道二（http://www.newman.mobi/default.php?m=default&amp;c=shop&amp;a=item&amp;id=xx  ）的测试脚本，关键点是如何取消addToCart的重试限制。代码见：http://t.cn/zTAyfty<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+实际情况（通道一）：<br />
+<br />
+<br />
+<br />
+很悲剧的是，通道一在到达12点前后，出现了高峰拥堵引发了多次的502 Bad Gateway。所以，获取到验证码，也是10秒后的事情，所以即使提交，也已经不可能成功了...<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/011650400a041207ac420932da497da421efea35.png" target="_blank"><img src="../images/011650400a041207ac420932da497da421efea35.png" alt="now_tongdao1_1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+实际情况（通道二）：<br />
+<br />
+<br />
+<br />
+程序员显然考虑到了通道二的问题，所以直接屏蔽了id=72的页面。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0116510578bf506d814cd09dd4cbd4342de5ac0a.png" target="_blank"><img src="../images/0116510578bf506d814cd09dd4cbd4342de5ac0a.png" alt="now_tongdao2_1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+但是…….我可以打开id=55的页面啊。于是乎按照流程继续走，很悲剧的是，通道一显然影响了通道二，多次出现如下错误：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0116511668922dc08a01dfa5a5efc01242e0f12c.png" target="_blank"><img src="../images/0116511668922dc08a01dfa5a5efc01242e0f12c.png" alt="now_tongdao2_2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+难道此路不通？还是程序员从数据库源头直接断开了这条通道？多次无果之后，放弃了，以为所有攻击用例都测试失败…<br />
+<br />
+<br />
+<br />
+但是，20多分钟后，等拥堵情况稍好后，返回通道二进行了自动化重试，结果在多次“对不起，该商品已经下架”的提示下…...竟然成功了……<br />
+<br />
+<br />
+<br />
+但是这个订单可否成功通过，我是心里没底的。作为白帽子，也只能测试到这里了。截止漏洞提交前，仍无法确定该订单是否有效。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01165125754e8ba7d127cd866c3ce6a5235fa999.png" target="_blank"><img src="../images/01165125754e8ba7d127cd866c3ce6a5235fa999.png" alt="now_tongdao2_3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/011651418cdd0ea333833c30387dbcfdbc0043bf.png" target="_blank"><img src="../images/011651418cdd0ea333833c30387dbcfdbc0043bf.png" alt="now_tongdao2_4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01165152c6d0bb5e92b70d0f321a74fb08429b00.png" target="_blank"><img src="../images/01165152c6d0bb5e92b70d0f321a74fb08429b00.png" alt="now_tongdao2_5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">回头来看，纽曼有一个防御是值得借鉴的，那就是没在秒杀时间内不放出验证码（显示为空白）。这种防御提前自动化验证码破解的尝试值得肯定，但在通道一的大部分逻辑都被清晰掌握的情况下有多少效果，个人是存在疑惑的。<br />
+<br />
+<br />
+<br />
+另一方面，服务器在高并发下频繁出现的502、数据库和redis连接失败，多多少少挡住了前端脚本攻击的脚步，不知道这算是喜事还是坏事-_-||。但从程序员的角度来看，这么多失败，也许是因为架构搞得太复杂、引发高并发下的雪崩。纽曼的IT工程师应当要全面评估这种架构是否真的合理了。<br />
+<br />
+<br />
+<br />
+回到正题。针对这些问题，个人的修复建议如下：<br />
+<br />
+<br />
+<br />
+（1）统一秒杀通道。现在很明显为了做活动，出现了多条通道的情况，理应在关键处（尤其是提交秒杀的请求处）统一。<br />
+<br />
+（2）关键操作要有重试限制，而且必须是服务器端的重试限制。<br />
+<br />
+（3）验证码一次一用，不管正确与否。<br />
+<br />
+（4）不该有的代码应该坚决删除，不要仅注释就以为ok。反正有svn等版本控制，怕啥代码丢失...<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+其它问题的建议：<br />
+<br />
+（1）redis端口和mysql端口进行ip访问限制<br />
+<br />
+（2）删除newmantest测试账号，或者加以ip限制<br />
+<br />
+（3）屏蔽线上多出的错误显示（包括php错误、mysql错误等）<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/horseluke" title="horseluke">horseluke</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021076" title="我是如何秒杀纽曼K1的">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-04-01 17:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21076";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

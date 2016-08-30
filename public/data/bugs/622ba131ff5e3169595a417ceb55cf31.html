@@ -1,0 +1,391 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 8  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 8  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2013-03-24 09:25</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-14：	细节向普通白帽子公开<br/>
+									2013-04-24：	细节向实习白帽子公开<br/>
+									2013-05-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">接着上一个漏洞，不知道QQ空间的所有文件都是一个团队在写的，俺抱着“来自同一个团队的东西可能会有类似问题”的思想，不知廉耻的又去下载了另外一个文件，于是。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 我们下载这个音乐播放器的FLASH。http://ctc.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf<br />
+<br />
+<br />
+<br />
+然后反编译出来。和上一篇一样，我们继续关注的是 Loader ，因此我们搜索 .load(<br />
+<br />
+<br />
+<br />
+搜索到以下内容：<br />
+<br />
+<br />
+<br />
+public class IconBox extends MovieClip {<br />
+<br />
+		.....<br />
+<br />
+	 public function showIcon(_arg1:Object):void{<br />
+<br />
+		.....<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2401294005881a1b8e66a066f67b43453a0bcbf2.jpg" target="_blank"><img src="../images/2401294005881a1b8e66a066f67b43453a0bcbf2.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到这里 load了一个 iconPath, 而iconPath来自于song.singerUrl<br />
+<br />
+<br />
+<br />
+2. 我们来看看 song.singerUrl 来自哪里。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2401295433dde408a2577804e5166cba7b6c54b8.jpg" target="_blank"><img src="../images/2401295433dde408a2577804e5166cba7b6c54b8.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上图说明 song 来自 showIcon的参数，继续追  showIcon(<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/240130048aecfae9ab81730b22a8f5ba25943893.jpg" target="_blank"><img src="../images/240130048aecfae9ab81730b22a8f5ba25943893.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+说明数据来自于SingleSongPanel类的 item 属性。 那么我们接着可以搜索 item = <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2401301379d19349f0fad45034e21d198fb655a0.jpg" target="_blank"><img src="../images/2401301379d19349f0fad45034e21d198fb655a0.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这次我们来到了Panel类的create函数，继续定位 create(<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2401302578903e7a98e7aaedcfca04d030d4931b.jpg" target="_blank"><img src="../images/2401302578903e7a98e7aaedcfca04d030d4931b.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看出，数据来自于MusicFlash类的setSwfSongList函数，看这函数名称，我们应该是快追溯到尽头了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/24013036128869b8e41ac4c7354225f04e454501.jpg" target="_blank"><img src="../images/24013036128869b8e41ac4c7354225f04e454501.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最后，setSwfSongList 给通过addCallback交给了JS。这样一来，我们在FLASH之中的探索之旅就告一段落咯<br />
+<br />
+<br />
+<br />
+3. 那么在JS中，哪里调用了setSwfSongList呢？我们来搜索下资源。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2401304521fad8122be310fe9b9a02f421af134f.jpg" target="_blank"><img src="../images/2401304521fad8122be310fe9b9a02f421af134f.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如上图，我们定位到了http://ctc.qzs.qq.com/music/musicbox_v2_1/js/musicblog_player.js这个文件中的initSwfData()函数。从图中不难看出，setSwfSongList的参数数据来自于 g_songList 数组。<br />
+<br />
+<br />
+<br />
+因此，我们找找g_songList的数据来自于哪里。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/240130581ae4e40fa54d19fc2a0d297a20836acc.jpg" target="_blank"><img src="../images/240130581ae4e40fa54d19fc2a0d297a20836acc.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如上图所示，在不远处，我们找到了 initMusicData 这个函数中就有我们想要的东西。可以清楚的看出数据是以 songInfo --&gt; songList --&gt; g_songList 的方向流入的。并且在songInfo这个对象中，我们看到了 singerURL，这个不正是我们想要控制的数据么？那么它可不可以控制呢？<br />
+<br />
+<br />
+<br />
+我们来重点关注这个 singerURL。<br />
+<br />
+<br />
+<br />
+</p><pre><code>singerUrl: &quot;http://imgcache.qq.com/music/photo/singer/&quot; + sT[j + 4] % 100 + &quot;/singerpic_&quot; + sT[j + 4] + &quot;_0.jpg&quot;</code></pre><p class='detail'> <br />
+<br />
+<br />
+<br />
+其中sT[j+4]这个部分是也许可以控制的，sT[j + 4] % 100 得到的是数字，无法控制。<br />
+<br />
+<br />
+<br />
+代码上方不远处，可以看到sT来自于initMusicData的arguments（参数数组）<br />
+<br />
+<br />
+<br />
+</p><pre><code>sT = arguments[i].replace(/\[music\]/g, &quot;&quot;).replace(/\[\/music\]/g, &quot;&quot;).split(&quot;|&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+因而，我们需要继续追踪 哪里调用了initMusicData。搜索资源....<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/240131125ca42aea89c06084af6c79987116939e.jpg" target="_blank"><img src="../images/240131125ca42aea89c06084af6c79987116939e.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如上图：我们定位到了 http://ctc.qzs.qq.com/qzone/newblog/v5/script/common.js 中的QZBlog.Logic.initMusicPlayer 函数中,initMusicData的数据来自于musicParams，<br />
+<br />
+<br />
+<br />
+向上不远可以看到 musicParams 的数据则来自于 ubb 这个属性。<br />
+<br />
+<br />
+<br />
+因为之前我在乌云报过这里一处缺陷，所以对这段代码还是很熟悉的，如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/240131228a24e229a499b8ac0d074a67d590587e.jpg" target="_blank"><img src="../images/240131228a24e229a499b8ac0d074a67d590587e.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 这下我们就知道，我们的数据来自于 name=&quot;musicFlash**&quot; 的标记的 ubb属性里了。<br />
+<br />
+<br />
+<br />
+我们查看一下我们插入过音乐的日志中的HTML代码, 如下:<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/240131324c6b261790f20969f6b075b575510d64.jpg" target="_blank"><img src="../images/240131324c6b261790f20969f6b075b575510d64.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+根据上面的代码分析，来自于UBB的数据，被以 &quot;|&quot; 分割后，得到sT数组，我们需要控制的是sT[j+4]，即 sT[4] (第一次循环中 j=0)，在UBB中，第4个位置的内容是 &quot;96&quot;。<br />
+<br />
+<br />
+<br />
+5. 接着我们就是要操控 &quot;96&quot;这部分内容。 这里我直接说我的操控方法。<br />
+<br />
+<br />
+<br />
+我们将&quot;96&quot;修改为 &quot;96/../../../../../1.swf?a=&quot;，这样一来，即：<br />
+<br />
+<br />
+<br />
+sT[j+4]=&quot;96/../../../../../1.swf?a=&quot;, 所以：<br />
+<br />
+<br />
+<br />
+singerUrl = &quot;http://imgcache.qq.com/music/photo/singer/&quot; + sT[j + 4] % 100 + &quot;/singerpic_&quot; + sT[j + 4] + &quot;_0.jpg&quot; = &quot;http://imgcache.qq.com/music/photo/singer/NaN/singerpic_96/../../../../../1.swf&amp;a=_0.jpg&quot;<br />
+<br />
+<br />
+<br />
+也就是说，最后这个 singerUrl的地址，由于 ../../的作用，实际上变成了 http://imgcache.qq.com/1.swf?a=_0.jpg<br />
+<br />
+<br />
+<br />
+6. 有人会说，这又有什么用呢？ 这样确实没什么用，但是如果我们能够在 imgcache.qq.com 域名下找到一个存在缺陷的FLASH，结果就大大不同了。你别说，还真能找到！原因是腾讯大部分公用的FLASH基本都放在了这个域名下，所以要寻找还是能找到的。<br />
+<br />
+<br />
+<br />
+7. 比如说：我们找到了这个有点鸡肋的FLASH。<br />
+<br />
+<br />
+<br />
+http://imgcache.qq.com/qzone/app/controls/attachBar/templatePanel/templatePanel_3.0.swf<br />
+<br />
+<br />
+<br />
+在这个FLASH中，有一个参数facadeId是没过滤的，并且进入了ExternalInterface.call中，但是不幸的是，腾讯在初始化的函数中，加入了一段以下的代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>if (ExternalInterface.available){<br />
+                pathname = ExternalInterface.call(&quot;eval&quot;, &quot;window.location.pathname&quot;);<br />
+                if (((pathname.match(/\.swf$/i)) || (!(pathname)))){<br />
+                    return;<br />
+                };<br />
+            };</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这段代码的作用是， 当你直接打开 http://imgcache.qq.com/qzone/app/controls/attachBar/templatePanel/templatePanel_3.0.swf 的时候，由于pathname的结尾是swf，那么程序就不会继续往后执行了。<br />
+<br />
+<br />
+<br />
+不得不说，这也确实是一段解决FLASH XSS的好代码啊！<br />
+<br />
+<br />
+<br />
+8. 回到正题上来，由于我们这里是存储型的，那么拿上面这个鸡肋FLASH来使用，是一点问题都木有的～～，<br />
+<br />
+<br />
+<br />
+因而我们可以构造好以下的利用代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div&gt;&lt;object codeBase=&quot;http://fpdownload.macromedia.com/get/flashplayer/current/swflash.cab#version=8,0,0,0&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;410&quot; height=&quot;100&quot; src=&quot;http://ctc.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; bgcolor=&quot;#ffffff&quot; menu=&quot;true&quot; allowScriptAccess=&quot;always&quot; name=&quot;musicFlash**&quot; id=&quot;musicFlash0&quot; ubb=&quot;1130617|3|http://stream6.qqmusic.qq.com/13130617.wma|雨人|96/../../../../../qzone/app/controls/attachBar/templatePanel/templatePanel_3.0.swf?facadeId=((function(){alert(1);return {onReady:function(){}}})())&amp;a=|周华健|0&quot; class=&quot;blog_music&quot;&gt;&lt;param name=&quot;movie&quot; value=&quot;http://ctc.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;data&quot; value=&quot;http://ctc.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;bgColor&quot; value=&quot;#ffffff&quot; /&gt;&lt;param name=&quot;wmode&quot; value=&quot;transparent&quot; /&gt;&lt;param name=&quot;menu&quot; value=&quot;true&quot; /&gt;&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt;&lt;/object&gt; &lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+发表日志，用其它号看测试号日志，可以看到代码被成功执行。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/24013150c871cb069bd08409095955beb6ae80b2.jpg" target="_blank"><img src="../images/24013150c871cb069bd08409095955beb6ae80b2.jpg" alt="12.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">see details. It works in both IE and chrome. </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">sT[j + 4] 进入 singerURL前，先做个类型转换。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020565" title="QQ空间某功能缺陷导致日志存储型XSS - 8">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-03-25 11:32</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20565";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

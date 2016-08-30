@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		好孩子某处xss+任意文件上传  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		好孩子某处xss+任意文件上传  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/dyun">dyun</a> 
+</li><li>提交时间：		2012-09-20 16:59</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-11：	细节向普通白帽子公开<br/>
+									2012-10-21：	细节向实习白帽子公开<br/>
+									2012-11-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某处么有做任务过滤，存在存储型xss，某处上传也么有做任何过滤，导致可以上传任意文件</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 注册一个账户后，点击相册模块，上传图片处 <br />
+<br />
+   右击查看源码<br />
+<br />
+   上传按钮处查看<br />
+<br />
+&lt;div class=&quot;btn&quot;&gt;&lt;a href=&quot;#&quot; onclick=&quot;checkUploadInput();&quot; target=&quot;_self&quot;&gt;&lt;img src=&quot;/album/images/btn_upload.gif&quot; /&gt;&lt;/a&gt;&lt;/div&gt;<br />
+<br />
+   调用checkUploadInput<br />
+<br />
+   查看调用js处js代码<br />
+<br />
+   http://album.goodbaby.com/album/js/album.js<br />
+<br />
+</p><pre><code>function checkUploadInput() {<br />
+	var uploadfiles = document.getElementsByName(&#039;uploadfiles[]&#039;);<br />
+	var empty = true;<br />
+	for(i=0;i&lt;uploadfiles.length;i++) {<br />
+		var uploadfile = uploadfiles[i];<br />
+		if(uploadfile.value != &#039;&#039;) {<br />
+			empty = false;<br />
+			break;<br />
+		}<br />
+	}	<br />
+	if(document.getElementById(&#039;categoryid&#039;).value == &#039;&#039;) {<br />
+		alert(&#039;请选择分类!&#039;);<br />
+		document.getElementById(&#039;categoryid&#039;).focus();<br />
+	} else if(document.getElementById(&#039;albumid&#039;).value == &#039;&#039;) {<br />
+        alert(&#039;请选择相册!&#039;);<br />
+		document.getElementById(&#039;albumid&#039;).focus();<br />
+	} else if(empty) {<br />
+		alert(&#039;请选择上传的照牿!&#039;);<br />
+	} else {<br />
+	   if(document.getElementById(&#039;tags&#039;).value != &#039;&#039;){        <br />
+	       var patrn=/^[-.a-zA-Z0-9\s_\u4e00-\u9fa5]+$/;	      <br />
+           if(!patrn.exec(document.getElementById(&#039;tags&#039;).value)) {	      <br />
+              alert(&#039;标签不能包含特殊字符，比如‿/、[、]〿%〿*”之类的特殊符号!&#039;);<br />
+              document.getElementById(&#039;tags&#039;).focus();<br />
+              return;<br />
+	        }<br />
+      }<br />
+		popup(4,0);<br />
+		document.uploadform.submit();<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+   前台无任何过滤，上传文件后查看文件得到文件的地方，下载文件与原文件对比，发现文件么做任何处理。前台，后台没有过滤导致可上传任意文件。<br />
+<br />
+   我上传了一个一句话木马，地址没找到，不过记得之前有位已经暴力能猜解出上传后生成的文件名，然后推测出地址，忘了也就不折腾了。<br />
+<br />
+   上传带php脚本的jpg<br />
+<br />
+   http://photo.goodbaby.com/120920/14/U1112845528/55e04373cab5931a.jpg<br />
+<br />
+2. 然后上传文件抓包，发现post提交的时候包括文件流，照片分类，照片的tag都可以修改，此处只有tag做了正则判断，如果post提交过程中修改依然可导致存储型xss（没测试）<br />
+<br />
+3. 照片描述处存储型xss，该xss目测可能危害比较严重<br />
+<br />
+   照片描述处无任务过滤<br />
+<br />
+   漏洞证明<br />
+<br />
+   http://album.goodbaby.com/album/album_photo.php?photoid=69a5aa#viewpic<br />
+<br />
+   </p><p class="detail"><a href="../images/201628347ebe7754ff904d01ffd367d154352952.jpg" target="_blank"><img src="../images/201628347ebe7754ff904d01ffd367d154352952.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+   而用户上传的图片，又会更新在首页<br />
+<br />
+   http://album.goodbaby.com/album/album.php<br />
+<br />
+   </p><p class="detail"><a href="../images/201630424850306e9cad5af1dc1373cd0aa1ad37.jpg" target="_blank"><img src="../images/201630424850306e9cad5af1dc1373cd0aa1ad37.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+   如若我们上传一个性感图片，构造js收集cookie，坐等鱼上勾~~,嘿嘿!<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上传：<br />
+<br />
+http://photo.goodbaby.com/120920/14/U1112845528/55e04373cab5931a.jpg<br />
+<br />
+<br />
+<br />
+xss:<br />
+<br />
+ <br />
+<br />
+http://album.goodbaby.com/album/album_photo.php?photoid=69a5aa#viewpic </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/dyun" title="dyun">dyun</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012478" title="好孩子某处xss+任意文件上传">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：7 </p>
+													<p class="detail">确认时间：2012-09-21 16:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢，Xss问题WooYun-2012-12227已提交。图片上传问题已提交给相关同事处理中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12478";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

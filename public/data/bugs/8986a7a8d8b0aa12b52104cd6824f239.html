@@ -1,0 +1,241 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Discuz! X3.1 刷分系列漏洞 #1  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Discuz! X3.1 刷分系列漏洞 #1  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Coxxs">Coxxs</a> 
+</li><li>提交时间：		2014-01-22 09:12</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-25：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-11：	细节向普通白帽子公开<br/>
+									2014-03-03：	细节向实习白帽子公开<br/>
+									2014-04-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Discuz!X最新版本（及部分旧版本所存在的刷分漏洞）<br />
+今天论坛有个用户积分突然涨了特别多，一查日志，发现是以前在旧版发现的一个刷分洞。原本以为早就修复了，没想到还存在，那就提交上来吧。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在完成任务时（home.php?mod=draw&amp;do=view&amp;id=xx），任务先前的状态缺少判断<br />
+<br />
+<br />
+<br />
+完成任务的链接形如：<br />
+<br />
+</p><pre><code>home.php?mod=draw&amp;do=view&amp;id=xx</code></pre><p class='detail'><br />
+<br />
+这个地址最终在 source\class\class_task.php 中被处理<br />
+<br />
+约第370行：<br />
+<br />
+</p><pre><code>function draw($id) {<br />
+	global $_G;<br />
+	if(!($this-&gt;task = C::t(&#039;common_task&#039;)-&gt;fetch_by_uid($_G[&#039;uid&#039;], $id))) {<br />
+		showmessage(&#039;task_nonexistence&#039;);<br />
+	} elseif($this-&gt;task[&#039;status&#039;] != 0) {<br />
+		showmessage(&#039;task_not_underway&#039;);<br />
+	} elseif($this-&gt;task[&#039;tasklimits&#039;] &amp;&amp; $this-&gt;task[&#039;achievers&#039;] &gt;= $this-&gt;task[&#039;tasklimits&#039;]) {<br />
+		return -1;<br />
+	}<br />
+......<br />
+之后就是获得任务奖励了</code></pre><p class='detail'><br />
+<br />
+总觉得上面这一段少了些什么判断？我们对比下其他代码<br />
+<br />
+约第473行：<br />
+<br />
+</p><pre><code>function giveup($id) {<br />
+	global $_G;<br />
+	if($_GET[&#039;formhash&#039;] != FORMHASH) {<br />
+		showmessage(&#039;undefined_action&#039;);<br />
+	} elseif(!($this-&gt;task = C::t(&#039;common_task&#039;)-&gt;fetch_by_uid($_G[&#039;uid&#039;], $id))) {<br />
+		showmessage(&#039;task_nonexistence&#039;);<br />
+	} elseif($this-&gt;task[&#039;status&#039;] != &#039;0&#039;) {<br />
+		showmessage(&#039;task_not_underway&#039;);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+这一段是放弃任务的判断，我们看到如果 $this-&gt;task[&#039;status&#039;] != &#039;0&#039;,就是说任务没有开始的时候，是不能放弃任务的。<br />
+<br />
+但是，在上面那段获取任务奖励的代码中，并没有判断任务是否开始，造成了无需领取任务，就可以无限次数获取奖励。<br />
+<br />
+此漏洞还可以用于强行获取由于用户组不符，没有权限领取的任务的奖励。<br />
+<br />
+漏洞详细利用，请见漏洞证明。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1、新建一个任务，就选择红包类任务吧<br />
+<br />
+2、此时千万不要申请任务，而是进入任务详细页面（完成之后就不能刷了）<br />
+<br />
+</p><pre><code>home.php?mod=task&amp;do=view&amp;id=2</code></pre><p class='detail'><br />
+<br />
+这样就能看到任务详情了，任务的奖励是 威望+1。<br />
+<br />
+我们把地址改为领取任务奖励<br />
+<br />
+</p><pre><code>home.php?mod=task&amp;do=draw&amp;id=2</code></pre><p class='detail'><br />
+<br />
+打开这个地址，获得了 威望+1。<br />
+<br />
+不断刷新这个页面，即可不断获得奖励。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">在 source\class\class_task.php 中的 draw 函数部分，加入任务是否领取的判断<br />
+<br />
+<br />
+<br />
+即加上<br />
+<br />
+</p><pre><code>......<br />
+ elseif($this-&gt;task[&#039;status&#039;] != &#039;0&#039;) {<br />
+	showmessage(&#039;task_not_underway&#039;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这样，再次使用漏洞时，就会提示<br />
+<br />
+</p><pre><code>不是进行中的任务</code></pre><p class='detail'> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Coxxs" title="Coxxs">Coxxs</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049502" title="Discuz! X3.1 刷分系列漏洞 #1">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2014-01-22 11:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢。我们会尽快处理</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49502";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

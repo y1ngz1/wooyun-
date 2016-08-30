@@ -1,0 +1,203 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		支付宝登陆认证重放攻击漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		支付宝登陆认证重放攻击漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/青蛙君">青蛙君</a> 
+</li><li>提交时间：		2012-03-12 17:57</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-03-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-03-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-03-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-04-03：	细节向普通白帽子公开<br/>
+									2012-04-13：	细节向实习白帽子公开<br/>
+									2012-04-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">支付宝登陆认证的安全性主要依赖HTTPS的保密通信，其本身的登陆认证设计存在安全漏洞——使用固定的口令加密密钥，口令密文永远不变。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">支付宝登陆认证的安全性主要依赖HTTPS的保密通信，其本身的登陆认证设计存在安全漏洞——使用固定的口令加密密钥，口令密文永远不变。一旦HTTPS被截获解密，用户名和口令或者口令密文就泄漏了，这将被用于恶意重放攻击。然而遗憾的是HTTPS中的数据是很容易被截获的。<br />
+<br />
+通过设置浏览器HTTPS代理的方法获取HTTPS中的明文数据。工具Burp proxy.<br />
+<br />
+淘宝非控件登陆数据：<br />
+<br />
+</p><p class="detail"><a href="../images/121739387974bca801b33d3a4db40739b31b1567.jpg" target="_blank"><img src="../images/121739387974bca801b33d3a4db40739b31b1567.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看到淘宝非安全控件登陆是口令123qwe是明文传输的.<br />
+<br />
+支付宝控件登陆数据：<br />
+<br />
+</p><p class="detail"><a href="../images/121742212a65f9dc86a9822a28978d0b43efbbc2.jpg" target="_blank"><img src="../images/121742212a65f9dc86a9822a28978d0b43efbbc2.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看到用户名是明文，口令密文。据分析口令密文十六进制形式，长度是16的整数倍字节。如果输入密码1234567812345678，得到的密文是32字节，且前后16字节相等。很显然这是个8 byte的分组密码加密算法，符合3des加密算法的推测。既然是加密，肯定要有密钥。但是可以看到登陆前没密钥协商或密钥分配的过程，那么密钥要么在登陆数据中，要么就是固定密钥。经过不同时间不同多次发现口令密文永远不变，那么支付宝安全控件登陆将无法避免重放攻击。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">不用去研究复杂的加密算法，不用去寻找解密密钥。只要把password参数的值替换成成功登陆时的口令密文，就能骗过认证服务器正确登陆了。<br />
+<br />
+攻击方法使用Burp proxy的intercept功能，收到浏览器登陆请求包后修改相应字段数据，然后再forward给服务器。注意，如果数据长度发送了变化，请相应修改HTTP content-length。<br />
+<br />
+<br />
+<br />
+不用长传图片上证明了，只要按照上面的方法，必然能重现漏洞。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">任何信息安全相关的东西，不能依靠实现方法(算法)的保密性来保证安全，而是需要在实现方法和算法都公开的情况还依然能够保证其安全。<br />
+<br />
+对登陆认证实现的建议：<br />
+<br />
+1)	一次一密的公钥对<br />
+<br />
+每次登陆都由服务器生成一公钥对(private_key, public_key), 浏览器从服务器获取public_key, 用它加密口令。这样口令密文每次都在变，只有拥有私钥的服务器才能解密口令。韩国某知名游戏的网页登陆采用过这种登陆方法。<br />
+<br />
+2)	RSA公钥加密<br />
+<br />
+学习SSL，由客户端生成随机密钥Key，此key用服务器的公钥加密后发送到服务器，服务器用私钥解密得到密钥key。服务器和浏览器通过这个随机密钥key来保护登陆口令。<br />
+<br />
+3)	动态协商密钥<br />
+<br />
+据说RSA受专利保护, 使用要交专利费。为了绕开RSA专利，可以使用Diffie-Hellman协商一个加密密钥key，服务器和浏览器通过这个key来保护登陆口令。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/青蛙君" title="青蛙君">青蛙君</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-05209" title="支付宝登陆认证重放攻击漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2012-03-14 17:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-03-16：支付宝登录时密码被加密后使用HTTPS传输，保障在传输过程中不被窃取，在安全性足够保障用户账户安全。对于其中加密设计的部分细节，新版本做了进一步加强更新至最新版本即可。
+感谢青蛙君对支付宝安全的关注。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="5209";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

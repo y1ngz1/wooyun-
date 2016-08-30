@@ -1,0 +1,272 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcms v9  SQL注入漏洞（第二弹）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcms v9  SQL注入漏洞（第二弹）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/狗狗侠">狗狗侠</a> 
+</li><li>提交时间：		2013-12-16 11:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-20：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-06：	细节向普通白帽子公开<br/>
+									2014-01-26：	细节向实习白帽子公开<br/>
+									2014-03-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">null</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">第二次玩乌云，等待乌云发BB<br />
+<br />
+漏洞文件发生在phpcms\modules\member\index.php中392行<br />
+<br />
+ </p><pre><code>public function account_manage_info() { // account_manage_info方法，就是更新个人资料<br />
+		if(isset($_POST[&#039;dosubmit&#039;])) {<br />
+			//更新用户昵称<br />
+			$nickname = isset($_POST[&#039;nickname&#039;]) &amp;&amp; trim($_POST[&#039;nickname&#039;]) ? trim($_POST[&#039;nickname&#039;]) : &#039;&#039;; //存在真名名字就去掉2边空格<br />
+			if($nickname) {<br />
+				$this-&gt;db-&gt;update(array(&#039;nickname&#039;=&gt;$nickname), array(&#039;userid&#039;=&gt;$this-&gt;memberinfo[&#039;userid&#039;])); //存在$nickname这个变量就更新真实名字，漏洞发生在此处<br />
+				if(!isset($cookietime)) {<br />
+					$get_cookietime = param::get_cookie(&#039;cookietime&#039;);<br />
+				}  // 取出cookietime<br />
+				$_cookietime = $cookietime ? intval($cookietime) : ($get_cookietime ? $get_cookietime : 0);<br />
+				$cookietime = $_cookietime ? TIME + $_cookietime : 0;<br />
+				param::set_cookie(&#039;_nickname&#039;, $nickname, $cookietime);//这里设置cookie<br />
+			}<br />
+………………….//省略若干无关代码</code></pre><p class='detail'><br />
+<br />
+我们注册用户，然后修改个人信息<br />
+<br />
+http://127.0.0.1/index.php?m=member&amp;c=index&amp;a=account_manage_info&amp;t=1<br />
+<br />
+我们更新测试下，将带有’ （单引号的名字）带入数据库试试<br />
+<br />
+</p><p class="detail"><a href="../images/16105008fba6ef77a2e5181821a63933e5d06564.jpg" target="_blank"><img src="../images/16105008fba6ef77a2e5181821a63933e5d06564.jpg" alt="7600D0HT[R4WKIJZ22S44JR.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后我们看看数据库中对应表的更新<br />
+<br />
+</p><p class="detail"><a href="../images/1610510673e87b4a411fd8ee6359fe2602c7f3ef.jpg" target="_blank"><img src="../images/1610510673e87b4a411fd8ee6359fe2602c7f3ef.jpg" alt="A@V8PZLA)Y]E@K{H63C9YN4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后发现已经成功进入了数据库<br />
+<br />
+接下来我们要做的就是重新登录（必须重新注销登录，因为要用到这里重新登录的cookie）<br />
+<br />
+当我们重新登录的时候<br />
+<br />
+在phpcms\modules\member\index.php中543行<br />
+<br />
+	public function login() {<br />
+<br />
+		$this-&gt;_session_start();<br />
+<br />
+		//…..省略若干代码<br />
+<br />
+			param::set_cookie(&#039;auth&#039;, $phpcms_auth, $cookietime);<br />
+<br />
+			param::set_cookie(&#039;_userid&#039;, $userid, $cookietime);<br />
+<br />
+			param::set_cookie(&#039;_username&#039;, $username, $cookietime);<br />
+<br />
+			param::set_cookie(&#039;_groupid&#039;, $groupid, $cookietime);<br />
+<br />
+			param::set_cookie(&#039;_nickname&#039;, $nickname, $cookietime);<br />
+<br />
+     <br />
+<br />
+      //…..省略若干代码<br />
+<br />
+这里我们发现已经重新设置nickname的cookie了，而这里的$nickname也是从数据库里面取出来的。<br />
+<br />
+我们看phpcms\modules\comment\index.php中的post方法<br />
+<br />
+</p><p class="detail"><a href="../images/1610520806d13fd393a9f6152ffe9fa3e135be12.jpg" target="_blank"><img src="../images/1610520806d13fd393a9f6152ffe9fa3e135be12.jpg" alt="145MTVQOR06Q9{([X@7Y{N3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这里的$username变量是通过cookie过来的<br />
+<br />
+然后这个$username变量又做了些什么呢？<br />
+<br />
+在phpcms\modules\comment\index.php 100行处<br />
+<br />
+</p><p class="detail"><a href="../images/16105252dae054089927dcd5dbec610789afb66f.jpg" target="_blank"><img src="../images/16105252dae054089927dcd5dbec610789afb66f.jpg" alt="~IW[0]TC6_0E~51WD~VY2FE.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+发现这个它赋给了一个$data数组，然后进入了数据库，一个insert语句<br />
+<br />
+$comment-&gt;add()这样一个过程<br />
+<br />
+上面是一个提交评论的操作，我们的攻击思路是这样的<br />
+<br />
+当我们提交评论的时候，截取我们的数据包，将其中的username这个cookie值用我们nickname这个cookie值来代替，这样就起到了注入的效果了，我们测试下<br />
+<br />
+<br />
+<br />
+具体攻击过程就不演示了。。。<br />
+<br />
+贴一下官网测试的结果<br />
+<br />
+</p><p class="detail"><a href="../images/161054070ff23b0c1f81ceada8d378ffca93bd86.jpg" target="_blank"><img src="../images/161054070ff23b0c1f81ceada8d378ffca93bd86.jpg" alt="SG[()((Y7]4XF16N(K%PVL6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/161054070ff23b0c1f81ceada8d378ffca93bd86.jpg" target="_blank"><img src="../images/161054070ff23b0c1f81ceada8d378ffca93bd86.jpg" alt="SG[()((Y7]4XF16N(K%PVL6.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这个....在入数据库前做过滤吧，记得若干年前80vul的那句。。。一切变量都是有害的 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/狗狗侠" title="狗狗侠">狗狗侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046093" title="phpcms v9  SQL注入漏洞（第二弹）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-12-17 13:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46093";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

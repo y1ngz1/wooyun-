@@ -1,0 +1,212 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		团800重置任意用户密码（绕过限制）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		团800重置任意用户密码（绕过限制）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2013-07-28 09:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-29：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-08：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-18：	细节向普通白帽子公开<br/>
+									2013-08-28：	细节向实习白帽子公开<br/>
+									2013-09-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">测试了好久，团800重置任意用户密码，终于成功绕过限制</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试分析：<br />
+<br />
+在发送6位数字验证码到手机上后，会同时发送一个请求连接，这个连接有个参数timestamp，如timestamp=1374858328263，这个是发送验证码时的当前时间戳。<br />
+<br />
+然后会发送另一个请求，这个请求是返回到输入验证码的页面，这个请求里面就包含三个参数sms[expired_at]，sms[frequency]，sms[retry_at]，他们的值分别是过期时间戳，频率默认为120，重试时间戳。<br />
+<br />
+但是，这个里面的sms[expired_at]和sms[retry_at]的值，也就是时间戳，是随着前一个请求中的timestamp的值确定的。如timestamp=1374858328263，则sms[retry_at]的值就是1374859528263，timestamp和sms[retry_at]之间相差120秒。然后sms[expired_at]的值就是1374861328263，sms[retry_at]和sms[expired_at]相差180秒。<br />
+<br />
+通过两天的测试，在不改任何数据的情况下，到达sms[expired_at]中的时间后，验证码就会过期，但是当你把时间戳改大后，验证码的有效时间也就会响应的变长。但是这里的sms[frequency]不知道是干什么的，原先以为是timestamp和sms[retry_at]之间相差120秒，这个120秒相关，或者是限制的测试次数，但是改成1后，一样成功爆破，也许上面两种猜测都不正确。<br />
+<br />
+所以通过上面的分析，我们在第一次请求的timestamp中就把值，把时间戳设置大一些，然后，sms[expired_at]的值，也就是过期时间也会变得很大，这样可以绕过现在，进行破解验证码，方法过程如下。<br />
+<br />
+输入手机号：<br />
+<br />
+</p><p class="detail"><a href="../images/27233051ed4d07f430ec9c1939cdee29c11aba21.png" target="_blank"><img src="../images/27233051ed4d07f430ec9c1939cdee29c11aba21.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+选择通过手机找回方式。6位数字验证码就会发送到手机：<br />
+<br />
+</p><p class="detail"><a href="../images/272331347c96e4d47166807998ecfa0642f6496b.png" target="_blank"><img src="../images/272331347c96e4d47166807998ecfa0642f6496b.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后抓包，改包，更改第一次请求的时间戳：<br />
+<br />
+</p><p class="detail"><a href="../images/272332007b6e310fb5ae0fba9636c992fc3bde28.png" target="_blank"><img src="../images/272332007b6e310fb5ae0fba9636c992fc3bde28.png" alt="2-1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后看到过去时间也改变了，然后把频率改为1：<br />
+<br />
+</p><p class="detail"><a href="../images/27233316ed9aed558417a319fe137664dac962bd.png" target="_blank"><img src="../images/27233316ed9aed558417a319fe137664dac962bd.png" alt="2-2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后随便输入一个验证码，抓包进行爆破：<br />
+<br />
+</p><p class="detail"><a href="../images/272333381150414fed1d4199fa67d82892fac230.png" target="_blank"><img src="../images/272333381150414fed1d4199fa67d82892fac230.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/272339277e117a01b29a2613def51f06a1a2f1ed.png" target="_blank"><img src="../images/272339277e117a01b29a2613def51f06a1a2f1ed.png" alt="3-1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+通过返回信息长度以及返回的信息可以确定成功爆破验证码，这里的验证码只能用一次，所以不用返回页面在输入正确的验证码，这里爆破正确后，返回的信息里面就是重置密码的连接：<br />
+<br />
+</p><p class="detail"><a href="../images/27233942a779d43d4dfba63084731004f3b39257.png" target="_blank"><img src="../images/27233942a779d43d4dfba63084731004f3b39257.png" alt="3-2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+错的页面如下：<br />
+<br />
+</p><p class="detail"><a href="../images/27234013cd1d7089e2e2ae9972ac2e191cf792c3.png" target="_blank"><img src="../images/27234013cd1d7089e2e2ae9972ac2e191cf792c3.png" alt="3-3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+复制返回的连接，可以输入新密码了：<br />
+<br />
+</p><p class="detail"><a href="../images/27234232e78daa83fc20b7cbb731ad5ea9f3ce7d.png" target="_blank"><img src="../images/27234232e78daa83fc20b7cbb731ad5ea9f3ce7d.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功重置：<br />
+<br />
+</p><p class="detail"><a href="../images/272342584581414db6789c2ffa368d3fd9c3932c.png" target="_blank"><img src="../images/272342584581414db6789c2ffa368d3fd9c3932c.png" alt="5.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">验证码有效期限制参数不可控即可 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-032559" title="团800重置任意用户密码（绕过限制）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-07-29 15:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对我们的关注，该漏洞会尽快修复；稍会后送上小礼品，以表谢意；</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="32559";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

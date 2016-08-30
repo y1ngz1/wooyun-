@@ -16,6 +16,67 @@ class HomeController extends Controller{
      * @return \Illuminate\Http\Response
      */
     public function getTest(){
+        set_time_limit(0);
+        $path = public_path().'\data\bugs';
+        $path2 = public_path().'\data\bugs2';
+        $num = 0;
+        $files = file(public_path().'\data\mune.html');
+        foreach ($files as $key => $str) {
+            $str = str_replace("\r\n","",trim($str));
+            $strarr = explode(" ### ",$str);
+            $oldname = public_path().'\data\\'.$strarr[0];
+            $title = $strarr[1];
+            $newname = md5($title.rand(0,99999999)).'.html';
+            $num++;
+            rename(iconv("utf-8","gbk//ignore",$oldname),iconv("utf-8","gbk",$path2.'\\'.$newname));
+            $data[] = array(
+                'path' => '\data\bugs\\'.$newname,
+                'title' => $title,
+                'column' => 'bugs',
+                );
+            while(count($data) == 1000){
+                DB::table("article")->insert($data);
+                $data = array();
+                sleep(3);
+                unset($strarr);
+            }
+        }
+        if(count($data)>0){
+            DB::table("article")->insert($data);
+        }
+        p($num);
+        die;
+        $path = base_path().'\data\bugs';
+        $path2 = base_path().'\data\bugs2';
+        $dh = opendir($path);
+        $files = file_get_contents(base_path().'\data\mune.html');
+        $num = 0;
+        $data = array();
+        while (($file = readdir($dh)) !== false) {
+            if ($file!='.' && $file!='..'){
+                $oldname = str_replace(".html",'',$file);
+                $title = $oldname;
+                $newname = md5($oldname).'.html';
+                $oldname .= '.html';
+                echo $path.'\\'.$file.'<br>';
+                echo $path.'\\'.$oldname.'<br>';
+                echo $path.'\\'.$newname.'<br>';
+                if(rename(iconv("utf-8","gbk//ignore",$path.'\\'.$oldname),iconv("utf-8","gbk",$path2.'\\'.$newname))){
+                    echo '成功<br>';
+                }else{
+                    echo '失败<br>';
+                }
+                echo '-------------------------------------------------------------------------------<br>';
+                $num++;
+                $data[] = array(
+                    'path' => '\data\drops\\'.$newname,
+                    'title' => $title,
+                    );
+            }
+        }
+        echo '遍历文件数：'.$num.'<br>';
+        echo '写入数据量：'.count($data).'<br>';
+        DB::table("article")->insert($data);
         die;
         $path = base_path().'\data\drops';
         $path2 = base_path().'\data\drops2';

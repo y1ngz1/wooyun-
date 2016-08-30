@@ -1,0 +1,291 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某CMS逻辑处理不当导致任意文件上传  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某CMS逻辑处理不当导致任意文件上传  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/RedFree">RedFree</a> 
+</li><li>提交时间：		2012-11-25 16:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-11-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-11-28：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-08：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-12-18：	细节向普通白帽子公开<br/>
+									2012-12-28：	细节向实习白帽子公开<br/>
+									2013-01-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某CMS文件上传处理流程不当，导致用户可以控制文件名，从而上传任意文件。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先看其上传页面：<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;title&gt;图片上传&lt;/title&gt;<br />
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=gb2312&quot;&gt;<br />
+&lt;script language=&quot;JavaScript&quot;&gt;<br />
+ function check(){<br />
+  if(document.forms[0].file.value==&quot;&quot;)<br />
+   {<br />
+    alert(&quot;请选择图片路径！&quot;);<br />
+	document.forms[0].file.focus();<br />
+	return false;<br />
+   }<br />
+   return true;<br />
+ }<br />
+&lt;/script&gt;<br />
+&lt;style type=&quot;text/css&quot;&gt;<br />
+&lt;!--<br />
+body,td,th {<br />
+	font-family: Arial, Helvetica, sans-serif;<br />
+	font-size: 14px;<br />
+}<br />
+a:link {<br />
+	text-decoration: none;<br />
+}<br />
+a:visited {<br />
+	text-decoration: none;<br />
+}<br />
+a:hover {<br />
+	text-decoration: none;<br />
+}<br />
+a:active {<br />
+	text-decoration: none;<br />
+}<br />
+body {<br />
+	margin-left: 0px;<br />
+	margin-top: 0px;<br />
+	margin-right: 0px;<br />
+	margin-bottom: 0px;<br />
+}<br />
+--&gt;<br />
+&lt;/style&gt;&lt;/head&gt;<br />
+<br />
+&lt;body&gt;<br />
+&lt;table width=&quot;296&quot; height=&quot;38&quot; border=&quot;0&quot; align=&quot;center&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; class=&quot;t12&quot;&gt;<br />
+  &lt;form action=&quot;upload_ok.asp&quot; method=&quot;post&quot; enctype=&quot;multipart/form-data&quot;&gt;<br />
+  &lt;tr&gt; <br />
+      &lt;td align=&quot;center&quot;&gt;&lt;br&gt;<br />
+        &lt;strong&gt;图片路径：&lt;/strong&gt;<br />
+        &lt;input type=&quot;file&quot; name=&quot;file&quot;&gt;<br />
+        &lt;br&gt;<br />
+        &lt;br&gt;<br />
+        &lt;input type=&quot;submit&quot; name=&quot;Submit&quot; value=&quot; 上 传 &quot; onClick=&quot;return check();&quot;&gt;<br />
+        &lt;input name=&quot;textField&quot; type=&quot;hidden&quot; id=&quot;textField&quot; value=&quot;&lt;%=Trim(request(&quot;textField&quot;))%&gt;&quot;&gt;<br />
+        &lt;input name=&quot;filename&quot; type=&quot;hidden&quot; id=&quot;filename&quot; value=&quot;&lt;%=Trim(Request(&quot;imgname&quot;))%&gt;&quot;&gt;<br />
+        &lt;input name=&quot;action&quot; type=&quot;hidden&quot; id=&quot;action&quot; value=&quot;&lt;%=Trim(Request(&quot;action&quot;))%&gt;&quot;&gt;<br />
+      &lt;input name=&quot;imgtype&quot; type=&quot;hidden&quot; id=&quot;imgtype&quot; value=&quot;&lt;%=Request(&quot;imgtype&quot;)%&gt;&quot;&gt; &lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+ &lt;/form&gt;<br />
+&lt;/table&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+传递给upload_ok.asp处理，看upload_ok.asp源码：<br />
+<br />
+</p><pre><code>on error goto 0 &#039;关闭on error resume next<br />
+Dim desFolder:desFolder=server.mappath(&quot;../pic&quot;)<br />
+Dim rs,filename,ext,imgname,imgname2,Y,M,D,Shuoming<br />
+ext = &quot;jpg&quot;<br />
+if Trim(ourRequest.Form(&quot;filename&quot;))=&quot;&quot; then<br />
+Y=Year(Now)<br />
+M=Month(Now)<br />
+D=Day(Now)<br />
+H=Hour(Now)<br />
+M=Minute(Now)<br />
+S=Second(Now)<br />
+<br />
+imgname=Y*1000000000+M*10000000+D*100000+H*10000+M*1000+S*100+1<br />
+Set rs=server.CreateObject(&quot;ADODB.Recordset&quot;)<br />
+ rs.open&quot;select top 1 * from pic where left(imgname,8)=&#039;&quot;&amp;left(imgname,8)&amp;&quot;&#039; order by imgname desc&quot;,conn,1,1<br />
+ if Not (rs.Eof And rs.Bof) Then<br />
+  imgname2=CCur(rs(&quot;imgname&quot;))+1<br />
+ Else<br />
+  imgname2=imgname<br />
+ End If<br />
+ filename=imgname2&amp;&quot;.jpg&quot;<br />
+Else<br />
+ filename=Trim(ourRequest.Form(&quot;filename&quot;))<br />
+End If<br />
+Call ourRequest.File(0).SaveAs(desFolder, filename)</code></pre><p class='detail'><br />
+<br />
+假如文件名为空，则以与日期时间相关+.jpg后缀来命名该文件，如果文件名不为空，则以该文件名命名这个文件。<br />
+<br />
+再来看一下执行上传页面后的源文件：<br />
+<br />
+</p><pre><code>&lt;table width=&quot;296&quot; height=&quot;38&quot; border=&quot;0&quot; align=&quot;center&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; class=&quot;t12&quot;&gt;<br />
+  &lt;form action=&quot;upload_ok.asp&quot; method=&quot;post&quot; enctype=&quot;multipart/form-data&quot;&gt;<br />
+  &lt;tr&gt; <br />
+      &lt;td align=&quot;center&quot;&gt;&lt;br&gt;<br />
+        &lt;strong&gt;图片路径：&lt;/strong&gt;<br />
+        &lt;input type=&quot;file&quot; name=&quot;file&quot;&gt;<br />
+        &lt;br&gt;<br />
+        &lt;br&gt;<br />
+        &lt;input type=&quot;submit&quot; name=&quot;Submit&quot; value=&quot; 上 传 &quot; onClick=&quot;return check();&quot;&gt;<br />
+        &lt;input name=&quot;textField&quot; type=&quot;hidden&quot; id=&quot;textField&quot; value=&quot;bigpics&quot;&gt;<br />
+        &lt;input name=&quot;filename&quot; type=&quot;hidden&quot; id=&quot;filename&quot; value=&quot;&quot;&gt;<br />
+        &lt;input name=&quot;action&quot; type=&quot;hidden&quot; id=&quot;action&quot; value=&quot;add&quot;&gt;<br />
+      &lt;input name=&quot;imgtype&quot; type=&quot;hidden&quot; id=&quot;imgtype&quot; value=&quot;bigpics&quot;&gt; &lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+ &lt;/form&gt;<br />
+&lt;/table&gt;</code></pre><p class='detail'><br />
+<br />
+filename变量始终为空，所以默认所有文件都以日期时间+.jpg后缀处理。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">我们将上传页面源文件另存为html文件，改form action=&quot;http://XXXX.XXXX/upload_ok.asp&quot;<br />
+<br />
+改filename变量的value=&quot;one.asp&quot;,打开本地上传页面，将一句话木马保存为.jpg格式后以本地页面上传，木马就被上传到了Pic目录下，文件名为one.asp.<br />
+<br />
+</p><p class="detail"><a href="../images/25131751702e9c1d34f2fc78398195453245fcd8.jpg" target="_blank"><img src="../images/25131751702e9c1d34f2fc78398195453245fcd8.jpg" alt="a.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/25131813720f9e17d8d2815ddf52071476ca15fd.jpg" target="_blank"><img src="../images/25131813720f9e17d8d2815ddf52071476ca15fd.jpg" alt="b.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修改上传页面用户验证；<br />
+<br />
+修改上传文件文件名处理流程；<br />
+<br />
+修改文件上传目录执行权限； </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/RedFree" title="RedFree">RedFree</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015249" title="某CMS逻辑处理不当导致任意文件上传">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：13 </p>
+													<p class="detail">确认时间：2012-11-28 21:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">虽然漏洞说明很细致，但CNVD未找到CMS名称及相关案例进行复现，已发站内信给RedFree,商请提供协助。暂挂在CNVD处置队例中，为避免信息泄露，先行确认。<br />
+<br />
+按完全影响机密性，部分影响完整性、可用性进评分，基本危害评分8.97，按通用CMS预先估计影响系数1.4，综合rank=8.97*1.4=12.588</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15249";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

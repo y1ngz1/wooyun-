@@ -1,0 +1,363 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcmsV9某sql注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcmsV9某sql注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/kobin97">kobin97</a> 
+</li><li>提交时间：		2014-02-25 22:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-03-07：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-03-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-24：	细节向普通白帽子公开<br/>
+									2014-04-13：	细节向实习白帽子公开<br/>
+									2014-05-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">别人说最危险的地方最安全，我说最安全的地方最危险。。。<br />
+相信你们也没有想到这个最常见，常常会在各种教程出现的地方会存在SQL注射。。。<br />
+需 GPC OFF</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先，我们看登陆的地方。。最常见了吧。。。<br />
+<br />
+http://127.0.0.1/index.php?m=member&amp;c=index&amp;a=login<br />
+<br />
+<br />
+<br />
+默认安装情况下，会使有 V9自带的用户中心。<br />
+<br />
+<br />
+<br />
+phpcms\modules\member\index.php<br />
+<br />
+</p><pre><code>public function login() {<br />
+		$this-&gt;_session_start();<br />
+		//获取用户siteid<br />
+		$siteid = isset($_REQUEST[&#039;siteid&#039;]) &amp;&amp; trim($_REQUEST[&#039;siteid&#039;]) ? intval($_REQUEST[&#039;siteid&#039;]) : 1;<br />
+		//定义站点id常量<br />
+		if (!defined(&#039;SITEID&#039;)) {<br />
+		   define(&#039;SITEID&#039;, $siteid);<br />
+		}<br />
+		<br />
+		if(isset($_POST[&#039;dosubmit&#039;])) {<br />
+			if(empty($_SESSION[&#039;connectid&#039;])) {<br />
+				//判断验证码<br />
+				$code = isset($_POST[&#039;code&#039;]) &amp;&amp; trim($_POST[&#039;code&#039;]) ? trim($_POST[&#039;code&#039;]) : showmessage(L(&#039;input_code&#039;), HTTP_REFERER);<br />
+				if ($_SESSION[&#039;code&#039;] != strtolower($code)) {<br />
+					showmessage(L(&#039;code_error&#039;), HTTP_REFERER);<br />
+				}<br />
+			}<br />
+			<br />
+			$username = isset($_POST[&#039;username&#039;]) &amp;&amp; trim($_POST[&#039;username&#039;]) ? trim($_POST[&#039;username&#039;]) : showmessage(L(&#039;username_empty&#039;), HTTP_REFERER);<br />
+			$password = isset($_POST[&#039;password&#039;]) &amp;&amp; trim($_POST[&#039;password&#039;]) ? trim($_POST[&#039;password&#039;]) : showmessage(L(&#039;password_empty&#039;), HTTP_REFERER);<br />
+			$cookietime = intval($_POST[&#039;cookietime&#039;]);<br />
+			$synloginstr = &#039;&#039;; //同步登陆js代码<br />
+			<br />
+			if(pc_base::load_config(&#039;system&#039;, &#039;phpsso&#039;)) {<br />
+				$this-&gt;_init_phpsso();<br />
+				$status = $this-&gt;client-&gt;ps_member_login($username, $password);<br />
+				$memberinfo = unserialize($status);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到用户名密码交给了 <br />
+<br />
+$this-&gt;client-&gt;ps_member_login($username, $password);<br />
+<br />
+<br />
+<br />
+我们跟进。<br />
+<br />
+phpcms\modules\member\classes\client.class.php<br />
+<br />
+<br />
+<br />
+$return = $this-&gt;_ps_send(&#039;login&#039;, array(&#039;username&#039;=&gt;$username, &#039;password&#039;=&gt;$password));<br />
+<br />
+<br />
+<br />
+</p><pre><code>private function _ps_send($action, $data = null) {<br />
+ 		return $this-&gt;_ps_post($this-&gt;ps_api_url.&quot;/index.php?m=phpsso&amp;c=index&amp;a=&quot;.$action, 500000, $this-&gt;auth_data($data));<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>public function auth_data($data) {<br />
+		$s = $sep = &#039;&#039;;<br />
+		foreach($data as $k =&gt; $v) {<br />
+			if(is_array($v)) {<br />
+				$s2 = $sep2 = &#039;&#039;;<br />
+				foreach($v as $k2 =&gt; $v2) {<br />
+						$s2 .= &quot;$sep2{$k}[$k2]=&quot;.$this-&gt;_ps_stripslashes($v2);<br />
+					$sep2 = &#039;&amp;&#039;;<br />
+				}<br />
+				$s .= $sep.$s2;<br />
+			} else {<br />
+				$s .= &quot;$sep$k=&quot;.$this-&gt;_ps_stripslashes($v);<br />
+			}<br />
+			$sep = &#039;&amp;&#039;;<br />
+		}<br />
+<br />
+		$auth_s = &#039;v=&#039;.$this-&gt;ps_vsersion.&#039;&amp;appid=&#039;.APPID.&#039;&amp;data=&#039;.urlencode($this-&gt;sys_auth($s));<br />
+		return $auth_s;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+_ps_stripslashes<br />
+<br />
+</p><pre><code>private function _ps_stripslashes($string) {<br />
+		!defined(&#039;MAGIC_QUOTES_GPC&#039;) &amp;&amp; define(&#039;MAGIC_QUOTES_GPC&#039;, get_magic_quotes_gpc());<br />
+		if(MAGIC_QUOTES_GPC) {<br />
+			return stripslashes($string);<br />
+		} else {<br />
+			return $string;<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+还原了  GPC，传参数给 API。<br />
+<br />
+我们再看看 API 方的处理方式<br />
+<br />
+<br />
+<br />
+phpsso_server\phpcms\modules\phpsso\classes\phpsso.class.php<br />
+<br />
+</p><pre><code>if(isset($_POST[&#039;data&#039;])) {<br />
+			parse_str(sys_auth($_POST[&#039;data&#039;], &#039;DECODE&#039;, $this-&gt;applist[$this-&gt;appid][&#039;authkey&#039;]), $this-&gt;data);<br />
+					<br />
+			if(!is_array($this-&gt;data)) {<br />
+				exit(&#039;0&#039;);<br />
+			}<br />
+		} else {<br />
+			exit(&#039;0&#039;);<br />
+		}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+parse_str  函数默认是根据 GPC情况过滤。<br />
+<br />
+<br />
+<br />
+再到<br />
+<br />
+<br />
+<br />
+phpsso_server\phpcms\modules\phpsso\index.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function login() {<br />
+		$this-&gt;password = isset($this-&gt;data[&#039;password&#039;]) ? $this-&gt;data[&#039;password&#039;] : &#039;&#039;;<br />
+		$this-&gt;email = isset($this-&gt;data[&#039;email&#039;]) ? $this-&gt;data[&#039;email&#039;] : &#039;&#039;;<br />
+		if($this-&gt;email) {<br />
+			$userinfo = $this-&gt;db-&gt;get_one(array(&#039;email&#039;=&gt;$this-&gt;email));<br />
+		} else {<br />
+			$userinfo = $this-&gt;db-&gt;get_one(array(&#039;username&#039;=&gt;$this-&gt;username));<br />
+		}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+phpsso_server\phpcms\libs\classes\model.class.php<br />
+<br />
+</p><pre><code>final public function get_one($where = &#039;&#039;, $data = &#039;*&#039;, $order = &#039;&#039;, $group = &#039;&#039;) {<br />
+		if (is_array($where)) $where = $this-&gt;sqls($where);<br />
+		return $this-&gt;db-&gt;get_one($data, $this-&gt;table_name, $where, $order, $group);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>/**<br />
+	 * 将数组转换为SQL语句<br />
+	 * @param array $where 要生成的数组<br />
+	 * @param string $font 连接串。<br />
+	 */<br />
+	final public function sqls($where, $font = &#039; AND &#039;) {<br />
+		if (is_array($where)) {<br />
+			$sql = &#039;&#039;;<br />
+			foreach ($where as $key=&gt;$val) {<br />
+				$sql .= $sql ? &quot; $font `$key` = &#039;$val&#039; &quot; : &quot; `$key` = &#039;$val&#039;&quot;;<br />
+			}<br />
+			return $sql;<br />
+		} else {<br />
+			return $where;<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到全程没有对字符串进行过滤。。。<br />
+<br />
+因此，在GPC为 OFF 时，存在SQL注入。<br />
+<br />
+可能没说清楚问题在那里<br />
+<br />
+两个： <br />
+<br />
+1、auth_data 参数拼接<br />
+<br />
+2、api中没有对数据进行过滤<br />
+<br />
+<br />
+<br />
+可以做什么？盲注，任意用户登陆。。。其实还有很多利用的地方。。<br />
+<br />
+测试如下：<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/25222336db5fc7bd0cc193425ae5536bfdd2fbbe.jpg" target="_blank"><img src="../images/25222336db5fc7bd0cc193425ae5536bfdd2fbbe.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2522234635efb366d973b08140b9048c5b639d4b.jpg" target="_blank"><img src="../images/2522234635efb366d973b08140b9048c5b639d4b.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/25222358b965ba1a027670e18c35de425db130e3.jpg" target="_blank"><img src="../images/25222358b965ba1a027670e18c35de425db130e3.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/kobin97" title="kobin97">kobin97</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-052019" title="phpcmsV9某sql注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-03-07 22:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="52019";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

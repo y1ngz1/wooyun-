@@ -1,0 +1,275 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		cmseasy盲注漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		cmseasy盲注漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-10-21 13:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-24：	细节向第三方安全合作伙伴开放<br/>
+									2013-10-31：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-10：	细节向普通白帽子公开<br/>
+									2013-11-30：	细节向实习白帽子公开<br/>
+									2014-01-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">cmseasy盲注漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">出错的是一个通用函数，所以注入不只一处，在这里就用能够相对简单利用的来写。<br />
+<br />
+lib/default/ballot_act.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>function index_action() {<br />
+        if (front::post(&#039;submit&#039;)) {<br />
+            if (!front::post(&#039;ballot&#039;)) {<br />
+                front::alert(lang(&#039;Please_select_vote&#039;));<br />
+                return false;<br />
+            }<br />
+			/*<br />
+            if (config::get(&#039;checkip&#039;)) {<br />
+                $time=cookie::get(&#039;vttime&#039;);<br />
+                if (time() -$time &lt;config::get(&#039;timer&#039;) * 60) {<br />
+                    front::alert(lang(&#039;You_have_voted&#039;));<br />
+                    return false;<br />
+                }<br />
+				<br />
+            }*/<br />
+            $bid=front::$post[&#039;bid&#039;];<br />
+            if (is_array(front::$post[&#039;ballot&#039;])) {<br />
+                $ids=implode(&#039;,&#039;,front::$post[&#039;ballot&#039;]);<br />
+            }<br />
+            else {<br />
+                $ids=front::$post[&#039;ballot&#039;];<br />
+            }<br />
+            if(preg_match(&#039;/(select|union|and|\&#039;|&quot;|\))/i&#039;,$ids)){ //只是检查了$ids并没有检查$bid。读代码眼睛读花了还真看不错来- -。<br />
+            	exit(&#039;非法参数&#039;);<br />
+            }<br />
+            $where=&quot;id in($ids)&quot;;<br />
+            $data=&#039;num=num+1&#039;;<br />
+            $option=new option();<br />
+            $option-&gt;rec_update($data,$where);<br />
+            $this-&gt;_table-&gt;rec_update($data,$bid); //跟进 0x01<br />
+//1 and if(1=1,BENCHMARK(1000000,MD5(1)),null)<br />
+//UPDATE `cmseasy_ballot` SET num=num+1 WHERE and if(1=1,BENCHMARK(1000000,MD5(1)),null) 延时3秒左右。<br />
+//UPDATE `cmseasy_ballot` SET num=num+1 WHERE and if(1=2,BENCHMARK(1000000,MD5(1)),null)<br />
+            cookie::set(&#039;vttime&#039;,time(),time() +3600 * 24);<br />
+            front::alert(lang(&#039;Successful_vote&#039;));<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+lib/inc/table.php 0x01<br />
+<br />
+<br />
+<br />
+</p><pre><code>function rec_update($row,$where) {<br />
+        $tbname=$this-&gt;name;<br />
+        $sql=$this-&gt;sql_update($tbname,$row,$where); //跟进<br />
+        //echo $sql.&quot;&lt;br&gt;&quot;;<br />
+        return $this-&gt;query_unbuffered($sql) or die(mysql_error());<br />
+    }<br />
+function sql_update($tbname,$row,$where) {<br />
+        $sqlud=&#039;&#039;;<br />
+        if (is_string($row)) <br />
+            $sqlud=$row.&#039; &#039;;<br />
+        else<br />
+            foreach ($row as $key=&gt;$value) {<br />
+                if (in_array($key,explode(&#039;,&#039;,$this-&gt;getcolslist()))) {<br />
+                    $value=$value;<br />
+                    if (preg_match(&#039;/^\[(.*)\]$/&#039;,$value,$match))<br />
+                        $sqlud .= &quot;`$key`&quot;.&quot;= &quot;.$match[1].&quot;,&quot;;<br />
+                    elseif ($value === &quot;&quot;)<br />
+                        $sqlud .= &quot;`$key`= NULL, &quot;;<br />
+                    else<br />
+                        $sqlud .= &quot;`$key`&quot;.&quot;= &#039;&quot;.$value.&quot;&#039;,&quot;;<br />
+                }<br />
+            }<br />
+        $sqlud=rtrim($sqlud);<br />
+        $sqlud=rtrim($sqlud,&#039;,&#039;);<br />
+        $this-&gt;condition($where);//问题处在这儿，跟进<br />
+        $sql=&quot;UPDATE `&quot;.$tbname.&quot;` SET &quot;.$sqlud.&quot; WHERE &quot;.$where;<br />
+        return $sql;<br />
+    }<br />
+function condition(&amp;$condition) {<br />
+        if (isset($condition) &amp;&amp;is_array($condition)) { //不是数组跳过<br />
+            $_condition=array();<br />
+            foreach ($condition as $key=&gt;$value) {<br />
+                $value=str_replace(&quot;&#039;&quot;,&quot;\&#039;&quot;,$value);<br />
+                $_condition[]=&quot;`$key`=&#039;$value&#039;&quot;;<br />
+            }<br />
+            $condition=implode(&#039; and &#039;,$_condition);<br />
+        }<br />
+        else if (is_numeric($condition)) { //不是数字跳过<br />
+            $this-&gt;getFields();<br />
+            $condition=&quot;`$this-&gt;primary_key`=&#039;$condition&#039;&quot;;<br />
+        }else if(true === $condition){ //错在这儿,程序员本意是如果值为真就把&#039;true&#039;赋值给$condition,这样不是数组又不是数字的就过滤了,但是他用了3个等号，全等，类型也要匹配才会赋值，所以这里跳过了赋值，所以悲剧发生了，只要用到condition这个函数的都会悲剧。<br />
+//很多关键的数据库操作都调用了该函数，慢慢找还会有很多注入的。建议改成2个等号修复该函数而不是过滤这个投票的参数。<br />
+        	$condition = &#039;true&#039;;<br />
+        }<br />
+        if (get_class($this) == &#039;archive&#039;) {<br />
+            if (!front::get(&#039;deletestate&#039;)) {<br />
+                if ($condition)<br />
+                    $condition.=&#039; and (state IS NULL or state&lt;&gt;\&#039;-1\&#039;) &#039;;<br />
+                else<br />
+                    $condition=&#039;state IS NULL or state&lt;&gt;\&#039;-1\&#039; &#039;;<br />
+            }<br />
+            else {<br />
+                if ($condition)<br />
+                    $condition.=&#039; and state=\&#039;-1\&#039; &#039;;<br />
+                else<br />
+                    $condition=&#039; state=\&#039;-1\&#039; &#039;;<br />
+            }<br />
+        }<br />
+    }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/21124246ff1b1a0f9679076ec86b8c4d273cc31c.jpg" target="_blank"><img src="../images/21124246ff1b1a0f9679076ec86b8c4d273cc31c.jpg" alt="1.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/21124233105049ccd3bd99bbe9f82d15d3ee6f11.jpg" target="_blank"><img src="../images/21124233105049ccd3bd99bbe9f82d15d3ee6f11.jpg" alt="2.JPG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">继续求包养。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040506" title="cmseasy盲注漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-10-21 13:15</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢，尽快修正</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40506";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

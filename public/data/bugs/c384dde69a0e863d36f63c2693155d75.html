@@ -1,0 +1,359 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSAAS SQL注入漏洞打包6-10  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSAAS SQL注入漏洞打包6-10  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2014-02-24 17:59</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-27：	细节向第三方安全合作伙伴开放<br/>
+									2014-03-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-16：	细节向普通白帽子公开<br/>
+									2014-04-05：	细节向实习白帽子公开<br/>
+									2014-05-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"></p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">上个注入大礼包，终于走了一个大厂商！<br />
+<br />
+看来还是打包来的划算，最后一个注入大礼包了。<br />
+<br />
+这个漏洞完了，回给出修复方案，求给力！<br />
+<br />
+<br />
+<br />
+第一处SQL注入<br />
+<br />
+/app/group/action/add.php<br />
+<br />
+</p><pre><code>// 执行发布帖子<br />
+        case &quot;do&quot; :<br />
+                <br />
+                if ($_POST [&#039;token&#039;] != $_SESSION [&#039;token&#039;]) {<br />
+                        tsNotice ( &#039;非法操作！&#039; );<br />
+                }<br />
+                <br />
+                $authcode = strtolower ( $_POST [&#039;authcode&#039;] );<br />
+                <br />
+                if ($TS_SITE [&#039;base&#039;] [&#039;isauthcode&#039;]) {<br />
+                        if ($authcode != $_SESSION [&#039;verify&#039;]) {<br />
+                                tsNotice ( &quot;验证码输入有误，请重新输入！&quot; );<br />
+                        }<br />
+                }<br />
+                <br />
+                $groupid = intval ( $_POST [&#039;groupid&#039;] );<br />
+                $title = tsClean ( $_POST [&#039;title&#039;] );<br />
+                $content = tsClean ( $_POST [&#039;content&#039;] );<br />
+                $typeid = intval ( $_POST [&#039;typeid&#039;] );<br />
+                $tag = tsClean ( $_POST [&#039;tag&#039;] );<br />
+......<br />
+// 处理@用户名<br />
+                if (preg_match_all ( &#039;/@/&#039;, $content, $at )) {<br />
+                        preg_match_all ( &quot;/@(.+?)([\s|:]|$)/is&quot;, $content, $matches );<br />
+                        <br />
+                        $unames = $matches [1];<br />
+                        <br />
+                        $ns = &quot;&#039;&quot; . implode ( &quot;&#039;,&#039;&quot;, $unames ) . &quot;&#039;&quot;;<br />
+                        <br />
+                        $csql = &quot;username IN($ns)&quot;;<br />
+                        <br />
+                        if ($unames) {<br />
+                                <br />
+                                $query = $db-&gt;fetch_all_assoc ( &quot;select userid,username from &quot; . dbprefix . &quot;user_info where $csql&quot; );</code></pre><p class='detail'><br />
+<br />
+这里在进行发帖时，内容可以@别人，但是在匹配@内容时，content内容由函数tsClean()过滤，同样没有到的过滤SQL的功能。没有任何处理，进行了sql查询语句，导致SQL注入。<br />
+<br />
+<br />
+<br />
+第二处SQL注入<br />
+<br />
+/app/group/action/add.php<br />
+<br />
+</p><pre><code>// 处理@用户名<br />
+                if (preg_match_all ( &#039;/@/&#039;, $content, $at )) {<br />
+                        preg_match_all ( &quot;/@(.+?)([\s|:]|$)/is&quot;, $content, $matches );<br />
+                        <br />
+                        $unames = $matches [1];<br />
+                        <br />
+                        $ns = &quot;&#039;&quot; . implode ( &quot;&#039;,&#039;&quot;, $unames ) . &quot;&#039;&quot;;<br />
+                        <br />
+                        $csql = &quot;username IN($ns)&quot;;<br />
+                        <br />
+                        if ($unames) {<br />
+                                <br />
+                                $query = $db-&gt;fetch_all_assoc ( &quot;select userid,username from &quot; . dbprefix . &quot;user_info where $csql&quot; );<br />
+                                <br />
+                                foreach ( $query as $v ) {<br />
+                                        $content = str_replace ( &#039;@&#039; . $v [&#039;username&#039;] . &#039;&#039;, &#039;[@&#039; . $v [&#039;username&#039;] . &#039;:&#039; . $v [&#039;userid&#039;] . &#039;]&#039;, $content );<br />
+                                        $msg_content = &#039;我在帖子中提到了你&lt;br /&gt;去看看：&#039; . tsUrl ( &#039;group&#039;, &#039;topic&#039;, array (<br />
+                                                        &#039;id&#039; =&gt; $topicid <br />
+                                        ) );<br />
+                                        aac ( &#039;message&#039; )-&gt;sendmsg ( $userid, $v [&#039;userid&#039;], $msg_content );<br />
+                                }<br />
+                                $new [&#039;group&#039;]-&gt;update ( &#039;group_topic&#039;, array (<br />
+                                                &#039;topicid&#039; =&gt; $topicid <br />
+                                ), array (<br />
+                                                &#039;content&#039; =&gt; $content <br />
+                                ) );<br />
+                        }</code></pre><p class='detail'><br />
+<br />
+也是在第一处SQL注入的下面，进行了update操作，同样content没有过滤进入update的row参数，没过滤导致注入。<br />
+<br />
+如图证明：<br />
+<br />
+</p><p class="detail"><a href="../images/24173900afd7ddd656cb2709c637ee220d14d521.png" target="_blank"><img src="../images/24173900afd7ddd656cb2709c637ee220d14d521.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第三处SQL注入<br />
+<br />
+/app/group/action/after.php<br />
+<br />
+</p><pre><code>//执行补贴<br />
+        case &quot;ado&quot;:<br />
+        <br />
+                if($_POST[&#039;token&#039;] != $_SESSION[&#039;token&#039;]) {<br />
+                        tsNotice(&#039;非法操作！&#039;);<br />
+                }<br />
+                <br />
+                $topicid = intval($_POST[&#039;topicid&#039;]);<br />
+                $content = tsClean($_POST[&#039;content&#039;]);<br />
+                $title = tsClean($_POST[&#039;title&#039;]);<br />
+......<br />
+//上传附件开始<br />
+                $attUpload = tsUpload($_FILES[&#039;attfile&#039;],$afterid,&#039;after&#039;,array(&#039;zip&#039;,&#039;rar&#039;,&#039;doc&#039;,&#039;txt&#039;,&#039;pdf&#039;,&#039;ppt&#039;,&#039;docx&#039;,&#039;xls&#039;,&#039;xlsx&#039;));<br />
+                if($attUpload){<br />
+<br />
+                        $new[&#039;group&#039;]-&gt;update(&#039;group_topic_add&#039;,array(<br />
+                                &#039;id&#039;=&gt;$afterid,<br />
+                        ),array(<br />
+                                &#039;path&#039;=&gt;$attUpload[&#039;path&#039;],<br />
+                                &#039;attach&#039;=&gt;$attUpload[&#039;url&#039;],<br />
+                                &#039;attachname&#039;=&gt;$attUpload[&#039;name&#039;],<br />
+                        ));<br />
+                }<br />
+                //上传附件结束</code></pre><p class='detail'><br />
+<br />
+执行补贴时，上传附件时，对上传文件的名字那么没有过滤，导致SQL注入。<br />
+<br />
+<br />
+<br />
+第四+五处SQL注入<br />
+<br />
+/app/group/action/after.php<br />
+<br />
+</p><pre><code>//编辑执行<br />
+        case &quot;edo&quot;:<br />
+        <br />
+                if($_POST[&#039;token&#039;] != $_SESSION[&#039;token&#039;]) {<br />
+                        tsNotice(&#039;非法操作！&#039;);<br />
+                }<br />
+        <br />
+                $afterid = intval($_POST[&#039;afterid&#039;]);<br />
+                <br />
+                $strAfter = $new[&#039;group&#039;]-&gt;find(&#039;group_topic_add&#039;,array(<br />
+                        &#039;id&#039;=&gt;$afterid,<br />
+                ));<br />
+                <br />
+                if($strAfter[&#039;userid&#039;] == $userid || $TS_USER[&#039;user&#039;][&#039;isadmin&#039;]==1){<br />
+                <br />
+                        $content = tsClean($_POST[&#039;content&#039;]);<br />
+                        $title = tsClean($_POST[&#039;title&#039;]);<br />
+                        <br />
+                        //过滤内容开始<br />
+                        aac(&#039;system&#039;)-&gt;antiWord($title);<br />
+                        aac(&#039;system&#039;)-&gt;antiWord($content);<br />
+                        //过滤内容结束<br />
+                        <br />
+                        $new[&#039;group&#039;]-&gt;update(&#039;group_topic_add&#039;,array(<br />
+                                &#039;id&#039;=&gt;$afterid,<br />
+                        ),array(<br />
+                                &#039;title&#039;=&gt;$title,<br />
+                                &#039;content&#039;=&gt;$content,<br />
+                                &#039;uptime&#039;=&gt;time(),<br />
+                        ));<br />
+......<br />
+//上传附件开始<br />
+                        $attUpload = tsUpload($_FILES[&#039;attfile&#039;],$afterid,&#039;after&#039;,array(&#039;zip&#039;,&#039;rar&#039;,&#039;doc&#039;,&#039;txt&#039;,&#039;pdf&#039;,&#039;ppt&#039;,&#039;docx&#039;,&#039;xls&#039;,&#039;xlsx&#039;));<br />
+                        if($attUpload){<br />
+<br />
+                                $new[&#039;group&#039;]-&gt;update(&#039;group_topic_add&#039;,array(<br />
+                                        &#039;id&#039;=&gt;$afterid,<br />
+                                ),array(<br />
+                                        &#039;path&#039;=&gt;$attUpload[&#039;path&#039;],<br />
+                                        &#039;attach&#039;=&gt;$attUpload[&#039;url&#039;],<br />
+                                        &#039;attachname&#039;=&gt;$attUpload[&#039;name&#039;],<br />
+                                ));</code></pre><p class='detail'><br />
+<br />
+这里存在两处，一处是编辑发布的补贴内容时，title和content都没有过滤，导致SQL注入。<br />
+<br />
+还有一处就是编辑补贴时上传附件，附件的名字那么未过滤，导致SQL注入。<br />
+<br />
+证明如图：<br />
+<br />
+</p><p class="detail"><a href="../images/24174009f3dfa2624c0caa2cebba323841f6effb.png" target="_blank"><img src="../images/24174009f3dfa2624c0caa2cebba323841f6effb.png" alt="2.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">说一下具体的修复吧：<br />
+<br />
+此应用之前2.0.1没有全局过滤，导致大面积SQL注入。<br />
+<br />
+2月15更新了2.1.<br />
+<br />
+但是在2.1里面虽然加了全局过滤gpc，但是在部分地方使用了tsClean函数，<br />
+<br />
+而tsClean又有stripslashes，所以导致又免过滤了，造成SQL注入。<br />
+<br />
+还有就是在update时，值处理了where那里，在row和key那里都没有处理。<br />
+<br />
+加上上面注意的两点，全局过滤+SQL入口处理，既可以修复大部分问题了。<br />
+<br />
+至于细节，你们都懂，官方看着修复吧。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051905" title="ThinkSAAS SQL注入漏洞打包6-10">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-02-24 18:12</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">再次感谢xfkxfk对thinksaas的关注。<br />
+非常感谢提供详细的修复方案，update问题已修复！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51905";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

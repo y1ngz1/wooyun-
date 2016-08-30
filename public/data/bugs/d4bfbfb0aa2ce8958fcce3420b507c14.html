@@ -1,0 +1,389 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		【盛大180天渗透纪实】第四章.SVN猎手 （某站SVN信息泄露+设计问题导致服务器沦陷）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		【盛大180天渗透纪实】第四章.SVN猎手 （某站SVN信息泄露+设计问题导致服务器沦陷）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/3King">3King</a> 
+</li><li>提交时间：		2013-03-29 01:12</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-29：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-08：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-18：	细节向普通白帽子公开<br/>
+									2013-04-28：	细节向实习白帽子公开<br/>
+									2013-05-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">小声明~<br />
+【盛大180天渗透纪实】系列漏洞受到关注，表示灰常感谢~~<br />
+·由于本人还是学生，不懂编程，不是大牛= =，所以这个专题完全是站在网络爱好者的角度来复现当时的思路，尽可能地还原真实环境，所以写得细了些~<br />
+·本人提交这个系列的初衷，一是为了提醒厂商修复漏洞，二是为了和新人分享、交流渗透思路，共同提高~~<br />
+所以欢迎各位专业人士、大牛来吐槽，指正~~<br />
+<br />
+Tips：<br />
+·由于时间较长，有些漏洞可能已经更改或修复，所以某些场景只能通过以前截图来还原事件环境。<br />
+<br />
+·本次渗透可能涉及一些数据资料，但绝未脱库，谢绝跨省o(︶︿︶)o （相信盛大不是这样滴厂商~） </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">本想着81端口服务器能对下一步渗透有所帮助。。 结果发现这个段上站点并不多。。 整个段上貌似只有这一个站和一个数据库服务器是活的 = =<br />
+<br />
+<br />
+<br />
+so，再次改变思路。。<br />
+<br />
+<br />
+<br />
+用某二级域名查询工具导出了一份盛大的站点，进行普扫。。。<br />
+<br />
+</p><p class="detail"><a href="../images/2823525240e8bfbf55b509d3740f51993efcd215.jpg" target="_blank"><img src="../images/2823525240e8bfbf55b509d3740f51993efcd215.jpg" alt="QQ截图20130328234953.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+其中发现了bbsdk.sdo.com的一处源码备份<br />
+<br />
+</p><p class="detail"><a href="../images/28235315c8190a04b6306500fa159715dd26ffe0.jpg" target="_blank"><img src="../images/28235315c8190a04b6306500fa159715dd26ffe0.jpg" alt="QQ截图20130328234954.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/282354069401da56763e383587d25c3d3d797590.jpg" target="_blank"><img src="../images/282354069401da56763e383587d25c3d3d797590.jpg" alt="QQ截图20130328235352.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/29000455c12e0b343f809a4f44187ff7ae774f73.jpg" target="_blank"><img src="../images/29000455c12e0b343f809a4f44187ff7ae774f73.jpg" alt="QQ截图20130329000358.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+不过看了一会儿 貌似又是一个已下线的站。。<br />
+<br />
+<br />
+<br />
+半小时以后，扫描结果出来。<br />
+<br />
+即使一些站有比较敏感的目录，也被盛大的UAM挡在了外面。。。<br />
+<br />
+<br />
+<br />
+不过，发现在58.215.44.53里发现了svn泄露信息<br />
+<br />
+</p><p class="detail"><a href="../images/29002729db4c6c8e0c6d56bcae28a99b554a573c.jpg" target="_blank"><img src="../images/29002729db4c6c8e0c6d56bcae28a99b554a573c.jpg" alt="QQ截图20130329002720.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+数据库信息<br />
+<br />
+</p><p class="detail"><a href="../images/29002827e4e7ccd35a6340b53e5e9014ce1ccf42.jpg" target="_blank"><img src="../images/29002827e4e7ccd35a6340b53e5e9014ce1ccf42.jpg" alt="QQ截图20130329002818.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+不过依然禁止外连。。。。。。<br />
+<br />
+<br />
+<br />
+通过查看，发现了此站的后台。<br />
+<br />
+</p><p class="detail"><a href="../images/29003130b72d11006499574ac04d93145669b7b5.jpg" target="_blank"><img src="../images/29003130b72d11006499574ac04d93145669b7b5.jpg" alt="QQ截图20130329003124.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+但是获取不了管理员密码，也登不进去。。。<br />
+<br />
+<br />
+<br />
+不过难得来一次SVN，还是仔细分析了下。。。<br />
+<br />
+<br />
+<br />
+找到了一个注册页面？？？<br />
+<br />
+</p><p class="detail"><a href="../images/290034441c8e2f05658cda2ac8ab3372d2db92e5.jpg" target="_blank"><img src="../images/290034441c8e2f05658cda2ac8ab3372d2db92e5.jpg" alt="QQ截图20130329003438.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/290034545521cb5834427c0f64a1944a2e3ec125.jpg" target="_blank"><img src="../images/290034545521cb5834427c0f64a1944a2e3ec125.jpg" alt="QQ截图20130329003340.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+随便注册了个用户，登录后台。。<br />
+<br />
+但却提示“无效的用户”，对应的目录下很多功能都无法访问。。。。。。<br />
+<br />
+</p><p class="detail"><a href="../images/290036343650f40954ed57fff5212c9d5a9bc367.jpg" target="_blank"><img src="../images/290036343650f40954ed57fff5212c9d5a9bc367.jpg" alt="QQ截图20130329003541.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+转到其它目录，也是如此<br />
+<br />
+</p><p class="detail"><a href="../images/2900383475d02d4f69180973e22d8cbef0fe48fd.jpg" target="_blank"><img src="../images/2900383475d02d4f69180973e22d8cbef0fe48fd.jpg" alt="QQ截图20130329003823.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+突然，这个upload目录吸引了眼球。。<br />
+<br />
+通过SVN查看了一下，有上传程序。。<br />
+<br />
+<br />
+<br />
+如果能绕过验证限制，就好办了。。。<br />
+<br />
+<br />
+<br />
+继续目录遍历。。。<br />
+<br />
+<br />
+<br />
+终于。。在down目录下，upload_channel.php找到了一些问题。<br />
+<br />
+</p><p class="detail"><a href="../images/290042364441bb5dca50b2d113b1f49aecd20b9f.jpg" target="_blank"><img src="../images/290042364441bb5dca50b2d113b1f49aecd20b9f.jpg" alt="QQ截图20130329004226.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+只有这4个盛大基友才能可以查看文件。。。。<br />
+<br />
+这原本没什么特殊的。。。<br />
+<br />
+而且，此上传程序从代码级别上限制了其他用户上传，应该也是很安全的。。。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+突然，某神经君说：你确定这四个用户都已经注册了么。。。？<br />
+<br />
+<br />
+<br />
+灵光一闪，对啊！！！ 这四个用户都已经注册了吗！！<br />
+<br />
+<br />
+<br />
+虽然觉得有点不可思议，因为代码级别的限制应该是不会出现这种问题的。。<br />
+<br />
+但还是怀着忐忑的心情回到了注册页面。。。<br />
+<br />
+<br />
+<br />
+yangchuangbin。。 已经存在。。。<br />
+<br />
+</p><p class="detail"><a href="../images/29005456716d5396993c41b7d0cfe26c1a2fdae2.jpg" target="_blank"><img src="../images/29005456716d5396993c41b7d0cfe26c1a2fdae2.jpg" alt="QQ截图20130329005433.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+wushaoming。。 已经存在。。。<br />
+<br />
+mafeitao。。 已经存在。。。<br />
+<br />
+fanbing。。 注册成功！！<br />
+<br />
+<br />
+<br />
+返回down/upload_channel.php。。 终于出现了可爱的上传页面~~<br />
+<br />
+</p><p class="detail"><a href="../images/29010638723c858dc6938f8195147379eb210cf6.jpg" target="_blank"><img src="../images/29010638723c858dc6938f8195147379eb210cf6.jpg" alt="QQ截图20130329005715.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+直接传标准PHP程序。。 上传成功~<br />
+<br />
+</p><p class="detail"><a href="../images/290058152002e8af9520ea1b1d96d192339418f0.jpg" target="_blank"><img src="../images/290058152002e8af9520ea1b1d96d192339418f0.jpg" alt="QQ截图20130329005808.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+虽然未返回上传地址，但根据SVN信息分析，应该未对文件进行改名，且应该是上传到了同目录。。<br />
+<br />
+<br />
+<br />
+试了一下。。 pia。。 成功！ 果断菜刀连接。。。<br />
+<br />
+</p><p class="detail"><a href="../images/290101078ea01703c8691789d6df16e2f248e788.jpg" target="_blank"><img src="../images/290101078ea01703c8691789d6df16e2f248e788.jpg" alt="QQ截图20130329010058.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+连接数据库。。。<br />
+<br />
+</p><p class="detail"><a href="../images/290102189b8ad8c5edb6a1311ca0d4b7b4d29d25.jpg" target="_blank"><img src="../images/290102189b8ad8c5edb6a1311ca0d4b7b4d29d25.jpg" alt="QQ截图20130329010204.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+返回看了一下，这是星空高速文件管理器手机应用下载站。。<br />
+<br />
+从数据库信息看，下载人次已经接近900万。。<br />
+<br />
+</p><p class="detail"><a href="../images/290103299426efe0daf2f291330903efe9f0af74.jpg" target="_blank"><img src="../images/290103299426efe0daf2f291330903efe9f0af74.jpg" alt="QQ截图20130329010242.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如果该站点被不法分子渗透，并将手机应用程序替换成木马病毒，将会给大量手机用户造成危害！！！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/29002729db4c6c8e0c6d56bcae28a99b554a573c.jpg" target="_blank"><img src="../images/29002729db4c6c8e0c6d56bcae28a99b554a573c.jpg" alt="QQ截图20130329002720.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/29002827e4e7ccd35a6340b53e5e9014ce1ccf42.jpg" target="_blank"><img src="../images/29002827e4e7ccd35a6340b53e5e9014ce1ccf42.jpg" alt="QQ截图20130329002818.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/29003130b72d11006499574ac04d93145669b7b5.jpg" target="_blank"><img src="../images/29003130b72d11006499574ac04d93145669b7b5.jpg" alt="QQ截图20130329003124.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/290034441c8e2f05658cda2ac8ab3372d2db92e5.jpg" target="_blank"><img src="../images/290034441c8e2f05658cda2ac8ab3372d2db92e5.jpg" alt="QQ截图20130329003438.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/290034545521cb5834427c0f64a1944a2e3ec125.jpg" target="_blank"><img src="../images/290034545521cb5834427c0f64a1944a2e3ec125.jpg" alt="QQ截图20130329003340.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/290042364441bb5dca50b2d113b1f49aecd20b9f.jpg" target="_blank"><img src="../images/290042364441bb5dca50b2d113b1f49aecd20b9f.jpg" alt="QQ截图20130329004226.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/290058152002e8af9520ea1b1d96d192339418f0.jpg" target="_blank"><img src="../images/290058152002e8af9520ea1b1d96d192339418f0.jpg" alt="QQ截图20130329005808.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/29010638723c858dc6938f8195147379eb210cf6.jpg" target="_blank"><img src="../images/29010638723c858dc6938f8195147379eb210cf6.jpg" alt="QQ截图20130329005715.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/290101078ea01703c8691789d6df16e2f248e788.jpg" target="_blank"><img src="../images/290101078ea01703c8691789d6df16e2f248e788.jpg" alt="QQ截图20130329010058.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/290102189b8ad8c5edb6a1311ca0d4b7b4d29d25.jpg" target="_blank"><img src="../images/290102189b8ad8c5edb6a1311ca0d4b7b4d29d25.jpg" alt="QQ截图20130329010204.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/290103299426efe0daf2f291330903efe9f0af74.jpg" target="_blank"><img src="../images/290103299426efe0daf2f291330903efe9f0af74.jpg" alt="QQ截图20130329010242.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对于bbsdk.sdo.com<br />
+<br />
+·及时下线过期业务<br />
+<br />
+·修改本例中涉及的MSSQL密码<br />
+<br />
+<br />
+<br />
+对于wj.sdo.com<br />
+<br />
+如果该站点被不法分子渗透，并将手机应用程序替换成木马病毒，将会给大量手机用户造成危害！！！<br />
+<br />
+·删除SVN信息<br />
+<br />
+·修改本例中涉及的MYSQL密码<br />
+<br />
+·检查并删除可能存有的PHP木马 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/3King" title="3King">3King</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020861" title="【盛大180天渗透纪实】第四章.SVN猎手 （某站SVN信息泄露+设计问题导致服务器沦陷）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2013-03-29 09:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您的报告</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20861";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

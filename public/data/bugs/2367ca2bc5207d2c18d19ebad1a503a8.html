@@ -1,0 +1,202 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		关于12306一些关于验证码的设计逻辑探讨  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		关于12306一些关于验证码的设计逻辑探讨  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/木鱼">木鱼</a> 
+</li><li>提交时间：		2014-01-29 14:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-29：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-08：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-18：	细节向普通白帽子公开<br/>
+									2014-02-28：	细节向实习白帽子公开<br/>
+									2014-03-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">验证码作为12306一个用于区分人机的重要手段，但其设计较多存在薄弱环节，不仅导致被破解的概率提升，也导致在高峰期由于大量的破解请求导致服务器负载大量提升。这些设计的存在，虽然很多是为了人性化的考虑，但是很明显，不是任何想买票的人都是那么善良的。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">目前12306进行验证码验证的逻辑为：<br />
+<br />
+1.请求验证码图片（服务器生成）<br />
+<br />
+2.调用 checkRandCodeAnsyn 在操作前就判断是否正确<br />
+<br />
+3.连同验证码一起提交，如提交订单和提交登录。<br />
+<br />
+<br />
+<br />
+这个流程并没有问题，也是比较人性化的操作。但是在整个流程中，没有对时间进行任何限制。在1月份改版后，验证码识别难度已经大大提升，但是这只是导致了验证码一次识别率下降，多试几次，总能识别出一次，加上checkRandCodeAnsyn接口本身没有任何调用限制，导致虽然需要识别多次，但是总体速度几乎还是秒级别的。以铁路通为例，现在的版本依旧识别验证码，但是识别的过程就是在上述的1-2步骤间来回走，当成功后则跳出。虽然测试的时候需要将近四次才可以识别出来，但是由于现在服务器速度较快，总体花费依然只需要不到两秒。这会导致如下问题：<br />
+<br />
+1.高峰期服务器负载较高，请求响应速度慢，但是这种反复请求并验证的操作很容易导致服务器压力升高很多；<br />
+<br />
+2.当服务器负载不高时，利用此手段依然可以完成既定目标（全自动订票且效率远比人手动高）<br />
+<br />
+3.可能会被暴力利用，如心蓝订票复出版中，有个服务器测速。它的测速不是测CDN节点的速度，而是服务器的速度，测速方式就是爆刷验证码接口，每隔20秒并发20线程请求验证码图片，借以测速。<br />
+<br />
+<br />
+<br />
+由于验证码的请求、验证是否正确的请求、提交请求都是必须由12306自己的服务器来完成，而不是像查询那样可以由CDN提供缓存，因此被人利用或暴力操作后，对12306的服务器本身也是非常不利的。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">以下为铁路通的购票请求。由图中可以看出，此次验证码识别虽然反复刷新了3次验证码才得以完成，但是依然只需要不到2秒。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/241528345671f25b8adc197cf1758baae31b8cca.png" target="_blank"><img src="../images/241528345671f25b8adc197cf1758baae31b8cca.png" alt="QQ截图20140124152756.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对验证码接口和校验验证码接口增加时间限制和逻辑限制。由于人工操作时不可能达到同样的速度，因此用间隔显示是比较好的方案。以下是我的建议，供参考，不一定完善：<br />
+<br />
+<br />
+<br />
+1.验证码请求在未登录时会被心蓝等软件爆刷测速<br />
+<br />
+这个不是很好限制，由于未登录没有任何限制标记可以关联，我也没想到很好的方法。我能做的也只是从道德的角度去谴责它。。。一些其他能想到的方案还比较复杂，还需要细细考虑，比如按IP限制登录页面的验证码请求次数和速度。<br />
+<br />
+<br />
+<br />
+2.登录用户提交表单的验证码<br />
+<br />
+增加获得验证码和校验验证码的时间间隔，如一般人眼识别验证码不会低于1秒，那么限制为每1-2秒获得一次验证码、每2秒校验一次验证码、在获得验证码后的四秒钟后才允许提交订单。<br />
+<br />
+在老版本12306中，进入订单页后5秒钟之后才允许提交订单其实是一个非常好的限制策略，唯一的不足就是错误信息过于含糊，可以改为提示用户操作过快请稍候。而验证码图片限制其实在1月早期有过限制，但是当时是刷新次数限制，比较笼统误伤率也较高，可以改为时间限制，在2秒钟之内连续请求验证码则返回错误的验证码提示图片（如图片提示点击刷新或其它引导用户重新刷新验证码的方案，避免误伤的影响，也能提高OCR识别的难度）。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/木鱼" title="木鱼">木鱼</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049744" title="关于12306一些关于验证码的设计逻辑探讨">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-29 15:20</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49744";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

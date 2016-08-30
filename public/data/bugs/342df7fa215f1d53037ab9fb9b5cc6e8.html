@@ -1,0 +1,208 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		网易通行证OAuth2.0认证在使用Access Token获取用户信息设计缺陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		网易通行证OAuth2.0认证在使用Access Token获取用户信息设计缺陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小胖胖要减肥">小胖胖要减肥</a> 
+</li><li>提交时间：		2012-12-02 22:06</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-12-24：	细节向普通白帽子公开<br/>
+									2013-01-03：	细节向实习白帽子公开<br/>
+									2013-01-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">之前提交了剑心说描述不够清楚那好，重新提交下，还特地在2大电商测试了下，并结合官方文档，确认是协议设计的隐患，毕竟作为一个第三方登陆平台，还涉及那么广，就应该更要重视任何一个细小点</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先打开京东，看到了第三方的网易登陆，当然要试下了，之前爆了很多oauth的问题<br />
+<br />
+</p><p class="detail"><a href="../images/0221080852be297036cac0dd2c3eb97d071e44b0.jpg" target="_blank"><img src="../images/0221080852be297036cac0dd2c3eb97d071e44b0.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+之后输入用户名密码登录，当然登陆成功了，不过查看登陆数据的时候发现其实最后起到登录作用的是http://qq.360buy.com/new/netease/callback.aspx?username=8202378786&amp;ts=20121202205444&amp;sign=4ED3AE3FF504043411743F1A702FC649495CE94CE8078DBACA2D056A21BBE49F5205CEC5DBF08AD089A92FBBE6D7001DF9DAF0FC6ECE9A5A3FC9294CD586A87D9B453D4154AF19F5E2319C115AF8FA487A3D6055AB1351A6184D219931A8B1CE<br />
+<br />
+地址已做处理，要弄证明自己试一下就知道了<br />
+<br />
+于是就让朋友在他电脑上试一下，并看看我写的那些用户信息能不能看到，结果果不其然，没有对是否是当前用户，即输入用户名密码的那个用户作校验，安全隐患啊<br />
+<br />
+</p><p class="detail"><a href="../images/02211315f6287168586dd64ceea954a0a7daefe7.jpg" target="_blank"><img src="../images/02211315f6287168586dd64ceea954a0a7daefe7.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最关键的这个链接还是http的，危害程度不用说了，在局域网嗅探或公共wifi登录都有可能被人截获这个地址，说不定电商账户还有钱呢<br />
+<br />
+虽然我知道sign换取令牌是有时效的，具体不知道多久，但这点时间已经足够盗取客户信息和账户余额了吧，而作为第三方登录平台其他网站说不定收获更多 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">然后我去看了下官方文档<br />
+<br />
+使用Access Token获取用户信息<br />
+<br />
+URL： <br />
+<br />
+https://reg.163.com/open/oauth2/getUserInfo.do <br />
+<br />
+HTTP请求方式: <br />
+<br />
+GET <br />
+<br />
+请求参数： <br />
+<br />
+1. access_token: 第二步获得的access_token <br />
+<br />
+返回值： <br />
+<br />
+userId: 用户数字Id(长度不会超过15位) <br />
+<br />
+username: 用户账户名称(如果用户在登录的时候不选择共享账户名称，则只返回userId，所以请以userId作为用户的唯一标识) <br />
+<br />
+返回示例： <br />
+<br />
+{&quot;username&quot;:&quot;urstest_mreg&quot;,&quot;userId&quot;:&quot;820014421&quot;}（如果用户在登录的时候不选择共享账户名称，则返回：{&quot;userId&quot;:&quot;820014421&quot;}） <br />
+<br />
+<br />
+<br />
+果然是对是否是当前用户没有做校验啊，既然对于oauth认证你之前是要输入用户名密码的，你也会得到输入用户名秘密的用户信息，那么在最后获取用户信息的时候肯定要校验是否是那个输入用户名密码的用户啊，这个是最基本的 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">既然之前有输入过用户名密码，那么那个时候应该可以设置一个state放在cookies里，最后在用户输入url换取令牌的时候校验这个state是否是之前输入用户名密码的那个  </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小胖胖要减肥" title="小胖胖要减肥">小胖胖要减肥</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015523" title="网易通行证OAuth2.0认证在使用Access Token获取用户信息设计缺陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-04 14:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对网易的关注，漏洞已经修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15523";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

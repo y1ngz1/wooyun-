@@ -1,0 +1,267 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		安全测试#1 如何搞定discuz.net官方！  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		安全测试#1 如何搞定discuz.net官方！  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪猪侠">猪猪侠</a> 
+</li><li>提交时间：		2013-11-01 13:20</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-06：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于没有一个通用标准的防御规则保护好中间件配置信息、DNS信息、系统错误信息和敏感地址信息(后台或测试地址)的泄露，攻击者可能会通过收集这些保护不足的数据，利用这些信息对系统实施进一步的攻击。<br />
+<br />
+本报告通过一系列逻辑关联，成功搞电Discuz!官方网站。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"># 信息整理<br />
+<br />
+最近拜读并整理一年内的安全事件和各类技术文章，发现了一个小哥写的：“记一次对Discuz官方论坛的渗透检测”(请自行搜索)，然后重新梳理相关信息，也对discuz官方进行了一次安全测试。<br />
+<br />
+<br />
+<br />
+发现那位小哥主要是利用dev.discuz.org的漏洞成功渗透至discuz.net官方，<br />
+<br />
+于是我也将dev.discuz.org标记为一个切入口。<br />
+<br />
+<br />
+<br />
+# 信息收集 ( 基于商业whois、domaintools、DNS信息做的IP反查工具)<br />
+<br />
+[root@localhost script]# python ./domain.py dev.discuz.org<br />
+<br />
+{&quot;dev.discuz.org&quot;: 80}<br />
+<br />
+{&quot;u.discuz.net&quot;: 80}<br />
+<br />
+{&quot;up.discuz.net&quot;: 80}<br />
+<br />
+{&quot;g.8la.la&quot;: 80}<br />
+<br />
+<br />
+<br />
+# 整理并分析信息<br />
+<br />
+http://g.8la.la 这个小站引起了我的注意，拿起扫描器发现多处小问题（小问题往往能引发意想不到的结果）。<br />
+<br />
+<br />
+<br />
+http://g.8la.la/1.php<br />
+<br />
+http://g.8la.la/test.php<br />
+<br />
+http://g.8la.la/bbs<br />
+<br />
+http://g.8la.la/bbs2<br />
+<br />
+http://g.8la.la/bbsnew<br />
+<br />
+<br />
+<br />
+从第一个1.php的phpinfo，让我更加确定，这和discuz官方关联紧密。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/011309179a62e7ed9840e98f39d6c35aa5962f2c.jpg" target="_blank"><img src="../images/011309179a62e7ed9840e98f39d6c35aa5962f2c.jpg" alt="discuz_phpinfo.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+# 逐个测试用例进行测试<br />
+<br />
+从1.php、test.php我没有得到任何可以进一步扩展的信息，直到看到此域名下面还架设有3个测试用的论坛。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01131151f876f3067c79c6e11b03691fc5826e03.jpg" target="_blank"><img src="../images/01131151f876f3067c79c6e11b03691fc5826e03.jpg" alt="discuz_bbsnew.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+看到测试论坛都只有一个用户，且用户名为admin，然后随手试了一下密码123456、admin123、admin，结果就登录成功了，还是论坛创始人权限。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://g.8la.la/bbs<br />
+http://g.8la.la/bbsnew<br />
+<br />
+这两处测试论坛的管理员admin密码均为：admin</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01131349da2eeb8c6c7fa1cd1ced040f6860f9dc.jpg" target="_blank"><img src="../images/01131349da2eeb8c6c7fa1cd1ced040f6860f9dc.jpg" alt="discuz_bbsadmin.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+# 到了后台，拿个SHELL继续收集信息，以战养战，争取不放过任何一个可分析的信息，可用的测试路径。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"># 获取到SHELL，www.discuz.net 历历在目<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01131710369022292e0c7f10bd8bb0a9164a22c4.jpg" target="_blank"><img src="../images/01131710369022292e0c7f10bd8bb0a9164a22c4.jpg" alt="discuz_shell.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+# 间接利用，成功访问到官网数据，我只是测试了一下，并未下载这些数据，谢谢！<br />
+<br />
+<br />
+<br />
+UC_KEY在手，即可做任何对discuz.net官方论坛的操作了！<br />
+<br />
+</p><p class="detail"><a href="../images/01131846c8840d89eddabb82923e55fbfe0812ba.jpg" target="_blank"><img src="../images/01131846c8840d89eddabb82923e55fbfe0812ba.jpg" alt="discuz_uc_application.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+210万用户信息<br />
+<br />
+</p><p class="detail"><a href="../images/011319325d7dad2206652d9d124a8eaa4abddb6e.jpg" target="_blank"><img src="../images/011319325d7dad2206652d9d124a8eaa4abddb6e.jpg" alt="discuz_uc_members.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/011323008bed93c74f68d8f4157d0f0a5d836b30.jpg" target="_blank"><img src="../images/011323008bed93c74f68d8f4157d0f0a5d836b30.jpg" alt="discuz_userinfo.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">#1 网络边界需要认真对待。<br />
+<br />
+#2 安全是一个整体，保证安全不在于强大的地方有多强大，而在于真正薄弱的地方在哪里。<br />
+<br />
+#3 杜绝为了方便而造成的不必要的信息泄露和弱口令。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪猪侠" title="猪猪侠">猪猪侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041672" title="安全测试#1 如何搞定discuz.net官方！">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-01 13:20</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41672";
+var bugRating="2";
+var myRating="";
+var ratingCount="14";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

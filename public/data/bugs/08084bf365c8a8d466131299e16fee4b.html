@@ -1,0 +1,235 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		UC浏览器跨本地域XSS可盗取任意域Cookie  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		UC浏览器跨本地域XSS可盗取任意域Cookie  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/爱梅小礼">爱梅小礼</a> 
+</li><li>提交时间：		2013-05-17 09:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-20：	细节向第三方安全合作伙伴开放<br/>
+									2013-05-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-06：	细节向普通白帽子公开<br/>
+									2013-06-26：	细节向实习白帽子公开<br/>
+									2013-08-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">低版本的UC浏览器可以随意跨域。但高版本的做了加强了安全性，基本满足了同源策略的要求。然而一个意外的跨本地域的XSS又使得这些安全措施化为乌有....</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试版本：8.7.4.225<br />
+<br />
+本漏洞可分为两个部分：<br />
+<br />
+1.跨本地xss，可让http-&gt;file:<br />
+<br />
+2.本地可向远程注入js。file-&gt;http。<br />
+<br />
+第一个弱点：<br />
+<br />
+在恶意页面构造如下代码：<br />
+<br />
+xss.html<br />
+<br />
+</p><pre><code>&lt;a href=&#039;1.apk#&quot;&lt;/a&gt;&lt;script&gt;alert(55)&lt;/script&gt;&lt;!–-&#039;&gt;下一页&lt;a&gt;<br />
+注意：1.apk是一个可以下载的文件。</code></pre><p class='detail'><br />
+<br />
+用户点击这个链接后就会自动跳转到下载页面（如果开启了wifi优化或预读动能就无需用户点击，自动会跳转），从而触发了XSS。这个下载页面其实是本地存在的一个XHTML，这个文件路径如下：<br />
+<br />
+/data/data/com.UCMobile/downloadsafe/predownloadpage.xhtml<br />
+<br />
+在下载文件时，uc会修改这个xhtml，将文件名等信息写入里面，过滤不严，造成了xss。<br />
+<br />
+所以这个xss具备本地域的权限。<br />
+<br />
+<br />
+<br />
+第二个弱点：<br />
+<br />
+inject.html<br />
+<br />
+</p><pre><code>&lt;script&gt;function inject(){<br />
+var d = document.getElementById(&quot;hi&quot;).contentDocument || document.getElementById(&quot;hi&quot;).contentWindow.document<br />
+alert(d.cookie);<br />
+}<br />
+document.write(&quot;&lt;iframe id=hi src=http://mail.qq.com onload=inject()&gt;&lt;/iframe&gt;&quot;)<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+如此就可以读取qq邮箱的cookie了。<br />
+<br />
+<br />
+<br />
+将这两个弱点结合起来，就能达到如标题所述的目的了。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">拿出我的大华为P1，远程访问一个xss.html，其中“下一页”就是构造的恶意链接。<br />
+<br />
+</p><p class="detail"><a href="../images/16221240a52e15c1cc5214a2ac41e3453172a79b.jpg" target="_blank"><img src="../images/16221240a52e15c1cc5214a2ac41e3453172a79b.jpg" alt="QQ截图20130516221227.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+点击“下一页”，弹出了框，框框标题上写的是file，由此证明了是本地域。<br />
+<br />
+</p><p class="detail"><a href="../images/162214208e1c29030e2ebf7958368ee6510075b6.jpg" target="_blank"><img src="../images/162214208e1c29030e2ebf7958368ee6510075b6.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+弱点一证明完成。<br />
+<br />
+<br />
+<br />
+访问本地的inject.html，以本地域的权限执行payload，弹出框框，上面都是我qq邮箱的cookie，弱点二证明完成<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+最后，写点题外话，祝福我将要出生的宝宝身体健康，活泼聪明~~！<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤尖括号 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/爱梅小礼" title="爱梅小礼">爱梅小礼</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023920" title="UC浏览器跨本地域XSS可盗取任意域Cookie">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-05-17 12:55</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">1.跨本地xss，可让http-&gt;file<br />
+这个漏洞，8.7版本有这个问题，8.8及以上版本已修复，建议升级到最新版本V9.0.1.275<br />
+2.本地可向远程注入js。file-&gt;http。<br />
+这个漏洞在8.7及最新版本中都存在，研发正在修复。<br />
+<br />
+非常感谢爱梅小礼的漏洞提醒！<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23920";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

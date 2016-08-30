@@ -1,0 +1,242 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		光大银行Android手机客户端密码明文泄漏  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		光大银行Android手机客户端密码明文泄漏  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2012-11-10 15:22</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-11-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-11-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-11-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-12-04：	细节向普通白帽子公开<br/>
+									2012-12-14：	细节向实习白帽子公开<br/>
+									2012-12-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">光大银行的Android手机客户端把密码明文输出到logcat上，可以导致别有用心的人获取到关键信息。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">猜测是因为光大银行android客户端开发人员release产品的时候没有把log注释掉，导致密码等关键信息泄露，随便用logcat就能看见了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">首先我们把手机连接到电脑上，并打开USB调试模式，在终端里输入 adb logcat -C 监视手机上的logcat。然后打开光大银行的客户端，选择手机银行，输入密码并登录，可以看见在logcat里输出如下内容:<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/101415347b735392b363f13d61c891fd366e47c7.png" target="_blank"><img src="../images/101415347b735392b363f13d61c891fd366e47c7.png" alt="login2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如果在本手机上不是第一次登录的话，这部分内容就不会显示。具体信息是手机号码，确认的手机号，以及身份证号码。<br />
+<br />
+<br />
+<br />
+如果输入正确的话就会跳到要求输入密码的界面，输入密码后点登录，logcat里就会显示如下内容。密码也明文显示了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/101409011e87dc4151cab7666b58ba670c404e9b.png" target="_blank"><img src="../images/101409011e87dc4151cab7666b58ba670c404e9b.png" alt="login.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第一行的就是手机银行的登录密码。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+好了，现在关键信息获取到了，那么转帐呢？<br />
+<br />
+<br />
+<br />
+我们现在试试用手机银行的实时到帐功能来转帐，输入交易信息后点确定，可以看见logcat再次把这些信息完整的暴露出来了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/101419584ecde73b2202862e92ba05286aecc218.png" target="_blank"><img src="../images/101419584ecde73b2202862e92ba05286aecc218.png" alt="deal.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+其中第一行是支付密码，也就是在ATM取钱时的密码。第二行是动态密码，是交易的时候银行把这个密码通过短信发送到手机上的。<br />
+<br />
+<br />
+<br />
+可能有人会问，如果之前已经登录过了，获取不到手机号和身份证信息，也不会有问题啊。<br />
+<br />
+<br />
+<br />
+在这种情况下如果有root权限，把/data/data/com.cebank.bankbb/目录下的内容复制一份出来，丢到别的手机上，就能变成&quot;已经输入了身份证/手机号信息&quot;的用户了。<br />
+<br />
+<br />
+<br />
+一切信息都搞到手，要利用起来就很容易了。<br />
+<br />
+<br />
+<br />
+在android应用程序中要获取logcat并不是一件困难的事情，并不需要root权限就可以获取了。具体获取的代码见这里：<br />
+<br />
+<br />
+<br />
+http://blog.csdn.net/chenshijun0101/article/details/7667377<br />
+<br />
+<br />
+<br />
+利用的时候可以写个service监听logcat，TAG信息为System.out，类型为I的内容。然后可以通过反编译apk的方法把这个service插入到正常的应用程序当中（比如QQ或者微信之类的）。这种程序自己本身也带服务，一般用户看进程不会发现多了个的。监听到的信息通过短信或者网络发送回黑客手中，然后黑客转走卡上所有余额的时候，要求输入动态密码的话，这个服务还可以做到接收短信的广播，将其转发给黑客，并取消这个短信广播。因为Android的短信是走系统的广播机制，所以只要接收的优先级比系统的短信apk要高(这个并不难，很多垃圾短信过滤的软件就是这样干的），那么就能比系统先接收到广播，并将其销毁。<br />
+<br />
+<br />
+<br />
+不给出代码的原因一来是怕被别有用心的人利用，而来自己也是懒，所以就不写了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">无。logcat没法屏蔽。只能靠光大银行配合修改代码，把输出log的代码全干掉就行了。<br />
+<br />
+<br />
+<br />
+另外吐槽下光大的log把所有通过http收发的数据全打出来了....可以看见数据传输还用的XML，没采用json这种更轻便更省流量的技术。建议换用json，无论从速度上还是流量占用上都有很不错的提升。<br />
+<br />
+<br />
+<br />
+发现这个漏洞是因为本码农发工资是用的光大银行的，所以本人更加希望光大银行能把安全问题看重点，别让我们这些码农辛勤工作拿到的工资没有安全保障，谢谢。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-014590" title="光大银行Android手机客户端密码明文泄漏">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-11-14 14:25</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认漏洞信息，转由CNCERT直接协调光大银行处置。<br />
+<br />
+从本案例也可以看，移动互联网的防范不仅仅需要防范恶意软件，而在开放平台上如android，也要注意对本地信息或连接信息的保护。<br />
+<br />
+rank 10</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="14590";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

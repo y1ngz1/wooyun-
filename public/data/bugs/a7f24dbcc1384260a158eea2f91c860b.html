@@ -1,0 +1,210 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		网易微博批量CSRF漏洞（referer检测不严格）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		网易微博批量CSRF漏洞（referer检测不严格）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小点兵">小点兵</a> 
+</li><li>提交时间：		2012-12-07 17:20</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-12-30：	细节向普通白帽子公开<br/>
+									2013-01-09：	细节向实习白帽子公开<br/>
+									2013-01-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">从域外https服务器提交的CSRF导致网易微博用户被动加关注，发微博，发私信，更改一些基本信息等. </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">网易微博检查http header里面的referer信息防止CSRF。然而，如果http header不包含referer,网易的代码依然会认为这是一个合法的提交。估计这个处理是为了让某些关闭浏览器referer功能的用户不受影响而设置的。但是，这个做法的直接后果是导致攻击者可以利用这一点继续进行攻击。<br />
+<br />
+<br />
+<br />
+什么时候可以让浏览器发出的http请求不带referer? 答案很简单，https向http跳转的时候。攻击者控制一个网易微博域外的https服务器（这个很简单，攻击者可以用自己的机器搭建这么一个服务器，将攻击代码放在这个服务器上，比如attack.php，然后利用 &lt;iframe src=&quot;https://xxxxx.xxxxx/attack.php&quot;&gt;之类的标签将攻击扩散出去），attack.php里面可以写上：<br />
+<br />
+&lt;form name=&quot;form1&quot; action=&quot;http://t.163.com/relation.do?action=follow&quot; method=&quot;POST&quot;&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;userId&quot; value=&quot;Attacker ID&quot;&gt;<br />
+<br />
+&lt;/form&gt;<br />
+<br />
+&lt;script language=&quot;javascript&quot;&gt;<br />
+<br />
+document.form1.submit()<br />
+<br />
+&lt;/script&gt;<br />
+<br />
+用户一旦点击，将会强行关注Attacker ID。当然，还能发微博，更改一些个人信息，我这里就不一一举例子了，希望厂商将所有用户可以提交信息的地方都好好检查一下。<br />
+<br />
+<br />
+<br />
+特别说明，弄一个https服务器，需要一个有效的证书。买证书很贵的。。。不过呢，几乎所有的证书提供商都支持试用，一般1个月。浏览器默认支持很多trusted CA，每个提供商，式他一个月，几年就下来了，嘿嘿<br />
+<br />
+当然，如果大量的关注能带来预期的效益，证书这点小钱黑阔还是出的起的，呵呵 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">受到攻击前：<br />
+<br />
+</p><p class="detail"><a href="../images/07162322a4c095d5a4b7cc8bf4ee6b65a386b78f.jpg" target="_blank"><img src="../images/07162322a4c095d5a4b7cc8bf4ee6b65a386b78f.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+攻击过程：<br />
+<br />
+</p><p class="detail"><a href="../images/071627049e33c4ff44ab4af4bc3f3932701a7e27.jpg" target="_blank"><img src="../images/071627049e33c4ff44ab4af4bc3f3932701a7e27.jpg" alt="网易微博attack1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/071627143155a8d0ba60a697ff33a3ea0a48329b.jpg" target="_blank"><img src="../images/071627143155a8d0ba60a697ff33a3ea0a48329b.jpg" alt="attack2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+受到攻击后：<br />
+<br />
+</p><p class="detail"><a href="../images/07162731eb9c2c60855a4cb76030241ea07916a2.jpg" target="_blank"><img src="../images/07162731eb9c2c60855a4cb76030241ea07916a2.jpg" alt="网易微博2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">将referer为空的提交视为非法提交。当然，这样可能一些正常用户会受到影响。建议用加入随机数，authenticity_token的方法，升级整个网站的CSRF检查。<br />
+<br />
+<br />
+<br />
+另外，希望厂商也检查下其他网易子站的代码，看是否也受影响 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小点兵" title="小点兵">小点兵</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015729" title="网易微博批量CSRF漏洞（referer检测不严格）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-10 13:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对网易的关注，漏洞已经修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15729";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

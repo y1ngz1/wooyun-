@@ -1,0 +1,200 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		康基自动售水机储值卡任意修改余额  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		康基自动售水机储值卡任意修改余额  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/larblue">larblue</a> 
+</li><li>提交时间：		2013-03-07 09:52</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-01：	细节向普通白帽子公开<br/>
+									2013-04-11：	细节向实习白帽子公开<br/>
+									2013-04-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">康基售水机储值卡存在设计漏洞，扇区加密简单，储值金额明码表示，没有对账机制容易篡改。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">康基等靠M1卡为储值载体的会员卡基本都有此类漏洞<br />
+<br />
+通过对卡数据dump，发现该卡使用了第2、3扇区的第一条数据，并对扇区访问密码做了一卡一密。两个扇区的密码相同。其他未利用扇区的密码默认为FF FF FF FF FF FF ，其中一个漏洞是加密扇区的KeyA是根据卡UID经过一系列算法加密过，而KeyB是简单的00 00 00 00 00 00.如果要对卡内余额等进行修改知道这个KeyB已经足够了。因为你除了不可以发卡以外其他的都可以做了。<br />
+<br />
+<br />
+<br />
+    下面分析数据，第二扇区的第一条数据为C0 D1 D2 06 06 00 00 00 02 00 00 00 00 00 00 00，通过对多张卡进行分析，发现此条数据为固定值，听有的用户反映该公司的售水机不能对不同代理商售出的水卡售水，怀疑此数据为代理商代码。<br />
+<br />
+<br />
+<br />
+    第三扇区的第一条数据为0X 0X 0X 0X 0X 0X 00 00 00 00 00 00 00 00 00 00,X为0-9的数字，总共为6位数，单位是分。本条数据是存储余额的内容，没有任何加密，假如你卡的余额是123.45元那么该条数据就是00 01 02 03 04 05 00 00 00 00 00 00 00 00 00 00。<br />
+<br />
+<br />
+<br />
+   下面说一下本卡的一卡一密算法，算法很简单。UID  9E FC 41 6E,KeyA 7B 1D D8 AB 1A 49,KeyB 00 00 00 00 00 00<br />
+<br />
+<br />
+<br />
+    密码的前四位加密算法相同，分别由UID的每一字节，16进制的0x119被减的值，再用0x100取余，例密码第一位0x7B=（0x119-0x9E）% 0x100,第五位是固定的0x1A，第六位是UID四字节逐个相加再用以0x100取余，例如第六位0x49= (0x9E+0xFC+0x41+0x6E)% 0x100。<br />
+<br />
+<br />
+<br />
+    知道一次一密算法就可以使用任何mf1k或者mf4k卡发卡了。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">看懂的人可以自己用一张M1卡按照我说的办法自制一张卡测试即可。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1，对储值扇区采用更高级别的加密方式，而不是这种简单的可逆方式<br />
+<br />
+2，对储值数据采用防篡改校验值MAC，并且根据卡UID和交易时间随机生成，一次一密<br />
+<br />
+只要本次交易结束，交易结果运算的余额和校验值相互绑定，实现防篡改<br />
+<br />
+3，使用CPU卡，升级成本较大，其实合理的逻辑可以不使用CPU卡，也可以达到相同的安全等级<br />
+<br />
+4.使用对账机制，防止篡改，升级代价较大，以后出的新机型可以考虑 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/larblue" title="larblue">larblue</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-019653" title="康基自动售水机储值卡任意修改余额">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：16 </p>
+													<p class="detail">确认时间：2013-03-12 08:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD暂未复现，不过将按照所述情况尝试进行协调处置。<br />
+<br />
+对于不具备计算能力（或者说仅具备固定逻辑处理能力）的IC卡，存在此类破解可能。<br />
+<br />
+rank 16</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="19653";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

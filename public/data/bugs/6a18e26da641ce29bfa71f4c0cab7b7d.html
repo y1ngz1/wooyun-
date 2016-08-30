@@ -1,0 +1,225 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ游戏Android客户端漏洞导致任意代码执行和密码泄漏  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ游戏Android客户端漏洞导致任意代码执行和密码泄漏  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Claud">Claud</a> 
+</li><li>提交时间：		2012-07-06 19:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-07-12：	细节向第三方安全合作伙伴开放<br/>
+									2012-07-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-29：	细节向普通白帽子公开<br/>
+									2012-08-18：	细节向实习白帽子公开<br/>
+									2012-08-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">如题，可以导致攻击者的任意代码被自动执行，可以进一步进行欺诈或者其他恶意行为，或者获取用户账号和密码。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">QQ游戏Android客户端采用模块化设计，部分游戏以APK的行为下载到手机SD卡中，然后通过ClassLoader动态加载其中的classes.dex文件执行，从而运行不同的游戏。在这个设计中，存在两个问题：<br />
+<br />
+1. 保存在SD卡的文件可以被其他任意应用软件读写；<br />
+<br />
+2. 在动态加载存储在SD卡上的classes.dex文件之前，没有对其完整性做验证。<br />
+<br />
+因此，攻击者可以替换已经下载的游戏文件，替换后的代码将在用户启动该游戏时得以执行。特别的，如果攻击者对这些文件采用重打包技巧植入恶意代码或者对用户进行欺诈，可以展开进一步攻击，例如获得用户密码或者搜集本地隐私数据等。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1. 关于SD卡文件可以任意读写，不再用代码证明，引用一下官方文档。<br />
+<br />
+在下列链接中：<br />
+<br />
+http://developer.android.com/guide/practices/security.html<br />
+<br />
+有提到：<br />
+<br />
+Files created on external storage, such as SD Cards, are globally readable and writable. Since external storage can be removed by the user and also modified by any application, applications should not store sensitive information using external storage.<br />
+<br />
+We strongly recommend that applications not store executables or class files on external storage prior to dynamic loading.<br />
+<br />
+We have seen many instances of applications attempting to load code from insecure locations, such as downloaded from the network over unencrypted protocols or from world writable locations such as external storage. These locations could allow someone on the network to modify the content in transit, or another application on a users device to modify the content, respectively.<br />
+<br />
+<br />
+<br />
+2. 关于修改后的代码会被QQ游戏不验证就执行，说明如下：<br />
+<br />
+以五子棋游戏为例，其下载的APK文件位于：<br />
+<br />
+/sdcard/.QQGame/8/qqfive1.0_androidwvga_build0015.apk<br />
+<br />
+下载后，该文件被解压缩到同目录。<br />
+<br />
+拷出这个文件，用apktool解包，可以看到只有一个入口点为com.tencent.qqgame.client.QQGameActivity。<br />
+<br />
+在这个类的onCreate方法中，插入一段smali代码如下：<br />
+<br />
+</p><p class="detail"><a href="../images/0619161873d5f8d993d48ce0a0765b5575f7c903.jpg" target="_blank"><img src="../images/0619161873d5f8d993d48ce0a0765b5575f7c903.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+即只插入一条Log.d指令。<br />
+<br />
+使用apktool重新打包，并签名，得到新的qqfive1.0_androidwvga_build0015.apk文件，并将其解压缩。将得到的这些文件覆盖掉原来/sdcard/.QQGame/8/目录下的软件，在QQ游戏中运行五子棋，Logcat记录如下：<br />
+<br />
+</p><p class="detail"><a href="../images/06191629207a8b15c6718b2cc81199c277fd4e3c.jpg" target="_blank"><img src="../images/06191629207a8b15c6718b2cc81199c277fd4e3c.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看到，上述Log.d语句已经顺利被执行。<br />
+<br />
+本例说明QQ游戏在动态加载其位于SD卡上的可执行程序时，并未对其完整性进行验证，就直接加载运行。因此，攻击者有两种方法实施攻击：<br />
+<br />
+1. 实现一个以com.tencent.qqgame.client.QQGameActivity为入口点的恶意代码放到这些目录下；<br />
+<br />
+2. 重打包原来的五子棋软件，在QQGameActivity中加入对恶意代码的调用。<br />
+<br />
+其中，第二种方法不影响用户正常运行五子棋游戏。<br />
+<br />
+<br />
+<br />
+通过这个漏洞，攻击者可以修改五子棋等游戏的代码，使得弹出虚假的界面诱使用户输入账号密码，也可以在用户正常输入账号密码登陆时记录下来并并回传，还可以搜集用户手机上的其他隐私数据并回传。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">根据官方文档，If an application does retrieve executable files from external storage they should be signed and cryptographically verified prior to dynamic loading.<br />
+<br />
+即：在加载并执行SD卡上的软件之前，对其进行完整性验证。最佳的方案是签名和加密，最快的解决方案是做完整性验证。<br />
+<br />
+其实我很奇怪，你们都在数据库里记下了这些要下载软件的哈希值，在加载前怎么都不验证一下。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Claud" title="Claud">Claud</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09299" title="QQ游戏Android客户端漏洞导致任意代码执行和密码泄漏">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-07-09 11:17</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">经评估，该问题主要是未签名验证导致的，而密码泄露等问题是通过篡改原文件的方式实现的，并非原程序存在的漏洞，因此给低评。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9299";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

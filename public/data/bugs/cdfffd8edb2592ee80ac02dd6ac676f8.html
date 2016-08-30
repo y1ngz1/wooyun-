@@ -1,0 +1,235 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 6. 换行符复仇记  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 6. 换行符复仇记  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-14 11:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-06：	细节向普通白帽子公开<br/>
+									2013-01-16：	细节向实习白帽子公开<br/>
+									2013-01-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">还是在&lt;script&gt;之间的场景，某些情况下，我们仅仅需要的只是一个换行符，就可以绕过过滤了。 它让双引号，尖括号知道了“它们不是一个符号在战斗”。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.实际场景是下面这个例子。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://datalib.games.qq.com/cgi-bin/search?libid=178&amp;FilterAttrAND=3602&amp;FilterValueAND=aaaaaaaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+对应的，我们可以看到我们的输入aaaaaaaaa 会在页面的哪些输出点出现呢？<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14110520b5c177419b984f01d7a41196f31cd4d4.jpg" target="_blank"><img src="../images/14110520b5c177419b984f01d7a41196f31cd4d4.jpg" alt="22.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 不错，一共有5处，有在HTML标签之间的（教程1），也有在&lt;script&gt;..&lt;/script&gt;之间的。但是呢，该过滤的，&lt; , &gt; 过滤掉了， 该过滤的 &quot; ，也过滤掉了。。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/141108063a03406df7d7c0ec3ae0c66f3f270ae1.jpg" target="_blank"><img src="../images/141108063a03406df7d7c0ec3ae0c66f3f270ae1.jpg" alt="23.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 也就是说传统的已经不行啦，我们继续看5处的其他地方。呀，竟然还有一大段注释里，也出现了我们的【输出】<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/141110460d918be01544dd1f1be7d3b21a495b2c.jpg" target="_blank"><img src="../images/141110460d918be01544dd1f1be7d3b21a495b2c.jpg" alt="24.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 嗯，这样一来，是否会想到这样一个用法呢？<br />
+<br />
+<br />
+<br />
+</p><pre><code>//我是注释，我爱洗澡，哦～哦～哦～ [我是输出]</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+如果可以使用换行符的话。<br />
+<br />
+<br />
+<br />
+</p><pre><code>//我是注释，我爱洗澡，哦～哦～哦～ [我是输出  换行符<br />
+ alert(1);//我是输出]</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这样alert(1); 就会被成功执行。<br />
+<br />
+<br />
+<br />
+5. 恩，带着这样一个想法，我们不难构造出以下利用。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://datalib.games.qq.com/cgi-bin/search?libid=178&amp;FilterAttrAND=3602&amp;FilterValueAND=%0aalert(1);//</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看下输出。嘿，果然没过滤。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14111442c5935ea172278963dec6e68cfad21303.jpg" target="_blank"><img src="../images/14111442c5935ea172278963dec6e68cfad21303.jpg" alt="25.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 这样，这一次我们的换行符立功了， 它不是一个符号在战斗！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/14111622bbf52e45b3489b702e58759286125e22.jpg" target="_blank"><img src="../images/14111622bbf52e45b3489b702e58759286125e22.jpg" alt="26.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">尽量不要在JS的注释里输出内容。还挺危险的。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016003" title="[腾讯实例教程] 那些年我们一起学XSS - 6. 换行符复仇记">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-17 15:02</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16003";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

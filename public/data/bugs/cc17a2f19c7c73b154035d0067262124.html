@@ -1,0 +1,292 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Dedecms 会员中心注入漏洞2  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Dedecms 会员中心注入漏洞2  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2014-01-14 16:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-17：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-03：	细节向普通白帽子公开<br/>
+									2014-02-23：	细节向实习白帽子公开<br/>
+									2014-04-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Dedecms 会员中心注入漏洞2</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>member/edit_baseinfo.php<br />
+require_once(dirname(__FILE__).&quot;/config.php&quot;);<br />
+CheckRank(0,0);<br />
+$menutype = &#039;config&#039;;<br />
+if(!isset($dopost)) $dopost = &#039;&#039;;<br />
+<br />
+$pwd2=(empty($pwd2))? &quot;&quot; : $pwd2;<br />
+$row=$dsql-&gt;GetOne(&quot;SELECT  * FROM `#@__member` WHERE mid=&#039;&quot;.$cfg_ml-&gt;M_ID.&quot;&#039;&quot;);<br />
+$face = $row[&#039;face&#039;];<br />
+if($dopost==&#039;save&#039;)<br />
+{<br />
+    $svali = GetCkVdValue();<br />
+<br />
+    if(strtolower($vdcode) != $svali || $svali==&#039;&#039;)<br />
+    {<br />
+        ReSETVdValue();<br />
+        ShowMsg(&#039;验证码错误！&#039;,&#039;-1&#039;);<br />
+        exit();<br />
+    }<br />
+    if(!is_array($row) || $row[&#039;pwd&#039;] != md5($oldpwd))<br />
+    {<br />
+        ShowMsg(&#039;你输入的旧密码错误或没填写，不允许修改资料！&#039;,&#039;-1&#039;);<br />
+        exit();<br />
+    }<br />
+    if($userpwd != $userpwdok)<br />
+    {<br />
+        ShowMsg(&#039;你两次输入的新密码不一致！&#039;,&#039;-1&#039;);<br />
+        exit();<br />
+    }<br />
+    if($userpwd==&#039;&#039;)<br />
+    {<br />
+        $pwd = $row[&#039;pwd&#039;];<br />
+    }<br />
+    else<br />
+    {<br />
+        $pwd = md5($userpwd);<br />
+        $pwd2 = substr(md5($userpwd),5,20);<br />
+    }<br />
+    $addupquery = &#039;&#039;;<br />
+    <br />
+    #api{{<br />
+    if(defined(&#039;UC_API&#039;) &amp;&amp; @include_once DEDEROOT.&#039;/uc_client/client.php&#039;)<br />
+    {<br />
+        $emailnew = $email != $row[&#039;email&#039;] ? $email : &#039;&#039;;<br />
+        $ucresult = uc_user_edit($cfg_ml-&gt;M_LoginID, $oldpwd, $userpwd, $emailnew);        <br />
+    }<br />
+    #/aip}}<br />
+    <br />
+    //修改安全问题或Email<br />
+    if($email != $row[&#039;email&#039;] || ($newsafequestion != 0 &amp;&amp; $newsafeanswer != &#039;&#039;))<br />
+    {<br />
+        if($row[&#039;safequestion&#039;]!=0 &amp;&amp; ($row[&#039;safequestion&#039;] != $safequestion || $row[&#039;safeanswer&#039;] != $safeanswer))<br />
+        {<br />
+            ShowMsg(&#039;你的旧安全问题及答案不正确，不能修改Email或安全问题！&#039;,&#039;-1&#039;);<br />
+            exit();<br />
+        }<br />
+<br />
+        //修改Email<br />
+        if($email != $row[&#039;email&#039;])<br />
+        {<br />
+            if(!CheckEmail($email))<br />
+            {<br />
+                ShowMsg(&#039;Email格式不正确！&#039;,&#039;-1&#039;);<br />
+                exit();<br />
+            }<br />
+            else<br />
+            {<br />
+                $addupquery .= &quot;,email=&#039;$email&#039;&quot;;<br />
+            }<br />
+        }<br />
+<br />
+        //修改安全问题<br />
+        if($newsafequestion != 0 &amp;&amp; $newsafeanswer != &#039;&#039;)<br />
+        {<br />
+            if(strlen($newsafeanswer) &gt; 30)<br />
+            {<br />
+                ShowMsg(&#039;你的新安全问题的答案太长了，请保持在30字节以内！&#039;,&#039;-1&#039;);<br />
+                exit();<br />
+            }<br />
+            else<br />
+            {<br />
+                $addupquery .= &quot;,safequestion=&#039;$newsafequestion&#039;,safeanswer=&#039;$newsafeanswer&#039;&quot;;//这里的newsafequest没过滤 我们直接update注入<br />
+            }<br />
+        }<br />
+    }<br />
+<br />
+    //修改uname<br />
+    if($uname != $row[&#039;uname&#039;])<br />
+    {<br />
+        $rs = CheckUserID($uname,&#039;昵称或公司名称&#039;,FALSE);<br />
+        if($rs!=&#039;ok&#039;)<br />
+        {<br />
+            ShowMsg($rs,&#039;-1&#039;);<br />
+            exit();<br />
+        }<br />
+        $addupquery .= &quot;,uname=&#039;$uname&#039;&quot;;<br />
+    }<br />
+    <br />
+    //性别<br />
+    if( !in_array($sex, array(&#039;男&#039;,&#039;女&#039;,&#039;保密&#039;)) )<br />
+    {<br />
+        ShowMsg(&#039;请选择正常的性别！&#039;,&#039;-1&#039;);<br />
+        exit();    <br />
+    }<br />
+    <br />
+    $query1 = &quot;UPDATE `#@__member` SET pwd=&#039;$pwd&#039;,sex=&#039;$sex&#039;{$addupquery} where mid=&#039;&quot;.$cfg_ml-&gt;M_ID.&quot;&#039; &quot;;<br />
+	echo $query1;<br />
+    $dsql-&gt;ExecuteNoneQuery($query1);</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">利用方法 注册用户并且登陆<br />
+<br />
+完了打开http://127.0.0.1/dede/member/edit_baseinfo.php<br />
+<br />
+然后随便写一下<br />
+<br />
+输入验证码 打开BURP 抓包<br />
+<br />
+点击提交<br />
+<br />
+然后再BURP里修改newsafequestion 的值改成1&#039;,email=@`&#039;`,uname=(select user()),email=&#039;sss<br />
+<br />
+然后提交 之后再打开http://127.0.0.1/dede/member/edit_baseinfo.php<br />
+<br />
+就可以看到自己的、用户名变成了注入之后的结果了<br />
+<br />
+</p><p class="detail"><a href="../images/14155301ecefc6543322f66d64b37a2a1ade5673.png" target="_blank"><img src="../images/14155301ecefc6543322f66d64b37a2a1ade5673.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/141553119fbe73451f10f406f1ddbbced91140a8.png" target="_blank"><img src="../images/141553119fbe73451f10f406f1ddbbced91140a8.png" alt="2.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/141553288b391ca9a510d6bf4b5a41518d606691.png" target="_blank"><img src="../images/141553288b391ca9a510d6bf4b5a41518d606691.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤啊 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048873" title="Dedecms 会员中心注入漏洞2">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：6 </p>
+													<p class="detail">确认时间：2014-01-14 22:23</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已修复，感谢反馈</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48873";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

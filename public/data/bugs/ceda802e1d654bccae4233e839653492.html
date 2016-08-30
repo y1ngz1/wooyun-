@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯某站下一处跨大域dom xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯某站下一处跨大域dom xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/只抽红梅">只抽红梅</a> 
+</li><li>提交时间：		2013-01-16 18:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-06：	细节向普通白帽子公开<br/>
+									2013-02-16：	细节向实习白帽子公开<br/>
+									2013-03-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">昨天在zone里面看到“猪猪侠”发的一个帖子以及讨论<br />
+http://zone.wooyun.org/content/2361<br />
+<br />
+正好又有sogili大牛的科普《猥琐流之webkit神跨域》<br />
+http://zone.wooyun.org/content/2365<br />
+<br />
+其实我所知道更早的应该是前端牛JerryQu的博文《Webkit下最无敌的跨大域方案》<br />
+http://www.imququ.com/post/document_domain_bug_in_webkit.html<br />
+<br />
+所以就去google下看能不能找到一处这样的问题。通过 &quot;site:qq.com inurl:domain&quot;参数可以找到一些，见详细说明。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">由于上面的文章说的很清楚，我这里就简单描述下：<br />
+<br />
+由于同源策略的限制，document.domain常用来进行跨域做一些事情，所以在腾讯的大部分业务中都有：<br />
+<br />
+</p><pre><code>document.domain = &quot;qq.com&quot;</code></pre><p class='detail'><br />
+<br />
+这样的代码。<br />
+<br />
+<br />
+<br />
+但是有的时候业务需要可能并没有通过js写死在页面中，而是通过js在url中取值来进行设置，比如：<br />
+<br />
+http://a.qq.com/?domain=qq.com<br />
+<br />
+http://b.qq.com/#qq.com<br />
+<br />
+这样在以前本没有任何问题，因为在qq.com域下是没有办法设置document.domain为baidu.com域或者com域的。<br />
+<br />
+<br />
+<br />
+但是webkit内核却支持设置到最后一级也就是<br />
+<br />
+</p><pre><code>document.domain = &quot;com&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+好了，开始看我们找到的实例：<br />
+<br />
+http://imgcache.qq.com/qqshow_v3/htdocs/live/popup/361/popup.html?domain=qq.com<br />
+<br />
+这个页面中有如下代码：<br />
+<br />
+</p><pre><code>var g_sDomain = QSFL.excore.getURLParam(&quot;domain&quot;);<br />
+…………<br />
+document.domain = g_sDomain;</code></pre><p class='detail'><br />
+<br />
+我们猜测上面的QSFL.excore.getURLParam函数就是取URL中的domain参数。<br />
+<br />
+在http://imgcache.qq.com/ac/qqshow/qsfl/2_71/core.js这个js中我们找到了QSFL.excore.getURLParam函数，就是和我们猜测的一样。<br />
+<br />
+</p><pre><code>QSFL.excore.getURLParam = function (sName, sUrl, rCharSet) {<br />
+    (!sUrl) &amp;&amp; (sUrl = window.location.href);<br />
+    sUrl = sUrl.toString();<br />
+    sUrl = sUrl.split(&quot;#&quot;)[0];<br />
+    var nIndex = sUrl.indexOf(&quot;?&quot;);<br />
+    var _value = (nIndex &gt;= 0) ? QSFL.excore.getParam(sUrl.substr(nIndex + 1), sName, &quot;&amp;&quot;, &quot;=&quot;) : &quot;&quot;;<br />
+    return _value;<br />
+};</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这样我们就可以通过下面的url来设置document.domain为com<br />
+<br />
+http://imgcache.qq.com/qqshow_v3/htdocs/live/popup/361/popup.html?domain=com<br />
+<br />
+<br />
+<br />
+只在webkit内核的浏览器下有效哦，chrome和safari都是webkit的浏览器。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://imgcache.qq.com/qqshow_v3/htdocs/live/popup/361/popup.html?domain=com<br />
+<br />
+直接通过chrome访问这个页面，然后看下document.domain的值就可以看到效果。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16172543ce4fd5e115b6da7aab483f9ac4829b22.jpg" target="_blank"><img src="../images/16172543ce4fd5e115b6da7aab483f9ac4829b22.jpg" alt="qq.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+是不是有疑问在实战中如何利用？<br />
+<br />
+<br />
+<br />
+我们在我们的任意站点下通过iframe包含这个有漏洞的页面，通过在我们的站点页面下也设置document.domain为com域，这样就突破了同源策略的限制，我们就可以在我们的站点页面向iframe页面注入js代码。<br />
+<br />
+<br />
+<br />
+说了这么多实例代码我想就不再需要我给出了吧？ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、document.domain写死为qq.com<br />
+<br />
+2、可以通过location.host来取值 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/只抽红梅" title="只抽红梅">只抽红梅</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017390" title="腾讯某站下一处跨大域dom xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-01-17 09:53</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17390";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

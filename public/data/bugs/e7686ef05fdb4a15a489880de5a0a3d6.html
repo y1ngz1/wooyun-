@@ -1,0 +1,376 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		乐视渗透纪实第五章.迂回前进 （乐视某系列系统渗透细节，涉及乐视主库）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		乐视渗透纪实第五章.迂回前进 （乐视某系列系统渗透细节，涉及乐视主库）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/3King">3King</a> 
+</li><li>提交时间：		2014-02-24 10:32</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-03-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-16：	细节向普通白帽子公开<br/>
+									2014-03-26：	细节向实习白帽子公开<br/>
+									2014-04-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">本专题发布到乌云的目的第一是为了交流基本思路（本人也是菜鸟 ╮(╯▽╰)╭），第二是获取rank以作为回报，第三是就大企业整体的安全防御进行讨论。不足之处，还望指正。<br />
+<br />
+※ 本次渗透是基于乐视官方授权许可的基础上进行的，这些漏洞在上报乌云前均已得到了修复。建议各位做持续或内部渗透前，先和官方联系，取得相应许可，以免出现不必要的误会和麻烦。<br />
+<br />
+※ 本报告中部分信息涉及的隐私部分，将做屏蔽或替换处理。<br />
+<br />
+※ 应厂商意向，本专题希望各位基友仅在乌云讨论，不要外发，谢谢!</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">乐视有个“V”系统，出现过strtus2框架漏洞，曾经上报过，乐视受理了漏洞。这次渗透前的例行扫描中，找到了这个“V”系统的几个测试系统。<br />
+<br />
+</p><pre><code>123.B25.C9.D22-123.B25.C9.D33</code></pre><p class='detail'><br />
+<br />
+而这几个测试系统均已打strtus2补丁，也不存在什么弱口令，便暂时放在了一边。<br />
+<br />
+<br />
+<br />
+渗透到这里，可以说已经提高了本次渗透的主动权。有内外网服务器权限，有管理员、IP段信息，接下来的渗透的难度将有所降低。<br />
+<br />
+<br />
+<br />
+于是，便抽了个时间重新关注这个“V”系统。<br />
+<br />
+<br />
+<br />
+ping一下这个“V”系统的IP，10.B5.C22.D122，看来已经解析到了内网。不过没关系，从三四章的渗透中，已经获得了足够的内网访问权限，可以直接通过域名访问了它。一测试，发现strtus2框架漏洞还在！乐视这懒偷得.. 有时间转移到内网，没时间打补丁..<br />
+<br />
+<br />
+<br />
+于是balabala拿到了这个服务器的权限，随后进入数据库的管理员表获取管理员信息。<br />
+<br />
+<br />
+<br />
+很奇怪的是，试了几个管理员信息，均提示用户名或密码错误。<br />
+<br />
+<br />
+<br />
+难道还有别的数据源？<br />
+<br />
+<br />
+<br />
+通过查看代码和服务器连接信息，确定只有这一个数据库。<br />
+<br />
+<br />
+<br />
+那这是怎么回事呢？<br />
+<br />
+<br />
+<br />
+一百来个管理员信息，试了几十个之后才有一个有效管理员，于是进入了系统。<br />
+<br />
+<br />
+<br />
+右上角的修改密码引起了注意<br />
+<br />
+</p><p class="detail"><a href="../images/13022838093001b8f862e95363e19af6c2d3d0e2.jpg" target="_blank"><img src="../images/13022838093001b8f862e95363e19af6c2d3d0e2.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+点开修改密码链接后，发现并不是在本服务器修改的密码，而是跳转到了另一个站点<br />
+<br />
+</p><pre><code>http://128.B66.C131.D169:8090</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/1302305937207859804ff705f1b9f391449af020.jpg" target="_blank"><img src="../images/1302305937207859804ff705f1b9f391449af020.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+嗯..这应该是一些站的权限系统..<br />
+<br />
+<br />
+<br />
+java架构...<br />
+<br />
+<br />
+<br />
+于是下意识地测了一下strtus2命令执行...<br />
+<br />
+<br />
+<br />
+我勒个去! 还真有!<br />
+<br />
+</p><p class="detail"><a href="../images/130233253da0f42d2ec91e8e6ea09f707dde16d5.jpg" target="_blank"><img src="../images/130233253da0f42d2ec91e8e6ea09f707dde16d5.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+拿到这个权限系统的服务器权限后，登录了这个数据库，获取到超级管理员MD5并解密，返回“V”系统登录，登录成功。<br />
+<br />
+</p><p class="detail"><a href="../images/13023504cefe7be617c960ed3c0d1bd79bd77a2b.jpg" target="_blank"><img src="../images/13023504cefe7be617c960ed3c0d1bd79bd77a2b.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/13023531e295885324be9058e8e326b1e4b588f1.jpg" target="_blank"><img src="../images/13023531e295885324be9058e8e326b1e4b588f1.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这时想起，前面不是有过“V”系统测试系统的地址吗？是不是它们的登录全是由这个权限系统控制的呢？<br />
+<br />
+<br />
+<br />
+于是用权限系统的超级管理员密码登录已打strtus2补丁的外网“V”系统测试系统，成功！<br />
+<br />
+</p><p class="detail"><a href="../images/1302445133e95bf49318140580919e9940dd5eb7.jpg" target="_blank"><img src="../images/1302445133e95bf49318140580919e9940dd5eb7.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+通过挖掘，发现“V”系统存在上传限制绕过漏洞。虽然在上传Flash处限制了文件类型，但是可以通过上传框处改名绕过。虽然很多上传点会对图片进行裁剪，但在“新增专辑”的不裁剪处能成功将任意文件上传到“V”系统中，导致可以获取Shell。<br />
+<br />
+<br />
+<br />
+在“V”系统测试系统中，发现了几个“V”系统本身没有的数据源。<br />
+<br />
+</p><p class="detail"><a href="../images/1303100658cdce8e599801ca49c6c5b6f7b7dabd.jpg" target="_blank"><img src="../images/1303100658cdce8e599801ca49c6c5b6f7b7dabd.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+其中一个用“V”系统测试系统登录，竟然提示Host &#039;V@localhost&#039; is not allowed to connect to this MySQL server<br />
+<br />
+<br />
+<br />
+这就未免有点奇怪。<br />
+<br />
+<br />
+<br />
+既然not allowed，那这个数据源还放在系统里干嘛？<br />
+<br />
+<br />
+<br />
+这时，便产生了好奇，想要登录这个数据库试试。说不定是重要数据库呢~（后来证实是对的）<br />
+<br />
+<br />
+<br />
+那么怎么才能登录进去呢？<br />
+<br />
+<br />
+<br />
+一般来说，有这两种方法：<br />
+<br />
+1.<br />
+<br />
+</p><pre><code>本机→数据库机终端→数据库</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2.<br />
+<br />
+</p><pre><code>本机→允许访问该数据库的机器→数据库</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+第一种，密码爆破失败，况且linux出弱口令的可能性小多了，而且是数据库机，怎么可能允许弱口令。。<br />
+<br />
+<br />
+<br />
+看来能用第二种方法了。。<br />
+<br />
+<br />
+<br />
+但是，到哪里去找允许访问该数据库的机器呢。。 现在手里这几个“V”系统机器都不行啊。。<br />
+<br />
+<br />
+<br />
+想来想去，只有从我手里现在有的机器一个个去试了。。<br />
+<br />
+<br />
+<br />
+于是拿第一章、第二章的服务器去试。。。<br />
+<br />
+<br />
+<br />
+RP真好！第二章的乐视客服服务中心服务器可以访问该数据库！<br />
+<br />
+<br />
+<br />
+进去之后，感觉有点不对劲。。。<br />
+<br />
+<br />
+<br />
+每章表数据都是几十万。。 每次的请求返回都卡到超时。。 而且一些内容都非常新。。这难道是进了乐视主库？<br />
+<br />
+<br />
+<br />
+USER表更是次次不能返回。。。<br />
+<br />
+<br />
+<br />
+费了九牛二虎之力，执行SELECT COUNT(*) AS CNT FROM USER成功了。。<br />
+<br />
+<br />
+<br />
+返回信息，一千多万。。。。。。。。。。<br />
+<br />
+<br />
+<br />
+选取其中5条进行登录验证，100%成功。<br />
+<br />
+<br />
+<br />
+（由于较敏感，这部分就不给截图了） </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/13022838093001b8f862e95363e19af6c2d3d0e2.jpg" target="_blank"><img src="../images/13022838093001b8f862e95363e19af6c2d3d0e2.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1302305937207859804ff705f1b9f391449af020.jpg" target="_blank"><img src="../images/1302305937207859804ff705f1b9f391449af020.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/130233253da0f42d2ec91e8e6ea09f707dde16d5.jpg" target="_blank"><img src="../images/130233253da0f42d2ec91e8e6ea09f707dde16d5.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/13023504cefe7be617c960ed3c0d1bd79bd77a2b.jpg" target="_blank"><img src="../images/13023504cefe7be617c960ed3c0d1bd79bd77a2b.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/13023531e295885324be9058e8e326b1e4b588f1.jpg" target="_blank"><img src="../images/13023531e295885324be9058e8e326b1e4b588f1.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1302445133e95bf49318140580919e9940dd5eb7.jpg" target="_blank"><img src="../images/1302445133e95bf49318140580919e9940dd5eb7.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1303100658cdce8e599801ca49c6c5b6f7b7dabd.jpg" target="_blank"><img src="../images/1303100658cdce8e599801ca49c6c5b6f7b7dabd.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">·修补“V”系统的上传绕过<br />
+<br />
+<br />
+<br />
+·修改相关数据库密码<br />
+<br />
+<br />
+<br />
+·全面检查全网其它系统是否还存在strtus2框架漏洞 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/3King" title="3King">3King</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051871" title="乐视渗透纪实第五章.迂回前进 （乐视某系列系统渗透细节，涉及乐视主库）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-02-24 10:33</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">辛苦了，做了不少工作，感谢。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51871";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

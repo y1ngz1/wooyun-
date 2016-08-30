@@ -1,0 +1,402 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 10. Dom Xss进阶 [邂逅eval]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 10. Dom Xss进阶 [邂逅eval]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-18 22:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-08：	细节向普通白帽子公开<br/>
+									2013-01-18：	细节向实习白帽子公开<br/>
+									2013-02-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">前面的教程，说到了显式输出和隐式输出。但是不论怎么样，因为最终javascript都会通过document.write或innerHTML将内容输出到网页中，所以我们总是有办法看到输出到哪里。 但是有时候，我们的输出，最终并没有流向innerHTML或document.write，而是与eval发生了邂逅，我们该怎么挖掘并利用呢？ </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 我们直接上例子。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://kf.qq.com/search_app.shtml?key=aaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+和前面的不同之处，这次我们搜索源代码和调试工具都看不到任何东西。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18221424fff6960e14ca54913e611df4a4af2f98.jpg" target="_blank"><img src="../images/18221424fff6960e14ca54913e611df4a4af2f98.jpg" alt="50.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 这个时候，我们可以看看Console，看看有没有其它有用的东西～～<br />
+<br />
+<br />
+<br />
+一般来说，默认情况下，是不会有问题的。我们可以给参数加一些特殊符号。<br />
+<br />
+<br />
+<br />
+这里我比较习惯用\，因为这玩意比较好使。当然你也可以用其它比较特殊的符号，比如双引号，单引号，只是被过滤掉的几率比较大。<br />
+<br />
+<br />
+<br />
+这个时候，我们看看Console里面，多出了一条错误。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1822143764592e6d3f35e5539b3eef130b191622.jpg" target="_blank"><img src="../images/1822143764592e6d3f35e5539b3eef130b191622.jpg" alt="51.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我们可以点右侧，直接定位到错误代码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/182214527a199679827e79f7d3923726169c805c.jpg" target="_blank"><img src="../images/182214527a199679827e79f7d3923726169c805c.jpg" alt="52.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 点进去后，可以看到是哪个地方出错了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1822150584b08c08bef52c17f3645b2dba02f1a6.jpg" target="_blank"><img src="../images/1822150584b08c08bef52c17f3645b2dba02f1a6.jpg" alt="53.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我们来看看这段代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>var getarg = function()<br />
+{<br />
+	var url = window.location.href;<br />
+	var allargs = url.split(&quot;?&quot;)[1];<br />
+	if (allargs!=null &amp;&amp; allargs.indexOf(&quot;=&quot;)&gt;0)<br />
+	{<br />
+		var args = allargs.split(&quot;&amp;&quot;);<br />
+		for(var i=0; i&lt;args.length; i++)<br />
+		{<br />
+			var arg = args[i].split(&quot;=&quot;);<br />
+			eval(&#039;this.&#039;+arg[0]+&#039;=&quot;&#039;+arg[1]+&#039;&quot;;&#039;);<br />
+		}<br />
+	}<br />
+};</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+和上一节教程类似，这段代码，实际上也是一个获取地址栏参数的代码。<br />
+<br />
+<br />
+<br />
+比如，地址栏是key=aaaa; 那么 arg[0] 就是字符串&#039;key&#039;, arg[1] 就是字符串 &#039;aaaa&#039;;<br />
+<br />
+<br />
+<br />
+那么eval这句就是执行的 eval(&#039;this.key=&quot;aaaa&quot;;&#039;)<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18221518493a224f78bfa8d29589c5c88ba66aec.jpg" target="_blank"><img src="../images/18221518493a224f78bfa8d29589c5c88ba66aec.jpg" alt="54.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这样一来 , this.key=&quot;aaaa&quot;;这句就被执行了。<br />
+<br />
+<br />
+<br />
+4. 如果这里我们把 key 换个写法呢？<br />
+<br />
+<br />
+<br />
+this.key=&quot;aaaa&quot;;<br />
+<br />
+<br />
+<br />
+this.key;alert(1);//=&quot;aaaa&quot;;<br />
+<br />
+<br />
+<br />
+如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18221528690e31de257c78bf70f4b5f8101409a5.jpg" target="_blank"><img src="../images/18221528690e31de257c78bf70f4b5f8101409a5.jpg" alt="55.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+那么是不是将会执行我们的alert(1);呢？<br />
+<br />
+<br />
+<br />
+5. 根据上面内容，我们可以构造代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://kf.qq.com/search_app.shtml?key;alert(1);//=aaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+HOHO～，如我们所愿的弹出了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/182215394c02941d424ef60dc455dedddc950614.jpg" target="_blank"><img src="../images/182215394c02941d424ef60dc455dedddc950614.jpg" alt="56.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 不知道看完上面的，有没有娃注意到，后面的 aaaa 不是也可以构造吗？<br />
+<br />
+<br />
+<br />
+this.key=&quot;aaaa&quot;; 换为<br />
+<br />
+<br />
+<br />
+this.key=&quot;aaa&quot;;alert(1);//&quot;;<br />
+<br />
+<br />
+<br />
+确实是如此 :)<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://kf.qq.com/search_app.shtml?key=aaa&quot;;alert(1);//</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这个在IE下一样是可以的。<br />
+<br />
+<br />
+<br />
+但是这样在chrome下却不行。 原因其实上面一节教程也提到过。<br />
+<br />
+<br />
+<br />
+chrome会自动对&quot;, &gt;, &lt; 进行转换。<br />
+<br />
+<br />
+<br />
+因而<br />
+<br />
+<br />
+<br />
+this.key=&quot;aaa&quot;;alert(1);//&quot;;<br />
+<br />
+<br />
+<br />
+会变成<br />
+<br />
+<br />
+<br />
+this.key=&quot;aaa%22;alert(1);//&quot;;<br />
+<br />
+<br />
+<br />
+从而失效。<br />
+<br />
+<br />
+<br />
+7.上面就是本篇教程了，我们再来看看题外话。<br />
+<br />
+<br />
+<br />
+其实以上问题，不是单独存在的。在另外一个页面也是存在的。<br />
+<br />
+<br />
+<br />
+更多内容，参见本篇漏洞修复。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">参照你们已经修复的类似文件即可。 <br />
+<br />
+<br />
+<br />
+</p><pre><code>http://kf.qq.com/wsearch.shtml<br />
+的<br />
+http://kf.qq.com/js/wsearch.js</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+本来上面这个文件也是存在漏洞的，估计这个位置已经被人报告给腾讯了，因而腾讯加了一次防御。我们看看腾讯的防御措施。<br />
+<br />
+<br />
+<br />
+</p><pre><code>var getarg = function(){<br />
+	.... 省略相同部分...<br />
+                eval(&#039;this.&#039; + arg[0] + &#039;=&quot;&#039; + HtmlAttributeEncode(arg[1]) + &#039;&quot;;&#039;);<br />
+	.... 省略相同部分...<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+也就是说，腾讯这里对后面的arg[1]进行了过滤。<br />
+<br />
+<br />
+<br />
+接着，这个问题又被再次报告了，因而前些时候，腾讯又进一步做了修复。<br />
+<br />
+<br />
+<br />
+</p><pre><code>var getarg = function(){<br />
+	.... 省略相同部分...<br />
+            if (arg[0] != null &amp;&amp; arg[1] != null &amp;&amp; (arg[0] == &#039;page&#039; || arg[0] == &#039;count&#039; || arg[0] == &#039;tag&#039; || arg[0] == &#039;key&#039; || arg[0] == &#039;total&#039;) )<br />
+            {<br />
+                eval(&#039;this.&#039; + arg[0] + &#039;=&quot;&#039; + HtmlAttributeEncode(arg[1]) + &#039;&quot;;&#039;);<br />
+             }<br />
+	.... 省略相同部分...<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这一次，腾讯对 arg[0]进行了判断。<br />
+<br />
+<br />
+<br />
+哈，补了东墙，补西墙。 不过呢？补了这个wsearch.js文件，还有我们现在分析的这个(http://kf.qq.com/js/search_app.js)文件。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016197" title="[腾讯实例教程] 那些年我们一起学XSS - 10. Dom Xss进阶 [邂逅eval]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-19 10:21</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16197";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

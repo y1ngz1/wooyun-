@@ -1,0 +1,194 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		我是这样利用pubwin搞定连锁网吧的  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		我是这样利用pubwin搞定连锁网吧的  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/hacker@sina.cn">hacker@sina.cn</a> 
+</li><li>提交时间：		2013-11-22 11:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-22：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2014-01-06：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我是来刷核心白帽的。此致，敬礼。 <br />
+测试事件发生在2012年2月过年放假期间，去朋友所在城市玩时碰巧测试。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">驻地附近有一家本市连锁网吧，号称全xx最豪华顶级的网吧，全市至少5、6、7家分店(反正网吧名片上写了好多家 没详细看)，使用PubWin2007管理，办理会员充100送170、50送90 还是蛮划算的，不过限于本人囊中羞涩（你们懂得）所以每每想到钱包你肿么了 、你肿么了 你回答我啊！心中难掩泪痕，逐决定另辟蹊径，自力更生解决资金问题（对于外地过来玩的穷苦B 拿来主义是最适用的，不过各位网吧黑客小心被网管打折狗腿，朋友被抓正着，幸亏网管不懂技术 呵呵呵～给搪塞过去了）。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+step 1：netstat -an+扫描C段找到收银台主机、无盘服务器、充值平台服务器、DVR数字视频录像机服务器地址及各服务器所开设服务端口。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+结果：5台主机全部存在3389(2台2003用作支撑无盘的游戏服务器、1台xp收银主机、1台xp充值平台主机、1台xp摄像头监视器主机)<br />
+<br />
+     在收银主机IP上发现1433端口及PubWin 2007 WEB端管理后台：https://192.168.1.247/NetCafe/ 尝试弱口令未果<br />
+<br />
+<br />
+<br />
+step 2：通过猜解DVR服务器WEB管理端口令取得网吧16路摄像头监控权限，方便今后找到摄像头死角位置上网，并保证不会被抓或发现。后期更用来监控前台收银主机的屏幕状态(角度位置刚好看到主机和周边工作人员情况)。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+step 3：打车去另一家连锁网吧寻求新的突破口，遵循1、2步骤后发现对方的充值平台使用mssql数据库并且账号密码默认为NetCafe/pubwin,逐获得SA权账号一枚，但因为是XP系统双开3389会闪出系统关闭提示框，逐为其开telnet、saminside丢上去搞到LMHASH拉去在线破，搞定之后尝试登陆其他服务器3389均告成功，并通过数据库获取到pubwin web端后台管理员密文密码(但尚未破解出,因其算法为base64_encode(pack(&quot;H*&quot;,md5($str)))正在cmd5猪一般的速度猜解中)。死一般寂静的清晨到来了，回去睡觉。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+step 4：第二天醒来去驻地附近网吧试验昨晚收集到的密码，5台服务器全部沦陷、但未取得MSSQL账密（pubwin连接mssql的数据库连接文件中其密码采用特殊算法加密，估计是DES or 3DES之类的对称密钥算法）,因为收银主机是XP系统，逐决定为其开启telnet，待到午夜时分、夜深人静，收银网管均已熟睡，就是我等动手之时（因为登陆administrator会T掉对方终端，所以需要快、准、狠三步合一、一气呵成！），到群里找@zazaz大牛写了一个将step 3中获取到的密文反解为MD5的PHP程序，成功获得MD5，但特么还是没办法立刻解出来，也罢，吃过夜宵再战。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+step 5：凌晨4点10分、通过DVR_WEB监控端监视收银台全景(重点是收银主机屏幕变化)、在确定坐台妹子打瞌睡后，迅速进入收银主机3389，执行命令开启telnet服务，并立刻退出。本地telnet连上去后下载对方数据库文件、本地搭建MSDE2000并使用SQL查询分析器执行命令导入数据库，取得Pubwin_WEB端后台admin密文密码后丢到cmd5秒破之(突然发现cmd5可以直接破解pubwin_web后台管理员密文)。至此搞定。<br />
+<br />
+<br />
+<br />
+</p><pre><code>数据库文件：：\Program Files\Hintsoft\PubwinServer\database       下的“local_Data.MDF”和“local_log.LDF”<br />
+<br />
+网站目录：\Program Files\Hintsoft\PubwinServer\appServ\server\webapps\NetCafe\</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/220105312c600aa178b4bbf377cf6148beb919a3.jpg" target="_blank"><img src="../images/220105312c600aa178b4bbf377cf6148beb919a3.jpg" alt="123.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">多少软件死在默认口令这个重大安全问题上？<br />
+<br />
+方便了用户，也方便了黑客。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/hacker@sina.cn" title="hacker@sina.cn">hacker@sina.cn</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043679" title="我是这样利用pubwin搞定连锁网吧的">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43679";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

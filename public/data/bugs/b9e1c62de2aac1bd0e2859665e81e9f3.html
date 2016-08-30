@@ -1,0 +1,265 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHPCMS最新版(V9)SQL注入一枚  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHPCMS最新版(V9)SQL注入一枚  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blue">blue</a> 
+</li><li>提交时间：		2013-06-02 04:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-06：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-23：	细节向普通白帽子公开<br/>
+									2013-07-13：	细节向实习白帽子公开<br/>
+									2013-08-31：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">比较有意思的一个SQL注入点，代码分析是个体力活，唿～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">存在于在线充值功能，直接上代码分析，建议先看漏洞证明：<br />
+<br />
+</p><pre><code>/phpcms/phpcms/modules/pay/deposit.php 96行起的pay_recharge方法<br />
+...<br />
+$trade_sn	= param::get_cookie(&#039;trade_sn&#039;); //约110行位置，如果可以控制$trade_sn，即可注入，事实自然是可以的<br />
+			$usernote = $_POST[&#039;info&#039;][&#039;usernote&#039;] ? $_POST[&#039;info&#039;][&#039;name&#039;].&#039;[&#039;.$trade_sn.&#039;]&#039;.&#039;-&#039;.new_html_special_chars(trim($_POST[&#039;info&#039;][&#039;usernote&#039;])) : $_POST[&#039;info&#039;][&#039;name&#039;].&#039;[&#039;.$trade_sn.&#039;]&#039;;<br />
+			<br />
+			$surplus = array(<br />
+					&#039;userid&#039;      =&gt; $this-&gt;_userid,<br />
+					&#039;username&#039;    =&gt; $this-&gt;_username,<br />
+					&#039;money&#039;       =&gt; trim(floatval($_POST[&#039;info&#039;][&#039;price&#039;])),<br />
+					&#039;quantity&#039;    =&gt; $_POST[&#039;quantity&#039;] ? trim(intval($_POST[&#039;quantity&#039;])) : 1,<br />
+					&#039;telephone&#039;   =&gt; preg_match(&#039;/[0-9\-]+/&#039;, $_POST[&#039;info&#039;][&#039;telephone&#039;]) ? trim($_POST[&#039;info&#039;][&#039;telephone&#039;]) : &#039;&#039;,<br />
+					&#039;contactname&#039; =&gt; $_POST[&#039;info&#039;][&#039;name&#039;] ? trim($_POST[&#039;info&#039;][&#039;name&#039;]).L(&#039;recharge&#039;) : $this-&gt;_username.L(&#039;recharge&#039;),<br />
+					&#039;email&#039;       =&gt; is_email($_POST[&#039;info&#039;][&#039;email&#039;]) ? trim($_POST[&#039;info&#039;][&#039;email&#039;]) : &#039;&#039;,<br />
+					&#039;addtime&#039;	  =&gt; SYS_TIME,<br />
+					&#039;ip&#039;		  =&gt; ip(),<br />
+					&#039;pay_type&#039;	  =&gt; &#039;recharge&#039;,<br />
+					&#039;pay_id&#039;      =&gt; $payment[&#039;pay_id&#039;],		<br />
+					&#039;payment&#039;     =&gt; trim($payment[&#039;pay_name&#039;]),<br />
+					&#039;ispay&#039;		  =&gt; &#039;1&#039;,<br />
+					&#039;usernote&#039;    =&gt; $usernote,<br />
+					&#039;trade_sn&#039;	  =&gt; $trade_sn,<br />
+			);<br />
+			$recordid = $this-&gt;handle-&gt;set_record($surplus); //直到这里，也没有对$trade_sn进行处理吧？接下来看set_record方法<br />
+/phpcms/phpcms/modules/pay/classes/pay_deposit.class.php 12行起<br />
+	/**<br />
+	 * 生成流水记录<br />
+	 * @param unknown_type <br />
+	 */<br />
+	public function set_record($data){<br />
+		$require_items = array(&#039;userid&#039;,&#039;username&#039;,&#039;email&#039;,&#039;contactname&#039;,&#039;telephone&#039;,&#039;trade_sn&#039;,&#039;money&#039;,&#039;quantity&#039;,&#039;addtime&#039;,&#039;paytime&#039;,&#039;usernote&#039;,&#039;usernote&#039;,&#039;pay_type&#039;,&#039;pay_id&#039;,&#039;payment&#039;,&#039;ip&#039;,&#039;status&#039;);<br />
+		if(is_array($data)) {<br />
+			foreach($data as $key=&gt;$item) {<br />
+				if(in_array($key,$require_items)) $info[$key] = $item;<br />
+			}			<br />
+		} else {<br />
+			return false;<br />
+		}<br />
+		$trade_exist = $this-&gt;account_db-&gt;get_one(array(&#039;trade_sn&#039;=&gt;$info[&#039;trade_sn&#039;]));  //这里<br />
+		if($trade_exist) return $trade_exist[&#039;id&#039;];<br />
+		$this-&gt;account_db-&gt;insert($info); //还有这里<br />
+		return $this-&gt;account_db-&gt;insert_id();<br />
+	}</code></pre><p class='detail'><br />
+<br />
+好了，关键是控制$trade_sn的值，看param::get_cookie和param::set_cookie方法<br />
+<br />
+</p><pre><code>/phpcms/phpcms/libs/classes/param.class.php<br />
+	public static function set_cookie($var, $value = &#039;&#039;, $time = 0) {<br />
+		$time = $time &gt; 0 ? $time : ($value == &#039;&#039; ? SYS_TIME - 3600 : 0);<br />
+		$s = $_SERVER[&#039;SERVER_PORT&#039;] == &#039;443&#039; ? 1 : 0;<br />
+		$var = pc_base::load_config(&#039;system&#039;,&#039;cookie_pre&#039;).$var;<br />
+		$_COOKIE[$var] = $value;<br />
+		if (is_array($value)) {<br />
+			foreach($value as $k=&gt;$v) {<br />
+				setcookie($var.&#039;[&#039;.$k.&#039;]&#039;, sys_auth($v, &#039;ENCODE&#039;), $time, pc_base::load_config(&#039;system&#039;,&#039;cookie_path&#039;), pc_base::load_config(&#039;system&#039;,&#039;cookie_domain&#039;), $s);<br />
+			}<br />
+		} else {<br />
+			setcookie($var, sys_auth($value, &#039;ENCODE&#039;), $time, pc_base::load_config(&#039;system&#039;,&#039;cookie_path&#039;), pc_base::load_config(&#039;system&#039;,&#039;cookie_domain&#039;), $s);  //cookie加密了，而且方法很给力,sys_auth是有auth_key的，基本上可以说破解这个值不容易<br />
+		}<br />
+	}<br />
+......<br />
+	public static function get_cookie($var, $default = &#039;&#039;) {<br />
+		$var = pc_base::load_config(&#039;system&#039;,&#039;cookie_pre&#039;).$var;<br />
+		return isset($_COOKIE[$var]) ? sys_auth($_COOKIE[$var], &#039;DECODE&#039;) : $default; //这里是解密方法，咱也用不上<br />
+	}</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/02041007677b2f60f55336a768c95b541cd8f112.png" target="_blank"><img src="../images/02041007677b2f60f55336a768c95b541cd8f112.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+看来想自己更改cookie值很难，不知道加密的auth_key值嘛，可是...如果利用一个能set_cookie($value)的点，并且咱们能控制$value呐？这个点自然是有的～<br />
+<br />
+</p><pre><code>/phpcms/phpcms/modules/attachment/attachments.php 228行起<br />
+	public function swfupload_json() {<br />
+		$arr[&#039;aid&#039;] = intval($_GET[&#039;aid&#039;]);  //这个不行,intval了<br />
+		$arr[&#039;src&#039;] = trim($_GET[&#039;src&#039;]); //这个可以,虽然$_GET会addslashes，但下面的json_encode会帮上忙（此时&#039; =&gt; \&#039;，这里是一个反斜线 ）<br />
+		$arr[&#039;filename&#039;] = urlencode($_GET[&#039;filename&#039;]); //这个不行,urlencode了<br />
+		$json_str = json_encode($arr); (此时 \&#039; =&gt; \\&#039; 这里是两个反斜线)所以单引号可以用了<br />
+		$att_arr_exist = param::get_cookie(&#039;att_json&#039;);<br />
+		$att_arr_exist_tmp = explode(&#039;||&#039;, $att_arr_exist);<br />
+		if(is_array($att_arr_exist_tmp) &amp;&amp; in_array($json_str, $att_arr_exist_tmp)) {<br />
+			return true;<br />
+		} else {<br />
+			$json_str = $att_arr_exist ? $att_arr_exist.&#039;||&#039;.$json_str : $json_str;<br />
+			param::set_cookie(&#039;att_json&#039;,$json_str); //这里<br />
+			return true;			<br />
+		}<br />
+	}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1.在COOKIE att_json为空时（当然可以手动清空），访问以下链接生成att_json<br />
+<br />
+http://localhost/test/phpcms/index.php?m=attachment&amp;c=attachments&amp;a=swfupload_json&amp;src=1%27&amp;filename=a%27 （当然，你可以干点别的）<br />
+<br />
+<br />
+<br />
+2.提交在线充值时，更改COOKIE trade_sn为att_json的值<br />
+<br />
+</p><p class="detail"><a href="../images/02042413d6dee09119403cc1b4b084386f451aa2.png" target="_blank"><img src="../images/02042413d6dee09119403cc1b4b084386f451aa2.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/020440287b1a97b91a8a78317246e0cee49cee83.png" target="_blank"><img src="../images/020440287b1a97b91a8a78317246e0cee49cee83.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对$trade_sn进行addslashes  </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blue" title="blue">blue</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024984" title="PHPCMS最新版(V9)SQL注入一枚">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-06-03 16:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-06-03：@blue
+请提供下联系方式，或者联系我们网站在线客服！
+我们确认身份后，赠送您精美礼品！</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24984";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

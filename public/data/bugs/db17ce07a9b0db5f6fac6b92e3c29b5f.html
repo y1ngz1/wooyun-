@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯微博存储型XSS漏洞--看我这标题多普通  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯微博存储型XSS漏洞--看我这标题多普通  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的胖子">心伤的胖子</a> 
+</li><li>提交时间：		2012-09-27 09:42</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-17：	细节向普通白帽子公开<br/>
+									2012-10-27：	细节向实习白帽子公开<br/>
+									2012-11-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">腾讯微博存储型XSS漏洞，需要用户进行交互才能够触发。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">先给出重现过程<br />
+<br />
+<br />
+<br />
+1、发微博处添加音乐，随便搜索一个，比如test，在出现的音乐列表中选择一个插入到微博中，在发表微博的时候截断包，<br />
+<br />
+</p><pre><code>content=%23%E5%88%86%E4%BA%AB%E9%9F%B3%E4%B9%90%23%20%23We%20are%20AMARS-%E5%90%89%E6%A3%AE%E4%BF%A1%23%20http%3A%2F%2Furl.cn%2F534joC&amp;startTime=1348674746009&amp;endTime=1348675207813&amp;countType=&amp;viewModel=&amp;attips=&amp;pic=&amp;musicID=1886728&amp;musicSong=We%20are%20AMARS&lt;img src=a onerror=alert(1)&gt;&amp;musicSinger=%E5%90%89%E6%A3%AE%E4%BF%A1&amp;musicLocation=http%3A%2F%2Fstream4.qqmusic.qq.com%2F13886728.wma&amp;musicShortUrl=534joC&amp;apiType=8&amp;syncQzone=0&amp;syncQQSign=0</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+修改musicSong参数，在后面加上&lt;img src=a onerror=alert(1)&gt;，然后发表微博。<br />
+<br />
+<br />
+<br />
+2、回到首页刚发表微博的地方，微博内容如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/27010321b0906a85e4925e318aa333af9a88c9e2.jpg" target="_blank"><img src="../images/27010321b0906a85e4925e318aa333af9a88c9e2.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3、点击播放，执行了我们插入的代码。<br />
+<br />
+<br />
+<br />
+漏洞分析过程：<br />
+<br />
+<br />
+<br />
+1、漏洞形成的原因经过简单分析是，在http://mat1.gtimg.com/www/mb/js/mi.TalkListRich_120921a.js这个js文件中有如下代码：<br />
+<br />
+</p><pre><code>MI.TalkList.prototype.musicEvent = function(b) {<br />
+		for (var a = this,<br />
+		c = 0,<br />
+		e = b.length; c &lt; e; c++) {<br />
+			var d = b[c],<br />
+			f = g(d, &quot;.albumInfo .mThumbsBox&quot;)[0];<br />
+			if (f) {<br />
+				…………<br />
+			} else {<br />
+				f = g(d, &quot;.mThumbsBox&quot;)[0];<br />
+				j = g(d, &quot;.mBox&quot;)[0];<br />
+				g(j, &quot;.mTitBox&quot;);<br />
+				var h = g(j, &quot;.btn_mClose&quot;)[0],<br />
+				i = g(j, &quot;.btn_mPlay&quot;)[0],<br />
+				j = g(j, &quot;.btn_mPause_hover&quot;)[0],<br />
+				k = g(d.parentNode.parentNode, &quot;.msgCnt .ico_music&quot;)[0] || g(d.parentNode.parentNode, &quot;.msgCnt .ico_qlz&quot;)[0];<br />
+				f.onclick = i.onclick = function() {<br />
+					MI.app({<br />
+						Music: function() {<br />
+							MI.TalkList.music(d)<br />
+						}<br />
+					});<br />
+					return ! 1<br />
+				};<br />
+				k &amp;&amp; (k.onclick = function() {<br />
+…………<br />
+	};</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+点击触发click时间，然后调用MI.TalkList.music(d)函数进行音乐播放。<br />
+<br />
+<br />
+<br />
+2、MI.TalkList.music函数在http://mat1.gtimg.com/www/mb/js/mi.Music_120821.js文件中。<br />
+<br />
+<br />
+<br />
+</p><pre><code>MI.TalkList.music = function(a) {<br />
+		MI.TalkList.lastMusic = a;<br />
+		MI.Music &amp;&amp; MI.Music.stop(&quot;&quot;, !0);<br />
+		var b = g(a, &quot;.albumInfo .mThumbsBox&quot;)[0];<br />
+                …………<br />
+			a = &#039;&lt;a class=&quot;mPlayerPlaying&quot; href=&quot;http://music.soso.com/url_player.html?song=%esong%&amp;singer=%esinger%&amp;url=%songurl%&amp;stream=0&amp;songID=0&quot; target=&quot;_blank&quot; title=&quot;%song%-%singer%&quot;&gt;&lt;span style=&quot;margin-right:10px;&quot;&gt;%song%-%singer%&lt;/span&gt;&lt;/a&gt;&#039;.replace(/\%esong\%/gi, escape(UI.A(a, &quot;song&quot;))).replace(/\%esinger\%/gi, escape(UI.A(a, &quot;singer&quot;))).replace(/\%song\%/gi, UI.A(a, &quot;song&quot;)).replace(/\%singer\%/gi, UI.A(a, &quot;singer&quot;)).replace(/\%songurl\%/gi, UI.A(a, &quot;songurl&quot;)).replace(/\%songid\%/gi, UI.A(a, &quot;songid&quot;));<br />
+			h || (UI.append(UI.html(a)[0], f), h = g(f, &quot;.mPlayerPlaying&quot;)[0]);<br />
+			n || UI.append(UI.html(&#039;&lt;span class=&quot;mPlayerState&quot;&gt;&lt;/span&gt;&#039;)[0], f);<br />
+			…………</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+上面代码中会从页面中获取歌手名和歌曲名然后替换a变量中的内容，在替换的没有对歌曲名和歌手名进行URL编码和HTML编码处理，造成存在XSS漏洞。<br />
+<br />
+<br />
+<br />
+PS：感觉分析的挺乱的，你们看看能否看懂吧！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">下图是执行了插入的代码：<br />
+<br />
+</p><p class="detail"><a href="../images/270120090b3c5fe74c36bd16112d48c3d36700f6.jpg" target="_blank"><img src="../images/270120090b3c5fe74c36bd16112d48c3d36700f6.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、在通过js输出html代码的时候对用户传入的数据进行编码处理。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的胖子" title="心伤的胖子">心伤的胖子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012767" title="腾讯微博存储型XSS漏洞--看我这标题多普通">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-09-27 10:47</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的反馈，漏洞正在跟进处理中。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12767";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

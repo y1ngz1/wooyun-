@@ -1,0 +1,247 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		小米MIUI系统造成用户大量敏感数据泄露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		小米MIUI系统造成用户大量敏感数据泄露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Claud">Claud</a> 
+</li><li>提交时间：		2012-06-11 18:53</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-11：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-14：	细节向第三方安全合作伙伴开放<br/>
+									2012-06-21：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-01：	细节向普通白帽子公开<br/>
+									2012-07-21：	细节向实习白帽子公开<br/>
+									2012-07-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">在目前所有MIUI系统中，满足漏洞条件的情况下，该漏洞导致手机中任何应用程序均能获取用户的以下敏感数据：<br />
+1. 已安装应用软件列表及版本号<br />
+2. 用户通讯录中联系人姓名、电话号码、邮箱地址等<br />
+3. 用户通话记录中电话号码、通话时间等.<br />
+4. 用户短信和彩信内容、号码、时间等<br />
+5. 用户保存在手机中的无线网络的SSID与密码<br />
+6. 用户保存在便签中的个人数据<br />
+7. 其他应用程序的本地私有数据，包括数据库文件、配置文件等<br />
+此外，攻击者可以利用此漏洞在特定条件下替换用户已安装的应用程序。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在MIUI中，用户通过备份程序（Backup.apk）将个人数据、应用程序和应用数据保存在本地，以便升级或刷机以后恢复。在这个应用中，存在两处策略不当：<br />
+<br />
+1. 备份内容被保存在SD卡上；<br />
+<br />
+2. 备份内容以明文方式保存，没有加密。<br />
+<br />
+根据官方文档，Android并不对SD卡的文件读写进行进程UID的权限验证，任何应用软件可以随意读取和写入位于SD卡上的文件。详情见：<br />
+<br />
+http://developer.android.com/guide/topics/data/data-storage.html#filesExternal<br />
+<br />
+其中的“Caution: All applications can read and write files placed on the external storage and the user can remove them.”<br />
+<br />
+因此，攻击者可以编写应用软件，读取MIUI保存在SD卡中的备份数据，而这些数据并没有被加密，造成攻击者可以直接读取。<br />
+<br />
+此外，MIUI将本地已经安装的应用软件的APK文件以及软件私有数据也保存在其中，攻击者可以用相同package name和version的另一个恶意APK文件替换，而这些恶意APK文件可以是在原文件基础上重打包（re-packaging）加入了会话劫持或者数据回传的代码，并在用户恢复备份时被安装到系统中。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1. /sdcard/MIUI/backup/AllBackup/&lt;date_time&gt;/backup_config.db文件是sqlite数据库文件，在其中的apps表中可以直接读出已安装软件信息：<br />
+<br />
+</p><p class="detail"><a href="../images/1118403244411055e14e80a86864719f959060e2.png" target="_blank"><img src="../images/1118403244411055e14e80a86864719f959060e2.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 用户个人信息分别保存在同目录的以下文件中：<br />
+<br />
+通讯录 addressbook.store<br />
+<br />
+通话记录 calllog.store<br />
+<br />
+短信 sms.store<br />
+<br />
+彩信 mms.store<br />
+<br />
+WLAN设置 wpa_supplicant.conf<br />
+<br />
+便签 note.store<br />
+<br />
+其中，WLAN设置为明文直接存储，包括网络SSID、类型、密码等：<br />
+<br />
+</p><p class="detail"><a href="../images/111840561c788eb0102129ac43301180d3f8bfb8.png" target="_blank"><img src="../images/111840561c788eb0102129ac43301180d3f8bfb8.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+其他以.store为扩展名的文件为Google ProtoBuf序列化的二进制数据，虽然不能拿到原始的proto文件，但有两种方法可以读取其中内容：猜测格式并直接读取，逆向分析软件的备份还原代码。<br />
+<br />
+直接猜测格式并读取，可以简单地拿到上述个人信息，例如通讯录中姓名（其中中文采用UTF-8编码）、号码、邮箱：<br />
+<br />
+</p><p class="detail"><a href="../images/1118411576db7dac1b6b780a0d350e075cc007d8.png" target="_blank"><img src="../images/1118411576db7dac1b6b780a0d350e075cc007d8.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+再例如短信记录（同样的，中文采用了UTF-8编码）：<br />
+<br />
+</p><p class="detail"><a href="../images/111841282dc3272a7329e75c226585ed4ae60fea.png" target="_blank"><img src="../images/111841282dc3272a7329e75c226585ed4ae60fea.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+而另一种逆向分析代码的方法，可以考虑用smali、dex2jar/jd-gui、ded等静态逆向软件，分析/system/app/Backup.apk中的代码，其中对这些.store文件做反序列化操作的代码位于com.miui.milk.model目录下，以短信数据为例，下面是采用ded+soot反编译得到的源码，显示了对短信的类型、号码、主题、内容、时间分别如何做序列化的：<br />
+<br />
+</p><p class="detail"><a href="../images/1118414387dacdb767133cb10bdb5907b751f2c8.png" target="_blank"><img src="../images/1118414387dacdb767133cb10bdb5907b751f2c8.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最后，该漏洞还会将本地已安装所有软件的私有数据从其私有目录拷贝至SD卡。在Android中，这些目录原来是根据各个软件的UID设置了访问权限，以保证（在没有root权限的前提下）各软件之间不能直接读取对方数据，而必须通过IPC机制进行。但移动到SD卡后，没有了这些权限检查机制，使得所有数据都被暴露出来。其中，许多应用的数据都是明文存储在其私有目录的（在Android安全模型假设下，这种做法是规范的）。例如，人人网将用户的社交信息缓存在sqlite数据库中：<br />
+<br />
+</p><p class="detail"><a href="../images/11184156c2455bc6d57d802b4f953dfc8209eda6.png" target="_blank"><img src="../images/11184156c2455bc6d57d802b4f953dfc8209eda6.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+而本漏洞则导致这些本来在Android保护之下的数据可以被所有应用软件直接访问。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">考虑到备份数据的尺寸比较大，无法保存在内部存储中，建议将软件改为在本地SD卡中存储的数据一律加密，加密算法采用对称加密，密钥随机生成并保存在Backup.apk的私有目录下或回传到云端。不要采用固定密钥。<br />
+<br />
+<br />
+<br />
+从逆向Backup.apk的情况看，MIUI的代码质量还是很高的。这里只是犯了一个基本的策略错误，即将隐私数据明文保存在了可公共访问的SD卡上，造成了攻击者可以通过本地应用程序直接读取这些数据。虽然这种攻击还没有出现，但考虑到MIUI是目前最大的几个第三方ROM之一，攻击价值还是存在的。<br />
+<br />
+<br />
+<br />
+此外，代码质量高是指编码风格和框架设计上。从安全上，其他几种策略错误也有存在，其他几类漏洞也有。正在验证。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Claud" title="Claud">Claud</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08187" title="小米MIUI系统造成用户大量敏感数据泄露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-06-11 20:22</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">正在确认中，感谢您的上报！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-06-12：已经确认，非常感谢您的工作！</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8187";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

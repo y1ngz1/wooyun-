@@ -1,0 +1,283 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		从蹭网到爱普宽带核心系统沦陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		从蹭网到爱普宽带核心系统沦陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/biangbiang面">biangbiang面</a> 
+</li><li>提交时间：		2014-04-02 02:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-04-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-04-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-04-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-04-22：	细节向普通白帽子公开<br/>
+									2014-05-02：	细节向实习白帽子公开<br/>
+									2014-05-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">搬家暂时没拉网，于是用reaver破解有wps的无线AP密码蹭网用。<br />
+出去吃碗面的功夫，破解了十几个了，其中有一台连上去发现路由获取到的IP是内网的，便有了下文。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">好奇心的驱使^_^<br />
+<br />
+1.判断是什么运营商<br />
+<br />
+</p><pre><code>security:~$ nslookup www.baidu.com<br />
+Server:		172.18.0.6<br />
+Address:	172.18.0.6#53<br />
+<br />
+Non-authoritative answer:<br />
+www.baidu.com	canonical name = www.a.shifen.com.<br />
+Name:	www.a.shifen.com<br />
+Address: 58.217.200.15<br />
+Name:	www.a.shifen.com<br />
+Address: 58.217.200.13<br />
+<br />
+security:~$ host 172.18.0.6<br />
+6.0.18.172.in-addr.arpa domain name pointer aipu-dns01.ip66.com.</code></pre><p class='detail'><br />
+<br />
+经过简单的判断，发现是艾普宽带（成都地区）<br />
+<br />
+<br />
+<br />
+2.尝试拿到DNS和出口网关的权限<br />
+<br />
+a.直接扫描DNS所在网段，竟然发现可以访问到很多端口，猜测可能是vlan没有完全隔离。其中便发现一台H3C：<br />
+<br />
+</p><pre><code>172.18.0.113   161/udp open	SNMP H3C Comware Platform Software, Software Version 5.20 Release 2208H3C S5500-28F-EI-DCopyright (c) 2004-2011 Hangzhou H3C Tech. Co., Ltd. All rights reserved.</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+b.试一下snmp漏洞：<br />
+<br />
+</p><pre><code>security:~$ snmpwalk -c public -v 1 172.18.0.113 1.3.6.1.4.1.25506.2.12.1.1.1</code></pre><p class='detail'><br />
+<br />
+得到密码hash，破解之。<br />
+<br />
+<br />
+<br />
+c.telnet不能连接？登陆到web看看，发现限定了登陆ip的范围：<br />
+<br />
+</p><p class="detail"><a href="../images/012331521b78fc8c1c35b958406c4bb7d8b845df.png" target="_blank"><img src="../images/012331521b78fc8c1c35b958406c4bb7d8b845df.png" alt=" - 2014年04月01日 - 23时31分19秒.png" width="600"/></a></p><p class="detail"><br />
+<br />
+最初的打算是telnet登陆上去，做个GRE通道，这样在一个C段下，就可以更准确地探测端口开放情况。<br />
+<br />
+PS:本来可以在web端手动添加规则，但为了保证不改动任何机器原本信息的前提下，不做修改。<br />
+<br />
+<br />
+<br />
+d.既然锁定了IP范围，就尝试获取到可以进入172.18.0.113的C段机器试试：<br />
+<br />
+</p><pre><code>172.18.0.90   8888/http open       struts2 vuln found</code></pre><p class='detail'><br />
+<br />
+扫描到一台struts，看一下：<br />
+<br />
+</p><p class="detail"><a href="../images/01234352562c6604ab1df71ceccbe6dd2bc6fff4.png" target="_blank"><img src="../images/01234352562c6604ab1df71ceccbe6dd2bc6fff4.png" alt=" - 2014年04月01日 - 23时43分31秒.png" width="600"/></a></p><p class="detail"><br />
+<br />
+system权限的xp，发现是个运维的机子，而且此人管理了大量的系统：<br />
+<br />
+</p><p class="detail"><a href="../images/01234625e9e98b4810059eddbc018c3a175a82ca.png" target="_blank"><img src="../images/01234625e9e98b4810059eddbc018c3a175a82ca.png" alt="屏幕截图 - 2014年04月01日 - 23时45分52秒.png" width="600"/></a></p><p class="detail"><br />
+<br />
+其中就有出口IP（172.18.0.1），用之前破解的H3C的帐号密码登陆，有几组是通用的：<br />
+<br />
+</p><pre><code>C720_10G_A#show running<br />
+Building configuration...<br />
+<br />
+Current configuration : 130718 bytes<br />
+!<br />
+! Last configuration change at 17:30:40 BeiJing Thu Mar 27 2014 by yujing<br />
+! NVRAM config last updated at 07:05:22 BeiJing Thu Mar 20 2014 by jianqingma</code></pre><p class='detail'><br />
+<br />
+如果被不法分子获取，危害还是蛮大的，注意这几行：<br />
+<br />
+</p><pre><code>interface Vlan106<br />
+ description wangjian_guanli_ip<br />
+ ip address 192.168.204.1 255.255.255.0<br />
+!<br />
+interface Vlan110<br />
+ description gonganju_3148guanli<br />
+ ip address 192.168.110.110 255.255.255.252</code></pre><p class='detail'><br />
+<br />
+有将近4000行的配置，涉及多个vlan、Radius、迅雷、电信、网通、移动等等业务。可以端口镜像，监控成都区域的任何一个艾普网的口子。<br />
+<br />
+<br />
+<br />
+看一下cacti的网络流量监测图：<br />
+<br />
+</p><p class="detail"><a href="../images/020004027d60cecaa77753d73240825ecdb2e734.png" target="_blank"><img src="../images/020004027d60cecaa77753d73240825ecdb2e734.png" alt=" - 2014年04月02日 - 00时03分31秒.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+e.最后通过mac地址对比发现，<br />
+<br />
+网关：172.18.0.1<br />
+<br />
+DNS：172.18.0.6，172.18.0.66<br />
+<br />
+这三台是同一台<br />
+<br />
+</p><pre><code>172.18.0.1            00-1f-c9-91-38-00     dynamic<br />
+172.18.0.6            00-1f-c9-91-38-00     dynamic<br />
+172.18.0.66           00-1f-c9-91-38-00     dynamic</code></pre><p class='detail'><br />
+<br />
+至此，整个成都地区的DNS和出口设备已经完全沦陷。同时有通往广东、重庆等地艾普网络的路由，继续测试的话，其他几个地区也要遭殃！<br />
+<br />
+<br />
+<br />
+f.另外一个运维，也是可以控制上百台的系统，这两个运维的任务量够大的啊！！！<br />
+<br />
+</p><p class="detail"><a href="../images/02001314b63d9e17b8b2cfc048e992104153c909.png" target="_blank"><img src="../images/02001314b63d9e17b8b2cfc048e992104153c909.png" alt="屏幕截图 - 2014年04月02日 - 00时12分13秒.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+g.另外，内网的漏洞实在太多了，实在没有时间仔细帮你们做检查了，建议看修复方案。如果有任何疑问，我抽得出时间还是乐意帮忙。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/020018386fd8f97dccd4bc60f901a2d9c238a299.png" target="_blank"><img src="../images/020018386fd8f97dccd4bc60f901a2d9c238a299.png" alt=" - 2014年04月02日 - 00时17分45秒.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/02001851118cfc1b0a83ce41b770ff2e14e44fb0.png" target="_blank"><img src="../images/02001851118cfc1b0a83ce41b770ff2e14e44fb0.png" alt="屏幕截图 - 2014年04月02日 - 00时18分25秒.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.做好vlan隔离，和端口隔离（白名单），Radius用户和其他业务线的网络划分清楚，以防止不法分子破坏<br />
+<br />
+2.内网的漏洞还是比较多，web、系统漏洞、默认密码、空口令等等等等，建议内部安全人员系统性地做一下测试吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/biangbiang面" title="biangbiang面">biangbiang面</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-055272" title="从蹭网到爱普宽带核心系统沦陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-04-02 14:46</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="55272";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

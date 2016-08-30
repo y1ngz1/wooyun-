@@ -1,0 +1,348 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		DEV-C++ 堆缓冲区溢出漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		DEV-C++ 堆缓冲区溢出漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/光刃">光刃</a> 
+</li><li>提交时间：		2013-12-23 18:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-30：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-16：	细节向普通白帽子公开<br/>
+									2014-02-05：	细节向实习白帽子公开<br/>
+									2014-03-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">打开源代码时候未对数据格式大小进行检测，导致堆溢出，。载入特定构造的文件可以执行任意恶意代码（shellcode）<br />
+存在多种数据格式中，这里以.H格式来演示</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">触发漏洞文件<br />
+<br />
+注意：一定要先关联.H文件，让程序以.H格式被打开。<br />
+<br />
+C:\1.h<br />
+<br />
+一大堆数据文件<br />
+<br />
+文件内数据<br />
+<br />
+define XXXX	&quot;111111111。。。。111&quot;<br />
+<br />
+很长很长，我构造的是56.0 KB  <br />
+<br />
+一定要足够的长<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">分析过程<br />
+<br />
+覆盖前的某次操作：<br />
+<br />
+00401C6C    53              push    ebx                          ; EAX=02DD2070 ;要处理数据块的地址和大小  02DD2070  4C <br />
+<br />
+00401C6D    3B05 10565900   cmp     eax, dword ptr [595610]      ; 02DBD1C8 和淹没后的大数据地址比较<br />
+<br />
+00401C73    75 09           jnz     short 00401C7E<br />
+<br />
+。。。<br />
+<br />
+。。。									;计算要处理数据的开始地址和大小		<br />
+<br />
+00401C7E    8B50 04         mov     edx, dword ptr [eax+4]        ; [00DD2070+4]=02DD2070 地址<br />
+<br />
+00401C81    8B48 08         mov     ecx, dword ptr [eax+8]        ; [00DD2070+8]=4c       大小<br />
+<br />
+00401C84    81F9 00100000   cmp     ecx, 1000<br />
+<br />
+00401C8A    7F 38           jg      short 00401CC4<br />
+<br />
+00401C8C    3BC2            cmp     eax, edx<br />
+<br />
+00401C8E    75 17           jnz     short 00401CA7<br />
+<br />
+00401C90    85C9            test    ecx, ecx<br />
+<br />
+00401C92    79 03           jns     short 00401C97<br />
+<br />
+00401C94    83C1 03         add     ecx, 3<br />
+<br />
+<br />
+<br />
+要处理的数据（正常）<br />
+<br />
+02DD2070  70 20 DD 02[70 20 DD 02][4C 00 00 00]41 63 63 65  p ?p ?L...Acce<br />
+<br />
+02DD2080  73 73 20 76 69 6F 6C 61 74 69 6F 6E 20 61 74 20  ss violation at<br />
+<br />
+02DD2090  61 64 64 72 65 73 73 20 25 70 20 69 6E 20 6D 6F  address %p in mo<br />
+<br />
+02DD20A0  64 75 6C 65 20 27 25 73 27 2E 20 25 73 20 6F 66  dule &#039;%s&#039;. %s of<br />
+<br />
+02DD20B0  20 61 64 64 72 65 73 73 4C 00 00 00 17 00 00 00   addressL......<br />
+<br />
+02DD20C0  24 8A 40 00 DC 20 DD 02 00 00 00 00 00 00 00 00  $夽.??........<br />
+<br />
+<br />
+<br />
+我们的大数据<br />
+<br />
+02DBD1C8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD1D8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD1E8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD1F8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD208  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+<br />
+<br />
+-----------------------------------------------------------------------------------<br />
+<br />
+覆盖瞬间：<br />
+<br />
+00401C6C    53              push    ebx				;EAX=02DBD1C8 要处理数据的地址 (被覆盖了  成了地址31313131 地址31313131）<br />
+<br />
+00401C6D    3B05 10565900   cmp     eax, dword ptr [595610]      ; 和淹没后的大数据地址比较			;;[595610]=2DB4000 <br />
+<br />
+								 ;<br />
+<br />
+00401C73    75 09           jnz     short 00401C7E	<br />
+<br />
+00401C75    8B50 04         mov     edx, dword ptr [eax+4]<br />
+<br />
+00401C78    8915 10565900   mov     dword ptr [595610], edx<br />
+<br />
+00401C7E    8B50 04         mov     edx, dword ptr [eax+4]	;EDX=溢出后的31313131地址			;<br />
+<br />
+00401C81    8B48 08         mov     ecx, dword ptr [eax+8]	;ECX=溢出后的31313131大小	<br />
+<br />
+00401C84    81F9 00100000   cmp     ecx, 1000<br />
+<br />
+00401CC4    8B00            mov     eax, dword ptr [eax]<br />
+<br />
+...<br />
+<br />
+00401CC4    8B00            mov     eax, dword ptr [eax]	;02DD0000<br />
+<br />
+00401CC6    8902            mov     dword ptr [edx], eax	;内存地址给edx， 溢出了 就是31313131了<br />
+<br />
+00401CC8    8950 04         mov     dword ptr [eax+4], edx<br />
+<br />
+00401CCB    5B              pop     ebx<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+要处理的数据（被覆盖）<br />
+<br />
+02DBD1C8  00 00 DD 02 31 31 31 31 31 31 31 31 31 31 31 31  ..?111111111111   ; 31313131<br />
+<br />
+02DBD1D8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD1E8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD1F8  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD208  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD218  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD228  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD238  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD248  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DBD258  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+<br />
+<br />
+02DD0000  00 40 DB 02[C8 D1 DB 02]BC 20 00 00 31 31 31 31  .@?妊??..1111    ; 02dbd1c8<br />
+<br />
+02DD0010  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DD0020  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DD0030  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DD0040  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+02DD0050  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+<br />
+<br />
+02DB4000  31 31 31 31[00 00 DD 02]C0 11 00 00 32 32 32 32  1111..??..2222    ;02dd0000<br />
+<br />
+02DB4010  32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32  2222222222222222<br />
+<br />
+02DB4020  32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32  2222222222222222<br />
+<br />
+02DB4030  32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32  2222222222222222<br />
+<br />
+02DB4040  32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32  2222222222222222<br />
+<br />
+02DB4050  32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32  2222222222222222<br />
+<br />
+<br />
+<br />
+；<br />
+<br />
+<br />
+<br />
+也就是说 数据地址 和数据大小（覆盖后的31313131）我们可控制<br />
+<br />
+我们也就可以往数据A处写大小为B的数据。<br />
+<br />
+A就是shellcode地址<br />
+<br />
+这就是该漏洞的利用原理</p><p class="detail"><a href="../images/23180247f510cb11f081baca556c645e7659a913.jpg" target="_blank"><img src="../images/23180247f510cb11f081baca556c645e7659a913.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">检测大小 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/光刃" title="光刃">光刃</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046827" title="DEV-C++ 堆缓冲区溢出漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-27 20:54</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46827";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

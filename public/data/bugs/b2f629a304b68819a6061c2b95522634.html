@@ -1,0 +1,262 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		盛大旗下有妖气漫画网某分站任意用户密码修改漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		盛大旗下有妖气漫画网某分站任意用户密码修改漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/zer0">zer0</a> 
+</li><li>提交时间：		2013-09-18 17:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-23：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">help.u17.com采用HDWiki，而这套系统存在重置密码存在一处逻辑漏洞，导致攻击者可以修改任意用户密码。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>control/user.php<br />
+<br />
+	function dogetpass(){<br />
+<br />
+        ......<br />
+<br />
+		}elseif(isset($this-&gt;post[&#039;verifystring&#039;])){<br />
+<br />
+			$uid=$this-&gt;post[&#039;uid&#039;];<br />
+<br />
+			$encryptstring=$this-&gt;post[&#039;verifystring&#039;];<br />
+<br />
+			$idstring=$_ENV[&#039;user&#039;]-&gt;get_idstring_by_uid($uid,$this-&gt;time);<br />
+<br />
+			if($idstring==$encryptstring){<br />
+<br />
+                       //没考虑到提交为空与查询返回为空的情况，一个逻辑错误<br />
+<br />
+				$newpass = $this-&gt;post[&#039;password&#039;];<br />
+<br />
+				$renewpass = $this-&gt;post[&#039;repassword&#039;];<br />
+<br />
+				$error=$_ENV[&#039;user&#039;]-&gt;checkpassword($newpass,$renewpass);<br />
+<br />
+				if($error==&#039;OK&#039;){<br />
+<br />
+					//eval($this-&gt;plugin[&quot;ucenter&quot;][&quot;hooks&quot;][&quot;getpass&quot;]);<br />
+<br />
+					UC_OPEN &amp;&amp; $msg=$_ENV[&#039;ucenter&#039;]-&gt;getpass($uid,$newpass);<br />
+<br />
+					$_ENV[&#039;user&#039;]-&gt;update_field(&#039;password&#039;,md5($newpass),$uid);<br />
+<br />
+					$_ENV[&#039;user&#039;]-&gt;update_getpass($uid);<br />
+<br />
+					$this-&gt;message($this-&gt;view-&gt;lang[&#039;resetPassSucess&#039;],&#039;index.php?user-login&#039;,0);<br />
+<br />
+				}else{<br />
+<br />
+				  $this-&gt;message($error,&#039;BACK&#039;,0);<br />
+<br />
+				}<br />
+<br />
+			}else{<br />
+<br />
+				$this-&gt;message($this-&gt;view-&gt;lang[&#039;resetPassMessage&#039;], WIKI_URL ,0);<br />
+<br />
+			}<br />
+<br />
+		}<br />
+<br />
+<br />
+<br />
+	function  get_idstring_by_uid($uid,$time){  //取验证码<br />
+<br />
+		return $this-&gt;db-&gt;result_first(&quot;SELECT code FROM &quot;.DB_TABLEPRE.&quot;activation WHERE uid=$uid AND available=1  AND type=1 AND time&gt;($time-3*24*3600) ORDER BY time DESC&quot;);<br />
+<br />
+	}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://help.u17.com/index.php?user-getpass-uid<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+正常情况应该是这样，user-getpass-1-xxx，但是因为逻辑问题，可以绕过去。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+通过uid得到账号名 ：<br />
+<br />
+http://help.u17.com/index.php?list-popularity-1<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1411392224d15945961f603ff9619137aa04a588.jpg" target="_blank"><img src="../images/1411392224d15945961f603ff9619137aa04a588.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/14113938f7e54a51b8cf1a020dd9b3834f5f2c17.jpg" target="_blank"><img src="../images/14113938f7e54a51b8cf1a020dd9b3834f5f2c17.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/14113951320200e987826d9ece9c1621a73699b9.jpg" target="_blank"><img src="../images/14113951320200e987826d9ece9c1621a73699b9.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/14114009a40ac6706995060d547d1d6477e8b7be.jpg" target="_blank"><img src="../images/14114009a40ac6706995060d547d1d6477e8b7be.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">control/user.php文件<br />
+<br />
+}elseif(isset($this-&gt;post[&#039;verifystring&#039;])){<br />
+<br />
+$uid=$this-&gt;post[&#039;uid&#039;];<br />
+<br />
+$encryptstring=$this-&gt;post[&#039;verifystring&#039;];<br />
+<br />
+$idstring=$_ENV[&#039;user&#039;]-&gt;get_idstring_by_uid($uid,$this-&gt;time);<br />
+<br />
+/* 加入下面两行代码，判断一下空的情况 */<br />
+<br />
+if(empty($encryptstring) || empty($idstring)){<br />
+<br />
+$this-&gt;message($error,&#039;BACK&#039;,0);<br />
+<br />
+}<br />
+<br />
+或者升级至官方最新版本：<br />
+<br />
+<br />
+<br />
+http://kaiyuan.hudong.com/ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/zer0" title="zer0">zer0</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037115" title="盛大旗下有妖气漫画网某分站任意用户密码修改漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-09-18 17:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-09-23：18号放假，确认晚了，漏洞超过确认期限自动公开了。感谢洞主关注。已联系修复。</p>
+												<p class="detail">2013-09-23：感谢zer0的提交。有影响啊有影响。。。没忽略啊没忽略。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37115";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

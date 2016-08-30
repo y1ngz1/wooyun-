@@ -1,0 +1,211 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某公司员工卡金额校验算法破解  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某公司员工卡金额校验算法破解  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/insight-labs">insight-labs</a> 
+</li><li>提交时间：		2011-12-21 21:55</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-12-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-12-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-12-31：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-01-10：	细节向普通白帽子公开<br/>
+									2012-01-20：	细节向实习白帽子公开<br/>
+									2012-02-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某公司的员工卡使用了RFID技术，其为Mifare Classic 1k卡，有2种功能：1是门禁系统，2是消费系统，可谓一卡走遍某公司大厦。<br />
+但其消费系统的实现存在缺陷，导致可以任意构造消费数据进行非法消费。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先来看一个某公司员工卡的数据，如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/131523111e415ef67d15db12ded8fcffb680194e.jpg" target="_blank"><img src="../images/131523111e415ef67d15db12ded8fcffb680194e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+观察发现只有第五扇区有数据，其他扇区均为空，那么我们只分析此扇区的4个block的数据结构就可以了。<br />
+<br />
+首先我借来同事的员工卡，分别进行对比分析，想先确定出来哪些部分是常量，哪些部分是变量。<br />
+<br />
+</p><p class="detail"><a href="../images/1315234723bf0e5bcc5f31b45140b816a884d5f6.jpg" target="_blank"><img src="../images/1315234723bf0e5bcc5f31b45140b816a884d5f6.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上图为A,B,C,D,E 五个员工卡的第五扇区数据，<br />
+<br />
+首先，蓝色矩阵框所在的block是Access Control Block，而蓝色矩阵框就是Key A，后面的FF 07 80 69是访问控制位，Key B为默认的全FF。注意这里所有的卡的Key都是相同且永远不变的。<br />
+<br />
+然后看红色矩阵框，这里也是每个员工卡都相同的值，且永远不变。再看绿色矩阵框，<br />
+<br />
+这里按入职的顺序排列，可以认为是发卡顺序，每个员工卡都是唯一的值，且永远不变。<br />
+<br />
+这样block 16（图中00000100h)和block 19（图中00000130h）就分析完了，都是常量，<br />
+<br />
+剩余的block 17和block 18都是变量，每次刷卡其中的值都是不断变化的，请看下图：<br />
+<br />
+</p><p class="detail"><a href="../images/13154711f4f1c7ea8c19ca5c599fc4e7c4b15fc4.jpg" target="_blank"><img src="../images/13154711f4f1c7ea8c19ca5c599fc4e7c4b15fc4.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+经过观察分析发现，block 17和block 18每次刷卡后数据都会对调。红色矩阵框是余额，比如第一次刷卡前余额为5.60元，对应60 05 00刷卡后为4.50元对应50 40 00，第二次刷卡前余额为4.50元，对应50 04 00，刷卡后为3.50元，对应50 03 00，之后两个block数据对调。这里的50代表五角零分，03代表零十三元，00代表零千零百元。<br />
+<br />
+绿色矩阵框是消费日期，这里第一次数据中block 17里是11月07日，是上次消费的日期，本次是11月10日。<br />
+<br />
+蓝色矩阵框是当日消费总额，每天清空一次。比如第一次的数据block 17是09 00，说明在11月7日此卡总共消费了9元，然后11月10日这天，第一次消费了1.10元，第二次消费了1.00元，所以1.10 + 1.00 = 2.10，依次类推。<br />
+<br />
+粉色矩阵框是消费的时间，14 09即是下午14点09分。<br />
+<br />
+最后是黄色矩阵框，这里是校验位，分析发现其算法很简单，是当前余额的数字之和与FF异或的结果，比如第一次刷卡的数据中block 18是ab，余额是50 04 00，这里<br />
+<br />
+50+04+00=54，然后54 xor FF = ab<br />
+<br />
+<br />
+<br />
+至此某公司员工通消费系统算法完全被攻破。  </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">我们可以由算法推算一下数据，假如今天11月11日 ，15:00分充值50元 数据将为 <br />
+<br />
+block 18:  ff 00 00 00 11 10 00 05 60 00 14 27 00 00 00 00 <br />
+<br />
+block 17:  fa 00 50 00 11 11 00 00 00 00 15 00 00 00 00 00 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修改为复杂算法，或一次一密，即每次刷卡Key的值都在变化。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/insight-labs" title="insight-labs">insight-labs</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-03701" title="某公司员工卡金额校验算法破解">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2011-12-21 21:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">多谢！猜测这个会一样影响到很多其他的公司</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="3701";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

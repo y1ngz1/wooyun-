@@ -1,0 +1,258 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		拉手网设计不当可修改部分用户密码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		拉手网设计不当可修改部分用户密码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/niliu">niliu</a> 
+</li><li>提交时间：		2013-07-21 12:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-11：	细节向普通白帽子公开<br/>
+									2013-08-21：	细节向实习白帽子公开<br/>
+									2013-09-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">无力吐槽了，真的。第一次提交问我怎么得到code，我写的已经灰常清楚了，能仔细看下么...这次给过了吧。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">码了半天的字，还得从头开始啊，另外说明一下只能修改绑定手机的用户。<br />
+<br />
+<br />
+<br />
+这回我再说详细一点，code是破解6为数字验证码时候正确的验证码返回包里的数据！<br />
+<br />
+<br />
+<br />
+再大致说一下，登陆时候依然点忘记密码，来到密码找回页面，<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/211215396320e00bd5cf1a6f46ed338625158d57.jpg" target="_blank"><img src="../images/211215396320e00bd5cf1a6f46ed338625158d57.jpg" alt="111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这里选择通过短信找回，输入手机号，系统会给手机发送一个6位数字的验证码，由于此处没有二次验证，也没有错误次数限制，导致可以暴力破解得到真实的6位数字验证码，如图：<br />
+<br />
+抓包：<br />
+<br />
+</p><p class="detail"><a href="../images/211218259d03c4b3c8545eebd73d6ff807f04c74.jpg" target="_blank"><img src="../images/211218259d03c4b3c8545eebd73d6ff807f04c74.jpg" alt="222.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+破解得到真实6位数验证码：<br />
+<br />
+</p><p class="detail"><a href="../images/211219371040c34e1df365316d8b88519214b108.jpg" target="_blank"><img src="../images/211219371040c34e1df365316d8b88519214b108.jpg" alt="333.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这里我再说一下，这个不同于往常的通过暴力破解验证码来修改用户密码。<br />
+<br />
+因为拉手网的验证码有效次数只有一次，就是说我破解时候用过一次，再在页面输入就会提示验证码错误，所以破解验证码来重置用户密码的方法就失效了。但是，从破解时候返回的数据包中发现一些问题。可以突破验证码有效次数限制见代码：<br />
+<br />
+<br />
+<br />
+错误验证码的包：<br />
+<br />
+</p><pre><code>HTTP/1.1 200 OK<br />
+Date: Sun, 21 Jul 2013 04:22:59 GMT<br />
+Content-Type: text/html; charset=utf-8<br />
+Connection: close<br />
+Vary: Accept-Encoding<br />
+Expires: Thu, 19 Nov 1981 08:52:00 GMT<br />
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0<br />
+Pragma: no-cache<br />
+Server: LWS<br />
+Via: web-1-28<br />
+Vary: Accept-Encoding<br />
+<br />
+{&quot;status&quot;:5,&quot;msg&quot;:&quot;\u9a8c\u8bc1\u7801\u9519\u8bef&quot;}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+正确验证码数据包：（注意这里面有code！！！）<br />
+<br />
+<br />
+<br />
+</p><pre><code>HTTP/1.1 200 OK<br />
+Date: Sun, 21 Jul 2013 04:22:59 GMT<br />
+Content-Type: text/html; charset=utf-8<br />
+Connection: close<br />
+Vary: Accept-Encoding<br />
+Expires: Thu, 19 Nov 1981 08:52:00 GMT<br />
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0<br />
+Pragma: no-cache<br />
+Server: LWS<br />
+Via: web-1-34<br />
+Vary: Accept-Encoding<br />
+<br />
+{&quot;status&quot;:1,&quot;msg&quot;:&quot;MTg2MDA5Mjg*******zfDU0MzAwNTc5MkBxcS5jb2*****MDU3OXwzNDQwMDI3NTZkOTY4MT*******ZiYzFhMA%3D%3D&quot;}</code></pre><p class='detail'>   *号打码<br />
+<br />
+从上面的返回数据中发现了一串code，<br />
+<br />
+这里这个code（MTg2MDA5Mjg*******zfDU0MzAwNTc5MkBxcS5jb************OXwzNDQwMDI3NTZkOTY4MT*******ZiYzFhMA%3D%3D）<br />
+<br />
+需要说一下，它是和用邮箱重置密码时候收到的链接里的code是一样的（这里设计的有点问题）<br />
+<br />
+<br />
+<br />
+所以可以组合一下得到重置密码链接<br />
+<br />
+</p><pre><code>http://www.lashou.com/account/reset?code=</code></pre><p class='detail'>+ </p><pre><code>[code]</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+从而重置用户的密码！<br />
+<br />
+最后我再说一下，这个code是破解验证码时，正确验证码返回包里的数据。见上面代码 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上面足以证明了吧<br />
+<br />
+<br />
+<br />
+具体顺序再说下，目标是绑定手机的用户--然后接受验证码抓包--暴力破解--得到正确验证码返回包数据（数据里有code）--组合连接。然后访问即可重置密码。<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们应该懂吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/niliu" title="niliu">niliu</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-031613" title="拉手网设计不当可修改部分用户密码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2013-07-22 09:11</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢，尽快告知开发修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="31613";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

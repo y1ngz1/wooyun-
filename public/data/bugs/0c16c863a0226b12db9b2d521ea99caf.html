@@ -1,0 +1,518 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		E创网络SQL注入导致近千zf站点可能沦陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		E创网络SQL注入导致近千zf站点可能沦陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/在路上">在路上</a> 
+</li><li>提交时间：		2013-02-02 16:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-02-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-02-07：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-02-17：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-27：	细节向普通白帽子公开<br/>
+									2013-03-09：	细节向实习白帽子公开<br/>
+									2013-03-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">感觉好迷茫，要学习的东西好多，又没有头绪，因此来乌云找组织，来学习，希望管理赏赐邀请码，感激不尽<br />
+<br />
+<br />
+小菜一个，没有什么好的文章，因此写如下丑文，望见谅...<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">正好最近对代码审计比较感兴趣，因此写个看代码找漏洞的过程.<br />
+<br />
+<br />
+<br />
+代码审计我也是初学，还未入门，我只是希望找到如下漏洞:<br />
+<br />
+<br />
+<br />
+1.命令执行 比如php的system等函数<br />
+<br />
+2.代码执行 比如 eval这些函数<br />
+<br />
+3.文件操作 目标是获得webshell  <br />
+<br />
+           上传、文件修改、文件读(下载)、文件列举。跟文件有关的都应该看吧<br />
+<br />
+4.权限判断 越权操作 往往是危害比较大 <br />
+<br />
+           水平和垂直权限提升，cookie欺骗绕过验证。<br />
+<br />
+5.sql注入  根据sql命令关键字 进行搜索<br />
+<br />
+           这样可以确定所有进入到sql中的变量(直接输入或者多阶注入)<br />
+<br />
+6.xss      这种基本上不再考虑范围内了,我不会用...<br />
+<br />
+<br />
+<br />
+7.逻辑漏洞 这种比较难于发现<br />
+<br />
+<br />
+<br />
+8.其它问题 <br />
+<br />
+           暴力破解<br />
+<br />
+           破坏性的攻击 导致当机 有些时候也是非常危险的<br />
+<br />
+           配置问题<br />
+<br />
+           错误信息未屏蔽<br />
+<br />
+<br />
+<br />
+由于只能看懂点asp代码，因此找一个asp的一套程序:(E创网络出品的代码)<br />
+<br />
+<br />
+<br />
+官网:http://www.echsys.com/<br />
+<br />
+源码地址:http://www.echsys.com/EC0703.V6014.rar<br />
+<br />
+<br />
+<br />
+学习几天，发现目前的源码审计都是搜索危险函数，好像还没有见过那种动态执行的源码审计工具,如果就是搜索函数<br />
+<br />
+那就是在文件中搜索字符串了，这个我会notepad++这个工具不错呀,但是搞了一会发现，不如人意，notepad++<br />
+<br />
+好像只能搜索一个字符串，不能批量搜索，这有点麻烦，而且有点盲目,坐在电脑前想了半天，觉得还是自己写个<br />
+<br />
+搜索字符串的吧，可以根据指定的字符串（正则）列表，在一个文件夹里面搜索所有符合的。<br />
+<br />
+<br />
+<br />
+因此首先要有个列表,但是怎么搞出来列表呢? 那要根据漏洞产生的原因来搞吧...<br />
+<br />
+1.能够产生漏洞的就是用户输入吧(一切输入的都是有害的).<br />
+<br />
+2.关键函数对应的关键操作(一切进入函数的输入都是有害的,多阶输入)<br />
+<br />
+<br />
+<br />
+基于以上两点我想了半天整理出来一个列表:<br />
+<br />
+request#input<br />
+<br />
+server.createobject#object<br />
+<br />
+multipart/form-data#file upload<br />
+<br />
+execute#code execute<br />
+<br />
+eval#code execute<br />
+<br />
+select #sql<br />
+<br />
+insert #sql<br />
+<br />
+update #sql<br />
+<br />
+delete #sql<br />
+<br />
+<br />
+<br />
+暂时就想到这些,以后再补充吧，这里很好理解了，我使用#做分隔符，前面是要匹配的变量，后面是说明<br />
+<br />
+<br />
+<br />
+有了列表就需要一个工具，根据列表去匹配了。好像有人写过，但是我感觉还是要自己写好点，以后该起来<br />
+<br />
+容易。也锻炼一下写代码，为了以后找一个好点的工作...<br />
+<br />
+<br />
+<br />
+使用c#简单写了一个粗糙的界面:<br />
+<br />
+基本功能:<br />
+<br />
+1.从文件中读取待匹配列表<br />
+<br />
+2.可以选择一个文件夹，遍历所有文件，然后进行匹配，挑选出，所有满足的结果<br />
+<br />
+<br />
+<br />
+3.可以指定匹配的文件后缀,比如asp cms我就不用去匹配php后缀了吧，而且很多图片文件也不需要匹配<br />
+<br />
+4.可以只查找一个关键字,(有两种模式，一种是匹配，一种是不匹配)主要原因，当我们只要一个文件做权限<br />
+<br />
+检查的时候，如果一个文件夹下有一个文件未包含该文件，那就是未授权访问了，这点其实是很好。至少我这么<br />
+<br />
+想的。<br />
+<br />
+<br />
+<br />
+基本上就想到这些，开始了...经过数天，修修改改，终于可以用了，离好看还有十万八千里...<br />
+<br />
+<br />
+<br />
+测试一下，选择下载的源代码，和上面的字符串列表:<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0214064956ec54607ccec84b7c9f885acf11ec06.jpg" target="_blank"><img src="../images/0214064956ec54607ccec84b7c9f885acf11ec06.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+获得如下结果。然后我就开始看…。发现有问题，代码执行那个里面都是js的eval悲剧了（只能忽略）一个文件上传，但是没有服务器处理文件悲剧了。在看看输入input吧。<br />
+<br />
+</p><p class="detail"><a href="../images/02140804e333c6475afc683b4b37f1640a33c2e0.jpg" target="_blank"><img src="../images/02140804e333c6475afc683b4b37f1640a33c2e0.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+选择notepad++打开，（因为我没有写出来它的那个选择高亮功能哎）<br />
+<br />
+</p><p class="detail"><a href="../images/02140854ac56116cc0db97fbdf8660b967dc5811.jpg" target="_blank"><img src="../images/02140854ac56116cc0db97fbdf8660b967dc5811.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+发现里面包含好多的include，仔细一看是验证吧，判断用户是否登录。Chkuser.asp源码如下:<br />
+<br />
+</p><p class="detail"><a href="../images/021409501e4b32d96d30f8dde85a8152d2380723.jpg" target="_blank"><img src="../images/021409501e4b32d96d30f8dde85a8152d2380723.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+获得cookie中的用户名和密码:而且用户名使用checkstr进行了处理，将单引号进行了转义.虽然password没有被处理，但是并没有进入到查询语句，因此不能注入绕过了.<br />
+<br />
+那就是说它这个权限判断还行，至少我还没有绕过呢，呵呵。<br />
+<br />
+<br />
+<br />
+有权限绕过的都是后台功能，对于我来说，怎么从前台搞进后台才是关键，因此，首先应该看那些没有做权限检查的页面是否存在漏洞。即不包含include file=&quot;chkuser.asp&quot;这个的代码。<br />
+<br />
+一、cookie注入<br />
+<br />
+因此重新配置:<br />
+<br />
+</p><p class="detail"><a href="../images/021410531e9f4fe55550a42f0497b970459120c1.jpg" target="_blank"><img src="../images/021410531e9f4fe55550a42f0497b970459120c1.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+查找所有.asp文件不包含checkuser.asp的文件。即查询所有前台页面。很快结果出来了:<br />
+<br />
+</p><p class="detail"><a href="../images/02141146ecf6c3f8d149155d07c6948820d32121.jpg" target="_blank"><img src="../images/02141146ecf6c3f8d149155d07c6948820d32121.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+开始查看,打开文件才发现好悲剧，原来我下载的是测试版，好多页面都没有内容哎，悲剧的要命，但是不能放弃，在搜索的列表中看一下<br />
+<br />
+</p><p class="detail"><a href="../images/02141240d59f764d9b05ef33e4af81a341bfe591.jpg" target="_blank"><img src="../images/02141240d59f764d9b05ef33e4af81a341bfe591.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+当访问到ChkManageLogin.asp时，使用notepad++打开，发现问题了<br />
+<br />
+&lt;!--#include file=&quot;conn.asp&quot;--&gt;<br />
+<br />
+&lt;!--#include file=&quot;char.inc&quot;--&gt;<br />
+<br />
+&lt;!--#include file=&quot;config.asp&quot;--&gt;<br />
+<br />
+&lt;!--#include file=&quot;md5.asp&quot;--&gt;<br />
+<br />
+<br />
+<br />
+&lt;%<br />
+<br />
+&#039;on error resume next<br />
+<br />
+dim rs<br />
+<br />
+UserName1=CheckStr(request.form(&quot;UserName&quot;))  //获得用户名<br />
+<br />
+passwd1=md5(trim(request.form(&quot;passwd&quot;)))       //md5密码<br />
+<br />
+verifycode=cstr(trim(request.form(&quot;verifycode&quot;)))   //验证码<br />
+<br />
+dim ViewUrl1<br />
+<br />
+ViewUrl1=&quot;admin_index.asp&quot;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+if cstr(session(&quot;verifycode&quot;))&lt;&gt;verifycode then<br />
+<br />
+	Show_Err(&quot;验证码出错，可能是您在管理登录页面停留太久了，请返回后刷新页面。&lt;br&gt;&lt;br&gt;&lt;a href=&#039;javascript:history.back()&#039;&gt;返回&lt;/a&gt;&quot;)<br />
+<br />
+	response.end<br />
+<br />
+else<br />
+<br />
+	set rs=server.createobject(&quot;adodb.recordset&quot;)<br />
+<br />
+	sql=&quot;select * from &quot;&amp; db_EC_Manage_Table &amp;&quot; where (&quot;&amp; db_ManageUser_Name &amp;&quot;=&#039;&quot;&amp;username1&amp;&quot;&#039; and adder=&#039;&quot;&amp;Request.cookies(eChsys)(&quot;username&quot;)&amp;&quot;&#039;)&quot; //很明显的一个cookie注入点<br />
+<br />
+	rs.open sql,Conn,1,3<br />
+<br />
+	if (passwd1&lt;&gt;rs(db_ManageUser_Password) or UserName1&lt;&gt;rs(db_ManageUser_Name)) then<br />
+<br />
+		Show_Err(&quot;用户名或密码出错，请返回检查&lt;br&gt;&lt;br&gt;&lt;a href=&#039;javascript:history.back()&#039;&gt;返回重来&lt;/a&gt;&quot;)<br />
+<br />
+		response.end<br />
+<br />
+	else<br />
+<br />
+		rs(db_ManageUser_LastLoginIP)=Request.ServerVariables(&quot;REMOTE_ADDR&quot;)<br />
+<br />
+		rs(db_ManageUser_LastLoginTime)=Now()<br />
+<br />
+		rs(db_ManageUser_LoginTimes)=rs(db_ManageUser_LoginTimes)+1<br />
+<br />
+		rs.update<br />
+<br />
+		<br />
+<br />
+从上面的代码很容易看出来，Request.cookies(eChsys)(&quot;username&quot;)未作任何过滤导致cookie注入，但是前面有一个验证码，要想注入需要通过验证码验证才可以。使用session保存验证码的，而且验证出错与否并没有更新验证码，就是说明只要我浏览网页抓到一次验证码，那么我下次继续访问只要带上cookieid就是可以保证session中的验证码是正确的，因此就可以验证通过。验证码问题解决了。<br />
+<br />
+<br />
+<br />
+如果验证成功后直接跳转找admin_index.asp，但是改页面被加密了。真是不厚道，还得搞个解密工具，解密后如下:<br />
+<br />
+</p><p class="detail"><a href="../images/02141345f308c82f1c7ecb8cc34c402168dcba93.jpg" target="_blank"><img src="../images/02141345f308c82f1c7ecb8cc34c402168dcba93.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+不是吧这个更直接，cookie注入太明显了，而且都没有了验证码限制，如果sql执行失败，就会跳转到login.asp页面，如果执行成功就不跳转，根据这点就可以搞定了，可以确定sql执行是否成功。一个盲注点。由以上两个注入点中的任何一个就可以获得管理员的用户名和密码了。还有一个问题就是cookie前缀，发现访问login.asp就泄露了cookie前缀:<br />
+<br />
+万事具备了，只欠东风。就是一个猜测用户和密码的工具了。都想想完全猜测真的好麻烦，继续看代码发现还有这样一个页面<br />
+<br />
+E_alluser.asp，会把所有的注册会员显示出来，唉得来全部费工夫，知道了用户名，就只猜测对应的密码就可以了。由于表结构等都已知很容易写出来猜测密码的小程序如下所示:<br />
+<br />
+</p><p class="detail"><a href="../images/02141459b51591610aef2b9dfe9ab14ebc00bcd2.jpg" target="_blank"><img src="../images/02141459b51591610aef2b9dfe9ab14ebc00bcd2.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+二、cookie欺骗绕过身份验证<br />
+<br />
+   但是密码都是md5加密的，如果破解不出来密码那岂不是悲剧，因此看一下程序的验证方法。还是两级验证，两个验证文件。Chkuser.asp和ChkManage.asp两个代码基本类似，只是判断表名不同，一个是普通用户，一个是管理用户验证。<br />
+<br />
+UserName=CheckStr(trim(Request.cookies(eChsys)(&quot;UserName&quot;)))<br />
+<br />
+			M_UserName=CheckStr(trim(Request.cookies(eChsys)(&quot;ManageUserName&quot;)))<br />
+<br />
+			M_PassWD=trim(Request.cookies(eChsys)(&quot;ManagePasswd&quot;))<br />
+<br />
+			M_Key=trim(request.cookies(eChsys)(&quot;ManageKEY&quot;))<br />
+<br />
+			set urs=server.createobject(&quot;adodb.recordset&quot;)<br />
+<br />
+			sql=&quot;select * from &quot;&amp; db_EC_Manage_Table &amp;&quot; where (&quot;&amp; db_ManageUser_Name &amp;&quot;=&#039;&quot;&amp; M_UserName &amp;&quot;&#039; and adder=&#039;&quot;&amp; UserName &amp;&quot;&#039;)&quot;<br />
+<br />
+			urs.open sql,Conn,1,3<br />
+<br />
+			if urs.bof or urs.eof then<br />
+<br />
+				if IsDebug=&quot;1&quot; then<br />
+<br />
+					Show_Err(&quot;以cookies(username)及cookies(ManageUserName)的返回值，查找不到管理用户表中的相对应记录。&lt;br&gt;&lt;br&gt;&lt;a href=&#039;javascript:history.back()&#039;&gt;返回&lt;/a&gt;&quot;)<br />
+<br />
+				else<br />
+<br />
+					response.redirect &quot;admin_index.asp?action=Manage.asp&quot;<br />
+<br />
+				end if<br />
+<br />
+				response.end<br />
+<br />
+			else<br />
+<br />
+				if M_PassWD&lt;&gt;urs(db_ManageUser_Password) then<br />
+<br />
+					if IsDebug=&quot;1&quot; then<br />
+<br />
+						Show_Err(&quot;cookies(ManagePasswd)的返回值与管理用户表中的相对应记录的Password值不符。&lt;br&gt;&lt;br&gt;&lt;a href=&#039;javascript:history.back()&#039;&gt;返回&lt;/a&gt;&quot;)<br />
+<br />
+					else<br />
+<br />
+						response.redirect &quot;admin_index.asp?action=Manage.asp&quot;<br />
+<br />
+					end if<br />
+<br />
+					response.end<br />
+<br />
+				else<br />
+<br />
+<br />
+<br />
+可以看出，其实就是从cookie中获得值，用户名和密码，而且用户名进行了处理导致无法注入，根据用户名查询获得对应的密码，这个密码是md5加密的，跟提交的cookie中的密码进行比较如果相等，就通过了验证，这说明根本就不用破解md5，就可以了，太好了可以省一角钱。<br />
+<br />
+<br />
+<br />
+三、文件操作获得shell<br />
+<br />
+  进了后台往往不是最终目的，一般都是为了去获得一个webshell。因此我们的目标就是查找有文件操作的地方。<br />
+<br />
+ 其实分为几类:文件上传，文件修改，文件备份等。大家都懂这里就不多写了，很容易就可以搞到shell利用后台的db_compact.asp文件。（有点长了怕乌云放不下）<br />
+<br />
+<br />
+<br />
+以上基本上都是理论，好像乌云需要有图，有例子才给通过，因此，弄个实例:<br />
+<br />
+首先应该选个关键字，我发现这个系统好多就是使用E_开头的，因此我就以e_alluser.asp为例吧，去搜索引擎进行搜索，正好以前写过一个提权搜索结果的也排上用场了。<br />
+<br />
+真是不搜不知道一搜吓一跳，<br />
+<br />
+</p><p class="detail"><a href="../images/0214163867cb6676f1d0b924947dc9e14cdba60e.jpg" target="_blank"><img src="../images/0214163867cb6676f1d0b924947dc9e14cdba60e.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+使用google去掉重复的 居然有730个，随便找一个小试牛刀 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">就这个吧: http://www.ldaic.gov.cn/e_alluser.asp<br />
+<br />
+使用小工具直接获得用户名和密码:<br />
+<br />
+</p><p class="detail"><a href="../images/02141813d8c8199b7f954a79ef6118eca29597a9.jpg" target="_blank"><img src="../images/02141813d8c8199b7f954a79ef6118eca29597a9.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+同时组合成一个有效cookie:<br />
+<br />
+</p><p class="detail"><a href="../images/0214184293d395fe73ea361c061e9d456b2c145b.jpg" target="_blank"><img src="../images/0214184293d395fe73ea361c061e9d456b2c145b.jpg" alt="12.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+进入后台获得一个shell<br />
+<br />
+</p><p class="detail"><a href="../images/02141906dab77c2868744b185a558c5f86f4661f.jpg" target="_blank"><img src="../images/02141906dab77c2868744b185a558c5f86f4661f.jpg" alt="13.jpg" width="600"/></a></p><p class="detail"> <br />
+<br />
+就到这里了好像有点长... </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复其实很容易了，这个主要问题是cookie注入，因此只要程序员在获得的cookie后调用安全函数就可以了。<br />
+<br />
+<br />
+<br />
+打个广告:<br />
+<br />
+1.希望大牛收徒的，找我<br />
+<br />
+<br />
+<br />
+2.希望向我一样的菜鸟，一起学习的，找我<br />
+<br />
+<br />
+<br />
+thx ！  </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/在路上" title="在路上">在路上</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-018277" title="E创网络SQL注入导致近千zf站点可能沦陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：17 </p>
+													<p class="detail">确认时间：2013-02-07 04:50</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="18277";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

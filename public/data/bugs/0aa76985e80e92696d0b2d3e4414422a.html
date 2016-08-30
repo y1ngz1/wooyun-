@@ -1,0 +1,214 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ECShop 2.7.2 API 盲注漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ECShop 2.7.2 API 盲注漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/tenzy">tenzy</a> 
+</li><li>提交时间：		2011-10-10 11:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-10-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-10-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-10-13：	细节向第三方安全合作伙伴开放<br/>
+									2011-10-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-10-30：	细节向普通白帽子公开<br/>
+									2011-11-19：	细节向实习白帽子公开<br/>
+									2011-11-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">该漏洞已经过本人测试存在。在服务器关闭魔法引号的情况下可以盲注，不受ECShop内核过滤影响。这次不坑爹了<br />
+问题文件在/api/client/api.php<br />
+利用方法为POST</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/api/client/api.php 第7行<br />
+<br />
+</p><pre><code>dispatch($_POST);</code></pre><p class='detail'><br />
+<br />
+/api/client/includes/lib_api.php 6 -10 行<br />
+<br />
+</p><pre><code>$func_arr = array(&#039;GetDomain&#039;, &#039;UserLogin&#039;, &#039;AddCategory&#039;, &#039;AddBrand&#039;, &#039;AddGoods&#039;, &#039;GetCategory&#039;, &#039;GetBrand&#039;, &#039;GetGoods&#039;, &#039;DeleteBrand&#039;, &#039;DeleteCategory&#039;, &#039;DeleteGoods&#039;, &#039;EditBrand&#039;, &#039;EditCategory&#039;, &#039;EditGoods&#039;);<br />
+        if(in_array($post[&#039;Action&#039;], $func_arr) &amp;&amp; function_exists(&#039;API_&#039;.$post[&#039;Action&#039;]))<br />
+        {<br />
+            return call_user_func(&#039;API_&#039;.$post[&#039;Action&#039;], $post);<br />
+        }</code></pre><p class='detail'><br />
+<br />
+当$_POST[&#039;Action&#039;] == &#039;UserLogin&#039;的时候调用<br />
+<br />
+/api/client/includes/lib_api.php 246 行<br />
+<br />
+</p><pre><code>function API_UserLogin($post)<br />
+    {<br />
+        $post[&#039;username&#039;] = isset($post[&#039;UserId&#039;]) ? trim($post[&#039;UserId&#039;]) : &#039;&#039;;<br />
+        $post[&#039;password&#039;] = isset($post[&#039;Password&#039;]) ? strtolower(trim($post[&#039;Password&#039;])) : &#039;&#039;;<br />
+<br />
+        /* 检查密码是否正确 */<br />
+        $sql = &quot;SELECT user_id, user_name, password, action_list, last_login&quot;.<br />
+        &quot; FROM &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;admin_user&#039;) .<br />
+        &quot; WHERE user_name = &#039;&quot; . $post[&#039;username&#039;]. &quot;&#039;&quot;;<br />
+        $row = $GLOBALS[&#039;db&#039;]-&gt;getRow($sql);<br />
+        if ($row)<br />
+        {<br />
+            if ($row[&#039;password&#039;] != $post[&#039;password&#039;])<br />
+            {<br />
+                client_show_message(103);<br />
+            }<br />
+            require_once(ROOT_PATH. ADMIN_PATH . &#039;/includes/lib_main.php&#039;);<br />
+            // 登录成功<br />
+            set_admin_session($row[&#039;user_id&#039;], $row[&#039;user_name&#039;], $row[&#039;action_list&#039;], $row[&#039;last_login&#039;]);<br />
+<br />
+            // 更新最后登录时间和IP<br />
+            $GLOBALS[&#039;db&#039;]-&gt;query(&quot;UPDATE &quot; .$GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;admin_user&#039;).<br />
+            &quot; SET last_login=&#039;&quot; . gmtime() . &quot;&#039;, last_ip=&#039;&quot; . real_ip() . &quot;&#039;&quot;.<br />
+            &quot; WHERE user_id=&#039;$_SESSION[admin_id]&#039;&quot;);<br />
+            client_show_message(100, true, VERSION, 0, true, EC_CHARSET);<br />
+        }</code></pre><p class='detail'><br />
+<br />
+其中USERID未经过滤且不受内核过滤影响，造成盲注漏洞 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://localhost/ecshop/api/client/api.php?Action=UserLogin&amp;UserId=%27%20or%20user_id=1%23<br />
+<br />
+注:为方便测试，我把代码里的POST方法改成GET，为了方便显示注入成功，我在执行SQL后插入适当代码使结果显示出来。真实环境并不显示如图结果<br />
+<br />
+</p><p class="detail"><a href="../images/101153596d53bf5dc4d5ef381db7acf5fcb64e4c.png" target="_blank"><img src="../images/101153596d53bf5dc4d5ef381db7acf5fcb64e4c.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">自己想咋过滤就咋过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/tenzy" title="tenzy">tenzy</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02969" title="ECShop 2.7.2 API 盲注漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2011-10-10 14:37</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，我们尽快处理</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2969";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

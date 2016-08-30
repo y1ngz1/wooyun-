@@ -1,0 +1,350 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		KesionCMS V9.03 Final SQL注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		KesionCMS V9.03 Final SQL注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/My5t3ry">My5t3ry</a> 
+</li><li>提交时间：		2013-02-22 17:31</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-02-22：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-04-08：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">昨天提交科讯getshell的洞，通知官方后，说是V9移除wap模块.....<br />
+然后就没下文了，好吧，那就来个V9的</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞存在于User/ChinaBankAutoReceive.asp<br />
+<br />
+</p><pre><code>&lt;%@LANGUAGE=&quot;VBSCRIPT&quot; CODEPAGE=&quot;936&quot;%&gt;<br />
+&lt;%option explicit%&gt;<br />
+&lt;!--#include file=&quot;../Conn.asp&quot;--&gt;<br />
+&lt;!--#include file=&quot;../Plus/md5.asp&quot;--&gt;<br />
+&lt;!--#include file=&quot;../KS_Cls/Kesion.MemberCls.asp&quot;--&gt;<br />
+&lt;!--#include file=&quot;payfunction.asp&quot;--&gt;<br />
+&lt;%<br />
+&#039;****************************************************<br />
+&#039; Software name:Kesion CMS 9.0<br />
+&#039; Email: service@kesion.com . QQ:111394,9537636<br />
+&#039; Web: http://www.kesion.com http://www.kesion.cn<br />
+&#039; Copyright (C) Kesion Network All Rights Reserved.<br />
+&#039;****************************************************<br />
+Response.Buffer = true <br />
+Response.Expires = 1 <br />
+Response.CacheControl = &quot;no-cache&quot;<br />
+<br />
+Dim KSUser:Set KSUser=New UserCls<br />
+Dim KS:Set KS=New PublicCls<br />
+Dim PaymentPlat:PaymentPlat=1<br />
+<br />
+Dim RSP:Set RSP=Server.CreateObject(&quot;ADODB.RECORDSET&quot;)<br />
+RSP.Open &quot;Select top 1 * From KS_PaymentPlat where id=&quot; &amp; PaymentPlat,conn,1,1<br />
+If RSP.Eof Then<br />
+		 RSP.Close:Set RSP=Nothing<br />
+		 Response.Write &quot;Error!&quot;<br />
+		 Response.End()<br />
+End If<br />
+Dim AccountID:AccountID=RSP(&quot;AccountID&quot;)<br />
+Dim MD5Key:MD5Key=RSP(&quot;MD5Key&quot;)<br />
+Dim PayOnlineRate:PayOnlineRate=KS.ChkClng(RSP(&quot;Rate&quot;)) <br />
+Dim RateByUser:RateByUser=KS.ChkClng(RSP(&quot;RateByUser&quot;)) <br />
+RSP.Close:Set RSP=Nothing<br />
+<br />
+ Call ChinaBank()<br />
+&#039;网银在线返回<br />
+Sub ChinaBank() <br />
+ Dim v_oid,v_pmode,v_pstatus,v_pstring,v_string,v_amount,v_moneytype,remark2,v_md5str,text,md5text,zhuangtai<br />
+&#039; 取得返回参数值<br />
+	v_oid=request(&quot;v_oid&quot;)                               &#039; 商户发送的v_oid定单编号<br />
+	v_pmode=request(&quot;v_pmode&quot;)                           &#039; 支付方式（字符串） <br />
+	v_pstatus=request(&quot;v_pstatus&quot;)                       &#039; 支付状态 20（支付成功）;30（支付失败）<br />
+	v_pstring=request(&quot;v_pstring&quot;)                       &#039; 支付结果信息 支付完成（当v_pstatus=20时）；失败原因（当v_pstatus=30时）；<br />
+	v_amount=request(&quot;v_amount&quot;)                         &#039; 订单实际支付金额<br />
+	v_moneytype=request(&quot;v_moneytype&quot;)                   &#039; 订单实际支付币种<br />
+	remark2=request(&quot;remark2&quot;)                           &#039; 备注字段2<br />
+	v_md5str=request(&quot;v_md5str&quot;)                         &#039; 网银在线拼凑的Md5校验串<br />
+	if request(&quot;v_md5str&quot;)=&quot;&quot; then<br />
+		response.Write(&quot;v_md5str：空值&quot;)<br />
+		response.end<br />
+	end if<br />
+	text = v_oid&amp;v_pstatus&amp;v_amount&amp;v_moneytype&amp;MD5Key &#039;md5校验<br />
+	md5text = Ucase(trim(md5(text,32)))    &#039;商户拼凑的Md5校验串<br />
+	if md5text&lt;&gt;v_md5str then		&#039; 网银在线拼凑的Md5校验串 与 商户拼凑的Md5校验串 进行对比<br />
+	  	response.write(&quot;error&quot;) &#039;告诉服务器验证失败，要求重发<br />
+	    response.end &#039;中断程序<br />
+	else<br />
+	  response.write(&quot;ok&quot;)<br />
+	  if v_pstatus=20 then &#039;支付成功<br />
+		Call UpdateOrder(v_amount,remark2,v_oid,v_pmode)<br />
+		Conn.Execute(&quot;Update KS_LogMoney Set PaymentID=1 Where OrderID=&#039;&quot; &amp; v_oid &amp; &quot;&#039;&quot;)<br />
+	  else<br />
+	   	response.write(&quot;error&quot;) &#039;告诉服务器验证失败，要求重发<br />
+	    response.end &#039;中断程序<br />
+	  end if<br />
+	end if<br />
+end Sub<br />
+%&gt;</code></pre><p class='detail'><br />
+<br />
+上面代码中的v_oid=request(&quot;v_oid&quot;)没有过滤，然后就调用了<br />
+<br />
+</p><pre><code>Call UpdateOrder(v_amount,remark2,v_oid,v_pmode)</code></pre><p class='detail'><br />
+<br />
+我们接着看UpdateOrder<br />
+<br />
+</p><pre><code>Sub UpdateOrder(v_amount,remark2,v_oid,v_pmode)<br />
+ Dim KSUser:Set KSUser=New UserCls<br />
+ Dim UserName,MoneyType,Money,Remark,sqlUser,rsUser,orderid,mobile,Action<br />
+ orderid=v_oid<br />
+ IF Cbool(KSUser.UserLoginChecked) Then UserName=KSUser.UserName Else UserName=KS.S(&quot;UserName&quot;)<br />
+         <br />
+		 &#039;=======================如果从request里得不到数据，则重新取值=================<br />
+		 If UserName=&quot;&quot; Then UserName=SUserName<br />
+		 Dim UserCardID<br />
+		 UserCardID=KS.ChkClng(KS.S(&quot;UserCardID&quot;))<br />
+		 iF UserCardID=0 Then UserCardID=sUserCardID<br />
+		 Action=KS.G(&quot;Action&quot;): If Action=&quot;&quot; Then Action=Saction<br />
+		 &#039;==============================================================================<br />
+		 <br />
+         Mobile=KSUser.GetUserInfo(&quot;Mobile&quot;)<br />
+		 Money=v_amount<br />
+		 Remark=remark2<br />
+		 Dim RSLog,RS<br />
+		Set RSLog=Server.CreateObject(&quot;ADODB.RECORDSET&quot;)<br />
+		RSLog.Open &quot;Select top 1 * From KS_LogMoney where orderid=&#039;&quot; &amp; v_oid &amp; &quot;&#039;&quot;,Conn,1,1<br />
+		if RSLog.Eof And RSLog.BoF Then<br />
+			 Select Case Action<br />
+			 case &quot;shop&quot;   &#039;商城中心购物<br />
+				 Set RS=Server.CreateObject(&quot;ADODB.RECORDSET&quot;)<br />
+				 RS.Open &quot;Select top 1 * From KS_Order Where OrderID=&#039;&quot; &amp; v_oid &amp; &quot;&#039;&quot;,Conn,1,3<br />
+				 If RS.Eof Then<br />
+				   RS.Close:Set RS=Nothing<br />
+				   KS.Die &quot;&lt;br&gt;&lt;li&gt;支付过程中遇到问题，请联系网站管理员！&quot;<br />
+				 End If<br />
+				  If Mobile=&quot;&quot; Then<br />
+				  Mobile=RS(&quot;Mobile&quot;)<br />
+				  End If<br />
+				  RS(&quot;MoneyReceipt&quot;)=Money<br />
+				  If Money&gt;=RS(&quot;MoneyTotal&quot;) Then<br />
+					RS(&quot;PayStatus&quot;)=1  &#039;已付清<br />
+				  ElseIf Money&lt;&gt;0 Then<br />
+					 RS(&quot;PayStatus&quot;)=2  &#039;已收定金<br />
+				  Else<br />
+					 RS(&quot;PayStatus&quot;)=0  &#039;未付款<br />
+				  End If<br />
+				  Dim OrderStatus:OrderStatus=rs(&quot;status&quot;)<br />
+				  RS(&quot;Status&quot;)=1<br />
+				  RS(&quot;PaymentPlatId&quot;)=KS.ChkClng(Request(&quot;PaymentPlat&quot;))  &#039;支付接口ID<br />
+				  RS(&quot;PayTime&quot;)=now   &#039;记录付款时间<br />
+				  RS.Update<br />
+                  orderid=RS(&quot;OrderID&quot;)<br />
+				  Dim XID:XID=RS(&quot;ID&quot;)<br />
+				  Call KS.MoneyInOrOut(rs(&quot;UserName&quot;),RS(&quot;Contactman&quot;),Money,2,1,now,rs(&quot;orderid&quot;),&quot;System&quot;,&quot;为购买订单：&quot; &amp;v_oid &amp; &quot;使用&quot; &amp; v_pmode &amp; &quot;在线充值&quot;,0,0,0)<br />
+		          Call KS.MoneyInOrOut(rs(&quot;UserName&quot;),RS(&quot;Contactman&quot;),Money,4,2,now,rs(&quot;orderid&quot;),&quot;System&quot;,Remark,0,0,0)<br />
+				  <br />
+					<br />
+					&#039;====================更新库存量========================<br />
+					Dim rsp:set rsp=conn.execute(&quot;select id,title from ks_product where id in(select proid from KS_OrderItem where orderid=&#039;&quot; &amp; rs(&quot;orderid&quot;) &amp; &quot;&#039;)&quot;)<br />
+					do while not rsp.eof<br />
+					<br />
+					  dim rsi:set rsi=conn.execute(&quot;select amount,attrid from ks_orderitem where orderid=&#039;&quot; &amp; rs(&quot;orderid&quot;) &amp; &quot;&#039; and proid=&quot; &amp; rsp(0))<br />
+					  if not rsi.eof then<br />
+						  if OrderStatus&lt;&gt;1 Then  &#039;扣库存量<br />
+						   If RSI(&quot;AttrID&quot;)&lt;&gt;0 Then<br />
+			                  Conn.Execute(&quot;update KS_ShopSpecificationPrice set amount=amount-&quot; &amp; RSI(0) &amp; &quot; Where amount&gt;=&quot; &amp; RSI(0) &amp; &quot; and ID=&quot; &amp; RSI(1))<br />
+			              Else<br />
+						   conn.execute(&quot;update ks_product set totalnum=totalnum-&quot; &amp; rsi(0) &amp;&quot; where totalnum&gt;=&quot; &amp; rsi(0) &amp;&quot; and id=&quot; &amp; rsp(0))        <br />
+						  End If<br />
+						  End If<br />
+					  end if<br />
+					  rsi.close<br />
+					  set rsi=nothing<br />
+					  <br />
+					  &#039;Call KS.ScoreInOrOut(UserName,1,KS.ChkClng(rsp(0))*amount,&quot;系统&quot;,&quot;购买商品&lt;font color=red&gt;&quot; &amp; rsp(&quot;title&quot;) &amp; &quot;&lt;/font&gt;赠送!&quot;,0,0)<br />
+					  <br />
+					rsp.movenext<br />
+					loop<br />
+					rsp.close<br />
+					set rsp=nothing<br />
+					&#039;================================================================<br />
+					<br />
+					RS.Close:Set RS=Nothing<br />
+					IF KS.C(&quot;UserName&quot;)&lt;&gt;&quot;&quot; Then response.Redirect &quot;User_Order.asp?Action=ShowOrder&amp;ID=&quot; &amp; XID<br />
+			 Case else   &#039;会员中心充值<br />
+					Set rsUser=Server.CreateObject(&quot;Adodb.RecordSet&quot;)<br />
+					sqlUser=&quot;select top 1 * from KS_User where UserName=&#039;&quot; &amp; UserName &amp; &quot;&#039;&quot;<br />
+					rsUser.Open sqlUser,Conn,1,1<br />
+					if rsUser.bof and rsUser.eof then<br />
+								Response.Write &quot;&lt;br&gt;&lt;li&gt;充值过程中遇到问题，请联系网站管理员！&quot;<br />
+								rsUser.close:set rsUser=Nothing<br />
+								exit sub<br />
+					end if<br />
+					Dim RealName:RealName=rsUser(&quot;RealName&quot;)<br />
+					Dim Edays:Edays=rsUser(&quot;Edays&quot;)<br />
+					Dim BeginDate:BeginDate=rsUser(&quot;BeginDate&quot;)<br />
+					rsUser.Close : Set rsUser=Nothing<br />
+<br />
+					If UserCardID&lt;&gt;0 Then   &#039;充值卡<br />
+					       Call UpdateByCard(0,UserCardID,UserName,RealName,Edays,BeginDate,v_oid,v_pmode)<br />
+					Else<br />
+				  	 Call KS.MoneyInOrOut(UserName,RealName,Money,3,1,now,v_oid,&quot;System&quot;,v_pmode &amp; &quot;在线充值,订单号为:&quot; &amp; v_oid,0,0,0)<br />
+					End If<br />
+<br />
+					<br />
+			 End Select<br />
+			 <br />
+		End If<br />
+		RSLog.Close:Set RSLog=Nothing<br />
+End Sub</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>RSLog.Open &quot;Select top 1 * From KS_LogMoney where orderid=&#039;&quot; &amp; v_oid &amp; &quot;&#039;&quot;,Conn,1,1</code></pre><p class='detail'><br />
+<br />
+这句带入SQL了！那么然后构造参数才能触发漏洞呢？<br />
+<br />
+我们这样构造:<br />
+<br />
+/User/ChinaBankAutoReceive.asp?v_oid=1%27&amp;v_pstatus=20&amp;v_amount=1&amp;v_moneytype=1&amp;v_md5str=9B5BF7166AFBB5E1602BBCC964459B9B<br />
+<br />
+<br />
+<br />
+其中的v_oid带入我们的SQL注射语句...你懂的，后面的v_md5str是md5(v_oid&amp;v_pstatus&amp;v_amount&amp;v_moneytype&amp;MD5Key)得到的，MD5Key的值来自数据库值为0<br />
+<br />
+<br />
+<br />
+简单地说，v_oid构造SQL后，md5(v_oid&amp;v_pstatus&amp;v_amount&amp;v_moneytype&amp;MD5Key)计算出v_md5str,然后提交就行了<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">/User/ChinaBankAutoReceive.asp?v_oid=1%27&amp;v_pstatus=20&amp;v_amount=1&amp;v_moneytype=1&amp;v_md5str=9B5BF7166AFBB5E1602BBCC964459B9B<br />
+<br />
+</p><p class="detail"><a href="../images/2217241308e508cbc8b94ba3f91fe2e44d3ec41c.jpg" target="_blank"><img src="../images/2217241308e508cbc8b94ba3f91fe2e44d3ec41c.jpg" alt="ke.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤，你懂的 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/My5t3ry" title="My5t3ry">My5t3ry</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-019057" title="KesionCMS V9.03 Final SQL注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="19057";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

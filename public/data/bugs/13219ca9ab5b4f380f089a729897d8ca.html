@@ -1,0 +1,204 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		北航course grading系统漏洞(按照名单涉及29所学校)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		北航course grading系统漏洞(按照名单涉及29所学校)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/HoerWing">HoerWing</a> 
+</li><li>提交时间：		2013-11-21 13:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-15：	细节向普通白帽子公开<br/>
+									2013-12-25：	细节向实习白帽子公开<br/>
+									2014-01-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我是北京航空航天大学附属小学一年级的一名小学生，刚上小学一个月的时候交C语言作业，我就想，能不能不做作业又能得满分呢，所以，我把我的小手伸向了C语言教辅平台的服务器和数据库。（麻麻说这么写才够装逼，装逼才能火）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这算是成功入侵事件吧，拿下了北航两台服务器，按照名单上说，还有上海大学计算中心等28所高校在用这个系统，名单：http://www.course.sei.buaa.edu.cn/Users/。另外北航使用的都是1.1.3版本，似乎1.1.6版本这个bug已经修复了，谁知道呢，没人用1.1.6。下面详细讲说一下入侵过程：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+北航使用这个平台的服务器有两台，一个是http://judge.sei.buaa.edu.cn/，另一个是http://crs.sei.buaa.edu.cn/，测试请到http://crs.sei.buaa.edu.cn/，学号stu，密码stu（这个账号和密码是在http://www.course.sei.buaa.edu.cn/demo/上对外公开的）。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+废话不多说，漏洞很简单0x00截断上传，古老的漏洞。<br />
+<br />
+进入学生页面之后，我们找到在线答疑，随便点开一个论坛，之后发新帖，点file<br />
+<br />
+</p><p class="detail"><a href="../images/20203818805d871ba7c8f794d49203f4a6eddeb5.jpg" target="_blank"><img src="../images/20203818805d871ba7c8f794d49203f4a6eddeb5.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+上传jsp网马，burpsuite截断数据包，在文件名后面加0x00<br />
+<br />
+</p><p class="detail"><a href="../images/2020403715e10b2cd992d19e5886b03c686f0687.jpg" target="_blank"><img src="../images/2020403715e10b2cd992d19e5886b03c686f0687.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/202040484a4aa5970822c5866fb529c1f761a061.jpg" target="_blank"><img src="../images/202040484a4aa5970822c5866fb529c1f761a061.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+上传成功：<br />
+<br />
+</p><p class="detail"><a href="../images/2020412990f89d61f06e65c5c5ca113eafa045f1.jpg" target="_blank"><img src="../images/2020412990f89d61f06e65c5c5ca113eafa045f1.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+下面，提权脱库一条龙服务，不多说，你懂得。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">数据库user.MYD<br />
+<br />
+</p><p class="detail"><a href="../images/20204608b48a73b4155c55eef99cc1574979ca9e.jpg" target="_blank"><img src="../images/20204608b48a73b4155c55eef99cc1574979ca9e.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+webshell<br />
+<br />
+</p><p class="detail"><a href="../images/20204703e6fad60092ec717383b92aebab4b09e0.jpg" target="_blank"><img src="../images/20204703e6fad60092ec717383b92aebab4b09e0.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">按照这个过滤jsp文件的方式，我大体估计了一下我们假设有这么一个函数get_type(name)，因为要扫文件扩展名，所以从后往前扫，如果我们在末尾加了一个0x00那么就判断无文件扩展名，而保存文件时，我们是从前往后扫所以遇到0x00就认为字符串结束，所以过滤不掉，<br />
+<br />
+那么修复方案很简单，把传递给外部Java的实参进行过滤，先从前往后扫直到0x00，之后把这个字符串传递给Java类。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/HoerWing" title="HoerWing">HoerWing</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043524" title="北航course grading系统漏洞(按照名单涉及29所学校)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：13 </p>
+													<p class="detail">确认时间：2013-11-25 22:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43524";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

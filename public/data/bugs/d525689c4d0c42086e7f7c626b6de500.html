@@ -1,0 +1,260 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		joomla变量覆盖导致注册提权漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		joomla变量覆盖导致注册提权漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/牛奶坦克">牛奶坦克</a> 
+</li><li>提交时间：		2012-03-24 17:42</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-03-24：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-05-08：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">joomla用户注册流程存在一个变量覆盖漏洞，可以导致攻击者直接注册管理员权限帐号。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/components/com_users/controllers/registration.php<br />
+<br />
+</p><pre><code>public function register()<br />
+{<br />
+// 检测token<br />
+JRequest::checkToken() or jexit(JText::_(&#039;JINVALID_TOKEN&#039;));<br />
+... ...<br />
+// 初始化用户注册模块<br />
+$app = JFactory::getApplication();<br />
+$model = $this-&gt;getModel(&#039;Registration&#039;, &#039;UsersModel&#039;);<br />
+// 这个地方获取用户注册信息，POST进来的jform数组，但是没有详细指定<br />
+$requestData = JRequest::getVar(&#039;jform&#039;, array(), &#039;post&#039;, &#039;array&#039;);<br />
+... ...<br />
+// 验证数据<br />
+$data = $model-&gt;validate($form, $requestData);<br />
+... ...<br />
+// 将用户注册数据提交给register模块处理，这里一会继续分析<br />
+$return = $model-&gt;register($data);<br />
+... ...<br />
+// 以上流程走完后调到完成页面<br />
+if ($return === &#039;adminactivate&#039;){<br />
+$this-&gt;setMessage(JText::_(&#039;COM_USERS_REGISTRATION_COMPLETE_VERIFY&#039;));<br />
+$this-&gt;setRedirect(JRoute::_(&#039;index.php?option=com_users&amp;view=registration&amp;layout=complete&#039;, false));<br />
+} elseif ($return === &#039;useractivate&#039;) {<br />
+$this-&gt;setMessage(JText::_(&#039;COM_USERS_REGISTRATION_COMPLETE_ACTIVATE&#039;));<br />
+$this-&gt;setRedirect(JRoute::_(&#039;index.php?option=com_users&amp;view=registration&amp;layout=complete&#039;, false));<br />
+} else {<br />
+$this-&gt;setMessage(JText::_(&#039;COM_USERS_REGISTRATION_SAVE_SUCCESS&#039;));<br />
+$this-&gt;setRedirect(JRoute::_(&#039;index.php?option=com_users&amp;view=login&#039;, false));<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+/components/com_users/models/registration.php<br />
+<br />
+</p><pre><code>public function getData()<br />
+{<br />
+if ($this-&gt;data === null) {<br />
+$this-&gt;data = new stdClass();<br />
+$app = JFactory::getApplication();<br />
+$params = JComponentHelper::getParams(&#039;com_users&#039;);<br />
+... ...<br />
+/* 默认用户组id为2，joomla组结构如下<br />
+mysql&gt; select * from ilpy2_usergroups;<br />
++----+-----------+-----+-----+--------------------------+<br />
+| id | parent_id | lft | rgt | title                    |<br />
++----+-----------+-----+-----+--------------------------+<br />
+|  1 |         0 |   1 |  20 | Public                   |<br />
+|  2 |         1 |   6 |  17 | Registered               |<br />
+|  3 |         2 |   7 |  14 | Author                   |<br />
+|  4 |         3 |   8 |  11 | Editor                   |<br />
+|  5 |         4 |   9 |  10 | Publisher                |<br />
+|  6 |         1 |   2 |   5 | Manager                  |<br />
+|  7 |         6 |   3 |   4 | Administrator            |<br />
+|  8 |         1 |  18 |  19 | Super Users              |<br />
+| 12 |         2 |  15 |  16 | Customer Group (Example) |<br />
+| 10 |         3 |  12 |  13 | Shop Suppliers (Example) |<br />
++----+-----------+-----+-----+--------------------------+<br />
+*/<br />
+$system = $params-&gt;get(&#039;new_usertype&#039;, 2);<br />
+$this-&gt;data-&gt;groups[] = $system;<br />
+... ...<br />
+public function register($temp)<br />
+{<br />
+$config = JFactory::getConfig();<br />
+$db= $this-&gt;getDbo();<br />
+$params = JComponentHelper::getParams(&#039;com_users&#039;);<br />
+// Initialise the table with JUser.<br />
+$user = new JUser;<br />
+//这里注意，在遍历用户注册信息前加入了点数据<br />
+$data = (array)$this-&gt;getData();<br />
+// 遍历出注册信息<br />
+foreach ($temp as $k =&gt; $v) {<br />
+$data[$k] = $v;<br />
+}<br />
+... ...<br />
+// 组合数据<br />
+if (!$user-&gt;bind($data)) {<br />
+$this-&gt;setError(JText::sprintf(&#039;COM_USERS_REGISTRATION_BIND_FAILED&#039;, $user-&gt;getError()));<br />
+return false;<br />
+}<br />
+// Load the users plugin group.<br />
+JPluginHelper::importPlugin(&#039;user&#039;);<br />
+// 保存用户注册数据<br />
+if (!$user-&gt;save()) {<br />
+$this-&gt;setError(JText::sprintf(&#039;COM_USERS_REGISTRATION_SAVE_FAILED&#039;, $user-&gt;getError()));<br />
+return false;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+libraries/joomla/user/user.php<br />
+<br />
+</p><pre><code>public function save($updateOnly = false)<br />
+        {<br />
+                $table = $this-&gt;getTable();<br />
+                $this-&gt;params = (string) $this-&gt;_params;<br />
+                //$this-&gt;getProperties()里保存的就是用户注册信息了<br />
+                $table-&gt;bind($this-&gt;getProperties());<br />
+                //但是joomla有个机制，就是只有super user才能创建、操作super user，所以提权不能如此彻底，只能根据joomla的组机制建立一个可行的最高权限Administrator，id为7<br />
+                        $iAmSuperAdmin = $my-&gt;authorise(&#039;core.admin&#039;);<br />
+<br />
+                        // We are only worried about edits to this account if I am not a Super Admin.<br />
+                        if ($iAmSuperAdmin != true)<br />
+                        {<br />
+                                if ($isNew)<br />
+                                //后面不贴了，实在是太多了</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">因为groups被初始化为2，也就是Registered，所以注册时在提交数据中多加入一个二维数组，jfrom[groups][]=7，利用foreach的问题覆盖掉groups数组，变成7（Administrator）。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/241807368c8305904ccbfa3f20e721aa147a84b5.png" target="_blank"><img src="../images/241807368c8305904ccbfa3f20e721aa147a84b5.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2418080480a911a75821a80dc24ab41458e3439e.png" target="_blank"><img src="../images/2418080480a911a75821a80dc24ab41458e3439e.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">貌似随着程序的进步，曾经的“过滤不严”，“绕过过滤”等慢慢的开始像变量未初始化，变量覆盖问题上发展了，程序员是不是除了过滤与限制的同时在考虑一下其他需要注意的地方呢？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/牛奶坦克" title="牛奶坦克">牛奶坦克</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-05526" title="joomla变量覆盖导致注册提权漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：16 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="5526";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

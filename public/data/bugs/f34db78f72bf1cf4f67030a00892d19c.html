@@ -1,0 +1,823 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		乔客(joekoe) CMS 4.0 上传与SQL注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		乔客(joekoe) CMS 4.0 上传与SQL注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/蓝盾科技">蓝盾科技</a> 
+</li><li>提交时间：		2011-03-28 21:56</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-03-28：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-03-29：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">乔客4.0版本中存在两个高危漏洞,一个上传漏<br />
+洞,可以随意上传任意文件,包括ASP,另一个是SQL注入,甚至还有返回错误信息,可<br />
+怕啊<br />
+上传漏洞:<br />
+看/common/include/web.upload.asp 中的代码<br />
+————————————————————-<br />
+sub doPageLoad()<br />
+if APP_STATUS=”close” then<br />
+treeData.addItem “_status”,”error.message”<br />
+treeData.addItem “_message”,”网站暂时因关闭维护中！请稍候…”<br />
+exit sub<br />
+end if<br />
+up.doInit()<br />
+if not upConfig.isInit then<br />
+treeData.addItem “_status”,”error.message”<br />
+treeData.addItem “_message”,”上传文件的参数不正确！”<br />
+else<br />
+doPageLoadUser()<br />
+select case upConfig.channel<br />
+case “forum”<br />
+upConfig.setSaveDir(upConfig.getSaveDir&amp;(left<br />
+(ops.time.toConvertString(“”,10),6)&amp;DIR_SEPARATOR))<br />
+upConfig.filename=”&quot;<br />
+case “user.face”<br />
+upConfig.filename=”face_”&amp;upConfig.userid<br />
+upConfig.setSaveDir(“face”&amp;DIR_SEPARATOR)<br />
+upConfig.filetype=”gif”<br />
+case “blog.logo”<br />
+upConfig.setSaveDir(“blog”&amp;DIR_SEPARATOR)<br />
+upConfig.filetype=”gif”<br />
+case else<br />
+if instr(upConfig.channel,”.”)&gt;0 then<br />
+upConfig.setSaveDir(mid(upConfig.channel,1,instr<br />
+(upConfig.channel,”.”)-1)&amp;DIR_SEPARATOR)<br />
+end if<br />
+if instr(upConfig.fileinput,”url”)&gt;0 then<br />
+upConfig.filetype=”affix”<br />
+end if<br />
+end select<br />
+if len(upConfig.getSaveDir())&lt;3 then<br />
+treeData.addItem “_status”,”error.message”<br />
+treeData.addItem “_message”,”上传文件的参数不正确！”<br />
+exit sub<br />
+end if<br />
+if 1=1 then<br />
+upConfig.setData “zoom.channel.width”,120<br />
+upConfig.setData “zoom.channel.height”,90<br />
+end if<br />
+upConfig.setBaseDir(DIR_ROOT&amp;DIR_UPLOAD)<br />
+upConfig.setBasePath(opsDirPath(DIR_ROOT&amp;DIR_UPLOAD))<br />
+upConfig.setBaseURL(URL_UPLOAD)<br />
+up.doLoad()<br />
+end if<br />
+end sub<br />
+————————————————————-<br />
+这段代码通过channel判断是否给上传类型赋值,如果channel不等于forum、<br />
+user.face、blog.logo的时候判断fileinput是否包含url，如果不包含，<br />
+upConfig.filetype就不赋值，继续往下看<br />
+———————————————————————<br />
+if up.isPost() then<br />
+call doParseUploadData()<br />
+treeData.addItem “_status”,”succeed”<br />
+dim tmpFormMode,tmpFileValue,tmpThumbValue<br />
+tmpFormMode=”set”<br />
+if upConfig.channel=”user.face” then<br />
+tmpLinkMode=”no”<br />
+tmpFileValue=”#”&amp;up.getFileInfo(“filename”)<br />
+else<br />
+tmpFileValue=up.getFileInfo(“file.path”)<br />
+select case upConfig.filetype<br />
+case “file”<br />
+tmpLinkMode=”no”<br />
+‘tmpFileValue=up.getFileInfo(“file.path”)<br />
+case “pic”,”spic”,”pics”,”affix”,”gif”,”jpg”,”jpeg”,”bmp”,”png”<br />
+tmpLinkMode=”no”<br />
+tmpThumbValue=up.getFileInfo(“thumb.path”)<br />
+case else<br />
+tmpLinkMode=”again”<br />
+tmpFormMode=”append”<br />
+dim tmpFileType:tmpFileType=lcase(up.getFileInfo(“filetype”))<br />
+select case tmpFileType<br />
+case “gif”,”jpg”,”jpeg”,”bmp”,”png”<br />
+tmpFileValue=”&quot;<br />
+case “swf”<br />
+tmpFileValue=”&quot;<br />
+case else<br />
+tmpFileValue=”[download=&quot;&amp;tmpFileType&amp;&quot;]upload_download.asp?<br />
+id=”&amp;upConfig.fileid&amp;”[/download]“<br />
+end select<br />
+end select<br />
+end if<br />
+treeData.addItem “_form.mode”,tmpFormMode<br />
+treeData.addItem “_form.filevalue”,tmpFileValue<br />
+treeData.addItem “_form.thumbvalue”,tmpThumbValue<br />
+end if<br />
+———————————————————————-<br />
+这段代码判断upConfig.filetype，然后定义上传文件的后缀名，只要之前<br />
+upConfig.filetype没被赋值，且不是gif,jpg,jpeg,bmp,png,swf,就<br />
+tmpFileValue=”[download=&quot;&amp;tmpFileType&amp;&quot;]upload_download.asp?<br />
+id=”&amp;upConfig.fileid&amp;”[/download]“，看到这个，大家眼睛都放光了，根据用<br />
+户的定义来判断上传类型，就好比问一个要偷东西的人：“你是贼么？”，这段<br />
+代码也太XX了，估计之前也有不少人读出来了，只不过没公开而已</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">乔客4.0版本中存在两个高危漏洞,一个上传漏<br />
+<br />
+洞,可以随意上传任意文件,包括ASP,另一个是SQL注入,甚至还有返回错误信息,可<br />
+<br />
+怕啊<br />
+<br />
+上传漏洞:<br />
+<br />
+看/common/include/web.upload.asp 中的代码<br />
+<br />
+————————————————————-<br />
+<br />
+sub doPageLoad()<br />
+<br />
+if APP_STATUS=”close” then<br />
+<br />
+treeData.addItem “_status”,”error.message”<br />
+<br />
+treeData.addItem “_message”,”网站暂时因关闭维护中！请稍候…”<br />
+<br />
+exit sub<br />
+<br />
+end if<br />
+<br />
+up.doInit()<br />
+<br />
+if not upConfig.isInit then<br />
+<br />
+treeData.addItem “_status”,”error.message”<br />
+<br />
+treeData.addItem “_message”,”上传文件的参数不正确！”<br />
+<br />
+else<br />
+<br />
+doPageLoadUser()<br />
+<br />
+select case upConfig.channel<br />
+<br />
+case “forum”<br />
+<br />
+upConfig.setSaveDir(upConfig.getSaveDir&amp;(left<br />
+<br />
+(ops.time.toConvertString(“”,10),6)&amp;DIR_SEPARATOR))<br />
+<br />
+upConfig.filename=”&quot;<br />
+<br />
+case “user.face”<br />
+<br />
+upConfig.filename=”face_”&amp;upConfig.userid<br />
+<br />
+upConfig.setSaveDir(“face”&amp;DIR_SEPARATOR)<br />
+<br />
+upConfig.filetype=”gif”<br />
+<br />
+case “blog.logo”<br />
+<br />
+upConfig.setSaveDir(“blog”&amp;DIR_SEPARATOR)<br />
+<br />
+upConfig.filetype=”gif”<br />
+<br />
+case else<br />
+<br />
+if instr(upConfig.channel,”.”)&gt;0 then<br />
+<br />
+upConfig.setSaveDir(mid(upConfig.channel,1,instr<br />
+<br />
+(upConfig.channel,”.”)-1)&amp;DIR_SEPARATOR)<br />
+<br />
+end if<br />
+<br />
+if instr(upConfig.fileinput,”url”)&gt;0 then<br />
+<br />
+upConfig.filetype=”affix”<br />
+<br />
+end if<br />
+<br />
+end select<br />
+<br />
+if len(upConfig.getSaveDir())&lt;3 then<br />
+<br />
+treeData.addItem “_status”,”error.message”<br />
+<br />
+treeData.addItem “_message”,”上传文件的参数不正确！”<br />
+<br />
+exit sub<br />
+<br />
+end if<br />
+<br />
+if 1=1 then<br />
+<br />
+upConfig.setData “zoom.channel.width”,120<br />
+<br />
+upConfig.setData “zoom.channel.height”,90<br />
+<br />
+end if<br />
+<br />
+upConfig.setBaseDir(DIR_ROOT&amp;DIR_UPLOAD)<br />
+<br />
+upConfig.setBasePath(opsDirPath(DIR_ROOT&amp;DIR_UPLOAD))<br />
+<br />
+upConfig.setBaseURL(URL_UPLOAD)<br />
+<br />
+up.doLoad()<br />
+<br />
+end if<br />
+<br />
+end sub<br />
+<br />
+————————————————————-<br />
+<br />
+这段代码通过channel判断是否给上传类型赋值,如果channel不等于forum、<br />
+<br />
+user.face、blog.logo的时候判断fileinput是否包含url，如果不包含，<br />
+<br />
+upConfig.filetype就不赋值，继续往下看<br />
+<br />
+———————————————————————<br />
+<br />
+if up.isPost() then<br />
+<br />
+call doParseUploadData()<br />
+<br />
+treeData.addItem “_status”,”succeed”<br />
+<br />
+dim tmpFormMode,tmpFileValue,tmpThumbValue<br />
+<br />
+tmpFormMode=”set”<br />
+<br />
+if upConfig.channel=”user.face” then<br />
+<br />
+tmpLinkMode=”no”<br />
+<br />
+tmpFileValue=”#”&amp;up.getFileInfo(“filename”)<br />
+<br />
+else<br />
+<br />
+tmpFileValue=up.getFileInfo(“file.path”)<br />
+<br />
+select case upConfig.filetype<br />
+<br />
+case “file”<br />
+<br />
+tmpLinkMode=”no”<br />
+<br />
+‘tmpFileValue=up.getFileInfo(“file.path”)<br />
+<br />
+case “pic”,”spic”,”pics”,”affix”,”gif”,”jpg”,”jpeg”,”bmp”,”png”<br />
+<br />
+tmpLinkMode=”no”<br />
+<br />
+tmpThumbValue=up.getFileInfo(“thumb.path”)<br />
+<br />
+case else<br />
+<br />
+tmpLinkMode=”again”<br />
+<br />
+tmpFormMode=”append”<br />
+<br />
+dim tmpFileType:tmpFileType=lcase(up.getFileInfo(“filetype”))<br />
+<br />
+select case tmpFileType<br />
+<br />
+case “gif”,”jpg”,”jpeg”,”bmp”,”png”<br />
+<br />
+tmpFileValue=”&quot;<br />
+<br />
+case “swf”<br />
+<br />
+tmpFileValue=”&quot;<br />
+<br />
+case else<br />
+<br />
+tmpFileValue=”[download=&quot;&amp;tmpFileType&amp;&quot;]upload_download.asp?<br />
+<br />
+id=”&amp;upConfig.fileid&amp;”[/download]“<br />
+<br />
+end select<br />
+<br />
+end select<br />
+<br />
+end if<br />
+<br />
+treeData.addItem “_form.mode”,tmpFormMode<br />
+<br />
+treeData.addItem “_form.filevalue”,tmpFileValue<br />
+<br />
+treeData.addItem “_form.thumbvalue”,tmpThumbValue<br />
+<br />
+end if<br />
+<br />
+———————————————————————-<br />
+<br />
+这段代码判断upConfig.filetype，然后定义上传文件的后缀名，只要之前<br />
+<br />
+upConfig.filetype没被赋值，且不是gif,jpg,jpeg,bmp,png,swf,就<br />
+<br />
+tmpFileValue=”[download=&quot;&amp;tmpFileType&amp;&quot;]upload_download.asp?<br />
+<br />
+id=”&amp;upConfig.fileid&amp;”[/download]“，看到这个，大家眼睛都放光了，根据用<br />
+<br />
+户的定义来判断上传类型，就好比问一个要偷东西的人：“你是贼么？”，这段<br />
+<br />
+代码也太XX了，估计之前也有不少人读出来了，只不过没公开而已. </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上传漏洞:<br />
+<br />
+<br />
+<br />
+看/common/include/web.upload.asp 中的代码<br />
+<br />
+<br />
+<br />
+————————————————————-<br />
+<br />
+<br />
+<br />
+sub doPageLoad()<br />
+<br />
+<br />
+<br />
+if APP_STATUS=”close” then<br />
+<br />
+<br />
+<br />
+treeData.addItem “_status”,”error.message”<br />
+<br />
+<br />
+<br />
+treeData.addItem “_message”,”网站暂时因关闭维护中！请稍候…”<br />
+<br />
+<br />
+<br />
+exit sub<br />
+<br />
+<br />
+<br />
+end if<br />
+<br />
+<br />
+<br />
+up.doInit()<br />
+<br />
+<br />
+<br />
+if not upConfig.isInit then<br />
+<br />
+<br />
+<br />
+treeData.addItem “_status”,”error.message”<br />
+<br />
+<br />
+<br />
+treeData.addItem “_message”,”上传文件的参数不正确！”<br />
+<br />
+<br />
+<br />
+else<br />
+<br />
+<br />
+<br />
+doPageLoadUser()<br />
+<br />
+<br />
+<br />
+select case upConfig.channel<br />
+<br />
+<br />
+<br />
+case “forum”<br />
+<br />
+<br />
+<br />
+upConfig.setSaveDir(upConfig.getSaveDir&amp;(left<br />
+<br />
+<br />
+<br />
+(ops.time.toConvertString(“”,10),6)&amp;DIR_SEPARATOR))<br />
+<br />
+<br />
+<br />
+upConfig.filename=”&quot;<br />
+<br />
+<br />
+<br />
+case “user.face”<br />
+<br />
+<br />
+<br />
+upConfig.filename=”face_”&amp;upConfig.userid<br />
+<br />
+<br />
+<br />
+upConfig.setSaveDir(“face”&amp;DIR_SEPARATOR)<br />
+<br />
+<br />
+<br />
+upConfig.filetype=”gif”<br />
+<br />
+<br />
+<br />
+case “blog.logo”<br />
+<br />
+<br />
+<br />
+upConfig.setSaveDir(“blog”&amp;DIR_SEPARATOR)<br />
+<br />
+<br />
+<br />
+upConfig.filetype=”gif”<br />
+<br />
+<br />
+<br />
+case else<br />
+<br />
+<br />
+<br />
+if instr(upConfig.channel,”.”)&gt;0 then<br />
+<br />
+<br />
+<br />
+upConfig.setSaveDir(mid(upConfig.channel,1,instr<br />
+<br />
+<br />
+<br />
+(upConfig.channel,”.”)-1)&amp;DIR_SEPARATOR)<br />
+<br />
+<br />
+<br />
+end if<br />
+<br />
+<br />
+<br />
+if instr(upConfig.fileinput,”url”)&gt;0 then<br />
+<br />
+<br />
+<br />
+upConfig.filetype=”affix”<br />
+<br />
+<br />
+<br />
+end if<br />
+<br />
+<br />
+<br />
+end select<br />
+<br />
+<br />
+<br />
+if len(upConfig.getSaveDir())&lt;3 then<br />
+<br />
+<br />
+<br />
+treeData.addItem “_status”,”error.message”<br />
+<br />
+<br />
+<br />
+treeData.addItem “_message”,”上传文件的参数不正确！”<br />
+<br />
+<br />
+<br />
+exit sub<br />
+<br />
+<br />
+<br />
+end if<br />
+<br />
+<br />
+<br />
+if 1=1 then<br />
+<br />
+<br />
+<br />
+upConfig.setData “zoom.channel.width”,120<br />
+<br />
+<br />
+<br />
+upConfig.setData “zoom.channel.height”,90<br />
+<br />
+<br />
+<br />
+end if<br />
+<br />
+<br />
+<br />
+upConfig.setBaseDir(DIR_ROOT&amp;DIR_UPLOAD)<br />
+<br />
+<br />
+<br />
+upConfig.setBasePath(opsDirPath(DIR_ROOT&amp;DIR_UPLOAD))<br />
+<br />
+<br />
+<br />
+upConfig.setBaseURL(URL_UPLOAD)<br />
+<br />
+<br />
+<br />
+up.doLoad()<br />
+<br />
+<br />
+<br />
+end if<br />
+<br />
+<br />
+<br />
+end sub<br />
+<br />
+<br />
+<br />
+————————————————————-<br />
+<br />
+<br />
+<br />
+这段代码通过channel判断是否给上传类型赋值,如果channel不等于forum、<br />
+<br />
+<br />
+<br />
+user.face、blog.logo的时候判断fileinput是否包含url，如果不包含，<br />
+<br />
+<br />
+<br />
+upConfig.filetype就不赋值，继续往下看<br />
+<br />
+<br />
+<br />
+———————————————————————<br />
+<br />
+<br />
+<br />
+if up.isPost() then<br />
+<br />
+<br />
+<br />
+call doParseUploadData()<br />
+<br />
+<br />
+<br />
+treeData.addItem “_status”,”succeed”<br />
+<br />
+<br />
+<br />
+dim tmpFormMode,tmpFileValue,tmpThumbValue<br />
+<br />
+<br />
+<br />
+tmpFormMode=”set”<br />
+<br />
+<br />
+<br />
+if upConfig.channel=”user.face” then<br />
+<br />
+<br />
+<br />
+tmpLinkMode=”no”<br />
+<br />
+<br />
+<br />
+tmpFileValue=”#”&amp;up.getFileInfo(“filename”)<br />
+<br />
+<br />
+<br />
+else<br />
+<br />
+<br />
+<br />
+tmpFileValue=up.getFileInfo(“file.path”)<br />
+<br />
+<br />
+<br />
+select case upConfig.filetype<br />
+<br />
+<br />
+<br />
+case “file”<br />
+<br />
+<br />
+<br />
+tmpLinkMode=”no”<br />
+<br />
+<br />
+<br />
+‘tmpFileValue=up.getFileInfo(“file.path”)<br />
+<br />
+<br />
+<br />
+case “pic”,”spic”,”pics”,”affix”,”gif”,”jpg”,”jpeg”,”bmp”,”png”<br />
+<br />
+<br />
+<br />
+tmpLinkMode=”no”<br />
+<br />
+<br />
+<br />
+tmpThumbValue=up.getFileInfo(“thumb.path”)<br />
+<br />
+<br />
+<br />
+case else<br />
+<br />
+<br />
+<br />
+tmpLinkMode=”again”<br />
+<br />
+<br />
+<br />
+tmpFormMode=”append”<br />
+<br />
+<br />
+<br />
+dim tmpFileType:tmpFileType=lcase(up.getFileInfo(“filetype”))<br />
+<br />
+<br />
+<br />
+select case tmpFileType<br />
+<br />
+<br />
+<br />
+case “gif”,”jpg”,”jpeg”,”bmp”,”png”<br />
+<br />
+<br />
+<br />
+tmpFileValue=”&quot;<br />
+<br />
+<br />
+<br />
+case “swf”<br />
+<br />
+<br />
+<br />
+tmpFileValue=”&quot;<br />
+<br />
+<br />
+<br />
+case else<br />
+<br />
+<br />
+<br />
+tmpFileValue=”[download=&quot;&amp;tmpFileType&amp;&quot;]upload_download.asp?<br />
+<br />
+<br />
+<br />
+id=”&amp;upConfig.fileid&amp;”[/download]”<br />
+<br />
+<br />
+<br />
+end select<br />
+<br />
+<br />
+<br />
+end select<br />
+<br />
+<br />
+<br />
+end if<br />
+<br />
+<br />
+<br />
+treeData.addItem “_form.mode”,tmpFormMode<br />
+<br />
+<br />
+<br />
+treeData.addItem “_form.filevalue”,tmpFileValue<br />
+<br />
+<br />
+<br />
+treeData.addItem “_form.thumbvalue”,tmpThumbValue<br />
+<br />
+<br />
+<br />
+end if<br />
+<br />
+乔客(JoeKoe) CMS 4.0后台拿shell。<br />
+<br />
+<br />
+<br />
+来到后台—&gt;系统管理—&gt;网站配置—&gt;网站名称—&gt;在网站名称那里写入一句话。<br />
+<br />
+</p><p class="detail"><a href="../images/28215529148fd1dea41dd3339d9381a84ded7fd9.jpg" target="_blank"><img src="../images/28215529148fd1dea41dd3339d9381a84ded7fd9.jpg" alt="" width="600"/></a></p><p class="detail">然后通过一句话链接器连接. www.XXX.com/index.asp 即可！ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/蓝盾科技" title="蓝盾科技">蓝盾科技</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01745" title="乔客(joekoe) CMS 4.0 上传与SQL注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：12 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1745";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

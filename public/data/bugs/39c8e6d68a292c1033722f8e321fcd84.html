@@ -1,0 +1,248 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国电信手机端某接口可获全国电信人民身份信息  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国电信手机端某接口可获全国电信人民身份信息  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Elegance">Elegance</a> 
+</li><li>提交时间：		2013-09-15 23:20</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-08：	细节向普通白帽子公开<br/>
+									2013-10-18：	细节向实习白帽子公开<br/>
+									2013-10-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">   某天，我下了电信的手机客户端。打开的同时，我惊异了！直觉告诉我这种惊异可能是某种洞，于是有了下文......<br />
+<br />
+<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">   神奇的客户端，打开了居然直接就登录了。百思不得其解，难道这软件有权限直接暗地里发短信认证？<br />
+<br />
+   这个貌似不大可能，于是乎分析了下<br />
+<br />
+登录过程分析<br />
+<br />
+登录时的参数通过XML传递给服务器：</p><pre><code>&lt;Request&gt;<br />
+  &lt;HeaderInfos&gt;<br />
+    &lt;ClientType&gt;xxx&lt;/ClientType&gt;<br />
+    &lt;Source&gt;110003&lt;/Source&gt;<br />
+    &lt;SourcePassword&gt;Sid98s&lt;/SourcePassword&gt;<br />
+    &lt;Token&gt;&lt;/Token&gt;<br />
+    &lt;UserLoginName&gt;&lt;/UserLoginName&gt;<br />
+    &lt;Code&gt;imsiInfo&lt;/Code&gt;<br />
+    &lt;Timestamp&gt;20130915173847&lt;/Timestamp&gt;<br />
+  &lt;/HeaderInfos&gt;<br />
+  &lt;Content&gt;<br />
+    &lt;Attach&gt;test&lt;/Attach&gt;<br />
+    &lt;FieldData&gt;<br />
+    &lt;ImsiNbr&gt;460030136837068&lt;/ImsiNbr&gt;<br />
+    &lt;/FieldData&gt;<br />
+  &lt;/Content&gt;<br />
+&lt;/Request&gt;</code></pre><p class='detail'>几个关键的参数：Source、SourcePassword、ImsiNbr，这几个参数我未曾输入，服务端也未曾传递过来，那只有一种可能就是客户端从手机上获取的或生成的。<br />
+<br />
+反编译了下APK包。万幸！源码居然没经过混淆。于是顺利的定位到了这几个参数的出处<br />
+<br />
+source和sourcePassword：</p><pre><code>public static void init(String paramString)<br />
+  {<br />
+    source = &quot;110003&quot;;<br />
+    sourcePassword = &quot;Sid98s&quot;;<br />
+    userLoginName = paramString;<br />
+    clientType = MyApplication.b;<br />
+  }</code></pre><p class='detail'><br />
+<br />
+ImsiNbr：</p><pre><code>String str4 = i.f(this.mContext);<br />
+ImsiInfoRequest localImsiInfoRequest = new ImsiInfoRequest();<br />
+localImsiInfoRequest.setImsiNbr(str4);<br />
+     ↓ ↓ ↓<br />
+public static String f(Context paramContext)<br />
+  {<br />
+    try<br />
+    {<br />
+      String str = ((TelephonyManager)paramContext.getSystemService(&quot;phone&quot;)).getSubscriberId();<br />
+      if (str == null)<br />
+        str = &quot;0&quot;;<br />
+      return str;<br />
+    }<br />
+    catch (Exception localException)<br />
+    {<br />
+      localException.printStackTrace();<br />
+    }<br />
+    return &quot;0&quot;;<br />
+  }</code></pre><p class='detail'>source和sourcePassword为常量，搞不懂把自定义的一个常量从客户端传给服务端要做什么？<br />
+<br />
+ImsiNbr是通过getSubscriberId()获取手机的SIM卡序列号。<br />
+<br />
+即登录过程的唯一标识仅仅只是通过SIM卡序列号，同时又没用任何手段来确保该SIM序列号不被修改。既然如此，只要修改这个序列号即可伪装任何用户进行操作。<br />
+<br />
+测试了下，果真可以：</p><p class="detail"><a href="../images/15210350e62db57fe049ebf41b08b16313ca8c33.jpg" target="_blank"><img src="../images/15210350e62db57fe049ebf41b08b16313ca8c33.jpg" alt="-2副本.jpg" width="600"/></a></p><p class="detail">登录成功后，服务器会返回手机号码和一个该手机号绑定的token值。这个token值相当于sessionId。有了它就可以执行客户端所有的功能，查询余额、话费、账单、充值记录什么的。<br />
+<br />
+    当然了这种客户端功能比较少，通话记录，短信记录肯定是没办法查了。但是其中有个接口居然将开卡信息（开卡时间、登记人姓名、住址、证件号码）返回给了客户端。<br />
+<br />
+    利用上面的登录缺陷，我们可以遍历所有用户，通过该接口即可获取所有用户的开卡信息。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">将登录请求中的几个参数修改成如下即可<br />
+<br />
+</p><pre><code>&lt;Token&gt;填入对应号码的token值&lt;/Token&gt;<br />
+&lt;Code&gt;custInfo&lt;/Code&gt;<br />
+&lt;PhoneNbr&gt;填入手机号码&lt;/PhoneNbr&gt;</code></pre><p class='detail'><br />
+<br />
+利用burpsuite测试了下：<br />
+<br />
+遍历SIM序列号：</p><p class="detail"><a href="../images/1521350554535301feee6d0cd292506e97a3b8f7.jpg" target="_blank"><img src="../images/1521350554535301feee6d0cd292506e97a3b8f7.jpg" alt="token-1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+遍历开卡信息：</p><p class="detail"><a href="../images/152136510a0048c6edce9fbfced1194c5306b8a7.jpg" target="_blank"><img src="../images/152136510a0048c6edce9fbfced1194c5306b8a7.jpg" alt="-1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+获取的身份信息：</p><p class="detail"><a href="../images/15213751c83fa8b18a78f15a1568d84c32ffc967.jpg" target="_blank"><img src="../images/15213751c83fa8b18a78f15a1568d84c32ffc967.jpg" alt="-2.jpg" width="600"/></a></p><p class="detail">注：仅为测试，仅遍历了50个序列号，且数据已删除！<br />
+<br />
+还有一个小问题，这貌似是内网地址~~~</p><pre><code>HttpHost localHttpHost = new HttpHost(&quot;10.0.0.200&quot;, 80);</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、增加认证手段<br />
+<br />
+2、这些开卡信息貌似没必要传递给客户端吧！<br />
+<br />
+3、增加权限控制 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Elegance" title="Elegance">Elegance</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037245" title="中国电信手机端某接口可获全国电信人民身份信息">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-09-18 22:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">  </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37245";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

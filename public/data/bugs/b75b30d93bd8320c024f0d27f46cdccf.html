@@ -1,0 +1,300 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2013-03-16 23:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-07：	细节向普通白帽子公开<br/>
+									2013-04-17：	细节向实习白帽子公开<br/>
+									2013-04-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQ空间日志某处功能缺陷，导致存储型XSS。<br />
+<br />
+每次想去瞄一下QQ空间的时候，总能随手发现存储型XSS。<br />
+<br />
+关键代码定位+调试 小教学贴。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. QQ空间日志里面有一个魔方日志的功能。我们随便写一篇模仿日志。<br />
+<br />
+<br />
+<br />
+2. 抓包，并且看发表日志后的内容。<br />
+<br />
+<br />
+<br />
+这里值得我们注意的是，HTML中输出的日志内容是一个 img标签，如下图<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/162304533815f83c044dc9644fd40f82594b0890.jpg" target="_blank"><img src="../images/162304533815f83c044dc9644fd40f82594b0890.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+而我们看到的日志中，则存在FLASH。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16230505e17fcd198f4423a5bbcc05953d6b3b06.jpg" target="_blank"><img src="../images/16230505e17fcd198f4423a5bbcc05953d6b3b06.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 从上面可以推出，这里必然会经过某些dom操作，从而将IMG标签转变为OBJECT标签。<br />
+<br />
+<br />
+<br />
+我们先得到FLASH名称.<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1623222659ffb8a99f24b4935ecb5f412542d1e9.jpg" target="_blank"><img src="../images/1623222659ffb8a99f24b4935ecb5f412542d1e9.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接着定位与这个魔方日志有关的功能代码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1623223728de2da9c92b6b3133ab5b81d2bf241a.jpg" target="_blank"><img src="../images/1623223728de2da9c92b6b3133ab5b81d2bf241a.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+-----------------------------分割线------------------<br />
+<br />
+<br />
+<br />
+5. 好吧，其实以上都是废话，重点是下面的，<br />
+<br />
+<br />
+<br />
+FLASH将我们带到了这个JS文件， 我们将 http://ctc.qzs.qq.com/qzone/app/blog/v6/script/content_gridsblog.js 美化一下，再看看代码。<br />
+<br />
+<br />
+<br />
+发现FLASH的部分并没有我们可控的部分。但是可以定位代码下面这样一段代码。<br />
+<br />
+<br />
+<br />
+GridsScheduler._showGridBlogShortcut();<br />
+<br />
+<br />
+<br />
+--&gt;<br />
+<br />
+在 _showGridBlogShortcut 函数中，有<br />
+<br />
+<br />
+<br />
+eval(&#039;var oGridInfo = &#039; + PageScheduler.blogInfo.getGridData());<br />
+<br />
+<br />
+<br />
+6. PageScheduler.blogInfo.getGridData() 这个被eval的是什么数据呢？由于是iframe页面里的变量，直接控制台里没办法输出PageScheduler.blogInfo.getGridData， 我们可以采用“将网络JS映射至本地文件的方法”。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/162306529c5416b5003c892666e033453cd74bc8.jpg" target="_blank"><img src="../images/162306529c5416b5003c892666e033453cd74bc8.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+将映射到本地的JS文件里修改为<br />
+<br />
+<br />
+<br />
+</p><pre><code>....<br />
+alert(PageScheduler.blogInfo.getGridData());<br />
+eval(&#039;var oGridInfo = &#039; + PageScheduler.blogInfo.getGridData());<br />
+....</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+7. 接着我们刷新页面，重新打开日志。(* 由于_showGridBlogShortcut 函数中存在判断，必须以外人身份查看日志，才能触发。)<br />
+<br />
+<br />
+<br />
+看到弹出的 PageScheduler.blogInfo.getGridData() 数据如下。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1623070318caa22ff63db2d83d5517af16ee5c33.jpg" target="_blank"><img src="../images/1623070318caa22ff63db2d83d5517af16ee5c33.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 而这个数据，我们是否可控呢？答案是，我们很有可能可控，因为这个数据，我们提交日志的时候，就存在，如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1623071576ad96eaf29fa18ce3efcab8f542e669.jpg" target="_blank"><img src="../images/1623071576ad96eaf29fa18ce3efcab8f542e669.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+9. 既然如此，我们将 gridJson这个字段，修改一下，加一段自己的JS代码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1623072583e3dffd777997804b11d11f1ba3efe4.jpg" target="_blank"><img src="../images/1623072583e3dffd777997804b11d11f1ba3efe4.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 以自己号码查看测试号码的日志,成功执行代码<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/16230735e55ab6a76005bc8e2b3b0098d54e8e0a.jpg" target="_blank"><img src="../images/16230735e55ab6a76005bc8e2b3b0098d54e8e0a.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ie,chrome下均可。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">不影响功能的前提下，对eval的数据有所判断或者过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020186" title="QQ空间某功能缺陷导致日志存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-03-18 15:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20186";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

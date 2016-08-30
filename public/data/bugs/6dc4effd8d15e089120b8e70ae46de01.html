@@ -1,0 +1,206 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		DESTOON后台多处SQL注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		DESTOON后台多处SQL注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2013-07-26 11:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-31：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-10-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">DESTOON后台多处SQL注入。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">后台的sql注入太多了，如下：<br />
+<br />
+</p><pre><code>http://localhost/destoon/admin.php?file=admin&amp;action=edit&amp;userid=1</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>http://localhost/destoon/admin.php?moduleid=1&amp;file=admin</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>http://localhost/destoon/admin.php?moduleid=1&amp;file=admin&amp;action=add</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>http://localhost/destoon/admin.php?file=database</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>http://localhost/destoon/admin.php?file=database&amp;action=process</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>http://localhost/destoon/admin.php?rand=92&amp;file=database&amp;action=execute</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/26113653ae3f7a13079d9fb1d688c96dc6c9c4e8.png" target="_blank"><img src="../images/26113653ae3f7a13079d9fb1d688c96dc6c9c4e8.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+如此处：<br />
+<br />
+</p><pre><code>http://localhost/destoon/admin.php?rand=92&amp;file=database&amp;action=execute</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>case &#039;execute&#039;:<br />
+		if(!isset($CFG[&#039;executesql&#039;]) || !$CFG[&#039;executesql&#039;]) msg(&#039;系统禁止了执行SQL，请FTP修改根目录config.inc.php&lt;br/&gt;$CFG[\&#039;executesql\&#039;] = \&#039;0\&#039;; 修改为 $CFG[\&#039;executesql\&#039;] = \&#039;1\&#039;;&#039;);<br />
+		if($submit) {<br />
+			if(trim($sql) == &#039;&#039;) {<br />
+				msg(&#039;SQL语句为空&#039;);<br />
+			} else {<br />
+				$sql = stripslashes($sql);<br />
+				if(preg_match(&quot;/DROP(.*)(TABLE|DATABASE)/i&quot;, $sql)) msg(&#039;系统禁止DROP语句&#039;);				<br />
+				sql_execute($sql);<br />
+				dmsg(&#039;执行成功&#039;, &#039;?file=&#039;.$file.&#039;&amp;action=execute&#039;);<br />
+			}<br />
+		} else {<br />
+			include tpl(&#039;database_execute&#039;);<br />
+		}<br />
+	break;</code></pre><p class='detail'><br />
+<br />
+变量$sql没有任何过滤，就直接sql_execute($sql)了，如图结果：<br />
+<br />
+</p><p class="detail"><a href="../images/26113815a5f4ddef1aca5fb3c49ae7c3789f083a.png" target="_blank"><img src="../images/26113815a5f4ddef1aca5fb3c49ae7c3789f083a.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/26113825d64830174e2605b1a2ef906f78442f2a.png" target="_blank"><img src="../images/26113825d64830174e2605b1a2ef906f78442f2a.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+后台的注入还有很多，就不一一列举了。<br />
+<br />
+虽然是在后台，但是导出都是注入，低级的错误还是很不好的。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">将详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤啊，很多地方都过滤，但是后台就没过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-032374" title="DESTOON后台多处SQL注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-07-31 11:45</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-08-20：感谢提醒，已经修复，详见：http://bbs.destoon.com/thread-53071-1-1.html
+后台数据已经做了过滤。
+但是执行SQL语句那块，如果过滤，功能将不可用，用户可以在配置文件里自行决定是否开启。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="32374";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,208 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSNS某功能缺陷可导致重要信息泄漏  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSNS某功能缺陷可导致重要信息泄漏  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/齐迹">齐迹</a> 
+</li><li>提交时间：		2014-01-21 18:02</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-28：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-14：	细节向普通白帽子公开<br/>
+									2014-03-06：	细节向实习白帽子公开<br/>
+									2014-04-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ThinkSNS某功能缺陷可导致用户上传的身份证信息泄漏。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题发生在<br />
+<br />
+/apps/public/Lib/Action/AccountAction.class.php<br />
+<br />
+行483<br />
+<br />
+</p><pre><code>public function doAuthenticate(){<br />
+....<br />
+<br />
+$data[&#039;attach_id&#039;] = t($_POST[&#039;attach_ids&#039;]);</code></pre><p class='detail'><br />
+<br />
+这里附件ID 是通过post方式传递的<br />
+<br />
+意味着主要修改为别人附件ID 岂不是？？<br />
+<br />
+<br />
+<br />
+附件可是有用户认证的身份证。遍历一遍  呵呵<br />
+<br />
+<br />
+<br />
+其实导致这个问题还有很多地方。这里我就不一一列举了！你们自己revrew一下把 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">接着看展示的地方<br />
+<br />
+393行<br />
+<br />
+</p><pre><code>public function authenticate(){<br />
+    	$auType = model(&#039;UserGroup&#039;)-&gt;where(&#039;is_authenticate=1&#039;)-&gt;findall();<br />
+    	$this-&gt;assign(&#039;auType&#039;, $auType);<br />
+    	$verifyInfo = D(&#039;user_verified&#039;)-&gt;where(&#039;uid=&#039;.$this-&gt;mid)-&gt;find();<br />
+    	if($verifyInfo[&#039;attach_id&#039;]){<br />
+			  $a = explode(&#039;|&#039;, $verifyInfo[&#039;attach_id&#039;]);<br />
+			  foreach($a as $key=&gt;$val){<br />
+			  	if($val !== &quot;&quot;) {<br />
+			  		$attachInfo = D(&#039;attach&#039;)-&gt;where(&quot;attach_id=$a[$key]&quot;)-&gt;find();<br />
+			  		$verifyInfo[&#039;attachment&#039;] .= $attachInfo[&#039;name&#039;].&#039;&amp;nbsp;&lt;a href=&quot;&#039;.getImageUrl($attachInfo[&#039;save_path&#039;].$attachInfo[&#039;save_name&#039;]).&#039;&quot; target=&quot;_blank&quot;&gt;下载&lt;/a&gt;&lt;br /&gt;&#039;;<br />
+			  	}<br />
+			  }<br />
+		}</code></pre><p class='detail'><br />
+<br />
+接把ID解开 查询出来<br />
+<br />
+看看字段大小！attach_id	varchar(255)<br />
+<br />
+一次遍历50个ID还是可以的 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这里查询附件 应该判断一下权限 或者附件类型！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/齐迹" title="齐迹">齐迹</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049453" title="ThinkSNS某功能缺陷可导致重要信息泄漏">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2014-01-25 08:54</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49453";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

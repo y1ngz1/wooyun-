@@ -1,0 +1,240 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ECShop 2.7.2 红包注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ECShop 2.7.2 红包注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/tenzy">tenzy</a> 
+</li><li>提交时间：		2011-10-09 20:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-10-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-10-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-10-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-10-30：	细节向普通白帽子公开<br/>
+									2011-11-09：	细节向实习白帽子公开<br/>
+									2011-11-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">flow.php页面看似intval的红包ID，其实可以注入。以下文章仅从代码推测，并未进行测试，不过这太明显了，就不测试了，各位看官测试失败请跟帖骂娘，死亡节奏技术小组、恶灵战队路过。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code></code></pre><p class='detail'>/flow.php 1168行开始<br />
+<br />
+</p><pre><code>$bonus = bonus_info(intval($_GET[&#039;bonus&#039;]));<br />
+<br />
+        if ((!empty($bonus) &amp;&amp; $bonus[&#039;user_id&#039;] == $_SESSION[&#039;user_id&#039;]) || $_GET[&#039;bonus&#039;] == 0)<br />
+        {<br />
+            $order[&#039;bonus_id&#039;] = $_GET[&#039;bonus&#039;];<br />
+        }<br />
+        else<br />
+        {<br />
+            $order[&#039;bonus_id&#039;] = 0;<br />
+            $result[&#039;error&#039;] = $_LANG[&#039;invalid_bonus&#039;];<br />
+        }<br />
+<br />
+        /* 计算订单的费用 */<br />
+        $total = order_fee($order, $cart_goods, $consignee);</code></pre><p class='detail'><br />
+<br />
+$bonus = bonus_info(intval($_GET[&#039;bonus&#039;]));<br />
+<br />
+上面这一句貌似把$_GET[&#039;bonus&#039;]给变整形了，没错，这句话没问题，继续向下看，<br />
+<br />
+</p><pre><code>if ((!empty($bonus) &amp;&amp; $bonus[&#039;user_id&#039;] == $_SESSION[&#039;user_id&#039;]) || $_GET[&#039;bonus&#039;] == 0)<br />
+        {<br />
+            $order[&#039;bonus_id&#039;] = $_GET[&#039;bonus&#039;];<br />
+        }</code></pre><p class='detail'><br />
+<br />
+上面代码显示：如果通过GET来的红包ID获取到红包信息并且红包属于你，<br />
+<br />
+就执行下面这句<br />
+<br />
+</p><pre><code>$order[&#039;bonus_id&#039;] = $_GET[&#039;bonus&#039;];</code></pre><p class='detail'><br />
+<br />
+看到没有，这里$order[&#039;bonus_id&#039;]就获得了一个没有过滤的红包ID，<br />
+<br />
+然后<br />
+<br />
+下面这句<br />
+<br />
+</p><pre><code>/* 计算订单的费用 */<br />
+        $total = order_fee($order, $cart_goods, $consignee);</code></pre><p class='detail'><br />
+<br />
+未经过滤的红包ID进入了order_fee函数，来看看这个函数的代码(在/includes/lib_order.php中)，<br />
+<br />
+</p><pre><code>function order_fee($order, $goods, $consignee)<br />
+{<br />
+//.....省略若干行，来到643行，<br />
+<br />
+ if (!empty($order[&#039;bonus_id&#039;]))<br />
+    {<br />
+        $bonus          = bonus_info($order[&#039;bonus_id&#039;]);<br />
+        $total[&#039;bonus&#039;] = $bonus[&#039;type_money&#039;];<br />
+    }<br />
+}</code></pre><p class='detail'><br />
+<br />
+未经过滤的红包ID再次进入bonus_info函数，这个函数也是在上面的这个文件里，<br />
+<br />
+来到1408行<br />
+<br />
+</p><pre><code>function bonus_info($bonus_id, $bonus_sn = &#039;&#039;)<br />
+{<br />
+    $sql = &quot;SELECT t.*, b.* &quot; .<br />
+            &quot;FROM &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;bonus_type&#039;) . &quot; AS t,&quot; .<br />
+                $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;user_bonus&#039;) . &quot; AS b &quot; .<br />
+            &quot;WHERE t.type_id = b.bonus_type_id &quot;;<br />
+    if ($bonus_id &gt; 0)<br />
+    {<br />
+        $sql .= &quot;AND b.bonus_id = &#039;$bonus_id&#039;&quot;;<br />
+    }<br />
+    else<br />
+    {<br />
+        $sql .= &quot;AND b.bonus_sn = &#039;$bonus_sn&#039;&quot;;<br />
+    }<br />
+<br />
+    return $GLOBALS[&#039;db&#039;]-&gt;getRow($sql);<br />
+}</code></pre><p class='detail'><br />
+<br />
+恰好，字符串大于0，因此注入字符串可以顺利进入SQL，好了，恭喜发财，rank值多给点 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">就不证明，自己看代码 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">在function bonus_info($bonus_id, $bonus_sn = &#039;&#039;)函数里把$bonus_id intval一下不就OK了么 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/tenzy" title="tenzy">tenzy</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02960" title="ECShop 2.7.2 红包注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2011-10-10 09:53</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，我们尽快处理</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2960";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,325 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		金山快盘手机客户端任意进入他人快盘账号  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		金山快盘手机客户端任意进入他人快盘账号  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/horseluke">horseluke</a> 
+</li><li>提交时间：		2013-01-19 17:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-09：	细节向普通白帽子公开<br/>
+									2013-02-28：	厂商提前公开漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">本节目由@imlonghao 独家赞助复测。<br />
+<br />
+（片头）<br />
+云端存储，快捷方便。（同期声顾客：“通过网盘我就可以在安卓看小说了”）<br />
+抓包修改，任意进入。（同期声安全研究者：“改几个字节，你的隐私文件就一览无余”）<br />
+是什么，让快盘手机版出现漏洞？（同期声快盘竞争对手（某网盘）研发者：“一身冷汗，我们侥幸没让用第三方账号登录而已”）<br />
+云时代的认证传递，应该由谁保障？（同期声记者：“当我们还在打口水仗推脱谁该负责的时候，用户已在云中遭受不测”）<br />
+<br />
+《wooyun调查》即将播出《云安全的认证困惑》。<br />
+<br />
+（以上文体仿CCTV新闻频道《新闻调查》，在此致谢。）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">金山快盘手机客户端，在使用微博OAuth 2.0授权信息换取自己认证信息的过程中，一次性犯下两类常见的逻辑设计缺陷，导致可以任意进入他人快盘账号；但前提是，快盘帐号需要绑定微博。<br />
+<br />
+<br />
+<br />
+具体犯下的错误有：<br />
+<br />
+（问题一）OAuth 2.0无绑定token问题：由于OAuth 2.0的“无绑定token”特性（http://article.yeeyan.org/view/50978/307535 ），导致第三方应用在使用平台方的OAuth 2.0授权（authorize）作为自身应用的认证（authenticate）手段时，缺乏一种有效的认证传递校验和来源检查，从而导致只需要拥有B应用的access token，即可登录到A应用所绑定的服务中。<br />
+<br />
+此案例可见： <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-017306">WooYun: 啪啪任意进入他人账号（OAuth 2.0无绑定token问题）</a> <br />
+<br />
+<br />
+<br />
+（问题二）使用错误的OAuth授权信息来用于认证交换：使用了uid来认证用户信息，而不是access token<br />
+<br />
+此案例可见： <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-011104">WooYun: 淘网址sina oauth认证登录漏洞</a> <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+本来想复测其它公司的网盘，但发现他们碰巧都没有提供微博登录，所以侥幸逃脱此问题。但相信一旦开启，估计也很容易中招。故而此种手机客户端威胁云端安全的案例，需要手机开发者（比如说使用了新浪微博sso sdk的开发者）和相关后端留意（见图）。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19172158a922a445d65d887c7000a9d7ac8ef8da.jpg" target="_blank"><img src="../images/19172158a922a445d65d887c7000a9d7ac8ef8da.jpg" alt="SequenceDiagram1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+而这个漏洞还反映出一个问题：Oauth 2.0作为一个框架协议，其中有许多安全细节实际上需要开发者自行去实现，如果平台方将安全细节全部包揽在身上显然是不合适的；但如果将安全细节下放到应用开发者自行保证，那么就很容易出现实现不周而反噬双方，特别在认证传递和交换上会是一个重灾区。如何划分，成为了一个值得研究的后续方向。但无论我们如何争论，用户和黑客已经等不及了…… </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">问题一证明：<br />
+<br />
+OAuth 2.0无绑定token问题，通过拦截新浪微博返回的access token信息，修改成他人的access token和新浪uid，即可进入他人快盘。请注意，这个access token可以使用其它应用获取到的access token。<br />
+<br />
+<br />
+<br />
+修改难度中低，因为需要知道受害者在其它应用的access token。此时，一般需要诱骗受害者授权攻击者指定的应用，才可以完成攻击。<br />
+<br />
+<br />
+<br />
+（微博授权过程中，我使用了新浪uid 1780xxx登录；然后在下一步登录成功后截获，并将新浪uid 1780xxx在快盘获取的access token“2.00tRjxx”和uid“1780xxx”，替换成新浪uid 1454xxx在其它应用获取的access token“2.00isUxx”和uid“1454xxx”，成功）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191722581de3c18f2cb924063cb929278ab28cdc.png" target="_blank"><img src="../images/191722581de3c18f2cb924063cb929278ab28cdc.png" alt="ques1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+问题二证明：<br />
+<br />
+使用错误的OAuth授权信息获取，通过拦截要往快盘后端服务器api的数据，将新浪uid替换，即可进入他人网盘。<br />
+<br />
+<br />
+<br />
+修改难度低，只需要知道新浪uid即可，同时也需要知道该新浪uid曾登录过快盘。<br />
+<br />
+<br />
+<br />
+（微博授权过程中，我使用了新浪uid 1780xxx登录；然后在快盘往后端服务器api发送数据前截获，并替换成新浪uid 1791xxxx，成功）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19172315da605a9a6374dba391f524e524fdc07f.png" target="_blank"><img src="../images/19172315da605a9a6374dba391f524e524fdc07f.png" alt="ques2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">危害评定：<br />
+<br />
+<br />
+<br />
+就快盘而言，综合认定为“高”。原因如下：<br />
+<br />
+<br />
+<br />
+（1）问题一中，要获取用户的access token比较容易，只需要注册第三方应用并诱导用户授权即可。<br />
+<br />
+<br />
+<br />
+（2）问题二中，要获取用户的新浪uid极容易，只需要微博搜索即可获知。<br />
+<br />
+<br />
+<br />
+（3）定向攻击容易，只需要修改数据包；最终成功率极高，并且只要用户不修改密码，即有永久进入权限。<br />
+<br />
+<br />
+<br />
+（4）快盘的用户基数大。<br />
+<br />
+<br />
+<br />
+（5）是否有用于access token的来源查询、证明或签名校验，要视乎开放平台的提供情况。如果有，只需要在服务器端修复一般可解决新绑定和登录的漏洞。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+修复建议：<br />
+<br />
+<br />
+<br />
+（1）手机服务器端，在接收手机客户端的平台认证信息、以换取自家服务的认证凭据时，不能使用没有授权信息的uid来认证换取，而是必须使用具有授权信息的access token来进行；并且必须要对access token进行来源查询、证明或签名校验。<br />
+<br />
+<br />
+<br />
+具体而言，已查证的国内各开放平台已知的接口文档如下：<br />
+<br />
+<br />
+<br />
+（A）新浪微博开放平台“授权查询”：<br />
+<br />
+http://open.weibo.com/wiki/Oauth2/get_token_info <br />
+<br />
+<br />
+<br />
+（B）QQ登录：通用参数中似乎已经进行了此问题的防御（时间问题未验证）：<br />
+<br />
+http://wiki.opensns.qq.com/wiki/%E3%80%90QQ%E7%99%BB%E5%BD%95%E3%80%91OpenAPI2.0%E8%B0%83%E7%94%A8%E8%AF%B4%E6%98%8E#2._.E8.B0.83.E7.94.A8OpenAPI.E6.8E.A5.E5.8F.A3<br />
+<br />
+<br />
+<br />
+（C）百度开放平台“判定当前用户是否已经为应用授权”（此接口本人未验证是否可防御此问题，请咨询百度开放平台）：<br />
+<br />
+http://developer.baidu.com/wiki/index.php?title=docs/oauth/rest/file_data_apis_list#.E5.88.A4.E5.AE.9A.E5.BD.93.E5.89.8D.E7.94.A8.E6.88.B7.E6.98.AF.E5.90.A6.E5.B7.B2.E7.BB.8F.E4.B8.BA.E5.BA.94.E7.94.A8.E6.8E.88.E6.9D.83<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（D）人人网“判断用户是否已对App授权”（此接口本人未验证可否可防御此问题，请咨询人人开放平台）：<br />
+<br />
+http://wiki.dev.renren.com/wiki/Users.isAppUser<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+其它开放平台，建议进行相关问题的咨询。<br />
+<br />
+<br />
+<br />
+（2）对所有存入的绑定access token进行核查，发现access token中的新浪uid和绑定新浪uid不一致、非快盘appkey授权的access token、过期access token等异常情况均需要全部撤消，要求这些快盘用户重新授权登录。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（3）各开放平台加强教育，提醒开发者注意上述问题。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/horseluke" title="horseluke">horseluke</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017543" title="金山快盘手机客户端任意进入他人快盘账号">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：19 </p>
+													<p class="detail">确认时间：2013-01-20 15:37</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢，我们将尽快进行确认和修复。<br />
+给高分的原因：<br />
+1）安全风险综合考虑为高危；<br />
+2）漏洞反馈者在漏洞演示、安全建议都非常详细，非用心;</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-02-28：已经修复。
+这么优秀的案例，我们将提前公开，希望让更多的朋友可以学习与借鉴。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17543";
+var bugRating="2";
+var myRating="";
+var ratingCount="8";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

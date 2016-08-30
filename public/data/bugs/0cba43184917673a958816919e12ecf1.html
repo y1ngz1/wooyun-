@@ -1,0 +1,350 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度某社区权限缺陷导致用户信息泄露等  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度某社区权限缺陷导致用户信息泄露等  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/你撸我也撸">你撸我也撸</a> 
+</li><li>提交时间：		2013-06-03 10:55</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-23：	细节向普通白帽子公开<br/>
+									2013-07-03：	细节向实习白帽子公开<br/>
+									2013-07-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">RT!</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">改一下id，可以读取其他存在“发件箱”的私信：<br />
+<br />
+<br />
+<br />
+http://openresearch.baidu.com/member/message_read.jspx?id=500&amp;&amp;box=1 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">大量获奖大学生的详细联系方式等信息：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0111262236790c59586aff39f1ed10f1452dbe90.png" target="_blank"><img src="../images/0111262236790c59586aff39f1ed10f1452dbe90.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01112918bc9b4819b1bd75e267bf6ceb30b0168f.png" target="_blank"><img src="../images/01112918bc9b4819b1bd75e267bf6ceb30b0168f.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01112929d4b4c043e145d8906dbfefc580ece44a.png" target="_blank"><img src="../images/01112929d4b4c043e145d8906dbfefc580ece44a.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01112941f16ac93492b5ded32ed23b2af23c99dd.png" target="_blank"><img src="../images/01112941f16ac93492b5ded32ed23b2af23c99dd.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01112949fe4067ef5920d0091a2545207fc66a7e.png" target="_blank"><img src="../images/01112949fe4067ef5920d0091a2545207fc66a7e.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"><br />
+<br />
+好象是用的开源代码啊，jeecms（这个开源系统百度也敢用？权限稀烂啊！）：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01113029a73e6015727adb59377b818ec93362c0.png" target="_blank"><img src="../images/01113029a73e6015727adb59377b818ec93362c0.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+或者可能是下面的关联因素造成的（参考代码是jeecms-2012-sp1）：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+com.jeecms.cms.action.member.MessageAct.java类：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>public String message_read(Integer id, Integer box,HttpServletRequest request, HttpServletResponse response,ModelMap model) 方法：<br />
+<br />
+<br />
+        @RequestMapping(value = &quot;/member/message_read.jspx&quot;)<br />
+	public String message_read(Integer id, Integer box,<br />
+			HttpServletRequest request, HttpServletResponse response,<br />
+			ModelMap model) {<br />
+		CmsSite site = CmsUtils.getSite(request);<br />
+		CmsUser user = CmsUtils.getUser(request);<br />
+		FrontUtils.frontData(request, model, site);<br />
+		MemberConfig mcfg = site.getConfig().getMemberConfig();<br />
+		// 没有开启会员功能<br />
+		if (!mcfg.isMemberOn()) {<br />
+			return FrontUtils.showMessage(request, model, &quot;member.memberClose&quot;);<br />
+		}<br />
+		if (user == null) {<br />
+			return FrontUtils.showLogin(request, model, site);<br />
+		}<br />
+		CmsReceiverMessage message = receiverMessageMng.findById(id);<br />
+		if (message != null) {<br />
+			// 阅读收信<br />
+			// 非收件人和发件人无权查看信件<br />
+			if (!message.getMsgReceiverUser().equals(user)<br />
+					&amp;&amp; !message.getMsgSendUser().equals(user)) {<br />
+				WebErrors errors = WebErrors.create(request);<br />
+				errors.addErrorCode(&quot;error.noPermissionsView&quot;);<br />
+				return FrontUtils.showError(request, response, model, errors);<br />
+			}<br />
+			// 收件人查看更新已读状态<br />
+			if (message.getMsgReceiverUser().equals(user)) {<br />
+				message.setMsgStatus(true);<br />
+				receiverMessageMng.update(message);<br />
+				log<br />
+						.info(<br />
+								&quot;member CmsMessage read CmsMessage success. id={}&quot;,<br />
+								id);<br />
+			}<br />
+			model.addAttribute(&quot;message&quot;, message);<br />
+		} else {<br />
+			// 阅读已发信<br />
+			CmsMessage msg = messageMng.findById(id);<br />
+			model.addAttribute(&quot;message&quot;, msg);<br />
+		}<br />
+		model.addAttribute(&quot;box&quot;, box);<br />
+		return FrontUtils.getTplPath(request, site.getSolutionPath(),<br />
+				TPLDIR_MESSAGE, MESSAGE_READ);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+例如，看看这段权限控制：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+先根据id在“收件箱”</p><pre><code>CmsReceiverMessage message =receiverMessageMng.findById(id);</code></pre><p class='detail'>里找这条信息。<br />
+<br />
+<br />
+<br />
+如果存在</p><pre><code>if (message != null) {</code></pre><p class='detail'>，就走“阅读收信”的流程，再去判断当前用户是否有阅读权限</p><pre><code>if(!message.getMsgReceiverUser().equals(user)&amp;&amp;!message.getMsgSendUser().equals(user)) {</code></pre><p class='detail'>，下面就是正常逻辑了，没什么大问题。<br />
+<br />
+<br />
+<br />
+如果上面这个id在“收件箱”中不存在，就在下面“发件箱”中找<br />
+<br />
+</p><pre><code>CmsReceiverMessage message =receiverMessageMng.findById(id);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看到，没有和上面“阅读收信”一样做进一步的权限验证，直接addAttribute发件箱的这条信息给用户了：<br />
+<br />
+<br />
+<br />
+</p><pre><code>else {<br />
+			// 阅读已发信<br />
+			CmsMessage msg = messageMng.findById(id);<br />
+			model.addAttribute(&quot;message&quot;, msg);<br />
+		}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+刚本地测试，自己发的一条给其他用户的信息，自己都没有这条信息在“发件箱”中的阅读权限了(id错位了)，@jeecms  :<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01124314a0473759a643a228ff865178fa310e26.png" target="_blank"><img src="../images/01124314a0473759a643a228ff865178fa310e26.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+看看是不是这种情况？当然，如果是，上面至少还有一层逻辑造成“收件箱”与“发件箱”的id错位了（“收件箱”、“发件箱”、“草稿箱”、“垃圾箱”这四个操作存储时id问题，我这边测试id逻辑全错了，所以jeecms把上面的权限控制及存储代码的逻辑好好再捋一遍！），自己去看吧，看别人的代码很辛苦！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+或者是二次开发等其他情况造成的！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/你撸我也撸" title="你撸我也撸">你撸我也撸</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024938" title="百度某社区权限缺陷导致用户信息泄露等">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-06-03 20:16</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，此为第三方开发。正在联系处理！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24938";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

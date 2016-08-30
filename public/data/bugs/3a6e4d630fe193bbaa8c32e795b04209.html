@@ -1,0 +1,232 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		代码审计系列1:abcEditor ABC编辑器 utf-8 v2013.09 文件上传绕过  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		代码审计系列1:abcEditor ABC编辑器 utf-8 v2013.09 文件上传绕过  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/LaiX">LaiX</a> 
+</li><li>提交时间：		2013-09-14 09:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-14：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-12-13：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">关于abcEditor的相关介绍：<br />
+http://www.baidu.com/s?tn=baiduhome_pg&amp;ie=utf-8&amp;bs=abcEditor&amp;f=8&amp;rsv_bp=1&amp;wd=abcEditor<br />
+<br />
+最新版下载地址：<br />
+http://down.chinaz.com/soft/33653.htm</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><p class="detail"><a href="../images/132212599bfa7ffb0f92295ca3c7c2004df15e07.png" target="_blank"><img src="../images/132212599bfa7ffb0f92295ca3c7c2004df15e07.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这个轻编辑器只有三个文件，唯一的PHP文件(abcedit.php)的功能就是上传.<br />
+<br />
+<br />
+<br />
+我们来看看这个abcedit.php里面有哪些代码：<br />
+<br />
+</p><p class="detail"><a href="../images/132214225130ae1d3818858429a591ff4e95f4cb.png" target="_blank"><img src="../images/132214225130ae1d3818858429a591ff4e95f4cb.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+我们可以看见代码不多，文件后缀验证代码很仓促。<br />
+<br />
+很明显只验证头信息是非常错误的。我们看看如何绕过这个验证<br />
+<br />
+<br />
+<br />
+1.打开上传页面<br />
+<br />
+</p><p class="detail"><a href="../images/1322200233549d17d99ae165e82560076634d930.png" target="_blank"><img src="../images/1322200233549d17d99ae165e82560076634d930.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这里要普及一下PHP知识。我们知道<br />
+<br />
+</p><pre><code>$_FILES[&quot;file&quot;][&quot;type&quot;]</code></pre><p class='detail'><br />
+<br />
+获取的是头信息中的Content-Type<br />
+<br />
+如果我们篡改Content-Type会如何呢？<br />
+<br />
+<br />
+<br />
+2.抓包修改Content-Type<br />
+<br />
+</p><p class="detail"><a href="../images/1322225161f7d25b82eea074069296bdd550c5ea.png" target="_blank"><img src="../images/1322225161f7d25b82eea074069296bdd550c5ea.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+从代码可以看出程序员只对以下后缀通过：<br />
+<br />
+</p><pre><code>//判断文件类型和大小<br />
+    if(<br />
+        (<br />
+        ($_FILES[&quot;file&quot;][&quot;type&quot;] == &quot;image/gif&quot;)<br />
+        ||<br />
+        ($_FILES[&quot;file&quot;][&quot;type&quot;] == &quot;image/jpeg&quot;)<br />
+        ||<br />
+        ($_FILES[&quot;file&quot;][&quot;type&quot;] == &quot;image/pjpeg&quot;)<br />
+        ||<br />
+        ($_FILES[&quot;file&quot;][&quot;type&quot;] == &quot;image/x-png&quot;)<br />
+        ||<br />
+        ($_FILES[&quot;file&quot;][&quot;type&quot;] == &quot;image/bmp&quot;)<br />
+        )<br />
+        &amp;&amp;<br />
+        $_FILES[&#039;file&#039;][&#039;size&#039;] &lt; 1024*$filesize<br />
+    ){</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们将Content-Type改为其中一个试试<br />
+<br />
+</p><p class="detail"><a href="../images/13222429a290e8f167ace24170db6b04c288d4d4.png" target="_blank"><img src="../images/13222429a290e8f167ace24170db6b04c288d4d4.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">OK，修改提交之后。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1322260480924307ef9c70856bcbc98c55ca8101.png" target="_blank"><img src="../images/1322260480924307ef9c70856bcbc98c55ca8101.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+PIC目录静静的躺着一个txt文件<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13222734f9a56b562e171ea22f9beeeea03566f2.png" target="_blank"><img src="../images/13222734f9a56b562e171ea22f9beeeea03566f2.png" alt="7.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/LaiX" title="LaiX">LaiX</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037060" title="代码审计系列1:abcEditor ABC编辑器 utf-8 v2013.09 文件上传绕过">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37060";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

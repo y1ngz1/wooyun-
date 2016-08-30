@@ -1,0 +1,278 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop最新版本前台二次注入系列(2)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop最新版本前台二次注入系列(2)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blue">blue</a> 
+</li><li>提交时间：		2013-06-21 07:55</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-24：	细节向第三方安全合作伙伴开放<br/>
+									2013-07-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-11：	细节向普通白帽子公开<br/>
+									2013-07-31：	细节向实习白帽子公开<br/>
+									2013-09-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">二次注入第二枚，这个点的注入内容至少进出数据库6次才最终到达了注入结果页面，当然全程可控。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">先上注入结果图：<br />
+<br />
+</p><p class="detail"><a href="../images/210728063b9659aa00cecbb4beb74a8e72fe8434.png" target="_blank"><img src="../images/210728063b9659aa00cecbb4beb74a8e72fe8434.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+SQL注入流程：<br />
+<br />
+1.插入注入代码(goods_attr)至订单商品(/wholesale.php可以插入,即商品批发页面，这里的goods_attr和 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-026421">WooYun: ecshop最新版本前台二次注入系列(1)</a> 里goods_attr_id是不同的，之前的漏洞即正常在商品页面加入购物车是不能控制goods_attr的，当时goods_attr从数据库商品属性表读取)。<br />
+<br />
+</p><p class="detail"><a href="../images/21072906cd43d1d4627d257052252577a50f18bc.png" target="_blank"><img src="../images/21072906cd43d1d4627d257052252577a50f18bc.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2.将1生成的订单在用户中心订单查看页执行“放回购物车”操作。<br />
+<br />
+</p><p class="detail"><a href="../images/210733585e877aedbc8811362ea3c2097950961d.png" target="_blank"><img src="../images/210733585e877aedbc8811362ea3c2097950961d.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+3.查看购物车页面，注入代码执行<br />
+<br />
+</p><p class="detail"><a href="../images/210728063b9659aa00cecbb4beb74a8e72fe8434.png" target="_blank"><img src="../images/210728063b9659aa00cecbb4beb74a8e72fe8434.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+代码分析：<br />
+<br />
+1./includes/lib_order.php get_cart_goods()方法(读取购物车的商品)，1626行起<br />
+<br />
+</p><pre><code>/* 查询规格 */<br />
+        if (trim($row[&#039;goods_attr&#039;]) != &#039;&#039;)<br />
+        {<br />
+            $sql = &quot;SELECT attr_value FROM &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;goods_attr&#039;) . &quot; WHERE goods_attr_id &quot; .<br />
+            db_create_in($row[&#039;goods_attr&#039;]); //goods_attr是购物车商品的属性，所以只要能控制注入代码进入购物车商品就ok了，这是二次注入的原因<br />
+            $attr_list = $GLOBALS[&#039;db&#039;]-&gt;getCol($sql);<br />
+            foreach ($attr_list AS $attr)<br />
+            {<br />
+                $row[&#039;goods_name&#039;] .= &#039; [&#039; . $attr . &#039;] &#039;; //union select方式可以将数据库内容查询出来显示到页面上<br />
+            }<br />
+        }</code></pre><p class='detail'><br />
+<br />
+2. /wholesale.php 160行起(将商品提交到购物车，实际上是提交到了$_SESSION)<br />
+<br />
+</p><pre><code>/*------------------------------------------------------ */<br />
+//-- 加入购物车<br />
+/*------------------------------------------------------ */<br />
+elseif ($_REQUEST[&#039;act&#039;] == &#039;add_to_cart&#039;)<br />
+{<br />
+    /* 取得参数 */<br />
+    $act_id         = intval($_POST[&#039;act_id&#039;]);<br />
+    $goods_number   = $_POST[&#039;goods_number&#039;][$act_id];<br />
+    $attr_id        = isset($_POST[&#039;attr_id&#039;]) ? $_POST[&#039;attr_id&#039;] : array();<br />
+    if(isset($attr_id[$act_id]))<br />
+    {<br />
+        $goods_attr     = $attr_id[$act_id];  //可控，可以参考我在截图里构造的提交数据<br />
+    }<br />
+…</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+3./wholesale.php 380行起(act==&#039;submit_order&#039;), 将$_SESSION里的数据写入订单<br />
+<br />
+</p><pre><code>/* 插入订单商品 */<br />
+    foreach ($_SESSION[&#039;wholesale_goods&#039;] as $goods)<br />
+    {<br />
+        //如果存在货品<br />
+        $product_id = 0;<br />
+        if (!empty($goods[&#039;goods_attr_id&#039;]))<br />
+        {<br />
+            $goods_attr_id = array();<br />
+            foreach ($goods[&#039;goods_attr_id&#039;] as $value)<br />
+            {<br />
+                $goods_attr_id[$value[&#039;attr_id&#039;]] = $value[&#039;attr_val_id&#039;];<br />
+            }<br />
+<br />
+            ksort($goods_attr_id);<br />
+            $goods_attr = implode(&#039;|&#039;, $goods_attr_id);<br />
+<br />
+            $sql = &quot;SELECT product_id FROM &quot; . $ecs-&gt;table(&#039;products&#039;) . &quot; WHERE goods_attr = &#039;$goods_attr&#039; AND goods_id = &#039;&quot; . $goods[&#039;goods_id&#039;] . &quot;&#039;&quot;;<br />
+            $product_id = $db-&gt;getOne($sql);<br />
+        }<br />
+<br />
+        $sql = &quot;INSERT INTO &quot; . $ecs-&gt;table(&#039;order_goods&#039;) . &quot;( &quot; .<br />
+                    &quot;order_id, goods_id, goods_name, goods_sn, product_id, goods_number, market_price, &quot;.<br />
+                    &quot;goods_price, goods_attr, is_real, extension_code, parent_id, is_gift) &quot;.<br />
+                &quot; SELECT &#039;$new_order_id&#039;, goods_id, goods_name, goods_sn, &#039;$product_id&#039;,&#039;$goods[goods_number]&#039;, market_price, &quot;.<br />
+                    &quot;&#039;$goods[goods_price]&#039;, &#039;$goods[goods_attr]&#039;, is_real, extension_code, 0, 0 &quot;.<br />
+                &quot; FROM &quot; .$ecs-&gt;table(&#039;goods&#039;) .<br />
+                &quot; WHERE goods_id = &#039;$goods[goods_id]&#039;&quot;;<br />
+        $db-&gt;query($sql);</code></pre><p class='detail'><br />
+<br />
+4.到3为止，已经可以将注入代码写到订单商品表(order_goods)里了，接下来就是进入购物车数据表，在用户中心查看订单时有个&quot;放回购物车&quot;操作，可以将订单商品放到购物车数据表(cart)里，然后在查看购物车页面/flow.php即能看到注入结果了(见1的代码分析)<br />
+<br />
+/includes/lib_transaction.php return_to_cart方法 854行起<br />
+<br />
+</p><pre><code>...<br />
+        // 要返回购物车的商品  //约923行<br />
+        $return_goods = array(<br />
+            &#039;goods_id&#039;      =&gt; $row[&#039;goods_id&#039;],<br />
+            &#039;goods_sn&#039;      =&gt; addslashes($goods[&#039;goods_sn&#039;]),<br />
+            &#039;goods_name&#039;    =&gt; addslashes($goods[&#039;goods_name&#039;]),<br />
+            &#039;market_price&#039;  =&gt; $goods[&#039;market_price&#039;],<br />
+            &#039;goods_price&#039;   =&gt; $goods[&#039;goods_price&#039;],<br />
+            &#039;goods_number&#039;  =&gt; $row[&#039;goods_number&#039;],<br />
+            &#039;goods_attr&#039;    =&gt; empty($row[&#039;goods_attr&#039;]) ? &#039;&#039; : addslashes($row[&#039;goods_attr&#039;]),  //看过来，重点在这，$row是订单商品，虽然addslashes了，但这是二次注入，最终会从数据库里再出来进入查询（见1的代码分析）<br />
+            &#039;goods_attr_id&#039;    =&gt; empty($row[&#039;goods_attr_id&#039;]) ? &#039;&#039; : $row[&#039;goods_attr_id&#039;],<br />
+            &#039;is_real&#039;       =&gt; $goods[&#039;is_real&#039;],<br />
+            &#039;extension_code&#039;=&gt; addslashes($goods[&#039;extension_code&#039;]),<br />
+            &#039;parent_id&#039;     =&gt; &#039;0&#039;,<br />
+            &#039;is_gift&#039;       =&gt; &#039;0&#039;,<br />
+            &#039;rec_type&#039;      =&gt; CART_GENERAL_GOODS<br />
+        );<br />
+...</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/21072906cd43d1d4627d257052252577a50f18bc.png" target="_blank"><img src="../images/21072906cd43d1d4627d257052252577a50f18bc.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/210728063b9659aa00cecbb4beb74a8e72fe8434.png" target="_blank"><img src="../images/210728063b9659aa00cecbb4beb74a8e72fe8434.png" alt="3.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">/includes/lib_order.php get_cart_goods()方法对goods_attr过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blue" title="blue">blue</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-026458" title="ecshop最新版本前台二次注入系列(2)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-06-21 11:00</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="26458";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

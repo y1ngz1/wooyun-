@@ -1,0 +1,199 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Dedecms 注射漏洞获得管理员密码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Dedecms 注射漏洞获得管理员密码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/c4rp3nt3r">c4rp3nt3r</a> 
+</li><li>提交时间：		2012-05-02 11:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-02：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-06-16：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Dedecms 某文件没过滤直接带入sql查询,攻击者在magic_quotes_gpc=off时,可以注射SQL代码,绕过sqlids检测,执行sql语句.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">要求会员中心,注册用户登录,magic_quotes_gpc=off,以及php版本要求,其实也没有什么危害.<br />
+<br />
+漏洞代码如下:<br />
+<br />
+</p><pre><code>root@bt:/var/www/dede/member# cat -n edit_face.php<br />
+<br />
+    9 require_once(dirname(__FILE__).”/config.php”); //这里包含和谐的 ../include/filter.inc.php<br />
+    10 CheckRank(0,0); //检查权限，至少要是通过认证的会员，什么注册不了会员？别着急我们有办法<br />
+    11 $menutype = ‘config’;<br />
+    12 if(!isset($dopost))<br />
+    13 {<br />
+    14 $dopost = ”;<br />
+    15 }<br />
+    16 if(!isset($backurl))<br />
+    17 {<br />
+    18 $backurl = ‘edit_face.php’;<br />
+    19 }<br />
+    20 if($dopost==’save’)<br />
+    21 {<br />
+    22 $maxlength = $cfg_max_face * 1024;<br />
+    23 $userdir = $cfg_user_dir.’/’.$cfg_ml-&gt;M_ID;<br />
+    24 if(!preg_match(“#^”.$userdir.”#”, $oldface)) //绕过这个正则表达式才能继续玩<br />
+    25 {<br />
+    26 $oldface = ”;<br />
+    27 }<br />
+    28 if(is_uploaded_file($face))<br />
+    29 {<br />
+    30 if(@filesize($_FILES[&#039;face&#039;][&#039;tmp_name&#039;]) &gt; $maxlength)<br />
+    31 {<br />
+    32 ShowMsg(“你上传的头像文件超过了系统限制大小：{$cfg_max_face} K！“, ‘-1′);<br />
+    33 exit();<br />
+<br />
+    34 }<br />
+    35 //删除旧图片（防止文件扩展名不同，如：原来的是gif，后来的是jpg）<br />
+    36 if(preg_match(“#\.(jpg|gif|png)$#i”, $oldface) &amp;&amp; file_exists($cfg_basedir.$oldface))<br />
+    37 {<br />
+    38 @unlink($cfg_basedir.$oldface);<br />
+    39 }<br />
+    40 //上传新工图片<br />
+<br />
+    41 $face = MemberUploads(‘face’, $oldface, $cfg_ml-&gt;M_ID, ‘image’, ‘myface’, 180, 180);<br />
+    42 }<br />
+    43 else<br />
+    44 {<br />
+    45 $face = $oldface; // $oldface是我们能控制的变量<br />
+    46 }<br />
+    47 $query = “UPDATE `#@__member` SET `face` = ‘$face’ WHERE mid=’{$cfg_ml-&gt;M_ID}’ “; //这里导致注射漏洞<br />
+    48 $dsql-&gt;ExecuteNoneQuery($query);<br />
+    49 // 清除缓存<br />
+    50 $cfg_ml-&gt;DelCache($cfg_ml-&gt;M_ID);<br />
+    51 ShowMsg(‘成功更新头像信息！‘, $backurl);<br />
+    52 exit();<br />
+    53 }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/0211350836a2612b5a7428174edcde13b2998cbc.png" target="_blank"><img src="../images/0211350836a2612b5a7428174edcde13b2998cbc.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">省略... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/c4rp3nt3r" title="c4rp3nt3r">c4rp3nt3r</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-06598" title="Dedecms 注射漏洞获得管理员密码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="6598";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

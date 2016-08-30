@@ -1,0 +1,245 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop SQL注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop SQL注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xsser">xsser</a> 
+</li><li>提交时间：		2010-08-21 17:55</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2010-08-21：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2010-08-21：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">在Ecshop中缺乏对参数的有效过滤，导致一个SQL注射漏洞，成功利用该漏洞的攻击者可以获得数据库及站点的完全权限。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在include_libcommon.php中存在如下函数<br />
+<br />
+</p><pre><code>function get_package_info($id)<br />
+{<br />
+    global $ecs, $db,$_CFG;<br />
+<br />
+    $now = gmtime();<br />
+<br />
+    $sql = &quot;SELECT act_id AS id,  act_name AS package_name, goods_id , goods_name, start_time, end_time, act_desc, ext_info&quot;.<br />
+           &quot; FROM &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;goods_activity&#039;) .<br />
+           &quot; WHERE act_id=&#039;$id&#039; AND act_type = &quot; . GAT_PACKAGE;<br />
+<br />
+    $package = $db-&gt;GetRow($sql);<br />
+<br />
+    /* 将时间转成可阅读格式 */<br />
+    if ($package[&#039;start_time&#039;] &lt;= $now &amp;&amp; $package[&#039;end_time&#039;] &gt;= $now)<br />
+    {<br />
+        $package[&#039;is_on_sale&#039;] = &quot;1&quot;;<br />
+    }<br />
+    else<br />
+    {<br />
+        $package[&#039;is_on_sale&#039;] = &quot;0&quot;;<br />
+    }<br />
+    $package[&#039;start_time&#039;] = local_date(&#039;Y-m-d H:i&#039;, $package[&#039;start_time&#039;]);<br />
+    $package[&#039;end_time&#039;]   = local_date(&#039;Y-m-d H:i&#039;, $package[&#039;end_time&#039;]);<br />
+    $row = unserialize($package[&#039;ext_info&#039;]);<br />
+    unset($package[&#039;ext_info&#039;]);<br />
+    if ($row)<br />
+    {<br />
+        foreach ($row as $key=&gt;$val)<br />
+        {<br />
+            $package[$key] = $val;<br />
+        }<br />
+    }<br />
+<br />
+    $sql = &quot;SELECT pg.package_id, pg.goods_id, pg.goods_number, pg.admin_id, &quot;.<br />
+           &quot; g.goods_sn, g.goods_name, g.market_price, g.goods_thumb, g.is_real, &quot;.<br />
+           &quot; IFNULL(mp.user_price, g.shop_price * &#039;$_SESSION[discount]&#039;) AS rank_price &quot; .<br />
+           &quot; FROM &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;package_goods&#039;) . &quot; AS pg &quot;.<br />
+           &quot;   LEFT JOIN &quot;. $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;goods&#039;) . &quot; AS g &quot;.<br />
+           &quot;   ON g.goods_id = pg.goods_id &quot;.<br />
+           &quot; LEFT JOIN &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;member_price&#039;) . &quot; AS mp &quot;.<br />
+                &quot;ON mp.goods_id = g.goods_id AND mp.user_rank = &#039;$_SESSION[user_rank]&#039; &quot;.<br />
+           &quot; WHERE pg.package_id = &quot; . $id. &quot; &quot;.<br />
+           &quot; ORDER BY pg.package_id, pg.goods_id&quot;;<br />
+<br />
+    $goods_res = $GLOBALS[&#039;db&#039;]-&gt;getAll($sql);<br />
+<br />
+    $market_price        = 0;</code></pre><p class='detail'><br />
+<br />
+其中$id没有经过严格过滤就直接进入了SQL查询，导致一个SQL注射漏洞。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在系统的lib_order.php中存在一个该函数的调用<br />
+<br />
+<br />
+<br />
+</p><pre><code>function add_package_to_cart($package_id, $num = 1)<br />
+{<br />
+    $GLOBALS[&#039;err&#039;]-&gt;clean();<br />
+<br />
+    /* 取得礼包信息 */<br />
+    $package = get_package_info($package_id);<br />
+<br />
+    if (empty($package))<br />
+    {<br />
+        $GLOBALS[&#039;err&#039;]-&gt;add($GLOBALS[&#039;_LANG&#039;][&#039;goods_not_exists&#039;], ERR_NOT_EXISTS);<br />
+<br />
+        return false;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+在flow.php中存在可控的输入源<br />
+<br />
+<br />
+<br />
+</p><pre><code>$package = $json-&gt;decode($_POST[&#039;package_info&#039;]);<br />
+<br />
+    /* 如果是一步购物，先清空购物车 */<br />
+    if ($_CFG[&#039;one_step_buy&#039;] == &#039;1&#039;)<br />
+    {<br />
+        clear_cart();<br />
+    }<br />
+<br />
+    /* 商品数量是否合法 */<br />
+    if (!is_numeric($package-&gt;number) || intval($package-&gt;number) &lt;= 0)<br />
+    {<br />
+        $result[&#039;error&#039;]   = 1;<br />
+        $result[&#039;message&#039;] = $_LANG[&#039;invalid_number&#039;];<br />
+    }<br />
+    else<br />
+    {<br />
+        /* 添加到购物车 */<br />
+        if (add_package_to_cart($package-&gt;package_id, $package-&gt;number))<br />
+        {<br />
+            if ($_CFG[&#039;cart_confirm&#039;] &gt; 2)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$package-&gt;package_id来源于输入 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你猜啊~~~~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xsser" title="xsser">xsser</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-0248" title="ecshop SQL注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：12 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="248";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

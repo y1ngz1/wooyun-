@@ -1,0 +1,238 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		土豆网新消息提醒的绑定邮箱CSRF漏洞+email验证链接逻辑漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		土豆网新消息提醒的绑定邮箱CSRF漏洞+email验证链接逻辑漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/学习乌云">学习乌云</a> 
+</li><li>提交时间：		2013-07-29 17:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-30：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-09：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-19：	细节向普通白帽子公开<br/>
+									2013-08-29：	细节向实习白帽子公开<br/>
+									2013-09-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由这个http://www.wooyun.org/bugs/wooyun-2010-028893 想到去看看有没有其他问题，发现新消息提醒的绑定邮箱那边CSRF没有过滤，或者过滤不严。另外email验证链接那边，可能有逻辑问题。结合这两点，可导致用户的私信、新评论、系统消息提醒等发送至攻击者邮箱。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">页面http://www.tudou.com/my/setting/notifyMe.action里的一个【以上消息可用下面方法提醒我】form<br />
+<br />
+正常状态下很多消息提醒都被选中：（用户可以选择发送频率、需要提醒的邮箱）<br />
+<br />
+</p><p class="detail"><a href="../images/2822335518e398308581a452486021cbd470a9dc.png" target="_blank"><img src="../images/2822335518e398308581a452486021cbd470a9dc.png" alt="formView.png" width="600"/></a></p><p class="detail"><br />
+<br />
+正常状态这个form请求的一个sample如下：<br />
+<br />
+</p><pre><code>GET http://message.tudou.com/updateEmailSetting.html?callback=jQuery16405471757907992225_1375018012075&amp;isSend=1&amp;frequency=14&amp;email=XXX%40email.com&amp;_=1375018012464 HTTP/1.1<br />
+Accept: */*<br />
+Referer: http://www.tudou.com/my/setting/notifyMe.action<br />
+Accept-Language: zh-cn<br />
+User-Agent: 。。。<br />
+Accept-Encoding: gzip, deflate<br />
+Host: message.tudou.com<br />
+Connection: Keep-Alive<br />
+Cookie: 。。。</code></pre><p class='detail'><br />
+<br />
+isSend，frequency，email分别对应截图的几个input。<br />
+<br />
+<br />
+<br />
+根据这个请求，可能的CSRF防御点在refer字段，或者jQuery参数部分（这个可能吗？菜鸟表示没研究）。<br />
+<br />
+1。针对可能的refer防御<br />
+<br />
+找个可以放&lt;form&gt;的博客系统，wordpress or blogbus? 或者GAE, SAE<br />
+<br />
+如果这些第三方hosting网站不行的话，可以用黑客自己的blog website。<br />
+<br />
+我测试了下面两个refer：<br />
+<br />
+http://richardwiseman.wordpress.com/2013/07/22/answer-to-the-friday-puzzle-215/<br />
+<br />
+http://www.squarefree.com/2012/04/16/car-free-apps/<br />
+<br />
+都可以攻击成功<br />
+<br />
+2.针对可能的jQuery随机参数<br />
+<br />
+我试了几条正常情况下产生的mapping：<br />
+<br />
+callback=jQuery16405471757907992225_1375018012073<br />
+<br />
+&amp;_=1375018012154<br />
+<br />
+callback=jQuery16405471757907992225_1375018012075<br />
+<br />
+&amp;_=1375018012464<br />
+<br />
+callback=jQuery16408171587823084333_1375017781479<br />
+<br />
+&amp;_=1375017829130<br />
+<br />
+于是，尝试随机构造如下的作为攻击向量:<br />
+<br />
+callback=jQuery16408171587823084512_1375017782512<br />
+<br />
+&amp;_=1375017849124 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">结合上述第2点和表单input，制造attack.html（email参数里写黑客控制的参数），放到wordpress上，或者黑客自己的网站（类似squarefree.com）<br />
+<br />
+然后将这样的地址放到微博上传播，一旦土豆用户点击打开attack.html（登录状态下），就会有如下邮件发到黑客邮箱。<br />
+<br />
+</p><p class="detail"><a href="../images/28231829d79192e8a6ff1edef761374a5323c7b5.png" target="_blank"><img src="../images/28231829d79192e8a6ff1edef761374a5323c7b5.png" alt="email.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后，黑客在不登录土豆的状态下点击这个email，也会提醒你绑定邮箱成功（所以更严重的漏洞可能是这边），虽然会再跳到登录页面（http://login.tudou.com/login.do?noreg=ok&amp;service=http://www.tudou.com/my/tui/got/）。<br />
+<br />
+3秒跳转，来不及截图。。<br />
+<br />
+但是这时候，用户土豆账户的提醒邮箱，已经跟黑客的提醒邮箱绑定了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. CSRF防御那边你们更清楚（比如限制refer只能是http://www.tudou.com/my/setting/notifyMe.action）。。。具体哪个没做好，请告诉我一声。<br />
+<br />
+2. 提醒邮箱绑定认证那边，需要在用户登录情况下才生效<br />
+<br />
+http://message.tudou.com/checkEmail.html?uid=XXX&amp;token=XXXX<br />
+<br />
+这样的提醒绑定仅仅当用户登录才生效。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/学习乌云" title="学习乌云">学习乌云</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-032638" title="土豆网新消息提醒的绑定邮箱CSRF漏洞+email验证链接逻辑漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-07-30 13:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">确认漏洞，感谢学习乌云同学的详细解释。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="32638";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

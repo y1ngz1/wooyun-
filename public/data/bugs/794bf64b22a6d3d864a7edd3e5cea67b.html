@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		记事狗微博后台拿shell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		记事狗微博后台拿shell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/yy520">yy520</a> 
+</li><li>提交时间：		2012-08-01 10:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-06：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">记事狗微博系统，后台存在设计缺陷，可导致进入后台者获得shell<br />
+版本：V3.6.1 Build 20120718</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.系统工具-&gt;数据备份-&gt;自定义备份-&gt;选择一张数据量较小的表-&gt;更多选项-&gt;选择压缩备份文件-&gt;多分卷压缩成一个文件。<br />
+<br />
+</p><p class="detail"><a href="../images/010959333320d711cc7a528f299168a0e4d4c699.png" target="_blank"><img src="../images/010959333320d711cc7a528f299168a0e4d4c699.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+直接提交。<br />
+<br />
+2.直接把备份文件下载下来，然后往备份文件添加一个zzz.php.sql，内容为&lt;?php phpinfo();?&gt;<br />
+<br />
+</p><p class="detail"><a href="../images/01100655a185389a22a6b422dac49278c8d356ef.png" target="_blank"><img src="../images/01100655a185389a22a6b422dac49278c8d356ef.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+3.然后找一张正常的图片 执行cat yy520.zip &gt;&gt; yy520.png ，前台提交yy520.png<br />
+<br />
+<br />
+<br />
+4.获取图片的地址 images/topic/6/17/14_o.jpg，回到后台 系统工具-&gt;数据恢复 <br />
+<br />
+</p><p class="detail"><a href="../images/0110073896ad40c474a6c423cbf706c3aa736523.png" target="_blank"><img src="../images/0110073896ad40c474a6c423cbf706c3aa736523.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+点击解压缩，用burp suite 截包<br />
+<br />
+</p><p class="detail"><a href="../images/01100754727f444b82a175bfd4385a01bce376d3.png" target="_blank"><img src="../images/01100754727f444b82a175bfd4385a01bce376d3.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+修改为：datafile_server=./images/topic/6/17/14_o.jpg<br />
+<br />
+最后访问<br />
+<br />
+</p><p class="detail"><a href="../images/011008390ad824e628391e148b7ed0369d4b0f8f.png" target="_blank"><img src="../images/011008390ad824e628391e148b7ed0369d4b0f8f.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+最后的最后，请让我解释一下，为什么上面会有那么多2b的步骤。<br />
+<br />
+1.<br />
+<br />
+</p><pre><code>$datafile_server = get_param(&#039;datafile_server&#039;);<br />
+。。。。。<br />
+$unzip-&gt;ReadFile($datafile_server);<br />
+<br />
+  if($unzip-&gt;Count() == 0 || $unzip-&gt;GetError(0) != 0 || !preg_match(&quot;/\.sql$/i&quot;, $importfile = $unzip-&gt;GetName(0))) {<br />
+               $this-&gt;Messager(&#039;数据文件不存在: 可能服务器不允许上传文件或尺寸超过限制。&#039;,null);<br />
+    }</code></pre><p class='detail'><br />
+<br />
+由于上面preg_match的限制，在压缩文件里面的文件名必须是以sql结尾，这个可以用apache解析绕过，所以我们的文件名必须是***.php.sql<br />
+<br />
+<br />
+<br />
+2.<br />
+<br />
+</p><pre><code>$identify = explode(&#039;,&#039;, base64_decode(preg_replace(&quot;/^# Identify:\s*(\w+).*/s&quot;, &quot;\\1&quot;, substr($unzip-&gt;GetData(0), 0, 256))));<br />
+           $confirm = !empty($confirm) ? 1 : 0;<br />
+          if(!$confirm &amp;&amp; $identify[1] !=SYS_VERSION) {<br />
+。。。。反正就不是解压的操作<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在进行导入的时候它会查看压缩包的第一个文件的头部，然后决定是直接导入，还是先解压，所以我们需要一个正常的备份文件，也就是那个yy520-1.sql<br />
+<br />
+才会执行下面<br />
+<br />
+</p><pre><code>$sqlfilecount = 0;<br />
+          foreach($unzip-&gt;Entries as $entry) {<br />
+              if(preg_match(&quot;/\.sql$/i&quot;, $entry-&gt;Name)) {<br />
+                  $len = Load::lib(&#039;io&#039;, 1)-&gt;WriteFile(&#039;./data/backup/&#039;.$backupdir.&#039;/&#039;.$entry-&gt;Name, $entry-&gt;Data);<br />
+                   $sqlfilecount++;<br />
+               }<br />
+          }</code></pre><p class='detail'><br />
+<br />
+3.<br />
+<br />
+然后我就屁颠屁颠的跑前台上传zip文件，后来我发现上传后的zip文件路径是记录在数据库中，路径是由一个 mysql_insert_id 来随机生成滴，本来想暴力破，直接提交乌云，敷衍了事，后来想想意义不大。然后发现$unzip-&gt;ReadFile($datafile_server);可以读取jpg的，然后就把那个zip文件直接改为jpg上传，提示错误（不是一个有效的图片），看了代码   <br />
+<br />
+</p><pre><code>if(function_exists(&#039;exif_imagetype&#039;) &amp;&amp; !exif_imagetype($temp)) {<br />
+                   $this-&gt;_setError(507);<br />
+                    return false;<br />
+               } elseif (function_exists(&#039;getimagesize&#039;) &amp;&amp; !getimagesize($temp)) {<br />
+                   $this-&gt;_setError(507);<br />
+                    return false;<br />
+              }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然后就必须用一个正常文件，所以必须用cat yy520.zip &gt;&gt; yy520.png<br />
+<br />
+<br />
+<br />
+后台拿个shell有必要那么难为我吗～。～ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">这个。。。上面一块写了~~ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">稍微微的过滤一下下$datafile_server，我的礼物还没到～。～ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/yy520" title="yy520">yy520</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010431" title="记事狗微博后台拿shell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-08-01 10:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10431";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

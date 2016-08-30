@@ -1,0 +1,240 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		记事狗微博全版本注册管理员漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		记事狗微博全版本注册管理员漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-11-18 14:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-22：	细节向第三方安全合作伙伴开放<br/>
+									2013-11-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-09：	细节向普通白帽子公开<br/>
+									2013-12-29：	细节向实习白帽子公开<br/>
+									2014-02-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">每个月总有那么几天没有饭吃。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题出在一个通用函数上，只要用到这个函数的都存在漏洞，爆管理账号密码的我就不写了，密码有salt意义不大。如果能绕过通用防注入，这套系就太多漏洞了。很多地方都是因为不能注释，闭合不了，而不能进行利用，虽然很多地方都能引入引号但是过滤了一些危险函数。总体来讲还是挺安全的。<br />
+<br />
+<br />
+<br />
+include/class/passport.class.php<br />
+<br />
+</p><pre><code>function login($nickname, $password, $is = &#039;&#039;) {<br />
+			......<br />
+			$member = $this-&gt;login_check($nickname, $password, $is);<br />
+<br />
+			$_uid = $member[&#039;uid&#039;];<br />
+			if($_uid &lt; 1)<br />
+			{<br />
+				$error = &#039;登录失败： &#039; . $login_rets[$_uid];<br />
+				return array(&#039;uid&#039; =&gt; $_uid, &#039;error&#039;=&gt;$error);<br />
+			}<br />
+			else //登陆成功<br />
+			{<br />
+				$member[&#039;uc_syn_html&#039;] = $uc_syn_html;<br />
+<br />
+				<br />
+				$timestamp=time();<br />
+				$last_ip=client_ip();//问题出在这儿，跟进0x01<br />
+				$sql=&quot;<br />
+		UPDATE<br />
+			&quot;.TABLE_PREFIX.&#039;members&#039;.&quot;<br />
+		SET<br />
+			`lastactivity`=&#039;{$timestamp}&#039;,<br />
+			`lastip`=&#039;{$last_ip}&#039;<br />
+		WHERE<br />
+			uid={$_uid}&quot;;<br />
+				DB::query($sql);<br />
+			}</code></pre><p class='detail'><br />
+<br />
+include/function/global.func.php 0x01<br />
+<br />
+</p><pre><code>function client_ip() {<br />
+	$vs = array(&#039;HTTP_CLIENT_IP&#039;, &#039;HTTP_X_FORWARDED_FOR&#039;, &#039;REMOTE_ADDR&#039;); //HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR是可伪造的。<br />
+	foreach($vs as $v) {<br />
+		$ip = (getenv($v) ? getenv($v) : $_SERVER[$v]);<br />
+		if($ip &amp;&amp; strcasecmp($ip, &#039;unknown&#039;)) {<br />
+			break;<br />
+		}<br />
+	}<br />
+	$ips = explode(&#039;.&#039;, $ip); <br />
+/*<br />
+以点号为分隔符,分割IP.然后将每一位与1比较,看是否小于1，如果小于1,ip=127.0.0.1我们提交<br />
+1.1.1.1&#039;,role_id=2,role_type=&#039;admin<br />
+第一个1不小于1,第二个1不小于1,第3个1不小于1,第4个1&#039;,role_id=2,role_type=&#039;admin其实与1比较值也是1,所以还是不小于1，成功绕过。<br />
+*/<br />
+	for($i = 0; $i &lt; 4; $i++) {<br />
+		if($ips[$i] &lt; 1) {<br />
+			$ip = &#039;127.0.0.1&#039;;<br />
+			break;<br />
+		}<br />
+	}<br />
+	return $ip;<br />
+}</code></pre><p class='detail'><br />
+<br />
+伪造HTTP_CLIENT_IP或者HTTP_X_FORWARDED_FOR，这里我就伪造HTTP_CLIENT_IP来做演示。<br />
+<br />
+伪造HTTP_CLIENT_IP为1.1.1.1&#039;,role_id=2,role_type=&#039;admin<br />
+<br />
+<br />
+<br />
+首先不要伪造HTTP_CLIENT_IP注册一个用户，因为注册的时候也用到了client_ip，因为过滤了注释，而且同时把client_ip赋值给了last_ip跟reg_ip，所以闭合不了，所以不能直接注册为管理员。正常流程注册一个普通账号过后。它提示<br />
+<br />
+向大家做一个自我介绍，给大家一个与我互动的机会！<br />
+<br />
+我的第一次（我的第一次没了。。。）<br />
+<br />
+不用管它，直接伪造HTTP_CLIENT_IP，然后刷新就注入成功了。<br />
+<br />
+!!!注意看我图里面的Modify Headers的状态(左下角红色的那个)。<br />
+<br />
+登陆管理员的时候记得不要伪造HTTP_CLIENT_IP,不然会提示SQL语句错误，因为登陆的时候也用到了ip....当然你也可以直接在登陆页面注入。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/18134236de0f29078c2dfb92ee0b0bd4762794a2.png" target="_blank"><img src="../images/18134236de0f29078c2dfb92ee0b0bd4762794a2.png" alt="1.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/18134247c600ea0a2c3ebad0783fc8a7cb111163.png" target="_blank"><img src="../images/18134247c600ea0a2c3ebad0783fc8a7cb111163.png" alt="2.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/181343178afe3f07da1eec50ced4ef2e0f969e2f.png" target="_blank"><img src="../images/181343178afe3f07da1eec50ced4ef2e0f969e2f.png" alt="3.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/18134324a2dc7c9b95688fb1d784fdf7daa9b0d5.png" target="_blank"><img src="../images/18134324a2dc7c9b95688fb1d784fdf7daa9b0d5.png" alt="4.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/1813433494b0bf585b92e93b9d96335ff44c1693.png" target="_blank"><img src="../images/1813433494b0bf585b92e93b9d96335ff44c1693.png" alt="5.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">求包养。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043238" title="记事狗微博全版本注册管理员漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-11-19 11:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢乌云白帽子 @Chora 的反馈，该问题由于过滤不严导致，我们已经在修复了</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43238";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

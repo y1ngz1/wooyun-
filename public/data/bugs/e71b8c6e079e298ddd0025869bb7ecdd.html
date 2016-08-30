@@ -1,0 +1,265 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		支付宝ptpusb.dll远程指令执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		支付宝ptpusb.dll远程指令执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2011-02-28 11:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-02-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-03-02：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">无</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">阿里巴巴支付宝（Alipay）是阿里巴巴站点所提供的电子商务在线支付服务。<br />
+<br />
+<br />
+<br />
+阿里巴巴支付宝的口令输入控件实现上存在漏洞，远程攻击者可能利用此漏洞控制用户机器。<br />
+<br />
+<br />
+<br />
+支付宝的口令输入控件ptpusb.dll中存在远程代码执行漏洞。ptpusb.dll以如下方式引用Remove()函数：<br />
+<br />
+<br />
+<br />
+    InprocServer32:    ptpusb.dll<br />
+<br />
+    ClassID      :     66F50F46-70A0-4A05-BD5E-FBCC0F9641EC<br />
+<br />
+<br />
+<br />
+    [id(0x60030001), helpstring(&quot;method Remove&quot;)]<br />
+<br />
+    void Remove([in] int idx);<br />
+<br />
+<br />
+<br />
+Remove()函数以如下方式处理idx参数：<br />
+<br />
+<br />
+<br />
+    .text:10003D4E ; Remove<br />
+<br />
+    .text:10003D4E<br />
+<br />
+    .text:10003D4E sub_10003D4E    proc near            ; DATA XREF: .rdata:1000B3A4o<br />
+<br />
+    .text:10003D4E                            ; .rdata:1000B41Co ...<br />
+<br />
+    .text:10003D4E<br />
+<br />
+    .text:10003D4E arg_0           = dword ptr  4<br />
+<br />
+    .text:10003D4E arg_4           = dword ptr  8<br />
+<br />
+    .text:10003D4E<br />
+<br />
+    .text:10003D4E                 mov     eax, [esp+arg_4]        <br />
+<br />
+    .text:10003D52                 test    eax, eax<br />
+<br />
+    .text:10003D54                 jl      short loc_10003D78    <br />
+<br />
+    .text:10003D56                 push    esi<br />
+<br />
+    .text:10003D57                 mov     esi, [esp+4+arg_0]    ; get idx<br />
+<br />
+    .text:10003D5B                 shl     eax, 4            ; idx &lt;&lt; 4<br />
+<br />
+    .text:10003D5E                 add     eax, [esi+8]        ; [esi+8]=0<br />
+<br />
+    .text:10003D61                 push    edi            ;<br />
+<br />
+    .text:10003D62                 mov     edi, eax            ; idx &lt;&lt; 4 ==&gt;edi<br />
+<br />
+    .text:10003D64                 mov     eax, [edi+8]        ; [(idx &lt;&lt; 4)+8]==&gt;eax<br />
+<br />
+    .text:10003D67                 push    eax<br />
+<br />
+    .text:10003D68                 mov     ecx, [eax]        ; [[(idx &lt;&lt; 4)+8]]==&gt;ecx<br />
+<br />
+    .text:10003D6A                 call    dword ptr [ecx+8]    ; [[[(idx &lt;&lt;4)+8]]+8]==&gt;jmp addr<br />
+<br />
+    .text:10003D6D                 push    edi<br />
+<br />
+    .text:10003D6E                 lea     ecx, [esi+4]<br />
+<br />
+    .text:10003D71                 call    sub_10003F35<br />
+<br />
+    .text:10003D76                 pop     edi<br />
+<br />
+    .text:10003D77                 pop     esi<br />
+<br />
+    .text:10003D78<br />
+<br />
+    .text:10003D78 loc_10003D78:                    ; CODE XREF: sub_10003D4E+6j<br />
+<br />
+    .text:10003D78                 xor     eax, eax<br />
+<br />
+    .text:10003D7A                 retn    8<br />
+<br />
+    .text:10003D7A sub_10003D4E    endp<br />
+<br />
+<br />
+<br />
+idx是用户可控的DWORD值，因此攻击者可以获得完全控制。例如，如果将idx设置为0x41414141的话，就会在地址[[[14141410h+8]]+8]执行任<br />
+<br />
+<br />
+<br />
+意指令。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">Alipay ActiveX Remote Code Execute Exploit,enjoy it:)<br />
+<br />
+by CK(webmaster@leehoosoftware.org)<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">为ptpusb.dll设置killbit，或删除%system%\aliedit\ptpusb.dll。<br />
+<br />
+<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01451" title="支付宝ptpusb.dll远程指令执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2011-03-02 17:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢反馈，该问题在2007年时已经被发现并修复，请确认是否获取的是旧控件，感谢您对支付宝安全的关注！</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1451";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

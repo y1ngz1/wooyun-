@@ -1,0 +1,267 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PIPI播放器溢出漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PIPI播放器溢出漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/冰雪风谷[NNU">冰雪风谷[NNU</a> 
+</li><li>提交时间：		2011-03-17 17:39</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-03-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-03-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">皮皮播放器在处理用户输入的URL时，没有对其长度进行检测，从而造成溢出</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">皮皮播放器在处理用户输入的URL时，没有对其进行长度检测。<br />
+<br />
+从而造成溢出。<br />
+<br />
+<br />
+<br />
+不过，由于有GS，利用的时候有些困难<br />
+<br />
+</p><pre><code>case 32780:<br />
+      v9 = *(_DWORD *)(wParam + 4096);<br />
+      v22 = 0;<br />
+      v21 = v9;<br />
+      *(_DWORD *)(wParam + 6344) = 1;<br />
+      sub_40D480(v21, v22);<br />
+      v42 = 5;<br />
+      if ( CDialog::DoModal(&amp;v31) == 1<br />
+        &amp;&amp; ATL::CStringT&lt;char_StrTraitMFC_DLL&lt;char_ATL::ChTraitsCRT&lt;char&gt;&gt;&gt;::Find(&amp;v32, &quot;://&quot;, 0) &gt; 0 )<br />
+      {<br />
+        v10 = (const char *)ATL::CSimpleStringT&lt;char_1&gt;::operator char_const__(&amp;v32);<br />
+        if ( strnicmp(v10, &quot;ppfilm://&quot;, 9u)     // 对输入的内容，比较前9位是否为ppfilm://<br />
+          &amp;&amp; (v11 = (const char *)ATL::CSimpleStringT&lt;char_1&gt;::operator char_const__(&amp;v32), strnicmp(v11, &quot;pvod://&quot;, 7u)) )<br />
+        {<br />
+          v22 = 0;<br />
+          v21 = v12;<br />
+          v29 = &amp;v21;<br />
+          ATL::CStringT&lt;char_StrTraitMFC_DLL&lt;char_ATL::ChTraitsCRT&lt;char&gt;&gt;&gt;::CStringT&lt;char_StrTraitMFC_DLL&lt;char_ATL::ChTraitsCRT&lt;char&gt;&gt;&gt;(<br />
+            &amp;v21,<br />
+            &amp;Default);<br />
+          v20 = v13;<br />
+          v28 = &amp;v20;<br />
+          LOBYTE(v42) = 6;<br />
+          ATL::CStringT&lt;char_StrTraitMFC_DLL&lt;char_ATL::ChTraitsCRT&lt;char&gt;&gt;&gt;::CStringT&lt;char_StrTraitMFC_DLL&lt;char_ATL::ChTraitsCRT&lt;char&gt;&gt;&gt;(<br />
+            &amp;v20,<br />
+            &amp;Default);<br />
+          v18 = v14;<br />
+          *(_DWORD *)&amp;Drive = &amp;v18;<br />
+          v41 = 7;<br />
+          ATL::CStringT&lt;char_StrTraitMFC_DLL&lt;char_ATL::ChTraitsCRT&lt;char&gt;&gt;&gt;::CStringT&lt;char_StrTraitMFC_DLL&lt;char_ATL::ChTraitsCRT&lt;char&gt;&gt;&gt;(&amp;v18);<br />
+          LOBYTE(v42) = 5;<br />
+          sub_4304F0(v3, v19, v20, v21, v22);<br />
+        }<br />
+        else<br />
+        {<br />
+          CommandLine = 0;<br />
+          memset(&amp;v34, 0, 0x1FCu);<br />
+          v35 = 0;<br />
+          v36 = 0;<br />
+          sprintf(&amp;CommandLine, &quot;%s%s \&quot;%s\&quot;&quot;, dword_48AF30, &quot;jfCacheMgr.exe&quot;, v32); //将输入的内容，直接调用sprintf函数，将其组合好的内容存放到CommandLine变量。<br />
+<br />
+          memset(&amp;StartupInfo, 0, sizeof(StartupInfo));<br />
+          ProcessInformation.hProcess = 0;<br />
+          ProcessInformation.hThread = 0;<br />
+          ProcessInformation.dwProcessId = 0;<br />
+          ProcessInformation.dwThreadId = 0;<br />
+          StartupInfo.cb = 68;<br />
+          CreateProcessA(0, &amp;CommandLine, 0, 0, 0, 0, 0, 0, &amp;StartupInfo, &amp;ProcessInformation);<br />
+          if ( ProcessInformation.hThread )<br />
+            CloseHandle(ProcessInformation.hThread);<br />
+          if ( (_DWORD)ProcessInformation.hProcess )<br />
+            CloseHandle(ProcessInformation.hProcess);<br />
+        }<br />
+      }<br />
+      *(_DWORD *)(v3 + 6344) = 0;<br />
+      v42 = -1;<br />
+      result = sub_40D500(&amp;v31);<br />
+      break;</code></pre><p class='detail'><br />
+<br />
+//////////////////////////////////////////////////////////////<br />
+<br />
+对传入的url没有进行检测，直接调用sprintf(&amp;CommandLine, &quot;%s%s \&quot;%s\&quot;&quot;, dword_48AF30, &quot;jfCacheMgr.exe&quot;, v32);<br />
+<br />
+函数，然后把url的值赋给CommandLine值,从而造成溢出。<br />
+<br />
+我们可以看到，在函数开始的地方，<br />
+<br />
+text:00430C20                 push    ebp<br />
+<br />
+.text:00430C21                 mov     ebp, esp<br />
+<br />
+.text:00430C23                 and     esp, 0FFFFFFF8h<br />
+<br />
+.text:00430C26                 push    0FFFFFFFFh<br />
+<br />
+.text:00430C28                 push    offset SEH_430C20<br />
+<br />
+.text:00430C2D                 mov     eax, large fs:0<br />
+<br />
+.text:00430C33                 push    eax<br />
+<br />
+.text:00430C34                 mov     large fs:0, esp<br />
+<br />
+.text:00430C3B                 sub     esp, 5F8h<br />
+<br />
+//一共分配了0x5F8大小的栈。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">我们构造如下URL：<br />
+<br />
+“ppfilm://AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA”<br />
+<br />
+在皮皮播放器处点击，播放URL，将其输入，可以看到如下图：</p><p class="detail"><a href="../images/17173859fce65d2a949c96fefaa8170369a257ab.png" target="_blank"><img src="../images/17173859fce65d2a949c96fefaa8170369a257ab.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对用户输入的URL进行长度限制 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/冰雪风谷[NNU" title="冰雪风谷[NNU">冰雪风谷[NNU</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01630" title="PIPI播放器溢出漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2011-03-17 17:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：12 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1630";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

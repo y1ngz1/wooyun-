@@ -1,0 +1,252 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Espcms V5.6.13.04.22 UTF8 正式版后台逻辑验证错误漏洞之2/N  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Espcms V5.6.13.04.22 UTF8 正式版后台逻辑验证错误漏洞之2/N  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Code_Sec">Code_Sec</a> 
+</li><li>提交时间：		2013-05-14 08:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-19：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-08-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">系统后台权限逻辑校验存在问题，导致后台某模块功能被绕过和非授权访问</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">后台管理员权限校验在文件\public\class_connector.php:<br />
+<br />
+</p><pre><code>function admin_purview() {<br />
+		if ($this-&gt;fun-&gt;accept(&#039;archive&#039;, &#039;R&#039;) == &#039;filemanage&#039; &amp;&amp; $this-&gt;fun-&gt;accept(&#039;action&#039;, &#039;R&#039;) == &#039;batupfilesave&#039;) {<br />
+<br />
+			$ecisp_admininfo = $this-&gt;fun-&gt;accept(&#039;ecisp_admininfo&#039;, &#039;G&#039;);<br />
+			$esp_powerlist = $this-&gt;fun-&gt;accept(&#039;esp_powerlist&#039;, &#039;G&#039;);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+			$gettype = false;<br />
+		} else {<br />
+			$ecisp_admininfo = $this-&gt;fun-&gt;accept(&#039;ecisp_admininfo&#039;, &#039;C&#039;);<br />
+			$esp_powerlist = $this-&gt;fun-&gt;accept(&#039;esp_powerlist&#039;, &#039;C&#039;);<br />
+			$gettype = true;<br />
+		}<br />
+<br />
+		$arr_purview = explode(&#039;|&#039;, $this-&gt;fun-&gt;eccode($ecisp_admininfo, &#039;DECODE&#039;, db_pscode));<br />
+<br />
+		$this-&gt;esp_powerlist = explode(&#039;|&#039;, $this-&gt;fun-&gt;eccode($esp_powerlist, &#039;DECODE&#039;, db_pscode));<br />
+<br />
+		list($this-&gt;esp_adminuserid, $this-&gt;esp_username, $this-&gt;esp_password, $this-&gt;esp_useragent, $this-&gt;esp_powerid, $this-&gt;esp_inputclassid, $this-&gt;esp_softurl) = $arr_purview;<br />
+		if ($gettype) {<br />
+			if (empty($this-&gt;esp_username) || empty($this-&gt;esp_adminuserid) || md5(admin_AGENT) != $this-&gt;esp_useragent || md5(admin_ClassURL) != $this-&gt;esp_softurl) {<br />
+				$condition = 0;<br />
+			} else {<br />
+				$condition = 1;<br />
+			}<br />
+		} else {<br />
+			if (empty($this-&gt;esp_username) || empty($this-&gt;esp_adminuserid) || md5(admin_ClassURL) != $this-&gt;esp_softurl) {<br />
+				$condition = 0;<br />
+			} else {<br />
+				$condition = 1;<br />
+			}<br />
+		}<br />
+		if ($condition == 0) {<br />
+<br />
+			if ($this-&gt;fun-&gt;accept(&#039;archive&#039;, &#039;R&#039;) != &#039;adminuser&#039; &amp;&amp; $this-&gt;fun-&gt;accept(&#039;action&#039;, &#039;R&#039;) != &#039;login&#039;) {<br />
+				header(&#039;location: index.php?archive=adminuser&amp;action=login&#039;);<br />
+				exit();<br />
+			}<br />
+		} else {<br />
+<br />
+			if ($condition == 1 &amp;&amp; $this-&gt;fun-&gt;accept(&#039;point&#039;, &#039;R&#039;) == &#039;&#039; &amp;&amp; $this-&gt;fun-&gt;accept(&#039;archive&#039;, &#039;R&#039;) == &#039;&#039; &amp;&amp; $this-&gt;fun-&gt;accept(&#039;action&#039;, &#039;R&#039;) == &#039;&#039;) {<br />
+				header(&#039;location: index.php?archive=management&amp;action=tab&amp;loadfun=mangercenter&amp;out=tabcenter&#039;);<br />
+				exit();<br />
+			}<br />
+		}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+逻辑校验存在问题:<br />
+<br />
+if ($condition == 0) {<br />
+<br />
+<br />
+<br />
+			if ($this-&gt;fun-&gt;accept(&#039;archive&#039;, &#039;R&#039;) != &#039;adminuser&#039; &amp;&amp; $this-&gt;fun-&gt;accept(&#039;action&#039;, &#039;R&#039;) != &#039;login&#039;) {<br />
+<br />
+				header(&#039;location: index.php?archive=adminuser&amp;action=login&#039;);<br />
+<br />
+				exit();<br />
+<br />
+			}<br />
+<br />
+当archive=adminuser,但是action变量不等于login时就不会被跳转到登录页。但是在文件adminsoft\control\adminuser.php中<br />
+<br />
+</p><pre><code>function onlogin() {<br />
+		parent::start_template();<br />
+		if ($this-&gt;fun-&gt;accept(&#039;logoutid&#039;, &#039;C&#039;) == 1) {<br />
+			$this-&gt;ectemplates-&gt;assign(&#039;systemTitle&#039;, $this-&gt;lng[&#039;adminuser_login_lout_error&#039;]);<br />
+			$this-&gt;fun-&gt;setcookie(&#039;logoutid&#039;, 0);<br />
+		} else {<br />
+			$this-&gt;ectemplates-&gt;assign(&#039;systemTitle&#039;, $this-&gt;lng[&#039;adminuser_login_login_error&#039;]);<br />
+		}<br />
+		$this-&gt;ectemplates-&gt;display(&#039;login&#039;);<br />
+	}<br />
+<br />
+	function onlogin_into() {<br />
+		include_once admin_ROOT . &#039;/public/class_seccode.php&#039;;<br />
+<br />
+		list($new_seccode, $expiration) = explode(&quot;\t&quot;, $this-&gt;fun-&gt;eccode($_COOKIE[&#039;ecisp_seccode&#039;], &#039;DECODE&#039;));<br />
+		$code = new seccode();<br />
+		$code-&gt;seccodeconvert($new_seccode);<br />
+		parent::start_template();<br />
+		$db_table = db_prefix . &quot;admin_member&quot;;<br />
+		$linkURL = $_SERVER[&#039;HTTP_REFERER&#039;];</code></pre><p class='detail'><br />
+<br />
+还可以调用该类的其他方法，如方法onlogin_into() </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://127.0.0.1/adminsoft/index.php?archive=adminuser&amp;action=login_into<br />
+<br />
+也就是可以调用adminuser.php这个后台文件的其他功能。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">改逻辑校验 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Code_Sec" title="Code_Sec">Code_Sec</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023681" title="Espcms V5.6.13.04.22 UTF8 正式版后台逻辑验证错误漏洞之2/N">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-05-19 08:36</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23681";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

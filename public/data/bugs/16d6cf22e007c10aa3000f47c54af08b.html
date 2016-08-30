@@ -1,0 +1,184 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		蘑菇街绕过过滤机制继续持久XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		蘑菇街绕过过滤机制继续持久XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Demon">Demon</a> 
+</li><li>提交时间：		2013-05-23 14:53</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-13：	细节向普通白帽子公开<br/>
+									2013-06-23：	细节向实习白帽子公开<br/>
+									2013-07-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">蘑菇街过滤机制存在缺陷存储型XSS</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">  导致xss的地方是专辑名称，其实导致xss的地方有两处，一是专辑首页有源代码&lt;a title=&quot;xxx&quot;&gt;xxx&lt;/a&gt; 其中xxx就是专辑名称，二是点进该专辑，然后下方有处分享到各大网站的功能，源代码有&lt;div data=&quot;....xxx&quot;&gt; 此处引用了专辑标题，由于没有过滤双引号导致两处xss发生的可能，先加个&quot;&gt; 发现代码两处均侧漏，如图：<br />
+<br />
+</p><p class="detail"><a href="../images/22180012ad82df942807f24cdc1b2af34134a178.jpg" target="_blank"><img src="../images/22180012ad82df942807f24cdc1b2af34134a178.jpg" alt="mogu.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22180031851581872e101339470d0a479fb5439e.jpg" target="_blank"><img src="../images/22180031851581872e101339470d0a479fb5439e.jpg" alt="mogu1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+我们首先会想到采用&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;这种方式来进行代码植入，其实是不行的，当闭合掉原来标签的时候，标签之外字符串就被转义了，也就是上述的&lt;script&gt;以及之后的所有&lt;&gt;均被转义，所以只能采用触发事件导致XSS，但是蘑菇街有他自己的过滤方式。各大事件属性大部分被过滤，比如onload onfocus expression style= alert( onclick 等等好多都被过滤掉了。一开始我以为只是过滤为空，所以测试过使用 ononloadload 这种方式去测试，后来才发现原来过滤的字符替换成了一个空白键。由于我用firefox没有显现出来，所以纳闷了好久，用IE的时候才发现被替换掉了。第二处存在于div标签中，style= 字符串被替换成了空白键，所以使用expression这种方式是行不通了。而绕过alert( 则是可能，使用alert/**/(1)就可以绕过其过滤机制，而且有少部分事件属性并未过滤，这里我采用了onmousewheel属性，就是一个没用过滤的事件，我们在专辑填入dd&quot;/onmousewheel=alert/**/(1)⁠⁠//⁠&gt; 发现在标签处滑动鼠标滚轮，成功弹窗，因为在&gt;之前也会加个空白键，所以后面用//防止代码失效。如图：<br />
+<br />
+  </p><p class="detail"><a href="../images/22181843f630287f536b9fb692c43655fa334487.jpg" target="_blank"><img src="../images/22181843f630287f536b9fb692c43655fa334487.jpg" alt="mogu2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22181923895f62274711096460071d22c3bd5523.jpg" target="_blank"><img src="../images/22181923895f62274711096460071d22c3bd5523.jpg" alt="mogu3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ 两处均发生xss，IE下测试成果，firefox不兼容此事件，所以没有成功。或许还有其他事件没有过滤，这里就没测试了。觉得用户使用滚轮的概率还挺高的。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p><p class="detail"><a href="../images/22181843f630287f536b9fb692c43655fa334487.jpg" target="_blank"><img src="../images/22181843f630287f536b9fb692c43655fa334487.jpg" alt="mogu2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22181923895f62274711096460071d22c3bd5523.jpg" target="_blank"><img src="../images/22181923895f62274711096460071d22c3bd5523.jpg" alt="mogu3.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤双引号和&lt;&gt;，而且采用黑名单的方式是不安全的。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Demon" title="Demon">Demon</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024290" title="蘑菇街绕过过滤机制继续持久XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：9 </p>
+													<p class="detail">确认时间：2013-05-24 10:00</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，会尽快修复，谢谢。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24290";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

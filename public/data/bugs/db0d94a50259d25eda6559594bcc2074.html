@@ -1,0 +1,292 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		猥琐方式再次重置拉手网用户密码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		猥琐方式再次重置拉手网用户密码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/niliu">niliu</a> 
+</li><li>提交时间：		2013-12-27 11:32</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-20：	细节向普通白帽子公开<br/>
+									2014-01-30：	细节向实习白帽子公开<br/>
+									2014-02-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">利用某处设计不当，猥琐方式加组合技能重置拉手网用户密码！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">之前利用手机验证码爆破的方式重置过一次，经过拉手网的修补后，发现利用某处设计不当，组合技能依然可以重置密码。<br />
+<br />
+<br />
+<br />
+重置密码的具体思路，首先我先正常找回自己的密码测试，选择邮箱找回密码，几秒钟后收到一封重置密码的邮件，链接如下：<br />
+<br />
+</p><pre><code>http://lashou.com/account/reset?code=MTg2***5Mjg0MDR8bml***wNjIzfDU0MzAwNTc5MkBxcS***18MTM4ODEwNzg3NnxkNTdhOG****MzYyZjI4MzVmMTE4MWYx***yMDc0Yw%3D%3D</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+重置密码的关键是这段code代码，一眼看出是base64编码，解码后得到如下信息：<br />
+<br />
+</p><pre><code>18*******04|nili***3|54******92@qq.com|1388107876|d57a8aaa3a36****5f1181f1282074c</code></pre><p class='detail'><br />
+<br />
+格式为</p><pre><code>手机号|用户名|邮箱|unix时间戳|未知但固定的md5</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+假如我们想重置密码就必须满足以上条件，那么怎么通过一个用户名来收集这么多的信息呢？<br />
+<br />
+<br />
+<br />
+经过反复测试分析，再用户名找回密码的地方有一个地方设计不当，导致泄露用户邮箱和那个未知但固定的md5，unix时间戳也可以根据找回密码请求的头信息里获得的时间转换得到，那么现在用户名，邮箱，时间戳，md5都有了，如果再有手机号通过排序信息，base64编码，url编码，组合连接不就可以重置密码了么？<br />
+<br />
+<br />
+<br />
+先看一下找回密码处的信息泄露：<br />
+<br />
+找回密码页面</p><pre><code>http://lashou.com/account/resetreq</code></pre><p class='detail'><br />
+<br />
+我就随便写个用户（liu）来测试一下<br />
+<br />
+</p><p class="detail"><a href="../images/27104145826ec04367b1e897b7a68b11788d7d3b.jpg" target="_blank"><img src="../images/27104145826ec04367b1e897b7a68b11788d7d3b.jpg" alt="liu.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+打开firebug，选择网络然后点“找回密码”如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/271045549ca069943548ecba9e722e7939a895a1.jpg" target="_blank"><img src="../images/271045549ca069943548ecba9e722e7939a895a1.jpg" alt="222.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+经过仔细查看，发现在请求信息里面的响应里面，“重发一封邮件”处泄露了一处信息：<br />
+<br />
+</p><pre><code>(&#039;NjAzNzI5MTQxQHFxLmNvbQ==&#039;,&#039;c3225eb1784cc67b464acdd89beab0d3&#039;）</code></pre><p class='detail'><br />
+<br />
+前面的base64解码为用户邮箱：603729141@qq.com<br />
+<br />
+</p><p class="detail"><a href="../images/2710481988de3a4b01a47f2abc1583b273868bca.jpg" target="_blank"><img src="../images/2710481988de3a4b01a47f2abc1583b273868bca.jpg" alt="1去.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+经过对自己账号的测试进行对比，发现此处md5就是找回密码连接中的那个md5。<br />
+<br />
+<br />
+<br />
+再看看时间戳，在请求的头信息中看下时间，为 Date	Fri, 27 Dec 2013 02:43:01 GMT<br />
+<br />
+</p><p class="detail"><a href="../images/271050458dd1146f78ecd5607afc8f1d2daf6986.jpg" target="_blank"><img src="../images/271050458dd1146f78ecd5607afc8f1d2daf6986.jpg" alt="2我.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这里的小时需要加上8小时，也就是 （Fri, 27 Dec 2013 10:43:01）然后转换一下即可得到时间戳 （1388112181）<br />
+<br />
+</p><p class="detail"><a href="../images/271052452faa99b476d2e07ae74210716972cd46.jpg" target="_blank"><img src="../images/271052452faa99b476d2e07ae74210716972cd46.jpg" alt="3额.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+现在利用用户名找回密码得到了邮箱，时间戳，md5，接下来只要知道手机号就可以了。<br />
+<br />
+那么怎么得到手机号呢，还真是个问题，遍历分站，wap站找回密码，遗憾的是没有找到可利用的地方，换个思路，其实知道用户名，邮箱（而且是qq邮箱）想知道手机号其实并不难，百度，谷歌，甚至社工库，通过用户名，qq得到手机号几率还是比较大的。这里我就不花时间去社工了。<br />
+<br />
+<br />
+<br />
+这里我就利用拉手网自己泄露给我的信息来测试吧。<br />
+<br />
+拉手网的抽奖活动结果会在官网上公开发布。<br />
+<br />
+谷歌一下：</p><pre><code>site:lashou.com 手机号 中奖结果</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/27105748eb80c7ef92ec549bf609ede382e9b5e6.jpg" target="_blank"><img src="../images/27105748eb80c7ef92ec549bf609ede382e9b5e6.jpg" alt="0.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+出来一堆，其中有一些页面由于编辑疏忽，忘记打码处理了。<br />
+<br />
+链接：</p><pre><code>http://www.lashou.com/event/lottery.php?id=7348817&amp;act=result</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/27105924f75808c595118ed1fa8d2b533d43654a.jpg" target="_blank"><img src="../images/27105924f75808c595118ed1fa8d2b533d43654a.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>mishzswtion 	15236805255<br />
+易成利 	18320960258<br />
+方空绝 	18705592243</code></pre><p class='detail'><br />
+<br />
+那我就那他们测试了。<br />
+<br />
+<br />
+<br />
+利用上面说的方法，重置用户（mishzswtion）<br />
+<br />
+首先先以用户名找回密码，获取到邮箱，md5，时间戳等信息。<br />
+<br />
+</p><p class="detail"><a href="../images/271109366f07f61e5e7eefe97d69d26cf5e8d63f.jpg" target="_blank"><img src="../images/271109366f07f61e5e7eefe97d69d26cf5e8d63f.jpg" alt="4R.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>MzE0OTQ1ODEyQHFxLmNvbQ==&#039;,&#039;a12e98856f0cbdffd29d0e27663578c5&#039;</code></pre><p class='detail'><br />
+<br />
+MzE0OTQ1ODEyQHFxLmNvbQ==解密邮箱为：314945812@qq.com<br />
+<br />
+Fri, 27 Dec 2013 03:01:31 GMT 加8小时转换unix时间戳为：1388113291<br />
+<br />
+用户名手机号已知信息，组合得到<br />
+<br />
+</p><pre><code>15236805255|mishzswtion|314945812@qq.com|1388113291|a12e98856f0cbdffd29d0e27663578c5</code></pre><p class='detail'><br />
+<br />
+base64编码得到：</p><pre><code>MTUyMzY4MDUyNTV8bWlzaHpzd3Rpb258MzE0OTQ1ODEyQHFxLmNvbXwxMzg4MTEzMjkxfGExMmU5ODg1NmYwY2JkZmZkMjlkMGUyNzY2MzU3OGM1</code></pre><p class='detail'><br />
+<br />
+组合密码重置连接得到：</p><pre><code>http://lashou.com/account/reset?code=MTUyMzY4MDUyNTV8bWlzaHpzd3Rpb258MzE0OTQ1ODEyQHFxLmNvbXwxMzg4MTEzMjkxfGExMmU5ODg1NmYwY2JkZmZkMjlkMGUyNzY2MzU3OGM1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+访问即可重置用户密码<br />
+<br />
+</p><p class="detail"><a href="../images/27111246c27dee64fe8368155a5e6ecf335af9fe.jpg" target="_blank"><img src="../images/27111246c27dee64fe8368155a5e6ecf335af9fe.jpg" alt="HAHA.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/271113040d106d486f3c972267f15c31932be6c0.jpg" target="_blank"><img src="../images/271113040d106d486f3c972267f15c31932be6c0.jpg" alt="HAHAHA.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+登陆一下测试<br />
+<br />
+</p><p class="detail"><a href="../images/271113392871c91f531874573e67f71367d2489f.jpg" target="_blank"><img src="../images/271113392871c91f531874573e67f71367d2489f.jpg" alt="mishzswtion.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/27111358f19aeb54c60867f6943f43d4c8a1ba9c.jpg" target="_blank"><img src="../images/27111358f19aeb54c60867f6943f43d4c8a1ba9c.jpg" alt="mishzswtion2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+成功登陆。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">mishzswtion <br />
+<br />
+</p><p class="detail"><a href="../images/271113392871c91f531874573e67f71367d2489f.jpg" target="_blank"><img src="../images/271113392871c91f531874573e67f71367d2489f.jpg" alt="mishzswtion.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/27111358f19aeb54c60867f6943f43d4c8a1ba9c.jpg" target="_blank"><img src="../images/27111358f19aeb54c60867f6943f43d4c8a1ba9c.jpg" alt="mishzswtion2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">屏蔽“再发一封邮件”处的信息泄露。<br />
+<br />
+求20rank！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/niliu" title="niliu">niliu</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047145" title="猥琐方式再次重置拉手网用户密码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-12-31 10:03</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">我通知开发修补，感谢！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47145";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

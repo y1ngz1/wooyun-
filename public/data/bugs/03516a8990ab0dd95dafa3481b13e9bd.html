@@ -1,0 +1,372 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		爱丽27.cn源码下载  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		爱丽27.cn源码下载  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/loopx9">loopx9</a> 
+</li><li>提交时间：		2012-06-12 14:30</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-12：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-07-27：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">nginx应该是取消了php解析导致下载漏洞产生</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">php没有解析直接出源码. </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>http://www.27.cn/global.php</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.27.cn/include/data.class.php</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+/**<br />
+ * [aili.com] (C)2001-2009 aili.com Inc.<br />
+ * This is NOT a freeware, use is subject to license terms<br />
+ * $RCFfile: data.class.php $<br />
+ * $Revision: 1.1 $<br />
+ * $Date: 2009/08/25 17:45:00 $<br />
+ */<br />
+<br />
+/**<br />
+ * This is a class to database and create the thumbs for them.<br />
+ * require global.php data.class.php<br />
+ */<br />
+<br />
+if(!defined(&#039;IN_CMS&#039;)) {<br />
+	exit(&#039;Access Denied&#039;);<br />
+}<br />
+<br />
+class DBbase_Sql {<br />
+	var $Host     = &#039;localhost&#039;;<br />
+	var $Database = &#039;newcms&#039;;<br />
+	var $User     = &#039;new27cn&#039;;<br />
+	var $Password = &#039;FD%^%df5636FPEe6546PRVCME&#039;;<br />
+	var $Link_ID  = 0;<br />
+	var $Query_ID = 0;<br />
+	var $Record   = array();<br />
+	var $Row;<br />
+	var $Errno    = 0;<br />
+	var $Error    = &quot;&quot;;<br />
+	var $Auto_free   = 0;<br />
+	var $Auto_commit = 0;<br />
+<br />
+	function connect(){<br />
+/*		if ( 0 == $this-&gt;Link_ID ){<br />
+			$this-&gt;Link_ID=mysql_connect($this-&gt;Host, $this-&gt;User, $this-&gt;Password);<br />
+			if (!$this-&gt;Link_ID) {<br />
+				$this-&gt;halt(&quot;Link-ID == false, connect failed&quot;);<br />
+			}<br />
+			if (!mysql_query(sprintf(&quot;use %s&quot;,$this-&gt;Database),$this-&gt;Link_ID)) {<br />
+				$this-&gt;halt(&quot;cannot use database &quot;.$this-&gt;Database);<br />
+			}<br />
+		}*/<br />
+		if ( 0 == $this-&gt;Link_ID ){<br />
+			$this-&gt;Link_ID=mysql_connect($this-&gt;Host, $this-&gt;User, $this-&gt;Password);<br />
+			if (!$this-&gt;Link_ID) {<br />
+				$this-&gt;halt(&quot;Link-ID == false, connect failed&quot;);<br />
+			}<br />
+			if (!mysql_select_db($this-&gt;Database,$this-&gt;Link_ID)) {<br />
+				$this-&gt;halt(&quot;cannot use database &quot;.$this-&gt;Database);<br />
+			}<br />
+		}<br />
+		if(!mysql_ping($this-&gt;Link_ID)) {<br />
+		 mysql_close($this-&gt;Link_ID);<br />
+		$this-&gt;Link_ID = 0;<br />
+		$this-&gt;Link_ID = $this-&gt;connect();<br />
+		}<br />
+	}<br />
+<br />
+	function query($Query_String){<br />
+		$this-&gt;connect();<br />
+		mysql_query(&quot;SET NAMES gbk&quot;,$this-&gt;Link_ID);<br />
+		$this-&gt;Query_ID = mysql_query($Query_String,$this-&gt;Link_ID);<br />
+		$this-&gt;outputsql($Query_String);<br />
+		$this-&gt;Row = 0;<br />
+		$this-&gt;Error = $this-&gt;Database;<br />
+		if (!$this-&gt;Query_ID) {<br />
+		  $this-&gt;halt(&quot;Invalid SQL: &quot;.$Query_String);<br />
+		}<br />
+		return $this-&gt;Query_ID;<br />
+	}<br />
+	function outputsql($Query_String){<br />
+		if($_GET[&#039;sql_debug_open&#039;]==&#039;debug&#039;){<br />
+			@file_put_contents(&#039;sql.log&#039;,$Query_String.&quot;\r\n&quot;,FILE_APPEND);<br />
+		}<br />
+		$this-&gt;Query_String=$Query_String;<br />
+	}<br />
+	function fetch_array(){<br />
+		return mysql_fetch_array($this-&gt;Query_ID);<br />
+	}<br />
+<br />
+	function next_record(){<br />
+		$this-&gt;Record = mysql_fetch_array($this-&gt;Query_ID);<br />
+		$this-&gt;Row += 1;<br />
+		$stat = is_array($this-&gt;Record);<br />
+		if (!$stat &amp;&amp; $this-&gt;Auto_free) {<br />
+			mysql_free_result($this-&gt;Query_ID);<br />
+			$this-&gt;Query_ID = 0;<br />
+		}<br />
+		return $stat;<br />
+	}<br />
+<br />
+	function seek($pos){<br />
+		$status = mysql_data_seek($this-&gt;Query_ID, $pos);<br />
+		if ($status) {<br />
+			$this-&gt;Row = $pos;<br />
+		}<br />
+		return;<br />
+	}<br />
+<br />
+	function metadata($table){<br />
+		$count = 0;<br />
+		$id    = 0;<br />
+		$res   = array();<br />
+		$this-&gt;connect();<br />
+		$id = @mysql_list_fields($this-&gt;Database, $table);<br />
+		if ($id &lt; 0) {<br />
+			$this-&gt;halt(&quot;Metadata query failed.&quot;);<br />
+		}<br />
+		$count = mysql_num_fields($id);<br />
+		for ($i=0; $i&lt;$count; $i++) {<br />
+			$res[$i][&quot;table&quot;] = mysql_field_table ($id, $i);<br />
+			$res[$i][&quot;name&quot;]  = mysql_field_name  ($id, $i);<br />
+			$res[$i][&quot;type&quot;]  = mysql_field_type  ($id, $i);<br />
+			$res[$i][&quot;len&quot;]   = mysql_field_len   ($id, $i);<br />
+			$res[$i][&quot;flags&quot;] = mysql_field_flags ($id, $i);<br />
+			$res[&quot;meta&quot;][$res[$i][&quot;name&quot;]] = $i;<br />
+			$res[&quot;num_fields&quot;]= $count;<br />
+		}<br />
+		mysql_free_result($id);<br />
+		return $res;<br />
+	}<br />
+<br />
+	function affected_rows(){<br />
+		return mysql_affected_rows($this-&gt;Link_ID);<br />
+	}<br />
+<br />
+	function num_rows(){<br />
+		return mysql_num_rows($this-&gt;Query_ID);<br />
+	}<br />
+<br />
+	function num_fields(){<br />
+		return mysql_num_fields($this-&gt;Query_ID);<br />
+	}<br />
+<br />
+	function nf(){<br />
+		return $this-&gt;num_rows();<br />
+	}<br />
+<br />
+	function f($Name){<br />
+		return $this-&gt;Record[$Name];<br />
+	}<br />
+<br />
+	function pos(){<br />
+		return $this-&gt;Row;<br />
+	}<br />
+<br />
+	function instid(){<br />
+		return mysql_insert_id($this-&gt;Link_ID);<br />
+	}<br />
+<br />
+	function substr_cut($str_cut,$length = 30){  <br />
+		if (strlen($str_cut) &gt; $length){ <br />
+			for($i=0; $i &lt; $length; $i++){ <br />
+				if (ord($str_cut[$i]) &gt; 128){<br />
+					$i++;<br />
+				}	<br />
+				$str_cut = substr($str_cut,0,$i); <br />
+			}<br />
+			return $str_cut;<br />
+		}<br />
+	}<br />
+<br />
+	function halt($message){<br />
+		printf(&quot;System Maintenance......&lt;br&gt;Please wait Try.&quot;.$message);<br />
+	}<br />
+ <br />
+	function escape_string($message){<br />
+		return mysql_escape_string($message);<br />
+	}<br />
+ <br />
+	function strformat($message){<br />
+		return stripslashes($message);<br />
+	}<br />
+  <br />
+	function in_($message){<br />
+		$message = str_replace(&#039;&amp;amp;&#039;,&#039;&amp;&#039;,$message);<br />
+		$message = str_replace(&#039;&amp;nbsp;&#039;,&#039; &#039;,$message);<br />
+		$message = str_replace(&#039;&quot;&#039;,&#039;&amp;quot;&#039;,$message);<br />
+		$message = str_replace(&quot;&#039;&quot;,&#039;&amp;#39;&#039;,$message);<br />
+		$message = str_replace(&quot;&lt;&quot;,&quot;&amp;lt;&quot;,$message);<br />
+		$message = str_replace(&quot;&gt;&quot;,&quot;&amp;gt;&quot;,$message);<br />
+		$message = str_replace(&quot;\t&quot;,&quot;&amp;nbsp;&amp;nbsp;&quot;,$message);<br />
+		$message = str_replace(&quot;\r&quot;,&quot;&quot;,$message);<br />
+		$message = str_replace(&quot; &quot;,&quot;&amp;nbsp;&quot;,$message);<br />
+		$message=str_replace(&quot;(&quot;,&quot;?&quot;,$message);<br />
+		$message=str_replace(&quot;)&quot;,&quot;?&quot;,$message);<br />
+		$message=addslashes($message);<br />
+		return $message;<br />
+	}<br />
+ <br />
+	function out_($message){<br />
+		$message=str_replace(&quot;&#039;&quot;,&quot;?&quot;,$message);<br />
+		$message=str_replace(&quot;;&quot;,&quot;?&quot;,$message);<br />
+		$message=str_replace(&quot;(&quot;,&quot; (&quot;,$message);<br />
+		$message=str_replace(&quot;)&quot;,&quot;?&quot;,$message);<br />
+		$message=ereg_replace(&quot; {2}&quot;,&quot;&amp;nbsp;&amp;nbsp;&quot;,nl2br(htmlspecialchars(stripslashes($message)))); <br />
+		return $message;<br />
+	}<br />
+ <br />
+	function trimall(&amp;$items){<br />
+		 array_walk($items,&quot;trim_value&quot;);<br />
+	}<br />
+  <br />
+	function trim_value(&amp;$value){ <br />
+		$value = trim($value); <br />
+	}<br />
+<br />
+	function free_result(){<br />
+		mysql_free_result($this-&gt;Query_ID);<br />
+	}<br />
+<br />
+	function close_mysql(){<br />
+		mysql_close($this-&gt;Link_ID);<br />
+	}<br />
+<br />
+}<br />
+?&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/loopx9" title="loopx9">loopx9</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08213" title="爱丽27.cn源码下载">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：7 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8213";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

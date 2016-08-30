@@ -1,0 +1,244 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ2013最新版远程拒绝服务漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ2013最新版远程拒绝服务漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/nine8">nine8</a> 
+</li><li>提交时间：		2013-06-05 10:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-08：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-25：	细节向普通白帽子公开<br/>
+									2013-07-15：	细节向实习白帽子公开<br/>
+									2013-09-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQ2013最新版存在一处远程拒绝服务漏洞。TSRC审核二进制客户端的自己都不懂，拿什么审核别人。<br />
+<br />
+QQ2013是腾讯公司开发的知名即时通讯软件QQ系列的最新版本，进行了更多细节上的优化，最早测试版本于2012年11月09日上线。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">QQ2013用户登陆后，common.dll模块会创建命名管道，问题出在连接后，被释放，会尝试往内核地址写1，导致Write Acess Violation，引起远程拒绝服务。<br />
+<br />
+<br />
+<br />
+ IDA for Common.dll (数字签名时间2013年5月13日)<br />
+<br />
+<br />
+<br />
+</p><pre><code>.text:300CEFF2                                         ; sub_300CEEB4+4Dj ...<br />
+.text:300CEFF2                 push    [ebp+hObject]   ; hFile<br />
+.text:300CEFF5                 call    ds:FlushFileBuffers<br />
+.text:300CEFFB                 push    [ebp+hObject]   ; hNamedPipe<br />
+.text:300CEFFE                 call    ds:DisconnectNamedPipe<br />
+.text:300CF004                 push    [ebp+hObject]   ; hObject<br />
+.text:300CF007                 call    ds:CloseHandle<br />
+.text:300CF00D                 cmp     [ebp+var_8], ebx<br />
+.text:300CF010                 jnz     short loc_300CF022<br />
+.text:300CF012                 mov     ecx, [ebp+var_C] ; void *<br />
+.text:300CF015                 cmp     ecx, ebx<br />
+.text:300CF017                 jz      short loc_300CF02C<br />
+.text:300CF019                 push    1               ; char<br />
+.text:300CF01B                 call    sub_300CC1A3<br />
+.text:300CF020                 jmp     short loc_300CF02C<br />
+.text:300CF022 ; ---------------------------------------------------------------------------<br />
+.text:300CF022<br />
+.text:300CF022 loc_300CF022:                           ; CODE XREF: sub_300CEEB4+15Cj<br />
+.text:300CF022                 mov     eax, [ebp+var_C]<br />
+.text:300CF025                 mov     dword ptr [eax+18h], 1 ; &lt;-- !!!<br />
+.text:300CF02C<br />
+.text:300CF02C loc_300CF02C:                           ; CODE XREF: sub_300CEEB4+163j<br />
+.text:300CF02C                                         ; sub_300CEEB4+16Cj</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">录了个视频，不知道传哪？<br />
+<br />
+<br />
+<br />
+懂的人，根绝描述，很容易写出稳定的远程拒绝服务的POC/EXP，攻击条件，知道IP, QQ号，开个共享文件夹即可。<br />
+<br />
+<br />
+<br />
+crash info<br />
+<br />
+</p><pre><code>Microsoft Windows XP Service Pack 3 [Build 5.1.2600]<br />
+CPU:         Intel(R) Core(TM) i3-2120 CPU @ 3.30GHz<br />
+QQ 0.00.26183  2D5902422F77DC3E77DA8599FDB31085<br />
+----------------------------------------<br />
+Type: EXCEPTION_ACCESS_VIOLATION<br />
+Error: Write address 0x806D3C4D<br />
+Address: 300CF025<br />
+<br />
+CallStack:<br />
+0x30000000[CF025] Common.dll: (0000093C,0262FC70,00160000,0559DF08)<br />
+<br />
+Regs:<br />
+EAX=806D3C35, EBX=00000000, ECX=0A63FF7C, EDX=7C92E4F4<br />
+ESI=00064000, EDI=0505E580, EBP=0A63FFB4, ESP=0A63FF94, EIP=300CF025<br />
+<br />
+DWORDs at CS:EIP:<br />
+011840C7 5F000000 405EC033 04C2C95B B80C6A00 3013CDD7 05F6F5E8 8DFF3300 <br />
+pid=000004E0 init_tid=00000B74 crashtid=00000CAC<br />
+DWORDs at teb:<br />
+0A63F6B8 0A640000 0A63D000 00000000 00001E00 00000000 7FF83000 00000000 000004E0 00000CAC 00000000 00000000 7FFDB000 00000000 00000000 00000000 00000000</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/04233309355ca7161680d6ab09b179afb42b395f.png" target="_blank"><img src="../images/04233309355ca7161680d6ab09b179afb42b395f.png" alt="xxx.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+QQ2013在启动登陆后，其Common.dll默块会创建命名管道 QQ_qq号码_pipe的命名管道，可以远程打开，问题出在打开关闭后，调用DisconnectNamedPipe，判断返回值后，会跳转一分支，会尝试往非法的内核地址写1，导致Write Acess Violation，引起远程拒绝服务。<br />
+<br />
+<br />
+<br />
+利用场景：<br />
+<br />
+知道对方IP和QQ号码，对方开放文件共享即可，通过远程连接被攻击者的命名管道，然后断开命名管道的连接即可触发问题，使对方的QQ瞬间crash掉，安全软件、防火墙均无法防护，非常稳定。<br />
+<br />
+接打开命名管道，然后sleep几秒ExitProcess即可。很好写。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/nine8" title="nine8">nine8</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025164" title="QQ2013最新版远程拒绝服务漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-06-05 14:11</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，已经在修复中……</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25164";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,186 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		好孩子某站点存在支付漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		好孩子某站点存在支付漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/风萧萧">风萧萧</a> 
+</li><li>提交时间：		2012-09-14 19:06</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-09-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-04：	细节向普通白帽子公开<br/>
+									2012-10-14：	细节向实习白帽子公开<br/>
+									2012-10-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">最近好孩子网站很火，我也来凑个热闹。有礼物么？</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.存在支付漏洞的是下面这个站点：好孩子集团网上旗舰店</p><pre><code>http://www.haohaizi.com/</code></pre><p class='detail'></p><p class="detail"><a href="../images/1418525474d8e3289f20848af16d18ce18132027.jpg" target="_blank"><img src="../images/1418525474d8e3289f20848af16d18ce18132027.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+2.买一件小短裤送给灾区的小朋友吧，俺也是个很有爱心的人呢！</p><p class="detail"><a href="../images/14185420082299bf4974f7d6d4f5e93ea2ede954.jpg" target="_blank"><img src="../images/14185420082299bf4974f7d6d4f5e93ea2ede954.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+3.抓包查看提交的信息：</p><p class="detail"><a href="../images/14185606084ab4b51922a78b3b509f7a5bfbd0bb.jpg" target="_blank"><img src="../images/14185606084ab4b51922a78b3b509f7a5bfbd0bb.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+4.POST的数据中不难看出，虽然商品的金额使用goodsIds参数在服务器端获得，但是数量参数counts这里是不是能改下呢？尝试改成-1，点击forward提交：</p><pre><code>act=addCartGoods&amp;goodsIds=1448279&amp;counts=1&amp;bigorsmalls=2</code></pre><p class='detail'><br />
+<br />
+5.查看返回结果，金额确实也是负数了，怎么办！</p><p class="detail"><a href="../images/14190007d45d91eecce03dddf334da9f91bad51d.jpg" target="_blank"><img src="../images/14190007d45d91eecce03dddf334da9f91bad51d.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">6.再买两件衣服吧，一共只需要9元：</p><p class="detail"><a href="../images/14190050ebe9b26238f52714a69e660d0ea629ae.jpg" target="_blank"><img src="../images/14190050ebe9b26238f52714a69e660d0ea629ae.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+7.点击结算，查看订单信息如下，嗯，加上18元的快递费，仍然只需要付27元哦！</p><p class="detail"><a href="../images/141902168d68715d680ee153bfa77197d2343b68.jpg" target="_blank"><img src="../images/141902168d68715d680ee153bfa77197d2343b68.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+8.选择网上银行支付，支付的金额仍是27元哪！测试到这里就结束了，话说有礼物么？</p><p class="detail"><a href="../images/1419033647f8837b601718af6dec77c4c6b57f64.jpg" target="_blank"><img src="../images/1419033647f8837b601718af6dec77c4c6b57f64.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.像金额这样的信息不要放在页面上，确实有随时被篡改的风险，这些信息本来就在数据库中，可以定义一个字符型的字段代替金额的传输，或者直接由商品唯一标识来查询数据库得到金额；<br />
+<br />
+2.签名校验是最重要的了，将购买的商品、数量、金额（或替代字段）、订单的ID号生成一个校验字符串。在每次数据传输的过程中进行校验，当然这个校验的内容可以多次生成；<br />
+<br />
+3.银行或者第三方支付平台的支付接口都会检验商户的订单数据签名，这里当支付页面跳转到块钱的时候没有做签名校验，导致金额数据被篡改，请进一步确认接口问题；<br />
+<br />
+4.支付前需要做签名校验，支付之后同样需要再次做校验，按理说所有银行应该在支付完成之后返回一些信息（如支付金额等）给商户，这样可以通过回来的信息判断是否全额支付；<br />
+<br />
+5.还有什么比SSL更可靠的呢！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/风萧萧" title="风萧萧">风萧萧</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012225" title="好孩子某站点存在支付漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2012-09-14 20:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢。<br />
+传统企业必须人工确认才能继续，算是我们的一道防线。<br />
+不过确实是个挺大的问题，如果我们有自动拆单或自审核之类就能造成大漏子了。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12225";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		SDCMS后台绕过直接进入,一种不常见的设计失误案例  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		SDCMS后台绕过直接进入,一种不常见的设计失误案例  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/ziwen">ziwen</a> 
+</li><li>提交时间：		2013-04-24 12:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-27：	细节向第三方安全合作伙伴开放<br/>
+									2013-05-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-14：	细节向普通白帽子公开<br/>
+									2013-06-03：	细节向实习白帽子公开<br/>
+									2013-07-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">SDCMS后台绕过直接进入：测试版本2.0 beta2 其他版本未测试</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>Islogin //判断登录的方法<br />
+sub islogin()<br />
+if sdcms.strlen(adminid)=0 or sdcms.strlen(adminname)=0 then <br />
+dim t0,t1,t2 <br />
+t0=sdcms.getint(sdcms.loadcookie(&quot;adminid&quot;),0) loadcookie <br />
+t1=sdcms.loadcookie(&quot;islogin&quot;)<br />
+t2=sdcms.loadcookie(&quot;loginkey&quot;)<br />
+if sdcms.strlen(t0)=0 or sdcms.strlen(t1)=0 or sdcms.strlen(t2)&lt;&gt;50 then //这里判断很坑爹 sdcms.strlen(t2)&lt;&gt;50 loginkey 没有任何要求 只需要输入50个即可往下执行<br />
+//<br />
+sdcms.go &quot;login.asp?act=out&quot;<br />
+exit sub<br />
+else<br />
+dim data<br />
+data=sdcms.db.dbload(1,&quot;adminid,adminname,adminpass,islock,groupid,g.pagelever,g.catearray,g.catelever&quot;,&quot;sd_admin u left join sd_admin_group g on u.groupid=g.id&quot;,&quot;adminid=&quot;&amp;t0&amp;&quot;&quot;,&quot;&quot;) //根据管理员ID查询 ID可控<br />
+if ubound(data)&lt;0 then<br />
+sdcms.go &quot;login.asp?act=out&quot;<br />
+exit sub<br />
+else<br />
+if instr(data(1,0)&amp;data(2,0),sdcms.decrypt(t1,t2))&lt;0 or data(3,0)=0 then<br />
+sdcms.go &quot;login.asp?act=out&quot;<br />
+exit sub<br />
+else<br />
+adminid=data(0,0)<br />
+adminname=data(1,0)<br />
+admin_page_lever=data(5,0)<br />
+admin_cate_array=data(6,0)<br />
+admin_cate_lever=data(7,0)<br />
+if sdcms.strlen(admin_page_lever)=0 then admin_page_lever=0<br />
+if sdcms.strlen(admin_cate_array)=0 then admin_cate_array=0<br />
+if sdcms.strlen(admin_cate_lever)=0 then admin_cate_lever=0<br />
+if clng(admingroupid)&lt;&gt;0 then<br />
+admin_lever_where=&quot; and menuid in(&quot;&amp;admin_page_lever&amp;&quot;)&quot;<br />
+end if<br />
+sdcms.setsession &quot;adminid&quot;,adminid<br />
+sdcms.setsession &quot;adminname&quot;,adminname<br />
+sdcms.setsession &quot;admingroupid&quot;,data(4,0)<br />
+end if<br />
+end if<br />
+end if<br />
+else<br />
+data=sdcms.db.dbload(1,&quot;g.pagelever,g.catearray,g.catelever&quot;,&quot;sd_admin u left join sd_admin_group g on u.groupid=g.id&quot;,&quot;adminid=&quot;&amp;adminid&amp;&quot;&quot;,&quot;&quot;)<br />
+if ubound(data)&lt;0 then<br />
+sdcms.go &quot;login.asp?act=out&quot;<br />
+exit sub<br />
+else<br />
+admin_page_lever=data(0,0)<br />
+admin_cate_array=data(1,0)<br />
+admin_cate_lever=data(2,0)<br />
+if sdcms.strlen(admin_page_lever)=0 then admin_page_lever=0<br />
+if sdcms.strlen(admin_cate_array)=0 then admin_cate_array=0<br />
+if sdcms.strlen(admin_cate_lever)=0 then admin_cate_lever=0<br />
+if clng(admingroupid)&lt;&gt;0 then<br />
+admin_lever_where=&quot; and menuid in(&quot;&amp;admin_page_lever&amp;&quot;)&quot;<br />
+end if<br />
+end if<br />
+end if<br />
+end sub</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">看看操作COOKIE的函数<br />
+<br />
+</p><pre><code>public function loadcookie(t0)<br />
+loadcookie=request.cookies(prefix&amp;t0)<br />
+end function<br />
+public sub setcookie(byval t0,byval t1)<br />
+response.cookies(prefix&amp;t0)=t1<br />
+end sub<br />
+prefix<br />
+&#039;变量前缀，如一个空间下多次使用本程序的话，请每个程序配置不同的值<br />
+dim prefix<br />
+prefix=&quot;1Jb8Ob&quot;<br />
+&#039;这个值访问一下admin/login.asp?act=out 便可得到 在COOKIE里 <br />
+sub out<br />
+sdcms.setsession &quot;adminid&quot;,&quot;&quot;<br />
+sdcms.setsession &quot;adminname&quot;,&quot;&quot;<br />
+sdcms.setsession &quot;admingroupid&quot;,&quot;&quot;<br />
+sdcms.setcookie &quot;adminid&quot;,&quot;&quot;<br />
+sdcms.setcookie &quot;loginkey&quot;,&quot;&quot;<br />
+sdcms.setcookie &quot;islogin&quot;,&quot;&quot;<br />
+sdcms.go &quot;login.asp&quot;<br />
+end sub</code></pre><p class='detail'><br />
+<br />
+利用方法：设置cookie prefixloginkey 50个字符 prefixislogin 随意 循环下prefixadminid 即可 默认1 然后访问后台，就可以了！ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修改函数！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/ziwen" title="ziwen">ziwen</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021989" title="SDCMS后台绕过直接进入,一种不常见的设计失误案例">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-04-24 13:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">打开lib/cmd.asp<br />
+找到“if instr(data(1,0)&amp;data(2,0),sdcms.decrypt(t1,t2))&lt;0 or data(3,0)=0 then<br />
+”修改为<br />
+if instr(data(1,0)&amp;data(2,0),sdcms.decrypt(t1,t2))&lt;=0 or data(3,0)=0 then<br />
+即可<br />
+同时：可以更改默认的后台目录<br />
+PS：感谢ziwen </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21989";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

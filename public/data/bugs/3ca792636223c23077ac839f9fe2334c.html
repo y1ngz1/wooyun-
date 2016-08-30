@@ -1,0 +1,326 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国电信某核心业务监控平台沦陷引发内网信息泄漏  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国电信某核心业务监控平台沦陷引发内网信息泄漏  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/hacker@sina.cn">hacker@sina.cn</a> 
+</li><li>提交时间：		2013-12-23 11:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-16：	细节向普通白帽子公开<br/>
+									2014-01-26：	细节向实习白帽子公开<br/>
+									2014-02-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">为了感谢电信的节前礼物，特意在节前挖了点漏洞送你们，是不是很没节操？工程师蛋碎了有木有？呵呵呵呵呵</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这套系统隶属21CN技术总部，作为邮箱系统的监控平台而存在。<br />
+<br />
+电信大内网10.62段，负责监控189邮箱系统、21CN邮箱系统、BNET网等。<br />
+<br />
+自我判断所有邮箱系统核心业务段都是其负责监控。<br />
+<br />
+<br />
+<br />
+做监控的主机有什么危害？他能监控别人，就意味着几乎可以不受限制的访问对方，这就是一个最佳跳板！很少管理员会想去做监控主机的ACL<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+脆弱点：<br />
+<br />
+1.Ipswitch WhatsUp Gold监控平台默认口令 admin/admin<br />
+<br />
+2.SA权限SQL注入可执行任意系统命令<br />
+<br />
+3.敏感信息泄漏<br />
+<br />
+<br />
+<br />
+第一个就不说了，安全意识问题，其中SQL注入这个问题完全是人为原因导致,本来也没什么，这套系统自身很安全，而且只把WEB管理端的端口映射了出来，虽然有默认管理口令，也顶多看看内网的IP地址主机名什么的，因为电信监控架构的原因，实质上这个监控平台只是依靠PING做一些网路连通性检测，没有部署其他操作执行的权限，至此危害并不大。<br />
+<br />
+<br />
+<br />
+但工程师可能觉得看着英文界面不爽 还是操作麻烦怎么滴，自己写了一个业务状态统合统计页面。这就坑爹了，就是这个页面参数没过滤，直接导致了SA权注入，这套享誉业界的Whatsup监控系统默认会安装MSSQL组件作为默认存储数据库，默认帐号就是SA用户，可见当初安装时并未做降权处理而是直接采用了默认配置。<br />
+<br />
+<br />
+<br />
+上个月发现这个点的时候，脑抽了一阵，本来可以速战速决的，但是不知当时是怎么的，愣是以为这台机器只映射出来个管理端口，自身无法联网。好像当时是执行了个telnet 测试到我VPS的nc监听端口没出来,要不然直接种个后门反弹出来。接着暴不到网站路径，用master..xp_cmdshell 写猜的c:\inetpub\wwwroot\1.asp也访问不到(因为网站不是这个路径)。注入点无法用工具跑，没法列目录什么的(后来看到asp文件里的SQL语句我都哭了)。呵呵呵 当时我都放弃了 嫌麻烦。因为也不知道这东西有什么价值，要不是电信这几天送我礼物我都想不起来。<br />
+<br />
+<br />
+<br />
+18号接到CNVD的信后，一下子心情就不一样了，好像终于见到回头钱了一样。逐决定把这些以前没心思看的重新捡起来试试。<br />
+<br />
+<br />
+<br />
+其实当时的测试是非常不严谨的，毕竟测试系统是否能联网的方式有很多种，telnet、ftp、一句话wget.vbs什么的 ,我当时只采取了第一种方式，所以这次本也以为他无法外连的(惯性思维了 啪&gt;_&lt;#!)，就去找了Ipswitch的破解版拉到本地安装了一番（几百兆啊我去！网通2M小水管下了半天啊有木有！！）。找到了如下信息：<br />
+<br />
+<br />
+<br />
+默认SA口令：WhatsUp_Gold<br />
+<br />
+默认管理员：admin/admin<br />
+<br />
+默认安装后的网站路径：C:\Program Files\Ipswitch\WhatsUp\HTML<br />
+<br />
+<br />
+<br />
+知道路径后开始尝试echo一句话到C:\Program Files\Ipswitch\WhatsUp\HTML\1.asp,访问404 玻璃心都碎了有木有。<br />
+<br />
+<br />
+<br />
+然后开始猛击键盘泄愤，敲着敲着蹦出来个D:\Program Files\Ipswitch\WhatsUp\HTML\1.asp，瞬间脑抽痊愈，路径正确，访问成功。 果然管理员是把监控装在了D盘，可能觉得系统盘不好吧？呵呵呵，其实我特别不理解一块硬盘或作了RAID的情况，然后觉得C盘东西多影响系统速度的思维。以前搞外国人的网站人家什么都装C盘里 呵呵呵。<br />
+<br />
+<br />
+<br />
+拿到shell抓了下密码管理，发现内网一些WIN服务器可登录哦！其中一台主机名为：YT-VPN2 呵呵呵，这什么节奏？我没细看了。这要做测评肯定不合规，呵呵呵，口令怎么能通用呢。<br />
+<br />
+<br />
+<br />
+c段开放3389端口的机器：<br />
+<br />
+10.62.13.18 监控本机<br />
+<br />
+10.62.13.19 YT-VPN2<br />
+<br />
+10.62.13.50<br />
+<br />
+10.62.13.53<br />
+<br />
+<br />
+<br />
+接下来讲讲敏感信息泄漏的事儿：<br />
+<br />
+访问网站点击右侧的“监控点清单”直接列出来所有监控目标项目了，不觉得这很坑爹么？连后台都不用登录。<br />
+<br />
+http://121.14.53.189:58000/MonitorList.asp<br />
+<br />
+连检测脚本也可以看到，有的服务测试帐号密码也可见呦<br />
+<br />
+http://121.14.53.189:58000/MonitorCheckScriptList.asp<br />
+<br />
+<br />
+<br />
+回到服务器上，翻目录发现D盘有个“中国电信集团电子邮件和网络存储系统设备信息统计.xls” 这个文档其实是被加密了，管理员还是有点安全意识的，可没人告诉过他这种97式office的打开密码可以被移除么？赶紧换xlsx的ASE加密吧，咳咳咳。<br />
+<br />
+<br />
+<br />
+轻松用Office Password Recovery Toolbox移除，里面就是如图所示的全网IP地址列表了，呵呵呵。这种东西都不应该放在服务器上，应该只放在网管机器上。不符规定。这个表我截图完就删了，留着也没用，只是为了说明这种加密不安全。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+全篇写了那么长的废话是因为自己2货了一把，很鄙视自己啊，唉。果然做事情要认真细致才能少走弯路啊。不过意外的还是完成了既定目的，这说明，持之以恒也是很重要的，嗯 信心很重要。不抛弃不放弃。<br />
+<br />
+<br />
+<br />
+最后把工程师写的SQL语句贴出来与君共勉：<br />
+<br />
+</p><pre><code>datasql=&quot;Exec whatsup.dbo.p_DeviceDetailsData&quot; + nDeviceID</code></pre><p class='detail'><br />
+<br />
+我说我怎么读不出来数据呢，坑死爹了。研究了半天语法、绕过、闭合这那的。总提示and 附近语法错误 呵呵呵呵。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">后台默认口令：<br />
+<br />
+http://121.14.53.189:58000/NmConsole/CoreNm/User/DlgUserLogin/DlgUserLogin.asp<br />
+<br />
+admin/admin<br />
+<br />
+<br />
+<br />
+SA注入点命令执行：<br />
+<br />
+</p><pre><code>http://121.14.53.189:58000/devicedetails.asp?nDeviceID=170;exec%20master..xp_cmdshell%20&quot;ipconfig /all&gt;d:\Progra~1\Ipswitch\WhatsUp\HTML\NmConsole\1.txt&quot;;--</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+主机名：21cn-yt-whatsup<br />
+<br />
+内网IP：10.62.13.18<br />
+<br />
+管理员：Administrator<br />
+<br />
+管理密码：!@#$&amp;*()   <br />
+<br />
+<br />
+<br />
+备注：这个密码是键位顺序密码，太短，也不好，容易被破解，服务器密码建议至少14位以上。<br />
+<br />
+主机是2003企业版sp1 几乎没打补丁，这个习惯很不好，就算不是SA，db导出个ASP上去也能提权有木有？<br />
+<br />
+<br />
+<br />
+监控项目列表(具体IP没截图，每个组里一堆机器)：<br />
+<br />
+</p><p class="detail"><a href="../images/230620176faea4b653d1ba6c4db93015eeb24144.png" target="_blank"><img src="../images/230620176faea4b653d1ba6c4db93015eeb24144.png" alt=".png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+内部IP列表:<br />
+<br />
+</p><p class="detail"><a href="../images/23063113860bc9966507299e6c9e9c2da76add30.png" target="_blank"><img src="../images/23063113860bc9966507299e6c9e9c2da76add30.png" alt="IP列表.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+检测脚本敏感信息：<br />
+<br />
+</p><p class="detail"><a href="../images/23064746ad2e8b81e4a2d6e618f2bdc1419f157f.png" target="_blank"><img src="../images/23064746ad2e8b81e4a2d6e618f2bdc1419f157f.png" alt=".png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+监控列表IP泄漏：<br />
+<br />
+</p><p class="detail"><a href="../images/2311391317de2001d047cadf27436292ec461ef0.png" target="_blank"><img src="../images/2311391317de2001d047cadf27436292ec461ef0.png" alt="IP.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">为何极2跟极1一个价，电信发我们极1呢？还有 我一直觉得 黑色比较酷！适合黑客群体诶！银色略屌。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/hacker@sina.cn" title="hacker@sina.cn">hacker@sina.cn</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046775" title="中国电信某核心业务监控平台沦陷引发内网信息泄漏">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-12-27 20:47</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况，已经转由CNCERT紧急向中国电信集团公司通报。对于白帽子，也请注意控制非授权测试风险。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46775";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

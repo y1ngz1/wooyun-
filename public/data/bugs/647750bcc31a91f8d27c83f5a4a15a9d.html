@@ -1,0 +1,197 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Yxcms管理员SESSION伪造漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Yxcms管理员SESSION伪造漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/phith0n">phith0n</a> 
+</li><li>提交时间：		2014-01-04 14:59</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-12：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-29：	细节向普通白帽子公开<br/>
+									2014-02-18：	细节向实习白帽子公开<br/>
+									2014-04-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">yxcms是一款内容管理系统。<br />
+借助后台一个CSRF起飞，伪造session可直接登录后台~</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">我也是第一次见到这样有趣的漏洞，yxcms允许我们自定义session，而且这个过程通过get方式来完成。<br />
+<br />
+我觉得这样的问题属于CSRF，不经意之间就能获取大效果。<br />
+<br />
+其问题代码如下：<br />
+<br />
+</p><pre><code>&lt;?php<br />
+//公共类<br />
+class commonController extends baseController{<br />
+<br />
+	public function __construct()<br />
+	{<br />
+		parent::__construct();<br />
+        if(!empty($_GET[&#039;phpsessid&#039;])) session_id($_GET[&#039;phpsessid&#039;]);//通过GET方法传递sessionid,firefox<br />
+        session_starts();<br />
+		……</code></pre><p class='detail'><br />
+<br />
+　　当$_GET[‘phpsessid’]非空时，就令session_id为我们传入的值。<br />
+<br />
+　　于是我想到一个猥琐的方法，我们构造一个链接让管理员点击，管理员点击后会重新设置他的session，而且这个session就是我们构造的。因为session重置了所以管理员也需要重新登录，而重新登录后其session_id就是我们构造的。我们只要利用这个session_id就能登录管理后台了。<br />
+<br />
+　　比如我来构造：<br />
+<br />
+　　http://xxxx/index.php?r=admin/index/index&amp;phpsessid=f4cking123<br />
+<br />
+　　管理员点击后会跳转到登录页面，但此时他的phpsession已经是我们构造的f4cking123了：<br />
+<br />
+</p><p class="detail"><a href="../images/04025013c4f80a97eed13b19e4852744df63dee3.jpg" target="_blank"><img src="../images/04025013c4f80a97eed13b19e4852744df63dee3.jpg" alt="04.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+　　这是管理员如果重新登录，那个这个session就有后台权限了。我们也利用这个链接：http://xxxx/index.php?r=admin/index/index&amp;phpsessid=f4cking123，将自己的session设置成f4cking123，或者随意怎么修改，只要把phpsessid修改成f4cking123就能拥有后台权限了：<br />
+<br />
+</p><p class="detail"><a href="../images/04025045632668c870b2312c61e3e3d8215cd054.jpg" target="_blank"><img src="../images/04025045632668c870b2312c61e3e3d8215cd054.jpg" alt="05.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">后台所有操作加token，不要轻易相信用户的输入。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/phith0n" title="phith0n">phith0n</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047827" title="Yxcms管理员SESSION伪造漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2014-01-09 13:32</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47827";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

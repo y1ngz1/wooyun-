@@ -1,0 +1,271 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		躺在床上读代码之phpcms sql注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		躺在床上读代码之phpcms sql注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/快点啊！！">快点啊！！</a> 
+</li><li>提交时间：		2012-11-23 14:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-11-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-11-28：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">躺在床上读代码之phpcms [0x01]<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在phpcms/modules/formguide/index.php中的57行。<br />
+<br />
+</p><pre><code>$formguide_input = new formguide_input($formid);<br />
+$data = $formguide_input-&gt;get($_POST[&#039;info&#039;]);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这里调用了一个class,formguide_input，然后get函数处理了$_POST过来的info，那么，我们看看这个get函数<br />
+<br />
+<br />
+<br />
+</p><pre><code>function get($data,$isimport = 0) {<br />
+		$this-&gt;data = $data;<br />
+		$info = array();<br />
+		foreach($this-&gt;fields as $field) {<br />
+			…… 省略几行也不会死<br />
+			$value = $data[$field[&#039;field&#039;]];<br />
+                        //在这里的value使用了data的值，data就是$_POST[&#039;info&#039;]<br />
+                         <br />
+                        …… 省略几行也不会死<br />
+			<br />
+			if($maxlength &amp;&amp; $length &gt; $maxlength) {<br />
+				if($isimport) {<br />
+					$value = str_cut($value,$maxlength,&#039;&#039;);<br />
+                                        //value使用了str_cut截取了字节<br />
+				} else {<br />
+					showmessage($name.&#039; &#039;.L(&#039;not_more_than&#039;).&#039; &#039;.$maxlength.L(&#039;characters&#039;));<br />
+				}<br />
+			} elseif($maxlength) {<br />
+				$value = str_cut($value,$maxlength,&#039;&#039;);<br />
+                                //又一次截取<br />
+			}<br />
+<br />
+                    省略……<br />
+             return $info;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ str_cut函数是phpcms自定义的截取函数，第三个参数是控制dot是不是...，所以这里截取的时候当value是123\&#039;的时候，如果截取字段是4的话，将截取出一个反斜线\出来。<br />
+<br />
+<br />
+<br />
+而后这部分的变量进入了insert<br />
+<br />
+<br />
+<br />
+在phpcms/modules/formguide/index.php中的63行。<br />
+<br />
+$dataid = $this-&gt;m_db-&gt;insert($data, true);<br />
+<br />
+<br />
+<br />
+导致了SQL注射漏洞<br />
+<br />
+<br />
+<br />
+以下为str_cut的代码<br />
+<br />
+</p><pre><code>function str_cut($string, $length, $dot = &#039;...&#039;) {<br />
+	$strlen = strlen($string);<br />
+	if($strlen &lt;= $length) return $string;<br />
+	$string = str_replace(array(&#039; &#039;,&#039;&amp;nbsp;&#039;, &#039;&amp;amp;&#039;, &#039;&amp;quot;&#039;, &#039;&amp;#039;&#039;, &#039;&amp;ldquo;&#039;, &#039;&amp;rdquo;&#039;, &#039;&amp;mdash;&#039;, &#039;&amp;lt;&#039;, &#039;&amp;gt;&#039;, &#039;&amp;middot;&#039;, &#039;&amp;hellip;&#039;), array(&#039;∵&#039;,&#039; &#039;, &#039;&amp;&#039;, &#039;&quot;&#039;, &quot;&#039;&quot;, &#039;“&#039;, &#039;”&#039;, &#039;—&#039;, &#039;&lt;&#039;, &#039;&gt;&#039;, &#039;·&#039;, &#039;…&#039;), $string);<br />
+	$strcut = &#039;&#039;;<br />
+	if(strtolower(CHARSET) == &#039;utf-8&#039;) {<br />
+		$length = intval($length-strlen($dot)-$length/3);<br />
+		$n = $tn = $noc = 0;<br />
+		while($n &lt; strlen($string)) {<br />
+			$t = ord($string[$n]);<br />
+			if($t == 9 || $t == 10 || (32 &lt;= $t &amp;&amp; $t &lt;= 126)) {<br />
+				$tn = 1; $n++; $noc++;<br />
+			} elseif(194 &lt;= $t &amp;&amp; $t &lt;= 223) {<br />
+				$tn = 2; $n += 2; $noc += 2;<br />
+			} elseif(224 &lt;= $t &amp;&amp; $t &lt;= 239) {<br />
+				$tn = 3; $n += 3; $noc += 2;<br />
+			} elseif(240 &lt;= $t &amp;&amp; $t &lt;= 247) {<br />
+				$tn = 4; $n += 4; $noc += 2;<br />
+			} elseif(248 &lt;= $t &amp;&amp; $t &lt;= 251) {<br />
+				$tn = 5; $n += 5; $noc += 2;<br />
+			} elseif($t == 252 || $t == 253) {<br />
+				$tn = 6; $n += 6; $noc += 2;<br />
+			} else {<br />
+				$n++;<br />
+			}<br />
+			if($noc &gt;= $length) {<br />
+				break;<br />
+			}<br />
+		}<br />
+		if($noc &gt; $length) {<br />
+			$n -= $tn;<br />
+		}<br />
+		$strcut = substr($string, 0, $n);<br />
+		$strcut = str_replace(array(&#039;∵&#039;, &#039;&amp;&#039;, &#039;&quot;&#039;, &quot;&#039;&quot;, &#039;“&#039;, &#039;”&#039;, &#039;—&#039;, &#039;&lt;&#039;, &#039;&gt;&#039;, &#039;·&#039;, &#039;…&#039;), array(&#039; &#039;, &#039;&amp;amp;&#039;, &#039;&amp;quot;&#039;, &#039;&amp;#039;&#039;, &#039;&amp;ldquo;&#039;, &#039;&amp;rdquo;&#039;, &#039;&amp;mdash;&#039;, &#039;&amp;lt;&#039;, &#039;&amp;gt;&#039;, &#039;&amp;middot;&#039;, &#039;&amp;hellip;&#039;), $strcut);<br />
+	} else {<br />
+		$dotlen = strlen($dot);<br />
+		$maxi = $length - $dotlen - 1;<br />
+		$current_str = &#039;&#039;;<br />
+		$search_arr = array(&#039;&amp;&#039;,&#039; &#039;, &#039;&quot;&#039;, &quot;&#039;&quot;, &#039;“&#039;, &#039;”&#039;, &#039;—&#039;, &#039;&lt;&#039;, &#039;&gt;&#039;, &#039;·&#039;, &#039;…&#039;,&#039;∵&#039;);<br />
+		$replace_arr = array(&#039;&amp;amp;&#039;,&#039;&amp;nbsp;&#039;, &#039;&amp;quot;&#039;, &#039;&amp;#039;&#039;, &#039;&amp;ldquo;&#039;, &#039;&amp;rdquo;&#039;, &#039;&amp;mdash;&#039;, &#039;&amp;lt;&#039;, &#039;&amp;gt;&#039;, &#039;&amp;middot;&#039;, &#039;&amp;hellip;&#039;,&#039; &#039;);<br />
+		$search_flip = array_flip($search_arr);<br />
+		for ($i = 0; $i &lt; $maxi; $i++) {<br />
+			$current_str = ord($string[$i]) &gt; 127 ? $string[$i].$string[++$i] : $string[$i];<br />
+			if (in_array($current_str, $search_arr)) {<br />
+				$key = $search_flip[$current_str];<br />
+				$current_str = str_replace($search_arr[$key], $replace_arr[$key], $current_str);<br />
+			}<br />
+			$strcut .= $current_str;<br />
+		}<br />
+	}<br />
+	return $strcut.$dot;<br />
+}</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">我想证明一下，可是这个功能在我本地测试失败，该表不存在，但是漏洞步骤确实如上。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">进入数据库的东西不能随意取消dot的。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/快点啊！！" title="快点啊！！">快点啊！！</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015156" title="躺在床上读代码之phpcms sql注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-11-23 14:01</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15156";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

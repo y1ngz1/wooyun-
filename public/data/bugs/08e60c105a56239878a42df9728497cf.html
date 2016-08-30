@@ -1,0 +1,321 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 19. 存储型XSS入门 [什么都没过滤的情况]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 19. 存储型XSS入门 [什么都没过滤的情况]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-31 19:32</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-31：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-24：	细节向普通白帽子公开<br/>
+									2013-02-03：	细节向实习白帽子公开<br/>
+									2013-02-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">存储型和反射型相比，只是多了输入存储、输出取出的过程。简单点说：<br />
+<br />
+反射型是：输入--输出；<br />
+存储型是：输入--进入数据库*--取出数据库--输出。<br />
+<br />
+这样一来，大家应该注意到以下差别：<br />
+<br />
+反射型是：绝大部分情况下，输入在哪里，输出就在哪里。<br />
+存储型是：输入在A处进入数据库， 而输出则可能出现在其它任何用到数据的地方。<br />
+<br />
+反射型是：输入大部分位于地址栏或来自DOM的某些属性，也会偶尔有数据在请求中（POST类型）<br />
+存储型是：输入大部分来自POST/GET请求，常见于一些保存操作中。<br />
+<br />
+因而我们找存储型的时候，从一个地方输入数据，需要检测很多输出的点，从而可能会在很多点发现存储型XSS。<br />
+<br />
+至于如何根据输出来构建存储型XSS的代码，和反射型没有任何区别，都是看输出的上下文来进行。<br />
+<br />
+从程序员过滤代码的角度来讲，我们给之后的教程走向分个类：<br />
+<br />
+1. 数据需要过滤，但是未过滤。导致XSS。<br />
+<br />
+比如：昵称、个人资料。<br />
+<br />
+2. 业务需求使得数据只能部分过滤，但过滤规则不完善，被绕过后导致XSS。<br />
+<br />
+比如：日志、邮件及其它富文本应用。<br />
+<br />
+本节先看一个最基本的情况，该过滤，但是什么都没过滤的情况。<br />
+<br />
+-------------------------------------------<br />
+<br />
+（数据库：不一定是像mysql那样的数据库，只要是能存储数据的都算。）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 找存储型的时候，需要有一颗多疑的心，一双善于发现的眼睛。我们来看看实例！<br />
+<br />
+<br />
+<br />
+2. 某一天，某一群，与某一妹子有以下对话。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/311805344637b9ae6a8e600eb61c0024f879adb4.jpg" target="_blank"><img src="../images/311805344637b9ae6a8e600eb61c0024f879adb4.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 过了一会，就来了这么一条消息，原来是手机QQ录了发上来的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/311805441a02eaa1a41b02f8c3c2829b3231bf95.jpg" target="_blank"><img src="../images/311805441a02eaa1a41b02f8c3c2829b3231bf95.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 这个时候，我们就会想，这个发上来的页面会不会有XSS呢？<br />
+<br />
+<br />
+<br />
+5. 我们来看看页面的结构。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3118055137b5a57316ce9036d1db49ce33e7af77.jpg" target="_blank"><img src="../images/3118055137b5a57316ce9036d1db49ce33e7af77.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 很多新手在找XSS的时候，都是拿着&lt;script&gt;alert(1)&lt;/script&gt;或者其它到处测试，很盲目不是吗？<br />
+<br />
+<br />
+<br />
+一定要记住本节最开头的话，存储型XSS，输出的位置不一定出现在输入的位置。<br />
+<br />
+<br />
+<br />
+7. 因而我们有时候需要逆向的思维，来寻找存储型XSS。 大概思路如下：<br />
+<br />
+<br />
+<br />
+7.1 先找到输出点，然后猜测此处输出是否会被过滤。<br />
+<br />
+<br />
+<br />
+7.2 如果觉得可能没过滤，我们再找到这个输出是在哪里输入的。<br />
+<br />
+<br />
+<br />
+7.3 接着开始测试输入，看输出的效果。<br />
+<br />
+<br />
+<br />
+7.4 如果没过滤，那么你就成功了，否则你可以放弃掉它。<br />
+<br />
+<br />
+<br />
+8. 拿本例来说明以上过程，<br />
+<br />
+<br />
+<br />
+8.1 我们猜测昵称这个输出没过滤。<br />
+<br />
+<br />
+<br />
+8.2 找到输入点，这个输入点，就是修改QQ昵称。<br />
+<br />
+<br />
+<br />
+8.3 开始测试<br />
+<br />
+<br />
+<br />
+通过WEBQQ修改昵称如下：(方法见： <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-013563">WooYun: PKAV腾讯专场 - 3. 腾讯QQ客户端某处功能页面存储型XSS</a> )<br />
+<br />
+<br />
+<br />
+使用charles web proxy 拦截WEBQQ数据包，修改并提交。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/31181015f9ee032910ea0113451aa3e47a56d1f7.jpg" target="_blank"><img src="../images/31181015f9ee032910ea0113451aa3e47a56d1f7.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+提交成功后：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/311806005dbde6f668fb293e7197f6359127273d.jpg" target="_blank"><img src="../images/311806005dbde6f668fb293e7197f6359127273d.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8.4 我们拿小号进入一个群，发布一条手机QQ的语音。看输出效果，没过滤，成功了吧～～<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3118060792ca9b9cb88230509ddf16a8bf6bede9.jpg" target="_blank"><img src="../images/3118060792ca9b9cb88230509ddf16a8bf6bede9.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/31180616e5ec89e0ce1a05b8fdd683ae5a234103.jpg" target="_blank"><img src="../images/31180616e5ec89e0ce1a05b8fdd683ae5a234103.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">拿xsser.me在某群的测试效果！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3118062500b929ca5a05231119bb0eda712d755c.jpg" target="_blank"><img src="../images/3118062500b929ca5a05231119bb0eda712d755c.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+登录他人帐号：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/3118063280881e6fc57bf67762f3693ae98f9144.jpg" target="_blank"><img src="../images/3118063280881e6fc57bf67762f3693ae98f9144.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">昵称处输出过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016750" title="[腾讯实例教程] 那些年我们一起学XSS - 19. 存储型XSS入门 [什么都没过滤的情况]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-01-04 15:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16750";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

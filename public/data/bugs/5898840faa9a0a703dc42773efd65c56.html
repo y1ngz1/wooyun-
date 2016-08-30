@@ -1,0 +1,218 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Appserve SoundAir处理畸形mp3文件时拒绝服务漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Appserve SoundAir处理畸形mp3文件时拒绝服务漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blast">blast</a> 
+</li><li>提交时间：		2013-06-08 13:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-08：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-09-06：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Appserve SoundAir 处理畸形mp3文件时拒绝服务漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">可能有错误，我是这么理解的：mp3是按块来存放数据的，其中每块以“AAAAAAAA   AAABBCCD   EEEEFFGH   IIJJKLMM”的形式来标记（每个字母代表1位），通常A=1，也就是说可以通过检测前11位为11111111 111XXXXX来确定mp3文件的块位置。<br />
+<br />
+<br />
+<br />
+E 是 Bitrate index ， F 是 SampleRate index ， G 是Padding标识<br />
+<br />
+<br />
+<br />
+而每块的长度可以通过 FrameLen = int((144 * BitRate / SampleRate ) + Padding); 确定。<br />
+<br />
+<br />
+<br />
+通过增大最后一块的BitRate，减小SampleRate，但是不放置音频数据，就可能使得播放器分配内存时分配的数据的总大小小于FrameLen计算出来的大小，SoundAir就出现了这个问题。<br />
+<br />
+<br />
+<br />
+</p><pre><code>006A64E6  3.  50            3push    eax                             ; úArg1<br />
+006A64E7  3.  E8 342DEFFF   3call    00599220                        ; àhlSound.00599220<br />
+006A64EC  3.  8BF0          3mov     esi, eax                        ; 计算节长，esi=节长<br />
+006A64EE  3.  8D4C24 4C     3lea     ecx, [local.11]                 ; local11给ecx<br />
+006A64F2  3.  51            3push    ecx                             ; Arg2 =ecx (040dfc88)<br />
+006A64F3  3.  03F3          3add     esi, ebx                        ; esi=节长+ebx (也就是FF帧的末尾)<br />
+006A64F5  3.  56            3push    esi                             ; Arg1 = esi<br />
+006A64F6  3.  E8 052CEFFF   3call    00599100                        ; àhlSound.00599100<br />
+<br />
+;eax= 节的长度<br />
+;ebx=节的起始位置<br />
+;esi=节的终止位置<br />
+;程序会比较节的终止位置1字节是否为0xff，但是如果节长度并不正确，就会导致读取时读出buffer之外，造成一次存取违例，程序崩溃。<br />
+<br />
+;出错时： <br />
+;eax=00000481<br />
+;ebx=06aafe0e<br />
+;esi=06ab028f<br />
+<br />
+;这儿ebx+eax=06ab028f,但是节到6AB0000就结束了(见证明)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>Address   Hex dump          Command                                          Comments<br />
+00599100  ú$  83EC 30       sub     esp, 30                                  ; hlSound.00599100(guessed Arg1,Arg2)<br />
+00599103  3.  56            push    esi<br />
+00599104  3.  8B7424 38     mov     esi, dword ptr [arg.1]<br />
+00599108  3.  803E FF       cmp     byte ptr [esi], 0FF<br />
+							    ;比较传入的第一个参数是否为0xff（MP3的帧标记）<br />
+0059910B  3. 74 07         je      short 00599114<br />
+								;相等则跳转，进入解析流程<br />
+0059910D  3.  33C0          xor     eax, eax  <br />
+0059910F  3.  5E            pop     esi       <br />
+00599110  3.  83C4 30       add     esp, 30   <br />
+00599113  3.  C3            retn              ;返回 (return 0)<br />
+;-------</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/08133113b4dcd9cae9eb3383735fc1493ca46b11.jpg" target="_blank"><img src="../images/08133113b4dcd9cae9eb3383735fc1493ca46b11.jpg" alt="f3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/08132932648f038eda445247c9ff67188a223b37.jpg" target="_blank"><img src="../images/08132932648f038eda445247c9ff67188a223b37.jpg" alt="f2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+测试用例：<br />
+<br />
+http://pan.baidu.com/share/link?shareid=1683742065&amp;uk=1443095466<br />
+<br />
+<br />
+<br />
+危害也没啥，因为程序会记录最后打开的目录，如果目录下面的文件不删掉，程序一打开就会崩溃。<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">读取某个地址前检查该地址是否存在 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blast" title="blast">blast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025444" title="Appserve SoundAir处理畸形mp3文件时拒绝服务漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25444";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

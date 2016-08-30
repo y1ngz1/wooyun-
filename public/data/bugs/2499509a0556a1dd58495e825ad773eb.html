@@ -1,0 +1,253 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		易思espcms某处sql注入漏洞，附详细分析与POC代码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		易思espcms某处sql注入漏洞，附详细分析与POC代码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/l5ffy">l5ffy</a> 
+</li><li>提交时间：		2013-06-14 14:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-17：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-04：	细节向普通白帽子公开<br/>
+									2013-07-24：	细节向实习白帽子公开<br/>
+									2013-09-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">小菜刚学代码审核</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">文件 /interface/forummain.php中$userid未过滤进入sql语句 第17行到32行<br />
+<br />
+</p><pre><code>function in_list() {<br />
+		parent::start_pagetemplate();<br />
+		parent::member_purview(0, $this-&gt;mlink[&#039;orderlist&#039;]);<br />
+		include_once admin_ROOT . &#039;public/class_pagebotton.php&#039;;<br />
+		$lng = (admin_LNG == &#039;big5&#039;) ? $this-&gt;CON[&#039;is_lancode&#039;] : admin_LNG;<br />
+<br />
+		$page = $this-&gt;fun-&gt;accept(&#039;page&#039;, &#039;G&#039;);<br />
+		$page = isset($page) ? intval($page) : 1;<br />
+<br />
+		$pagesylte = 1;<br />
+<br />
+		$pagemax = intval($this-&gt;CON[&#039;bbs_max_list&#039;]);<br />
+		$userid = $this-&gt;ec_member_username_id;<br />
+		if (empty($userid)) {<br />
+			$this-&gt;callmessage($this-&gt;lng[&#039;db_err&#039;], $_SERVER[&#039;HTTP_REFERER&#039;], $this-&gt;lng[&#039;gobackurlbotton&#039;]);<br />
+		}<br />
+<br />
+		$db_table = db_prefix . &#039;bbs&#039;;<br />
+		$db_where = &quot; WHERE userid=$userid&quot;;<br />
+		$countnum = $this-&gt;db_numrows($db_table, $db_where);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+parent::member_purview的定义了如何获取$this-&gt;ec_member_username_id在文件/public/class_connector.php第415行<br />
+<br />
+</p><pre><code>function member_purview($userrank = false, $url = null, $upurl = false) {<br />
+<br />
+		$this-&gt;ec_member_username = $this-&gt;fun-&gt;eccode($this-&gt;fun-&gt;accept(&#039;ecisp_member_username&#039;, &#039;C&#039;), &#039;DECODE&#039;, db_pscode);<br />
+		$user_info = explode(&#039;|&#039;, $this-&gt;fun-&gt;eccode($this-&gt;fun-&gt;accept(&#039;ecisp_member_info&#039;, &#039;C&#039;), &#039;DECODE&#039;, db_pscode));<br />
+<br />
+		list($this-&gt;ec_member_username_id, $this-&gt;ec_member_alias, $this-&gt;ec_member_integral, $this-&gt;ec_member_mcid, $this-&gt;ec_member_email, $this-&gt;ec_member_lastip, $this-&gt;ec_member_ipadd, $this-&gt;ec_member_useragent, $this-&gt;ec_member_adminclassurl) = $user_info;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+其中$this-&gt;fun-&gt;accept(&#039;ecisp_member_username&#039;, &#039;C&#039;)表示获取cookie中的ecisp_member_username字段，<br />
+<br />
+<br />
+<br />
+$this-&gt;fun-&gt;eccode($this-&gt;fun-&gt;accept(&#039;ecisp_member_info&#039;, &#039;C&#039;), &#039;DECODE&#039;, db_pscode)中的ecode函数在文件 \public\class_function.php第164行，密钥是预定义滴，在文件\datacahe\public.php db_pscode=4a551878502e4a3fe6f6c2b853<br />
+<br />
+<br />
+<br />
+因此$userid从cookie中解密获取后没有做处理，就赋值给$db_where，进入函数$this-&gt;db_numrows<br />
+<br />
+该函数定义在\public\class_connector.php第293行<br />
+<br />
+</p><pre><code>function db_numrows_ds($db_table, $db_where, $field) {<br />
+		$resulted = $this-&gt;db-&gt;query(&#039;SELECT COUNT(DISTINCT &#039; . $field . &#039;) AS num FROM &#039; . $db_table . $db_where);<br />
+		$resulted = $this-&gt;db-&gt;fetch_assoc($resulted);<br />
+		return $resulted[&#039;num&#039;];<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+跟进$this-&gt;db-&gt;query在文件\pulic\class_dbmysql.php第55行<br />
+<br />
+</p><pre><code>function query($sql, $type = &#039;&#039;, $cachetime = FALSE) {	<br />
+		$func = $type == &#039;UNBUFFERED&#039; &amp;&amp; @function_exists(&#039;mysql_unbuffered_query&#039;) ? &#039;mysql_unbuffered_query&#039; : &#039;mysql_query&#039;;<br />
+		if (!($query = $func($sql, $this-&gt;link)) &amp;&amp; $type != &#039;SILENT&#039;) {<br />
+			if (!$this-&gt;netclass) {<br />
+				$this-&gt;halt(&#039;MySQL Query Error&#039;, $sql);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+最后进入mysql_query函数，产生cookie注入 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注册 登录 发表一条留言后，使用本文件自带的encode函数，解密cookie的ecisp_member_info字段，值为：1||0|1|test@test.com|2130706433|2130706433|e0b858f1249c7bbe85c69dcf5eaac720|b8b9ba7f3baab2ada16559236998ceb4<br />
+<br />
+<br />
+<br />
+修改为：<br />
+<br />
+1 and sleep(9.999999)#||0|1|test@test.com|2130706433|2130706433|e0b858f1249c7bbe85c69dcf5eaac720|b8b9ba7f3baab2ada16559236998ceb4<br />
+<br />
+<br />
+<br />
+加密后为：<br />
+<br />
+ZFTCo5lRq6OdmqBanmKabJ-eb59fhq7eaLFksNWaqKV4q52opGDIo86vmJZplm2TaJZraK9mkmhlaGhtbGhjrspkw2ubnZyXaJdrxW-XlZmZaphncZubm2WXxpXEapiVsshuxWvEmWyZZ8OWlpNqmJyWYWiaaZplmZtvn27Gl8Rs<br />
+<br />
+<br />
+<br />
+在执行打印执行的sql语句，并运行：<br />
+<br />
+</p><p class="detail"><a href="../images/141327368fa5fc96d127b97ea080064c67010367.jpg" target="_blank"><img src="../images/141327368fa5fc96d127b97ea080064c67010367.jpg" alt="QQ图片20130614132350.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">有点乱，不知道到能过吗 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/l5ffy" title="l5ffy">l5ffy</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025922" title="易思espcms某处sql注入漏洞，附详细分析与POC代码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-06-14 15:42</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对此漏洞的提供，我们已发测试确认此漏洞存在，近快将提供升级！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25922";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

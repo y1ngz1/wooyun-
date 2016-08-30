@@ -1,0 +1,456 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		记一次失败的渗透从4年前的老文章到监控录像机最终直捅某敏感部门内网  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		记一次失败的渗透从4年前的老文章到监控录像机最终直捅某敏感部门内网  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/safe121">safe121</a> 
+</li><li>提交时间：		2013-12-30 11:29</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-24：	细节向普通白帽子公开<br/>
+									2014-02-03：	细节向实习白帽子公开<br/>
+									2014-02-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某敏感部门内部监控系统外网开房并且弱口令，可TELNET。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">今天闲的蛋蛋疼，看了ChinaGFW.Org的一篇老文章，发现了几个牛逼的IP地址<br />
+<br />
+219.142.121.211 —— Ministry-Of-Public-Security-Information-Communication-Agency	<br />
+<br />
+222.66.235.172 —— BAOSHAN-POLICE<br />
+<br />
+121.10.215.35 以及 218.66.36.226<br />
+<br />
+这些牛逼的IP地址有什么特点呢？<br />
+<br />
+</p><pre><code>User-Agent 统一为 Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; SV1; .NET CLR 1.1.4322)	<br />
+Accept 统一为 text/*,*/*	<br />
+Accept-Language</code></pre><p class='detail'>	统一为 en-us<br />
+<br />
+<br />
+<br />
+不过当我看到第一个IP地址的WHOIS信息居然为Ministry-Of-Public-Security-Information-Communication-Agency的时候，我——震惊了。<br />
+<br />
+<br />
+<br />
+收好震碎的蛋，拿起了古董箱里的X-Scan对219.142.121.208 - 219.142.121.223一顿扫描过后，得到了一个牛逼的IP地址219.142.121.212<br />
+<br />
+这个IP地址开了80端口，23端口，于是在web端尝试了admin / admin成功了（密码我改成了admin / admins 因为让别人帮忙渗透结果他乱发密码来的～） <br />
+<br />
+于是尽最大可能收集信息<br />
+<br />
+</p><p class="detail"><a href="../images/3004320382e2370c636aaaf0f9a85ae5ae5c52eb.png" target="_blank"><img src="../images/3004320382e2370c636aaaf0f9a85ae5ae5c52eb.png" alt="Screenshot from 2013-12-29 04:39:03.png" width="600"/></a></p><p class="detail"><br />
+<br />
+（这个看起来像采集中心服务器的IP地址，不过因为对这种协议不太了解，无法进行下一步渗透）<br />
+<br />
+</p><p class="detail"><a href="../images/30043304e41addb4f2620fafc250900e6949ddeb.png" target="_blank"><img src="../images/30043304e41addb4f2620fafc250900e6949ddeb.png" alt="Screenshot from 2013-12-29 04:41:06.png" width="600"/></a></p><p class="detail"><br />
+<br />
+（网关地址）<br />
+<br />
+然后又尝试对telnet端口进行进入，试了admin/admin admin/12345 admin/123456<br />
+<br />
+admin/[null] 都不对，怎么办呢？既然连web默认口令都没改肯定是telnet都没改，那么来找下厂家～<br />
+<br />
+打开web后，查看源代码，居然连个copyright都没有，js文件中注释里也没有copyright，这厂商是多么的大无畏精神啊～<br />
+<br />
+突然想起，加载这个监控系统要一个ActiveX插件，那么来看看插件名称吧～<br />
+<br />
+</p><p class="detail"><a href="../images/300437328ff48a2ebbce6c00c7d44745cf32eb0b.png" target="_blank"><img src="../images/300437328ff48a2ebbce6c00c7d44745cf32eb0b.png" alt="Screenshot from 2013-12-29 15:37:10.png" width="600"/></a></p><p class="detail"><br />
+<br />
+谷歌了一下DHSurveillanceCtrl居然没有，于是又谷歌了一下webrec.cab<br />
+<br />
+根据谷歌牛逼的结果，老夫找到了该监控系统叫大华硬盘录像机<br />
+<br />
+也找到了密码 用户名：root 密码:vizxv<br />
+<br />
+多么牛逼的密码？还好当初老夫没爆破,不然这辈子也破不开。<br />
+<br />
+于是果断尝试ssh转发，弹出了ssh命令不存在，不过老夫也没很震惊，因为这种busybox-based系统很少有ssh命令，于是老夫又进行了<br />
+<br />
+于是netstat -l 没开ftp端口，之后<br />
+<br />
+telnet x.x.x.x &gt;&gt; /tmp/1.sh  , wget , ftp , curl , scp , ………… 最终在尝试tftp的时候终于有了反应，诶？怎么是系统信息。<br />
+<br />
+之后才发现busybox可以看指定的函数的。。<br />
+<br />
+</p><pre><code>Currently defined functions:<br />
+        [, [[, arping, ash, awk, cat, chmod, cp, date, du, echo,<br />
+        egrep, fdisk, fgrep, find, free, fsck, ftpget, ftpput,<br />
+        getty, grep, hwclock, ifconfig, inetd, init, insmod, kill,<br />
+        killall, linuxrc, ln, login, ls, lsmod, makedevs, mdev,<br />
+        mkdir, mkfs.minix, mknod, modprobe, mount, mv, netstat,<br />
+        ping, printenv, ps, pwd, readlink, rm, rmdir, rmmod, route,<br />
+        sed, sh, sync, telnetd, test, top, touch, traceroute,<br />
+        umount, xargs</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/30044519a6fb5276e141f97ca43dbf26aba61dbf.png" target="_blank"><img src="../images/30044519a6fb5276e141f97ca43dbf26aba61dbf.png" alt="Screenshot from 2013-12-29 15:44:55.png" width="600"/></a></p><p class="detail"><br />
+<br />
+不管了，先找个服务器搭建个tftp<br />
+<br />
+搭建好之后，tftp获取ssh以及ssh_config,诶?还是系统信息，看来这个tftp是被阉割过了。<br />
+<br />
+怎么办呢？凉拌炒鸡蛋吧～<br />
+<br />
+<br />
+<br />
+之后又收集了一圈信息<br />
+<br />
+# cat Account1<br />
+<br />
+// 默认的帐户配置，默认的组包含组名和组描述等必填项，默认的用户包含用户名，用户<br />
+<br />
+<br />
+<br />
+// 描述，所属组名，密码，是否共享等必填项。default用户不用写在下表中。<br />
+<br />
+<br />
+<br />
+{<br />
+<br />
+ </p><pre><code>&quot;Groups&quot; : [<br />
+      {<br />
+         &quot;AuthorityList&quot; : [<br />
+            &quot;ShutDown&quot;,<br />
+            &quot;Monitor_01&quot;,<br />
+            &quot;Replay_01&quot;,<br />
+            &quot;Record&quot;,<br />
+            &quot;Backup&quot;,<br />
+            &quot;MHardisk&quot;,<br />
+            &quot;MPTZ&quot;,<br />
+            &quot;Account&quot;,<br />
+            &quot;Alarm&quot;,<br />
+            &quot;QueryLog&quot;,<br />
+            &quot;DelLog&quot;,<br />
+            &quot;SysUpdate&quot;,<br />
+            &quot;AutoMaintain&quot;,<br />
+            &quot;GeneralConf&quot;,<br />
+            &quot;EncodeConf&quot;,<br />
+            &quot;RecordConf&quot;,<br />
+            &quot;ComConf&quot;,<br />
+            &quot;NetConf&quot;,<br />
+            &quot;AlarmConf&quot;,<br />
+            &quot;VideoConfig&quot;,<br />
+            &quot;PtzConfig&quot;,<br />
+            &quot;DefaultConfig&quot;,<br />
+            &quot;VideoInputConfig&quot;<br />
+         ],<br />
+         &quot;Id&quot; : 1,<br />
+         &quot;Memo&quot; : &quot;administrator group&quot;,<br />
+         &quot;Name&quot; : &quot;admin&quot;<br />
+      },<br />
+      {<br />
+         &quot;AuthorityList&quot; : [ &quot;Monitor_01&quot;, &quot;Replay_01&quot; ],<br />
+         &quot;Id&quot; : 2,<br />
+         &quot;Memo&quot; : &quot;user group&quot;,<br />
+         &quot;Name&quot; : &quot;user&quot;<br />
+      }<br />
+   ],<br />
+   &quot;Users&quot; : [<br />
+      {<br />
+         &quot;AuthorityList&quot; : [<br />
+            &quot;ShutDown&quot;,<br />
+            &quot;Monitor_01&quot;,<br />
+            &quot;Replay_01&quot;,<br />
+            &quot;Record&quot;,<br />
+            &quot;Backup&quot;,<br />
+            &quot;MHardisk&quot;,<br />
+            &quot;MPTZ&quot;,<br />
+            &quot;Account&quot;,<br />
+            &quot;Alarm&quot;,<br />
+            &quot;QueryLog&quot;,<br />
+            &quot;DelLog&quot;,<br />
+            &quot;SysUpdate&quot;,<br />
+            &quot;AutoMaintain&quot;,<br />
+            &quot;GeneralConf&quot;,<br />
+            &quot;EncodeConf&quot;,<br />
+            &quot;RecordConf&quot;,<br />
+            &quot;ComConf&quot;,<br />
+            &quot;NetConf&quot;,<br />
+            &quot;AlarmConf&quot;,<br />
+            &quot;VideoConfig&quot;,<br />
+            &quot;PtzConfig&quot;,<br />
+            &quot;DefaultConfig&quot;,<br />
+            &quot;VideoInputConfig&quot;<br />
+         ],<br />
+         &quot;Group&quot; : &quot;admin&quot;,<br />
+         &quot;Id&quot; : 1,<br />
+         &quot;Memo&quot; : &quot;admin &#039;s account&quot;,<br />
+         &quot;Name&quot; : &quot;admin&quot;,<br />
+         &quot;Password&quot; : &quot;XDc1JPnF&quot;,<br />
+         &quot;Reserved&quot; : true,<br />
+         &quot;Sharable&quot; : true<br />
+      },<br />
+      {<br />
+         &quot;AuthorityList&quot; : [<br />
+            &quot;ShutDown&quot;,<br />
+            &quot;Monitor_01&quot;,<br />
+            &quot;Replay_01&quot;,<br />
+            &quot;Record&quot;,<br />
+            &quot;Backup&quot;,<br />
+            &quot;MHardisk&quot;,<br />
+            &quot;MPTZ&quot;,<br />
+            &quot;Account&quot;,<br />
+            &quot;Alarm&quot;,<br />
+            &quot;QueryLog&quot;,<br />
+            &quot;DelLog&quot;,<br />
+            &quot;SysUpdate&quot;,<br />
+            &quot;AutoMaintain&quot;,<br />
+            &quot;GeneralConf&quot;,<br />
+            &quot;EncodeConf&quot;,<br />
+            &quot;RecordConf&quot;,<br />
+            &quot;ComConf&quot;,<br />
+            &quot;NetConf&quot;,<br />
+            &quot;AlarmConf&quot;,<br />
+            &quot;VideoConfig&quot;,<br />
+            &quot;PtzConfig&quot;,<br />
+            &quot;DefaultConfig&quot;,<br />
+            &quot;VideoInputConfig&quot;<br />
+         ],<br />
+         &quot;Group&quot; : &quot;admin&quot;,<br />
+         &quot;Id&quot; : 2,<br />
+         &quot;Memo&quot; : &quot;888888 &#039;s account&quot;,<br />
+         &quot;Name&quot; : &quot;888888&quot;,<br />
+         &quot;Password&quot; : &quot;4WzwxXxM&quot;,<br />
+         &quot;Reserved&quot; : true,<br />
+         &quot;Sharable&quot; : true<br />
+      },<br />
+      {<br />
+         &quot;AuthorityList&quot; : [ &quot;Monitor_01&quot;, &quot;Replay_01&quot; ],<br />
+         &quot;Group&quot; : &quot;user&quot;,<br />
+         &quot;Id&quot; : 3,<br />
+         &quot;Memo&quot; : &quot;666666 &#039;s account&quot;,<br />
+         &quot;Name&quot; : &quot;666666&quot;,<br />
+         &quot;Password&quot; : &quot;sh15yfFM&quot;,<br />
+         &quot;Reserved&quot; : true,<br />
+         &quot;Sharable&quot; : true<br />
+      },<br />
+      {<br />
+         &quot;AuthorityList&quot; : [ &quot;Monitor_01&quot;, &quot;Replay_01&quot; ],<br />
+         &quot;Group&quot; : &quot;user&quot;,<br />
+         &quot;Id&quot; : 4,<br />
+         &quot;Memo&quot; : &quot;default account&quot;,<br />
+         &quot;Name&quot; : &quot;default&quot;,<br />
+         &quot;Password&quot; : &quot;OxhlwSG8&quot;,<br />
+         &quot;Reserved&quot; : true,<br />
+         &quot;Sharable&quot; : false<br />
+      }<br />
+   ]<br />
+}</code></pre><p class='detail'><br />
+<br />
+密码不知什么方式加密的<br />
+<br />
+</p><pre><code>#<br />
+ARP表<br />
+# arping -f 219.142.121.209<br />
+ARPING to 219.142.121.209 from 219.142.121.212 via eth0<br />
+Unicast reply from 219.142.121.209 [28:6e:d4:95:fd:57] 4.770ms<br />
+Sent 1 probe(s) (1 broadcast(s))<br />
+Received 1 replies (0 request(s), 0 broadcast(s))<br />
+# arping -f 219.142.121.210<br />
+ARPING to 219.142.121.210 from 219.142.121.212 via eth0<br />
+Unicast reply from 219.142.121.210 [0:65:11:0:42:bb] 0.539ms<br />
+Sent 1 probe(s) (1 broadcast(s))<br />
+Received 1 replies (0 request(s), 0 broadcast(s))<br />
+# arping -f 219.142.121.211<br />
+ARPING to 219.142.121.211 from 219.142.121.212 via eth0<br />
+Sent 3 probe(s) (3 broadcast(s))<br />
+Received 0 reply (0 request(s), 0 broadcast(s))<br />
+# arping -f 219.142.121.212<br />
+ARPING to 219.142.121.212 from 219.142.121.212 via eth0<br />
+^[[ASent 4 probe(s) (4 broadcast(s))<br />
+Received 0 reply (0 request(s), 0 broadcast(s))<br />
+# arping -f 219.142.121.213<br />
+ARPING to 219.142.121.213 from 219.142.121.212 via eth0<br />
+Unicast reply from 219.142.121.213 [0:10:db:57:94:41] 2.050ms<br />
+Sent 1 probe(s) (1 broadcast(s))<br />
+Received 1 replies (0 request(s), 0 broadcast(s))<br />
+# arping -f 219.142.121.214<br />
+ARPING to 219.142.121.214 from 219.142.121.212 via eth0<br />
+Unicast reply from 219.142.121.214 [0:95:10:91:13:fb] 1.374ms<br />
+Sent 1 probe(s) (1 broadcast(s))<br />
+Received 1 replies (0 request(s), 0 broadcast(s))<br />
+# arping -f 219.142.121.215<br />
+ARPING to 219.142.121.215 from 219.142.121.212 via eth0<br />
+Sent 15 probe(s) (15 broadcast(s))<br />
+Received 0 reply (0 request(s), 0 broadcast(s))<br />
+#<br />
+<br />
+# traceroute 202.102.110.2<br />
+traceroute to 202.102.110.2 (202.102.110.2), 30 hops max, 40 byte packets<br />
+ 1  219.142.121.209 (219.142.121.209)  3.689 ms  3.602 ms  5.440 ms<br />
+ 2  219.141.131.157 (219.141.131.157)  2.705 ms *  2.755 ms<br />
+ 3  202.97.53.89 (202.97.53.89)  7.431 ms  5.628 ms  3.694 ms<br />
+ 4  202.97.37.70 (202.97.37.70)  5.646 ms  3.470 ms  3.970 ms<br />
+ 5  202.97.65.202 (202.97.65.202)  29.059 ms  102345.869 ms  27.525 ms<br />
+ 6  221.231.146.249 (221.231.146.249)  25.425 ms  25.928 ms  25.388 ms<br />
+ 7  202.102.110.78 (202.102.110.78)  26.846 ms  27.270 ms  26.786 ms<br />
+ 8  202.102.110.68 (202.102.110.68)  103030.110 ms  27.307 ms  26.972 ms<br />
+ 9  * * *<br />
+<br />
+# traceroute 121.189.57.81<br />
+traceroute to 121.189.57.81 (121.189.57.81), 30 hops max, 40 byte packets<br />
+ 1  219.142.121.209 (219.142.121.209)  4.131 ms  3.186 ms  3.604 ms<br />
+ 2  219.141.142.81 (219.141.142.81)  5.481 ms  3.923 ms  3.156 ms<br />
+ 3  118.84.3.21 (118.84.3.21)  6.906 ms 202.97.57.209 (202.97.57.209)  6.462 ms<br />
+ 13600.153 ms<br />
+ 4  202.97.53.166 (202.97.53.166)  3.596 ms 202.97.53.86 (202.97.53.86)  4.916 m<br />
+s 202.97.53.166 (202.97.53.166)  3.458 ms<br />
+ 5  202.97.53.238 (202.97.53.238)  18.263 ms 202.97.58.94 (202.97.58.94)  3.897<br />
+ms 202.97.53.238 (202.97.53.238)  4.007 ms<br />
+ 6  202.97.58.81 (202.97.58.81)  3.808 ms  256304.746 ms  3.697 ms<br />
+ 7  202.97.5.98 (202.97.5.98)  55.685 ms  55.249 ms  55.465 ms<br />
+ 8  112.174.84.233 (112.174.84.233)  43.193 ms  43.191 ms  43.055 ms</code></pre><p class='detail'><br />
+<br />
+看起来这个出口是直接接入电信骨干网的<br />
+<br />
+公安部，你为何这么屌？ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/3004320382e2370c636aaaf0f9a85ae5ae5c52eb.png" target="_blank"><img src="../images/3004320382e2370c636aaaf0f9a85ae5ae5c52eb.png" alt="Screenshot from 2013-12-29 04:39:03.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/30043304e41addb4f2620fafc250900e6949ddeb.png" target="_blank"><img src="../images/30043304e41addb4f2620fafc250900e6949ddeb.png" alt="Screenshot from 2013-12-29 04:41:06.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">改密码，收回外网访问权限～BTW：如果有的话求送个无GFW的国内VPN（括弧笑～） </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/safe121" title="safe121">safe121</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047371" title="记一次失败的渗透从4年前的老文章到监控录像机最终直捅某敏感部门内网">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2014-01-04 10:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">对于服务器所属方，CNVD暂未能直接认定，不过已经转由CNCERT向国家某信息安全协调机构上报，由其后续尝试通报可能的网站管理单位。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47371";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

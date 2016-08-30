@@ -1,0 +1,282 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯某信息泄露危及其下多个discuz!论坛数据  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯某信息泄露危及其下多个discuz!论坛数据  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/kobin97">kobin97</a> 
+</li><li>提交时间：		2013-12-09 15:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-30：	细节向普通白帽子公开<br/>
+									2014-01-09：	细节向实习白帽子公开<br/>
+									2014-01-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">又上班了，无意中发现一个腾讯某站点“奇怪”的信息泄露 + 某“奇怪的接口” + 各种强大的接口功能，危及论坛数据，可能可以拿shell。<br />
+危害性想说是其下所有dz论坛，不过没测试，不敢说全部，只能说多个~~~~<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 “奇怪”的信息泄露<br />
+<br />
+http://bbs.open.t.qq.com/uc_server/data/config.inc.php<br />
+<br />
+<br />
+<br />
+php文件直接下载，这个怪现像，猜想是本想对 data 目录下，限制所有php文件执行，防止上传webshell，但想错了一点，就是这里有个重要的php配置文件，因此造成这个配置错误的信息泄露。<br />
+<br />
+<br />
+<br />
+证明<br />
+<br />
+</p><p class="detail"><a href="../images/0910373297eb48256fc2888e37765d0169d26096.jpg" target="_blank"><img src="../images/0910373297eb48256fc2888e37765d0169d26096.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#2 “奇怪”的接口<br />
+<br />
+众所周知，这 uc_server/data/config.inc.php 配置文件是ucenter的重要配置文件，通过uckey，可以做很多事情，如直接备份UC数据库（包含用户名，密码等重要信息）。<br />
+<br />
+但这处还有更丰富的内容<br />
+<br />
+</p><pre><code>define(&#039;SUPERBBS_URL&#039;, &#039;http://admin.forum.discuz.qq.com/&#039;);<br />
+define(&#039;SUPERBBS_KEY&#039;, &#039;eb********1&#039;);<br />
+define(&#039;SUPERBBS_IP&#039;, &#039;127.0.0.1&#039;);<br />
+define(&#039;CONFIG_TIMEOUT&#039;, 86400);<br />
+<br />
+$domain = $_SERVER[&#039;HTTP_HOST&#039;];<br />
+unset($_config);<br />
+if(strpos($domain, &#039;:&#039;)) {<br />
+	list($domain,) = explode(&#039;:&#039;, $domain);<br />
+}<br />
+$authkey = base64_encode(_authcode1(SUPERBBS_KEY, &#039;ENCODE&#039;, SUPERBBS_KEY, 300));<br />
+<br />
+$config_prefix = $domain.&#039;_&#039;;<br />
+<br />
+$config_cache = UC_ROOT.&#039;./data/&#039;.$config_prefix.&#039;config.inc.php&#039;;<br />
+<br />
+if(file_exists($config_cache) &amp;&amp; filemtime($config_cache) &gt;= time() - CONFIG_TIMEOUT) {<br />
+	include $config_cache;<br />
+} else {<br />
+<br />
+	$_get = dfopen1(SUPERBBS_URL . &#039;/superbbs.php?mod=site_config_ucenter_server&amp;domain=&#039; . $domain . &#039;&amp;authkey=&#039; . $authkey, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, SUPERBBS_IP);<br />
+<br />
+	$get = json_decode($_get);<br />
+	if ($get-&gt;success) {<br />
+		$data = $get-&gt;data;<br />
+		$_ucconfig = unserialize(base64_decode($data));<br />
+	} else {<br />
+		echo &#039;Can not find site with domain &#039; . $domain;<br />
+		exit;<br />
+	}<br />
+	file_put_contents($config_cache, &quot;&lt;?php \r\nif(!defined(&#039;IN_UC&#039;)) exit(&#039;Access Denied&#039;); \r\n\$_ucconfig=&quot;.var_export($_ucconfig, true).&#039;;&#039;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这个是腾讯通过获取UC配置的接口，猜想是他们为了方便管理所有dz站点而建造的，换句话说，通过这个接口，可以轻松获取腾讯所有dz站点uc的配置。<br />
+<br />
+但腾讯也是对这个有所限制的，我们访问<br />
+<br />
+http://admin.forum.discuz.qq.com/superbbs.php，会是直接 Forbidden<br />
+<br />
+那么估计限制了访问IP。<br />
+<br />
+但如果能获取其中一个论坛的shell，随即可以查询腾讯其它所有dz站点的ucenter配置？<br />
+<br />
+<br />
+<br />
+#3 uc强大的接口<br />
+<br />
+uc有很多接口，都很强大，如直接备份数据库接口 api/dbbak.php ，只要有key，就能备份和下载整站数据库。<br />
+<br />
+ucenter的接口更加强大，知道ucenter的uckey即可以直接拿shell，不过腾讯在这方面也是早有知道，所以直接禁止了对ucenter的admin.php的访问。<br />
+<br />
+Forbidden<br />
+<br />
+You don&#039;t have permission to access /uc_server/admin.php on this server.<br />
+<br />
+<br />
+<br />
+虽然这样，但还有很多方法获取子应用（论坛）的 uckey<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/09112149a2d3a6c08b63b9505f5e1f1977ecf444.jpg" target="_blank"><img src="../images/09112149a2d3a6c08b63b9505f5e1f1977ecf444.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+获取dz论坛的 uckey有什么用？<br />
+<br />
+ <br />
+<br />
+@猪猪侠 的太多例子告诉我们，只要有 uckey,我就能给你一个webshell<br />
+<br />
+同样，有uckey,也能直接下载整站数据库，还能做什么？<br />
+<br />
+登陆任意用户、删除用户？功能还是很多的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0915330314e6c5d4cde876ef7131d6ccf62cbc51.jpg" target="_blank"><img src="../images/0915330314e6c5d4cde876ef7131d6ccf62cbc51.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/0915332285ec7933a1b6bf413d5d0c6da9be9c5d.jpg" target="_blank"><img src="../images/0915332285ec7933a1b6bf413d5d0c6da9be9c5d.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">典型的配置错误 + 通用接口错误 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/kobin97" title="kobin97">kobin97</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-045388" title="腾讯某信息泄露危及其下多个discuz!论坛数据">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-12-10 15:20</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="45388";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

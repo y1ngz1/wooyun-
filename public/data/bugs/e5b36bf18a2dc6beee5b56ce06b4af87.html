@@ -1,0 +1,405 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		安全狗拦截webshell在某些条件下存在绕过(附IIS解析分析)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		安全狗拦截webshell在某些条件下存在绕过(附IIS解析分析)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/在路上">在路上</a> 
+</li><li>提交时间：		2013-09-16 12:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-16：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-19：	细节向第三方安全合作伙伴开放<br/>
+									2013-09-26：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-06：	细节向普通白帽子公开<br/>
+									2013-10-26：	细节向实习白帽子公开<br/>
+									2013-12-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">安全狗拦截webshell存在简单绕过，一个小问题借题发挥，多写了点，希望能骗点rank</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">一、前言<br />
+<br />
+安全狗现在做的是越来越好了，这个拦截webshell功能也是越来越强大了。今天下午没有课，挺风和日子的...就简单测试一下!<br />
+<br />
+<br />
+<br />
+二、测试过程<br />
+<br />
+<br />
+<br />
+安全狗的防护webshell功能可以拦截1.asp;.gif这样利用解析创建的webshell。今天简单测试一下，发现这个功能做的很好，美中不足有个小问题来简单说一下<br />
+<br />
+</p><p class="detail"><a href="../images/13193241d71cab5939632673574b1141dc7ad5c8.jpg" target="_blank"><img src="../images/13193241d71cab5939632673574b1141dc7ad5c8.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+C:\onlytest是站点根目录，创建test.asp和test.asp;文件夹，同时创建test.asp;.gif文件<br />
+<br />
+<br />
+<br />
+两个文件夹下存放文件1.txt内容如下:<br />
+<br />
+</p><p class="detail"><a href="../images/13193334e7b418c008e83ed3594bb43fc276b02b.jpg" target="_blank"><img src="../images/13193334e7b418c008e83ed3594bb43fc276b02b.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+一看大家都懂。<br />
+<br />
+访问测试:<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13193413c544dce43084d45b9841ab8d4c25a859.jpg" target="_blank"><img src="../images/13193413c544dce43084d45b9841ab8d4c25a859.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+访问http://localhost/test.asp;/1.txt<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/131934587f4becdc1de69c309315361dcef98493.jpg" target="_blank"><img src="../images/131934587f4becdc1de69c309315361dcef98493.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+呵呵，不拦截了就是这么简单。当然需要能创建特定文件夹的环境下才能起作用。这里简单说一下为什么test.asp;/1.txt可以当做asp来解析。(或者大家可能都知道，我这里就简单点说吧)<br />
+<br />
+<br />
+<br />
+三、iis6特性说明<br />
+<br />
+   当iis接收到一个请求后，会首先判断调用哪个dll对请求进行响应,如果请求的是asp文件则调用asp.dll进行响应，其它后缀按照设置调用相应的dll进行响应。<br />
+<br />
+  经过对iis6.0的分析，最终确定在w3core.dll(C:\WINDOWS\system32\inetsrv)的W3_URL_INFO::ProcessUrl(IDA加载符号表后函数名)的函数中实现上述过程.<br />
+<br />
+具体代码如下:<br />
+<br />
+   <br />
+<br />
+</p><p class="detail"><a href="../images/13194052c4c76d960a709a9a7147df67f6ea8503.jpg" target="_blank"><img src="../images/13194052c4c76d960a709a9a7147df67f6ea8503.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+首先，获得接收到的url相对路径，开始进行处理，从左到右查找第一个.字符，查找成功后，会做计算，判断点字符最大个数是否超过设置最大数0x64,如果小于最大值，则继续处理。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13194154aba25eccfdcc8855106cd613e8293d46.jpg" target="_blank"><img src="../images/13194154aba25eccfdcc8855106cd613e8293d46.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+在上一个结果基础上，从左到右查找/字符。如果找到则跳转。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13194241c94040faf30035d6763c48c133b7ec1e.jpg" target="_blank"><img src="../images/13194241c94040faf30035d6763c48c133b7ec1e.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+获得点与/之间字符的个数，设置STRU(字符串对象长度)的长度。然后无条件跳转，继续进行判断<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1319434795dbef368d897e85b44d1d5b5aca76d7.jpg" target="_blank"><img src="../images/1319434795dbef368d897e85b44d1d5b5aca76d7.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+查找分号：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1319443589166373b8777d28f10c029508fe7dd9.jpg" target="_blank"><img src="../images/1319443589166373b8777d28f10c029508fe7dd9.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+查询成功后，会截取点字符与分号字符之间的字符，计算长度，设置长度信息<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1319452533069dd289ea706f31a7ab9b1f427495.jpg" target="_blank"><img src="../images/1319452533069dd289ea706f31a7ab9b1f427495.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+获得点字符与/或者;之间的字符，然后将其转化成小写。调用FindEntry进行查询。Entry保存的是iis的配置信息的映射关系。在iis配置信息中如下所示:<br />
+<br />
+</p><p class="detail"><a href="../images/131946046787afff52990ff173b3b950ec5299eb.jpg" target="_blank"><img src="../images/131946046787afff52990ff173b3b950ec5299eb.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+Entry里面保存的是这个对应关系表。asa后缀对应C:\WINDOWS\system32\inetsrv\asp.dll。<br />
+<br />
+传入的获得的后缀如.asp则会在列表中根据后缀进行查找，如果查找成功会返回一个对象，包括dll路径，动作等信息的对象。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13194648f9dc6304dcc2020bc147be874abbe2b3.jpg" target="_blank"><img src="../images/13194648f9dc6304dcc2020bc147be874abbe2b3.jpg" alt="12.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+如果查询成功则会将上述对象保存，后面会调用响应dll进行处理请求即参数等信息。如果查询失败:<br />
+<br />
+</p><p class="detail"><a href="../images/131947497a7e1e9a394fcf8e1cd6352a94aae822.jpg" target="_blank"><img src="../images/131947497a7e1e9a394fcf8e1cd6352a94aae822.jpg" alt="13.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+则会判断后缀是否是.dll、.isa、cgi等后缀。如果不是则回到开始位置，查找下一个点字符。进行循环处理。<br />
+<br />
+<br />
+<br />
+四、小结<br />
+<br />
+Iis保存着后缀和dll之间的对应关系。而iis对url解析获得后缀的过程如下:<br />
+<br />
+1.获得url请求的路径如/1.txt/test.asp/test/1.txt( 原始url：<br />
+<br />
+http://localhost/1.txt/test.asp/test/1.txt )<br />
+<br />
+2.从左向右查询.字符，如果点字符个数大于0x64，退出<br />
+<br />
+3.在找到的字符后查询/查找成功后获得.与/之间字符txt<br />
+<br />
+4.在找到的字符串之间进行查找;<br />
+<br />
+5.如果查找后则获得.与;之间的字符<br />
+<br />
+6.将找到字符转换成小写<br />
+<br />
+7.查找映射表，找到则获得处理请求的dll。<br />
+<br />
+8.查找失败，则查询是否是.dll等字符<br />
+<br />
+9.如果不是cgi等字符，则goto 2进行处理<br />
+<br />
+而在映射表中，看到还有很多后缀会调用asp.dll进行解析，如asa、cdx、cer。因此对于形如<br />
+<br />
+http://localhost/test.asp(Asp、cer、cdx)/* <br />
+<br />
+http://localhost/test.asp(Asp、cer、cdx);*<br />
+<br />
+都可以当做asp来解析。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">五、延伸<br />
+<br />
+本来就想写到这的，但是怕剑总不给通过，因此这里在延伸一下， 仅仅输出一个helloworld就没有什么意义了，因此将1.txt内容改成一句话。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1319533670ff5e34572aed3df1786fa8a158abdd.jpg" target="_blank"><img src="../images/1319533670ff5e34572aed3df1786fa8a158abdd.jpg" alt="14.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+使用菜刀连接发现403了，被禁止了。狗又起作用了。好牛叉。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1319542027dcd27aed7325e6a4c96eae6050782f.jpg" target="_blank"><img src="../images/1319542027dcd27aed7325e6a4c96eae6050782f.jpg" alt="15.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+怎么绕过狗使用菜刀？看了剑总的思路:http://zone.wooyun.org/content/6549<br />
+<br />
+但是本人学生党、屌丝党，没有自己的服务器，而且这样改起来需要在一句话服务端做解密，很麻烦。因此想象有没有简单解决方案。(当然剑总的解决方法是通用的，不一定是安全狗了，任何防护可能都可以过，但是代价也是高，对脚本小子的要求也很高。问题的解决方法还是取决于问题，这里只是为了绕过安全狗对菜刀的检查，就不用高富帅的方法了，找个屌丝方法就好了。)<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+使用burp设置上http代理，抓取菜刀发送的原始请求，抓到如下内容:<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/131955271c5b3281dc170fe84d7566842bf0de08.jpg" target="_blank"><img src="../images/131955271c5b3281dc170fe84d7566842bf0de08.jpg" alt="16.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看到菜刀发送了上面的内容提交到服务器，看着这个请求很容易明白cmd是一句话密码，后面是要执行的asp代码。<br />
+<br />
+	<br />
+<br />
+   经过测试发现对于asp脚步菜刀都是发送如上模式串，不同功能代码进行十六进制转换放到44696D...那个位置上就可以了。<br />
+<br />
+<br />
+<br />
+以下内容纯属yy:<br />
+<br />
+    因此狗如果想简单的防护菜刀就检测特征串即可了，找每个请求都含有的字符串即可。<br />
+<br />
+如果你是规则的制作者你想到的检测规则是什么?这个连发挥想象的余地都没有，一定是Execute(&quot;Execute太明显了这个。<br />
+<br />
+<br />
+<br />
+因此，修改上述请求:<br />
+<br />
+  <br />
+<br />
+</p><p class="detail"><a href="../images/1319563841b3f0fd9b1d9fa5bf023d1672c714e6.jpg" target="_blank"><img src="../images/1319563841b3f0fd9b1d9fa5bf023d1672c714e6.jpg" alt="17.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+在第一个execute后面多加一个空格，果然狗失效了。正常获得了返回结果。这说明我有当写规则的潜质，呵呵。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+既然知道了狗的检测方法，因此解决方案就出来，将每个请求包的execute(中间添加一个空格就好了。刚开始想自己写个python脚本实现:1.接收菜刀请求包 2.替换字符串 3.发送请求。看着这个思路这不就是burp么!如果burp有这个替换功能那就完美了。Burp真的是神器，只有你没有用到的功能，”没有”没有的功能<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13195722428b78aa4c321cbf1a3b8b63c83f8c83.jpg" target="_blank"><img src="../images/13195722428b78aa4c321cbf1a3b8b63c83f8c83.jpg" alt="18.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+猜测就是match and replace功能，测试时发现不能输入Execute(，因此我就将execute替换成execute空格多一个空格就可以让狗放行了(已经测试)，添加上之后，开始测试了。<br />
+<br />
+<br />
+<br />
+同样需要在浏览器上设置http代理为burp。Burp不拦截请求，直接放行<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13195905c219b0c119c52c6fe97ea1a65a827c21.jpg" target="_blank"><img src="../images/13195905c219b0c119c52c6fe97ea1a65a827c21.jpg" alt="19.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13195919a9d856d0c9332606362a7e9d6038056e.jpg" target="_blank"><img src="../images/13195919a9d856d0c9332606362a7e9d6038056e.jpg" alt="20.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+畅通无阻了 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">六、总结<br />
+<br />
+  好吧就写到这了，简单总结一下,这是一个小问题，修复很简单多匹配一点就好了...<br />
+<br />
+  没有别的就求多给两个rank 换个手机啥的 呵呵 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/在路上" title="在路上">在路上</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037047" title="安全狗拦截webshell在某些条件下存在绕过(附IIS解析分析)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-09-16 16:49</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37047";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

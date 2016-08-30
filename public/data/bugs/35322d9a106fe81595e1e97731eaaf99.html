@@ -1,0 +1,183 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		W78CMS v2.7.6 搜索型注入问题  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		W78CMS v2.7.6 搜索型注入问题  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2011-03-15 17:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-03-15：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-03-15：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">W78CMS企业网站管理系统 v2.7.6 UTF-8 存在搜索型注入问题</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">文件so.asp<br />
+<br />
+ 22行起<br />
+<br />
+</p><pre><code>&lt;%	<br />
+t=request.QueryString(&quot;t&quot;) <br />
+key=request.QueryString(&quot;key&quot;) <br />
+if t=&quot;&quot; then<br />
+Response.Write(&quot;&lt;script&gt;alert(&#039;请选择要搜索的栏目!&#039;);history.back();&lt;/script&gt;&quot;)<br />
+Response.End()<br />
+end if<br />
+if key=&quot;&quot; then<br />
+Response.Write(&quot;&lt;script&gt;alert(&#039;请输入关键词!&#039;);history.back();&lt;/script&gt;&quot;)<br />
+Response.End()<br />
+end if<br />
+set rs=server.createobject(&quot;adodb.recordset&quot;) <br />
+if t=1 then<br />
+exec=&quot;select * from [news] where title like &#039;%&quot;&amp;key&amp;&quot;%&#039;  order by id desc  &quot; <br />
+elseif t=2 then<br />
+exec=&quot;select * from [Products] where title like &#039;%&quot;&amp;key&amp;&quot;%&#039;  order by id desc  &quot; <br />
+else<br />
+exec=&quot;select * from [download] where title like &#039;%&quot;&amp;key&amp;&quot;%&#039;  order by id desc  &quot; <br />
+end if<br />
+if t=4 then<br />
+exec=&quot;select * from [anli] where title like &#039;%&quot;&amp;key&amp;&quot;%&#039;  order by id desc  &quot; <br />
+end if<br />
+rs.open exec,conn,1,1 <br />
+if rs.eof then<br />
+response.Write &quot;&amp;nbsp;没有搜索到相关内容！&quot;<br />
+else</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+明显针对key无过滤，直接代入数据库查询，导致注入问题。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> /so.asp?t=1&amp;key=[sql] </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> 作者在很多文件中都包含了防注入文件sql.asp 以及w78_sql.asp文件 但很多地方却没有使用其中的防注入函数，另w78_sql.asp防注入文件缺少对cookis提交的过滤。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01605" title="W78CMS v2.7.6 搜索型注入问题">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：5 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1605";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

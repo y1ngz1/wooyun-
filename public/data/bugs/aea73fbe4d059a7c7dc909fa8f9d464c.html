@@ -1,0 +1,256 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSNS某功能平行权限4  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSNS某功能平行权限4  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/齐迹">齐迹</a> 
+</li><li>提交时间：		2014-01-21 14:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-24：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-31：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-10：	细节向普通白帽子公开<br/>
+									2014-03-02：	细节向实习白帽子公开<br/>
+									2014-04-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">看到厂商迟迟不确认，所以再来一发，难不成厂商已经放假了？如果是开年求收留！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题发生在 wap模块<br />
+<br />
+apps/wap/Lib/Action/IndexAction.class.php<br />
+<br />
+和<br />
+<br />
+apps/w3g/Lib/Action/IndexAction.class.php<br />
+<br />
+行665<br />
+<br />
+</p><pre><code>public function doDelete() {<br />
+		$weibo_id = intval($_GET[&#039;weibo_id&#039;]);<br />
+		if ($weibo_id &lt;= 0) {<br />
+			redirect(U(&#039;wap/Index/index&#039;, 3, &#039;参数错误&#039;));<br />
+		}<br />
+		if ( !in_array($_GET[&#039;from&#039;], array(&#039;index&#039;,&#039;weibo&#039;,&#039;doSearch&#039;,&#039;atMe&#039;,&#039;favorite&#039;)) ) {<br />
+			$_GET[&#039;from&#039;] = &#039;index&#039;;<br />
+		}<br />
+		<br />
+		$target = U(&#039;wap/Index/&#039;.$_GET[&#039;from&#039;], array(&#039;key&#039;=&gt;urlencode($_GET[&#039;key&#039;]),&#039;page&#039;=&gt;$_GET[&#039;page&#039;]));<br />
+		$data[&#039;id&#039;] = $weibo_id;<br />
+		$detail = api(&#039;WeiboStatuses&#039;)-&gt;data($data)-&gt;show();<br />
+		$data[&#039;source_table_name&#039;] = $detail[&#039;app_row_table&#039;];<br />
+<br />
+		$res = api(&#039;WeiboStatuses&#039;)-&gt;data($data)-&gt;destroy();<br />
+		if ($res) {<br />
+			redirect($target , 1,  &#039;删除成功&#039;);<br />
+		}else {<br />
+			redirect($target, 3, &#039;删除失败，请稍后重试&#039;);<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+这里没有判断身份就直接del了！<br />
+<br />
+<br />
+<br />
+这个文件还有<br />
+<br />
+</p><pre><code>public function doUnFavorite() {<br />
+<br />
+		$weibo_id = intval($_GET[&#039;weibo_id&#039;]);<br />
+		if ($weibo_id &lt;= 0) {<br />
+			redirect(U(&#039;wap/Index/index&#039;, 3, &#039;参数错误&#039;));<br />
+		}<br />
+		if ( !in_array($_GET[&#039;from&#039;], array(&#039;index&#039;,&#039;detail&#039;,&#039;weibo&#039;,&#039;doSearch&#039;,&#039;atMe&#039;,&#039;favorite&#039;)) ) {<br />
+			$_GET[&#039;from&#039;] = &#039;index&#039;;<br />
+		}<br />
+		$_GET[&#039;key&#039;] = urlencode($_GET[&#039;key&#039;]);<br />
+		$target = U(&#039;wap/Index/&#039;.$_GET[&#039;from&#039;], array(&#039;weibo_id&#039;=&gt;$weibo_id, &#039;key&#039;=&gt;$_GET[&#039;key&#039;],&#039;page&#039;=&gt;$_GET[&#039;page&#039;]));<br />
+<br />
+		$data[&#039;id&#039;] = $weibo_id;<br />
+		// $res = api(&#039;Favorites&#039;)-&gt;data($data)-&gt;destroy();<br />
+		$res = model(&#039;Collection&#039;)-&gt;delCollection($data[&#039;id&#039;],&#039;feed&#039;);<br />
+		if ($res) {<br />
+			redirect($target, 1, &#039;取消成功&#039;);<br />
+		}else {<br />
+			redirect($target, 3, &#039;取消失败，请稍后重试&#039;);<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+接着<br />
+<br />
+w3g模块的收藏删除功能也没有权限判断<br />
+<br />
+</p><pre><code>public function doUnFavorite() {<br />
+		$type = empty($_POST[&#039;type&#039;])?$type=&#039;feed&#039;:$type=$_POST[&#039;type&#039;];<br />
+		$weibo_id = intval($_POST[&#039;feed_id&#039;]);<br />
+		if ($weibo_id &lt;= 0) {<br />
+			// redirect(U(&#039;w3g/Index/index&#039;, 3, &#039;参数错误&#039;));<br />
+			echo &#039;参数错误&#039;;<br />
+			exit();<br />
+		}<br />
+		$data[&#039;id&#039;] = $weibo_id;<br />
+		// $res = api(&#039;Favorites&#039;)-&gt;data($data)-&gt;destroy();<br />
+		$res = model(&#039;Collection&#039;)-&gt;delCollection($data[&#039;id&#039;],$type);<br />
+		// dump($res);<br />
+		if ($res) {<br />
+			echo &#039;1&#039;;<br />
+		}else {<br />
+			echo &#039;0&#039;;<br />
+		}<br />
+	}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在登录状态下访问<br />
+<br />
+http://xxxx/index.php?app=wap&amp;mod=Index&amp;act=doDelete&amp;weibo_id=2&amp;from=index&amp;page=1<br />
+<br />
+<br />
+<br />
+weibo_id=这里是要删除的微博ID号！<br />
+<br />
+即可删除别人的微博！ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这个功能在多个地方出现，为嘛总是要漏一些地方的权限啊？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/齐迹" title="齐迹">齐迹</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049448" title="ThinkSNS某功能平行权限4">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-21 14:35</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢这位认真的白帽，临近假期响应慢了！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49448";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

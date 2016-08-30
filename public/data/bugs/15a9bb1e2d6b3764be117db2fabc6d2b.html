@@ -1,0 +1,338 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		放统计代码，站长一秒钟变APT攻击专家？（WooYun-2012-09025续）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		放统计代码，站长一秒钟变APT攻击专家？（WooYun-2012-09025续）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/horseluke">horseluke</a> 
+</li><li>提交时间：		2012-07-12 20:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-07-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-08-06：	细节向普通白帽子公开<br/>
+									2012-08-16：	细节向实习白帽子公开<br/>
+									2012-08-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于WooYun-2012-09025所说的移动浏览器中HTTP REFERER非正常泄露问题（目前有两家），导致站长只要放置统计代码，都将有更多来自移动设备访问的非正常来源网址进入统计后台中（相比PC端来讲）。一个典型利用是以关键词“gsid”统计来源即可发现数个wap认证存在缺陷的网站（见http://zone.wooyun.org/content/137 ）。<br />
+<br />
+如果该网站针对特定行业、或者手机访问占比大，统计来源可以指示出不少可外部访问的内网地址，从而为下一步特定行业的攻击做准备。本次上报即是一次因为在统计来源数据中无意发现地址而进行针对广州公交行业的测试结果，请CNCERT进行确认通报（地址将单独发送，因为涉及核心工控应用和整个公司的生产系统）。<br />
+<br />
+这多少说明，有些安全问题的来源，确实不是一个公司/组织能够管辖的，这需要大家的齐心协力的合作和信息共享；另外，站长躺着中大枪了，提醒各位妥善设置统计网站的账号密码，同时积极检测是否有可疑的统计类代码被内置；至于各家云浏览器，还是仔细检查检查云端渲染和本地渲染机制实现的差异可能引发的问题，不要把好人变坏人啊。<br />
+<br />
+PS：关于放置统计代码进行攻击的延伸阅读：<br />
+<br />
+http://blog.knownsec.com/2012/03/web%E5%BA%94%E7%94%A8%E6%BC%8F%E6%B4%9E%E7%9A%84%E5%A4%A7%E8%A7%84%E6%A8%A1%E6%94%BB%E5%87%BB%E6%A1%88%E4%BE%8B%E5%88%86%E6%9E%90/ </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">以下两个广州公交行业的后台均是通过手机访问本人制作的实时公交查询系统（研究性质）、被CNZZ统计代码捕获到的。<br />
+<br />
+<br />
+<br />
+一、（工控应用）广州公交调度系统信息泄露、strut2远程命令执行漏洞、tomcat后台管理外网暴露漏洞<br />
+<br />
+<br />
+<br />
+访问来源日志（请参见WooYun-2012-09025详细说明中的追查说明）：<br />
+<br />
+</p><pre><code>$visit_log = array(<br />
+	array(<br />
+		&#039;log_id&#039;=&gt;17,<br />
+		&#039;time&#039;=&gt;&#039;2012-06-29 19:02:47&#039;,<br />
+		&#039;ip&#039;=&gt;&#039;[忽略]&#039;,<br />
+		&#039;user_agent&#039;=&gt;&#039;IUC(U;iOS 5.1.1;Zh-cn;320*480;)/UCWEB8.4.1.169/42/997&#039;,<br />
+		&#039;referer&#039;=&gt;&#039;http://[工控地址A]&#039;,<br />
+		&#039;screen_width&#039;=&gt;800,<br />
+		&#039;screen_height&#039;=&gt;600,<br />
+		&#039;ext&#039;=&gt;&#039;{\&quot;user_agent\&quot;:\&quot;IUC(U;iOS 5.1.1;Zh-cn;320*480;)\\/UCWEB8.4.1.169\\/42\\/997\&quot;,\&quot;x_forward\&quot;:\&quot;[忽略]\&quot;,\&quot;http_accept\&quot;:\&quot;*\\/*, dn\\/3969128191-24c84f20,text\\/vnd.wap.wml;q=0.6,ss\\/320x416,UC\\/42\&quot;,\&quot;http_accept_charset\&quot;:\&quot;x-gbk,utf-8;q=0.7,*;q=0.7\&quot;,\&quot;http_accept_encoding\&quot;:\&quot;gzip,deflate\&quot;,\&quot;http_accept_lang\&quot;:\&quot;zh-cn\&quot;}&#039;<br />
+	)<br />
+);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+泄露的工控地址A可以不经过登录，即可查看广州所有公交线路的运行情况。当然，里面蕴含的丰富查询接口也是不限制访问的（wireshark抓包得知）。<br />
+<br />
+顺带不明白一件事情，IOS可以运行java么？怎么会从手机访问这个地址的？<br />
+<br />
+</p><p class="detail"><a href="../images/12192441b42e93fcc7102811a9d8fc11123d9b6a.png" target="_blank"><img src="../images/12192441b42e93fcc7102811a9d8fc11123d9b6a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+上溯到工控地址B，发现最近火得不得了的Strut2漏洞。<br />
+<br />
+</p><p class="detail"><a href="../images/12192538a9fdd817fc57e4ad0089d379765b06bb.png" target="_blank"><img src="../images/12192538a9fdd817fc57e4ad0089d379765b06bb.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+因为这个漏洞，也就发现了tomcat后台管理C外网暴露，从这里get shell应该是没问题的。由于检测习惯遵循不get shell原则，不作深入，仅使用上述工具翻查了一些web目录，暂时没有发现有后门存在、也未知是否存在万能密码可进入调度系统（待被通报方自检）。<br />
+<br />
+</p><p class="detail"><a href="../images/12192613203cffee455e0cacc18ad6f04a222395.png" target="_blank"><img src="../images/12192613203cffee455e0cacc18ad6f04a222395.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+综合上述漏洞检测信息，由于该系统肩负整个广州区域的公交调度工作，故若被破坏，将直接导致广州地区整个公交系统陷入瘫痪，从而产生严重后果，故评级为高。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+二、（普通）一个公交公司内部交流版块SQL注射漏洞引发的问题<br />
+<br />
+访问来源日志记录到：<br />
+<br />
+</p><p class="detail"><a href="../images/121928409532c4ef9e9d9669499b103ab78a6b88.png" target="_blank"><img src="../images/121928409532c4ef9e9d9669499b103ab78a6b88.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>array(<br />
+	&#039;log_id&#039;=&gt;986,<br />
+	&#039;time&#039;=&gt;&#039;2012-07-06 23:12:35&#039;,<br />
+	&#039;ip&#039;=&gt;&#039;[忽略]&#039;,<br />
+	&#039;user_agent&#039;=&gt;&#039;JUC (Linux; U; 4.0.4; zh-cn; HTC_Incredible_S; 480*800) UCWEB7.9.4.145/139/800&#039;,<br />
+	&#039;referer&#039;=&gt;&#039;[公交公司内网系统地址A]&#039;,<br />
+	&#039;screen_width&#039;=&gt;800,<br />
+	&#039;screen_height&#039;=&gt;600,<br />
+	&#039;ext&#039;=&gt;&#039;{\&quot;user_agent\&quot;:\&quot;JUC (Linux; U; 4.0.4; zh-cn; HTC_Incredible_S; 480*800) UCWEB7.9.4.145\\/139\\/800\&quot;,\&quot;x_forward\&quot;:\&quot;[忽略]\&quot;,\&quot;http_accept\&quot;:\&quot;*\\/*, dn\\/4848111901-43fa95c6,text\\/vnd.wap.wml;q=0.6,ss\\/475x607,UC\\/139\&quot;,\&quot;http_accept_charset\&quot;:\&quot;x-gbk,utf-8;q=0.7,*;q=0.7\&quot;,\&quot;http_accept_encoding\&quot;:\&quot;gzip,deflate\&quot;,\&quot;http_accept_lang\&quot;:\&quot;zh-cn\&quot;}&#039;<br />
+	);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这个内网系统地址A似乎没啥问题，但是发现了一个内部交流版块B。然后在地址C发现了SQL注入漏洞，有点危险，属于DBA权限，并且通过查询得知，整个公司的信息化系统（包括之前地址A无法登陆的OA系统）等都在里面。由于之前同类问题的教训，未敢深入。<br />
+<br />
+<br />
+<br />
+</p><pre><code>sqlmap identified the following injection points with a total of 50 HTTP(s) requests:<br />
+---<br />
+Place: GET<br />
+Parameter: xxx<br />
+    Type: boolean-based blind<br />
+    Title: AND boolean-based blind - WHERE or HAVING clause<br />
+    Payload: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <br />
+<br />
+    Type: UNION query<br />
+    Title: Generic UNION query (NULL) - 10 columns<br />
+    Payload: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <br />
+<br />
+    Type: stacked queries<br />
+    Title: Microsoft SQL Server/Sybase stacked queries<br />
+    Payload: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <br />
+<br />
+    Type: AND/OR time-based blind<br />
+    Title: Microsoft SQL Server/Sybase time-based blind<br />
+    Payload: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <br />
+---<br />
+<br />
+current user is DBA:    &#039;True&#039;<br />
+<br />
+database management system users [2]:<br />
+[*] BUILTIN\\Administrators<br />
+[*] sa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+同时还发现首页D存在无法解析php问题？<br />
+<br />
+</p><p class="detail"><a href="../images/1219291947d00f5c93a4e3c3d52d14c2e3586338.png" target="_blank"><img src="../images/1219291947d00f5c93a4e3c3d52d14c2e3586338.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+综合上述漏洞检测信息，由于该服务器肩负整个公司的信息化工作，故一旦被破坏，将造成公司内部信息丢失等严重后果，故评级为中高。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">详见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">一、（工控应用）广州公交调度系统解决建议<br />
+<br />
+针对信息泄露问题解决建议：<br />
+<br />
+在无法改造系统的情况下限制外网访问，或者上VPN<br />
+<br />
+针对strut2远程命令执行漏洞解决建议：<br />
+<br />
+升级框架<br />
+<br />
+针对tomcat后台管理外网暴露漏洞解决方案：<br />
+<br />
+删除该后台，或者限制外网访问<br />
+<br />
+<br />
+<br />
+经查询，该系统属于必能宝中国的基于 MapInfo MapXtreme Java 及 MapInfo Professional 开发的解决方案，故可以同时考虑作为通用漏洞通报给必能宝中国。<br />
+<br />
+http://resource.mapinfo.com/static/files/document/1235622680673/GZpublictransmonitor.pdf<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+二、（普通）一个公交公司的漏洞<br />
+<br />
+针对内部交流版块漏洞：<br />
+<br />
+修复该漏洞，并由其反馈软件生厂商，确认是否为通用软件漏洞。<br />
+<br />
+针对架构问题：<br />
+<br />
+建议划分几个服务器并各司其职，不要全部服务放在一起，以免导致沦陷<br />
+<br />
+针对首页问题：<br />
+<br />
+重新进行服务器配置（其实一个服务器既配置asp .net又配置php是很危险的）<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（漏洞通过后，将通过本站发送私信到CNCERT。请注意查收）<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/horseluke" title="horseluke">horseluke</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09565" title="放统计代码，站长一秒钟变APT攻击专家？（WooYun-2012-09025续）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2012-07-17 09:21</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD通过实例确认所述情况，针对统计代码信息泄露不作为漏洞事件对待，而对目标实例的案例以漏洞事件认定。转由CNCERT广东分中心协调涉事单位处置。<br />
+<br />
+rank=8.97*1.0*1.2=10.764<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9565";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,198 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		苏宁易购会员中心某验证功能权限设计错误  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		苏宁易购会员中心某验证功能权限设计错误  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/纷纭">纷纭</a> 
+</li><li>提交时间：		2012-11-13 15:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-11-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-11-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-11-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-12-03：	细节向普通白帽子公开<br/>
+									2012-12-13：	细节向实习白帽子公开<br/>
+									2012-12-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">苏宁易购会员中心某功能权限无验证，容易造成权限以外的滥用。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.苏宁易购会员中心，有一个手机验证功能。该功能为了方便会员绑定手机。<br />
+<br />
+2.手机绑定，需要先通过邮箱认证，该过程需要输入验证码进行。<br />
+<br />
+3.通过邮箱验证获取验证码后，可以进行手机验证，但是不限定手机号码，也不需要验证码，仅仅输入手机号，即可获取验证码，而且所谓的60秒等待再发功能是通过网页JS控制的，实际上无时间限制。<br />
+<br />
+4.通过抓包后再次提交进行权限验证，该手机验证码发布接口，未做任何验证，没有对提交来源，提交次数，提交号码等做出验证，通过该接口可以无限制的提交手机验证请求。通过简单的编程可以瞬间对某号码发出上千条验证码，可以简单的来制作一个“手机短信轰炸机”。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1.在后台按照常规的验证手机号的步骤进行验证，通过邮箱验证后，可以进行手机号验证，对手机号验证过程进行抓包。<br />
+<br />
+</p><p class="detail"><a href="../images/13101300fb19643ff625081f05283591584b80a5.png" target="_blank"><img src="../images/13101300fb19643ff625081f05283591584b80a5.png" alt="a.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/131013080c9659e37edd357f9a55c783c9a5d207.png" target="_blank"><img src="../images/131013080c9659e37edd357f9a55c783c9a5d207.png" alt="B.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2.验证完毕后，手机接到验证码，转到抓包工具中，可以看到网页端提交了2个请求。<br />
+<br />
+</p><p class="detail"><a href="../images/131014132d0397835e3a10b726266756530f7b5a.png" target="_blank"><img src="../images/131014132d0397835e3a10b726266756530f7b5a.png" alt="e.png" width="600"/></a></p><p class="detail"><br />
+<br />
+我提交了2次获取验证码，得到4条请求信息，经查看，第一条是验证号码信息是否合法的，没有意义，第二条请求是发送手机验证码的。<br />
+<br />
+通过POST(实际上是GET也可以)协议，提交一个请求：<br />
+<br />
+https://member.suning.com/emall/SNMemberCardValidCtrlCmd?cellphone=手机号&amp;action=send&amp;step=bindEmail<br />
+<br />
+没有任何来源验证，或者权限验证，也没有次数以及手机号码的验证，验证短信瞬间就到你手机了。<br />
+<br />
+3.简单的编写一个小程序，或者通过PHP编程，甚至做个网页刷新工具，不停的刷新就会发现，瞬间你的手机多了N多的苏宁易购“温馨提示”，简单的提交了几条。大家研究下。<br />
+<br />
+</p><p class="detail"><a href="../images/131018542d590254633d43c389534a08db077b09.png" target="_blank"><img src="../images/131018542d590254633d43c389534a08db077b09.png" alt="abc.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4.苏宁易购的短信网关不知道收费不。如果刷十万条要不要钱。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.加入权限验证，非用户禁止提交。<br />
+<br />
+2.加入时间验证，如60s一次。<br />
+<br />
+3.加入号码验证。某号码一段时间内只允许发N条。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/纷纭" title="纷纭">纷纭</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-014706" title="苏宁易购会员中心某验证功能权限设计错误">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2012-11-13 17:46</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交，我们加紧整改</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="14706";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

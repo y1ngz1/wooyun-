@@ -1,0 +1,279 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		西安恩科电子政务系统登录过滤不当进后台得shell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		西安恩科电子政务系统登录过滤不当进后台得shell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/possible">possible</a> 
+</li><li>提交时间：		2012-04-21 18:25</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-04-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-04-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-05-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-05-14：	细节向普通白帽子公开<br/>
+									2012-05-24：	细节向实习白帽子公开<br/>
+									2012-06-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">西安恩科电子政务系统登录过滤不当进后台得shell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">西安恩科电子政务jsp系统，由于对后台登录功能过滤不当，导致存在sql注入，直接可以进入后台。后台上传功能，使用本地白名单验证，直接得jspshell。获得系统权限。<br />
+<br />
+<br />
+<br />
+客户端验证代码<br />
+<br />
+<br />
+<br />
+function IsValid( oField )<br />
+<br />
+{<br />
+<br />
+ re= /select|insert|chr|mid|master|truncate|char|update|or|delete|exec|count|&#039;|&quot;|=|;|&gt;|&lt;|%/i;<br />
+<br />
+ $sMsg = &quot;请您不要在参数中输入特殊字符和SQL关键字！&quot;<br />
+<br />
+ if ( re.test(oField.value) )<br />
+<br />
+ {<br />
+<br />
+alert( $sMsg );<br />
+<br />
+oField.value = &#039;&#039;;<br />
+<br />
+oField.focus();<br />
+<br />
+return false;<br />
+<br />
+ }<br />
+<br />
+}<br />
+<br />
+可以说防范的很好，可以防止sql注入。但是客户端所做的都是浮云...<br />
+<br />
+<br />
+<br />
+后台验证代码checklogin.jsp<br />
+<br />
+<br />
+<br />
+ if(request.getParameter(&quot;userName&quot;)!=null){<br />
+<br />
+if(userName.startsWith(&quot;&lt;&quot;)||(userName.startsWith(&quot;&lt;&quot;)&amp;&amp;userName.endsWith(&quot;&gt;&quot;))||userName.startsWith(&quot;&#039;&quot;)||userName.startsWith(&quot; &quot;)||userName.contains(&quot; or &quot;)){<br />
+<br />
+           out.print(&quot;alert(&#039;不是有效的帐号，请重新输入！&#039;);&quot;);<br />
+<br />
+           out.print(&quot;history.back();&quot;);<br />
+<br />
+        }else{<br />
+<br />
+在checkuser.class中验证代码:<br />
+<br />
+ if ((this.loginName == null) || (this.loginName == &quot;&quot;) || (this.userPsd == null) || (this.userPsd == &quot;&quot;)) return false;<br />
+<br />
+    boolean turnvalue = false;<br />
+<br />
+    String sqlString = &quot;select * from tb_sys_userinfo where loginName=&quot; + this.sql.checkNull(this.loginName) + <br />
+<br />
+      &quot; and password=&quot; + this.sql.checkNull(this.userPsd);<br />
+<br />
+    int i = sqlString.indexOf(&quot; or &quot;);<br />
+<br />
+    if (i &gt; 0) {<br />
+<br />
+      sqlString = sqlString.replace(&quot; or &quot;, &quot; and &quot;);<br />
+<br />
+    }<br />
+<br />
+    ResultSet rs = this.sql.getQuery(sqlString);<br />
+<br />
+<br />
+<br />
+可以看出整个验证过程，存在sql注入，可以通过简单构造用户名和密码就可以，绕过验证代码，直接登录后台. </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">直接将登录页面，保存到本地，构造登录任意恩科电子政务系统jsp系统代码：<br />
+<br />
+<br />
+<br />
+使用用户名test&#039;/**/or/**/ID=1-- 即可登录系统后台(使用ID=1 一般可以保证伪造系统管理员)<br />
+<br />
+<br />
+<br />
+如下图所示:<br />
+<br />
+</p><p class="detail"><a href="../images/21142439f0c47e52e2c7aef8a126cf96935ac3d7.png" target="_blank"><img src="../images/21142439f0c47e52e2c7aef8a126cf96935ac3d7.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/21142453a90645f202a188a7a40fde32e4023177.png" target="_blank"><img src="../images/21142453a90645f202a188a7a40fde32e4023177.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+进后台，利用上传得shell.<br />
+<br />
+http://www.xacgb.gov.cn/back/possible.jsp<br />
+<br />
+<br />
+<br />
+简单搜索一下 该套系统<br />
+<br />
+http://www.changanqu.gov.cn/back/<br />
+<br />
+http://www.beilin.gov.cn/back<br />
+<br />
+http://www.xachanba.com.cn/back/<br />
+<br />
+http://www.yanta.gov.cn/back/<br />
+<br />
+http://www.xagh.org/back/ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">前台程序员与后台程序员互换 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/possible" title="possible">possible</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-06250" title="西安恩科电子政务系统登录过滤不当进后台得shell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2012-04-24 08:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认漏洞通用性。将分两步进行处置：一是尝试联系厂商提供漏洞修复方案；二是根据测试情况转由各分中心通知政府部门用户处置。<br />
+<br />
+对漏洞评分如下（以所述利用方式评分）：<br />
+CVSS：(AV:R/AC:L/Au:NR/C:P/A:N/I:P/B:N) score:6.42（最高10分，中危）<br />
+即：远程攻击、攻击难度低、不需要用户认证，对机密性、完整性、可用性造成部分影响。<br />
+<br />
+<br />
+技术难度系数：1.0（一般，求问源代码哪来的？）<br />
+影响危害系数：1.2（一般，主要涉及陕西省西安地区）<br />
+CNVD综合评分：6.42*1.0*1.2=7.704</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="6250";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

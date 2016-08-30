@@ -1,0 +1,592 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		代码审计系列2:Simple Down 简单下载系统 v5.4 各种SQLi、XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		代码审计系列2:Simple Down 简单下载系统 v5.4 各种SQLi、XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/LaiX">LaiX</a> 
+</li><li>提交时间：		2013-09-16 12:06</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-16：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-12-15：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">整个程序无任何过滤，满城尽是 SQLi 、  XSS。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.拿到程序后，我们先来看看 登录页面。(login.php)<br />
+<br />
+<br />
+<br />
+先来看看管理登录页面(admin/adminlogin.php)的核心代码<br />
+<br />
+</p><pre><code>&lt;?php<br />
+if(!isset($_POST[&#039;adminlogin&#039;])){<br />
+	echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+	echo &quot;document.title = &#039;·Ç·¨·ÃÎÊ&#039;&quot;;<br />
+	echo &quot;&lt;/script&gt;&quot;;<br />
+	echo &quot;·Ç·¨·ÃÎÊ¡£3Ãëºó½«·µ»ØµÇÂ½Ò³Ãæ£¬Èç¹ûÄãµÄä¯ÀÀÆ÷²»Ö§³Ö×Ô¶¯Ìø×ª£¬Çëµã»÷&amp;nbsp;&lt;a href=&#039;index.php&#039; style=&#039;color:green;&#039;&gt;ÕâÀï&lt;/a&gt;&quot;;<br />
+	echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+	echo &#039;GoIndex()&#039;;<br />
+	echo &#039;&lt;/script&gt;&#039;;<br />
+	exit();<br />
+}<br />
+$username = strval($_POST[&#039;t_UserName&#039;]);<br />
+$password = strval($_POST[&#039;t_UserPass&#039;]);<br />
+$password = MD5($password);<br />
+<br />
+if($username != &quot;admin&quot;)<br />
+{<br />
+	echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+	echo &quot;document.title = &#039;¹ÜÀíÔ±ÕËºÅ´íÎó&#039;&quot;;<br />
+	echo &quot;&lt;/script&gt;&quot;;<br />
+	echo &quot;¹ÜÀíÔ±ÕËºÅ´íÎó¡£3Ãëºó½«·µ»ØµÇÂ½Ò³Ãæ£¬Èç¹ûÄãµÄä¯ÀÀÆ÷²»Ö§³Ö×Ô¶¯Ìø×ª£¬Çëµã»÷&amp;nbsp;&lt;a href=&#039;index.php&#039; style=&#039;color:green;&#039;&gt;ÕâÀï&lt;/a&gt;&quot;;<br />
+	echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+	echo &#039;GoIndex()&#039;;<br />
+	echo &#039;&lt;/script&gt;&#039;;<br />
+	exit();<br />
+}<br />
+<br />
+$check_query = mysql_query(&quot;SELECT ID FROM HBDX_USERS WHERE USER_NAME = &#039;$username&#039; AND USER_PASS = &#039;$password&#039; LIMIT 1&quot;);<br />
+if($row = mysql_fetch_array($check_query))<br />
+{<br />
+    $_SESSION[&#039;username&#039;] = $username;<br />
+    $_SESSION[&#039;userid&#039;] = $row[&#039;ID&#039;];<br />
+	echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+	echo &quot;AutoOpenURL(&#039;admin.php&#039;)&quot;;<br />
+	echo &#039;&lt;/script&gt;&#039;;<br />
+	exit();<br />
+} <br />
+else<br />
+{<br />
+	echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+	echo &quot;document.title = &#039;¹ÜÀíÔ±µÇÂ½Ê§°Ü&#039;&quot;;<br />
+	echo &quot;&lt;/script&gt;&quot;;<br />
+	echo &quot;¹ÜÀíÔ±µÇÂ½Ê§°Ü£¬Çë¼ì²éÕËºÅºÍÃÜÂëÊÇ·ñÕýÈ·¡£3Ãëºó½«·µ»ØµÇÂ½Ò³Ãæ£¬Èç¹ûÄãµÄä¯ÀÀÆ÷²»Ö§³Ö×Ô¶¯Ìø×ª£¬Çëµã»÷&amp;nbsp;&lt;a href=&#039;index.php&#039; style=&#039;color:green;&#039;&gt;ÕâÀï&lt;/a&gt;&quot;;<br />
+	echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+	echo &#039;GoIndex()&#039;;<br />
+	echo &#039;&lt;/script&gt;&#039;;<br />
+	exit();<br />
+} 	<br />
+mysql_free_result($result);<br />
+mysql_close($conn);<br />
+<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+从</p><pre><code>if($username != &quot;admin&quot;)</code></pre><p class='detail'> 和 </p><pre><code>$password = MD5($password);</code></pre><p class='detail'>这两句发现，似乎用户名只允许使用admin 并且密码被md5加密。<br />
+<br />
+现在似乎还无法绕过登录<br />
+<br />
+<br />
+<br />
+我们再来看看用户登录页面(login.php)的核心代码<br />
+<br />
+</p><pre><code>&lt;?php<br />
+require_once &quot;header.php&quot;;<br />
+<br />
+if(!isset($_POST[&#039;login&#039;])){<br />
+	echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+	echo &quot;document.title = &#039;非法访问&#039;&quot;;<br />
+	echo &quot;&lt;/script&gt;&quot;;<br />
+	echo &quot;非法访问。3秒后将返回登陆页面，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;login.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;如果您还没有账号可从&amp;nbsp;&lt;a href=&#039;reg.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;前往注册。&quot;;<br />
+	echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+	echo &#039;GoLogin()&#039;;<br />
+	echo &#039;&lt;/script&gt;&#039;;<br />
+	exit();<br />
+}<br />
+	$username = strval($_POST[&#039;t_UserName&#039;]);<br />
+	$password = strval($_POST[&#039;t_UserPass&#039;]);<br />
+	$password = MD5($password);<br />
+	<br />
+	$check_query = mysql_query(&quot;SELECT ID FROM HBDX_USERS WHERE USER_NAME = &#039;$username&#039; AND USER_PASS = &#039;$password&#039; LIMIT 1&quot;);<br />
+	if( $row = mysql_fetch_array( $check_query ) ){  //登录成功<br />
+		$_SESSION[&#039;username&#039;] = $username;<br />
+		$_SESSION[&#039;userid&#039;] = $row[&#039;ID&#039;];<br />
+		echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+		echo &quot;document.title = &#039;登陆成功&#039;&quot;;<br />
+		echo &quot;&lt;/script&gt;&quot;;<br />
+		echo &quot;用户登陆成功。3秒后将跳转到网站主首页，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;index.php&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;返回首页。如果您还没有账号可从&amp;nbsp;&lt;a href=&#039;reg.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;前往注册。&quot;;<br />
+		echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+		echo &#039;GoIndex()&#039;;<br />
+		echo &#039;&lt;/script&gt;&#039;;<br />
+	}<br />
+	else<br />
+	{<br />
+		echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+		echo &quot;document.title = &#039;登陆失败&#039;&quot;;<br />
+		echo &quot;&lt;/script&gt;&quot;;<br />
+		echo &quot;用户登陆失败。3秒后将返回登陆页面，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;login.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;如果您还没有账号可从&amp;nbsp;&lt;a href=&#039;reg.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;前往注册。&quot;;<br />
+		echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+		echo &#039;GoLogin()&#039;;<br />
+		echo &#039;&lt;/script&gt;&#039;;<br />
+	}<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这个页面出现了一个比较经典的语句<br />
+<br />
+</p><pre><code>$check_query = mysql_query(&quot;SELECT ID FROM HBDX_USERS WHERE USER_NAME = &#039;$username&#039; AND USER_PASS = &#039;$password&#039; LIMIT 1&quot;);<br />
+if( $row = mysql_fetch_array( $check_query ) ){  //登录成功</code></pre><p class='detail'><br />
+<br />
+这句SQL语句的意思是查询是否存在管理员，如果存在就提升权限。<br />
+<br />
+看了一下周围的代码，没有发现任何过滤。<br />
+<br />
+<br />
+<br />
+根据此SQL语句结构，我们构造一个&quot;万能密码&quot;:<br />
+<br />
+</p><p class="detail"><a href="../images/15122157f0366cbec2c7a24cfb3ce15de3e258d5.png" target="_blank"><img src="../images/15122157f0366cbec2c7a24cfb3ce15de3e258d5.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+进入服务器后就会变成：<br />
+<br />
+</p><pre><code>&quot;SELECT ID FROM HBDX_USERS WHERE USER_NAME = &#039;admin&#039; # AND USER_PASS = &#039;123456&#039; LIMIT 1&quot;</code></pre><p class='detail'><br />
+<br />
+意为：查询目标表中是否存在admin用户名，而查询密码的语句已经被 # 所注释。<br />
+<br />
+<br />
+<br />
+登录一下果然进入了：<br />
+<br />
+</p><p class="detail"><a href="../images/1512281361fa6fb576a9bcce23bc1e7a4132058f.png" target="_blank"><img src="../images/1512281361fa6fb576a9bcce23bc1e7a4132058f.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/151228339df60a735d0e26096b8e20fca163b6d2.png" target="_blank"><img src="../images/151228339df60a735d0e26096b8e20fca163b6d2.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2.再来看看注册页面。<br />
+<br />
+</p><pre><code>&lt;?php<br />
+require_once &#039;header.php&#039;;<br />
+<br />
+if(!isset($_POST[&#039;reg&#039;])){<br />
+	echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+	echo &quot;document.title = &#039;非法访问&#039;&quot;;<br />
+	echo &quot;&lt;/script&gt;&quot;;<br />
+	echo &quot;非法访问1。3秒后将返回注册页面，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;reg.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;如果您已经有账号可从&amp;nbsp;&lt;a href=&#039;login.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;前往登陆。&quot;;<br />
+	echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+	echo &#039;GoReg()&#039;;<br />
+	echo &#039;&lt;/script&gt;&#039;;<br />
+	exit();<br />
+}<br />
+	$username = strval($_POST[&#039;t_UserName&#039;]);<br />
+	$disname  = strval($_POST[&#039;iptNickName&#039;]);<br />
+	$userqq   = strval($_POST[&#039;iptCard&#039;]);<br />
+	$password = strval($_POST[&#039;t_UserPass&#039;]);<br />
+	$password = MD5($password);<br />
+	$repass   = strval($_POST[&#039;t_RePass&#039;]);<br />
+	$email    = strval($_POST[&#039;t_Email&#039;]);<br />
+	$datetime = date(&quot;Y-m-d H:i:s&quot;);<br />
+	<br />
+  <br />
+	$reg    = mysql_query(&quot;SELECT ID FROM HBDX_USERS WHERE USER_NAME = &#039;&quot;.$username.&quot;&#039;&quot;);<br />
+	$regnum = mysql_num_rows($reg);<br />
+	if($regnum &gt; 0){<br />
+		echo &quot;用户名&amp;nbsp;&lt;b style=&#039;color:green;&#039;&gt;&quot;.$username.&quot;&lt;/b&gt;&amp;nbsp;已经被使用&lt;br/&gt;&quot;;<br />
+		echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+		echo &quot;document.title = &#039;注册失败&#039;&quot;;<br />
+		echo &quot;&lt;/script&gt;&quot;;<br />
+		echo &quot;用户注册失败。3秒后将返回注册页面，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;reg.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;如果您已经有账号可从&amp;nbsp;&lt;a href=&#039;login.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;前往登陆。&quot;;<br />
+		echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+		echo &#039;GoReg()&#039;;<br />
+		echo &#039;&lt;/script&gt;&#039;;<br />
+		exit();<br />
+	}<br />
+<br />
+	$reg    = mysql_query(&quot;SELECT ID FROM HBDX_USERS WHERE USER_DISPLAYNAME = &#039;&quot;.$disname.&quot;&#039;&quot;);<br />
+	$regnum = mysql_num_rows($reg);<br />
+	if($regnum &gt; 0){<br />
+		echo &quot;昵称&amp;nbsp;&lt;b style=&#039;color:green;&#039;&gt;&quot;.$disname.&quot;&lt;/b&gt;&amp;nbsp;已经被使用&lt;br/&gt;&quot;;<br />
+		echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+		echo &quot;document.title = &#039;注册失败&#039;&quot;;<br />
+		echo &quot;&lt;/script&gt;&quot;;<br />
+		echo &quot;用户注册失败。3秒后将返回注册页面，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;reg.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;如果您已经有账号可从&amp;nbsp;&lt;a href=&#039;login.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;前往登陆。&quot;;<br />
+		echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+		echo &#039;GoReg()&#039;;<br />
+		echo &#039;&lt;/script&gt;&#039;;<br />
+		exit();<br />
+	}<br />
+<br />
+	$reg    = mysql_query(&quot;SELECT ID FROM HBDX_USERS WHERE USER_QQ = &#039;&quot;.$userqq.&quot;&#039;&quot;);<br />
+	$regnum = mysql_num_rows($reg);<br />
+	if($regnum &gt; 0){<br />
+		echo &quot;QQ号码&amp;nbsp;&lt;b style=&#039;color:green;&#039;&gt;&quot;.$userqq.&quot;&lt;/b&gt;&amp;nbsp;已经被使用&lt;br/&gt;&quot;;<br />
+		echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+		echo &quot;document.title = &#039;注册失败&#039;&quot;;<br />
+		echo &quot;&lt;/script&gt;&quot;;<br />
+		echo &quot;用户注册失败。3秒后将返回注册页面，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;reg.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;如果您已经有账号可从&amp;nbsp;&lt;a href=&#039;login.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;前往登陆。&quot;;<br />
+		echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+		echo &#039;GoReg()&#039;;<br />
+		echo &#039;&lt;/script&gt;&#039;;<br />
+		exit();<br />
+	}<br />
+	<br />
+	$reg    = mysql_query(&quot;SELECT ID FROM HBDX_USERS WHERE USER_MAIL = &#039;&quot;.$email.&quot;&#039;&quot;);<br />
+	$regnum = mysql_num_rows($reg);<br />
+	if($regnum &gt; 0){<br />
+		echo &quot;邮箱&amp;nbsp;&lt;b style=&#039;color:green;&#039;&gt;&quot;.$email.&quot;&lt;/b&gt;&amp;nbsp;已经被使用&lt;br/&gt;&quot;;<br />
+		echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+		echo &quot;document.title = &#039;注册失败&#039;&quot;;<br />
+		echo &quot;&lt;/script&gt;&quot;;<br />
+		echo &quot;用户注册失败。3秒后将返回注册页面，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;reg.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;如果您已经有账号可从&amp;nbsp;&lt;a href=&#039;login.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;前往登陆。&quot;;<br />
+		echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+		echo &#039;GoReg()&#039;;<br />
+		echo &#039;&lt;/script&gt;&#039;;<br />
+		exit();<br />
+	} <br />
+	<br />
+	if(mysql_query(&quot;INSERT INTO HBDX_USERS (USER_NAME,USER_DISPLAYNAME,USER_QQ,USER_PASS,USER_MAIL,REGISTERDATE,LOGINDATE) VALUES (&#039;$username&#039;,&#039;$disname&#039;,&#039;$userqq&#039;,&#039;$password&#039;,&#039;$email&#039;,&#039;$datetime&#039;,&#039;$datetime&#039;)&quot;))<br />
+	{<br />
+		echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+		echo &quot;document.title = &#039;用户注册成功&#039;&quot;;<br />
+		echo &quot;&lt;/script&gt;&quot;;<br />
+		echo &quot;用户注册成功。3秒后将跳转到登录页面，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;login.html&#039; style=&#039;color:green;&#039;&gt;登录&lt;/a&gt;&amp;nbsp;或者返回&amp;nbsp;&lt;a href=&#039;index.php&#039; style=&#039;color:green;&#039;&gt;主页&lt;/a&gt;&quot;;<br />
+		echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+		echo &#039;GoLogin()&#039;;<br />
+		echo &#039;&lt;/script&gt;&#039;;<br />
+<br />
+	}<br />
+	else<br />
+	{<br />
+		echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+		echo &quot;document.title = &#039;注册失败&#039;&quot;;<br />
+		echo &quot;&lt;/script&gt;&quot;;<br />
+		echo &quot;用户注册失败。3秒后将返回注册页面，如果你的浏览器不支持自动跳转，请点击&amp;nbsp;&lt;a href=&#039;reg.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;如果您已经有账号可从&amp;nbsp;&lt;a href=&#039;login.html&#039; style=&#039;color:green;&#039;&gt;这里&lt;/a&gt;&amp;nbsp;前往登陆。&quot;;<br />
+		echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+		echo &#039;GoReg()&#039;;<br />
+		echo &#039;&lt;/script&gt;&#039;;<br />
+	}<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+同样无任何过滤，根据最后一层验证的SQL语句<br />
+<br />
+</p><pre><code>if(mysql_query(&quot;INSERT INTO HBDX_USERS (USER_NAME,USER_DISPLAYNAME,USER_QQ,USER_PASS,USER_MAIL,REGISTERDATE,LOGINDATE) VALUES (&#039;$username&#039;,&#039;$disname&#039;,&#039;$userqq&#039;,&#039;$password&#039;,&#039;$email&#039;,&#039;$datetime&#039;,&#039;$datetime&#039;)&quot;))</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们可以构造一个form来绕过前端验证<br />
+<br />
+</p><pre><code>&lt;form action=&quot;http://127.0.0.1:8080/d.hbdx.cc/reg.php&quot; method=&quot;post&quot; &gt;<br />
+	&lt;input name=&quot;reg&quot; value=&quot;免费注册&quot;&gt;<br />
+    &lt;input name=&quot;t_UserName&quot; value=&quot;admin2&quot;&gt;<br />
+    &lt;input name=&quot;iptNickName&quot; value=&quot;的的&quot;&gt;<br />
+    &lt;input name=&quot;t_UserPass&quot; value=&quot;123456&quot;&gt;<br />
+    &lt;input name=&quot;t_RePass&quot; value=&quot;123456&quot;&gt;<br />
+    &lt;input name=&quot;iptCard&quot; value=&quot;123456&quot;&gt;<br />
+    &lt;input name=&quot;t_Email&quot; value=&quot;123456@qq.com&#039;&quot;&gt;<br />
+    &lt;input type=&quot;submit&quot; value=&quot;ok&quot;&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/15124434105cbf22c7dd3d1d8a1f60b47b63d776.png" target="_blank"><img src="../images/15124434105cbf22c7dd3d1d8a1f60b47b63d776.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看见提交之后出现报错，我们可以使用子查询构造除了HBDX_USERS表以外的 读取任意表数据的 SQL语句<br />
+<br />
+因为这个站的表除了HBDX_USERS，其他的表并没有什么敏感数据故不再演示。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+3.再来看看(catalogue.php)<br />
+<br />
+</p><pre><code>@$type      = strval($_GET[&#039;type&#039;]);  //得到type的值<br />
+@$page      = intval($_GET[&#039;page&#039;]);  //得到page的值<br />
+@$hot       = strval($_GET[&#039;hot&#039;]);  //得到type的值<br />
+$page       = isset($_GET[&#039;page&#039;])?intval($_GET[&#039;page&#039;]):1; //当前页数<br />
+$result     = mysql_query(&quot;SELECT CODE FROM HBDX_BASEINFO WHERE TAGSECOND = &#039;FILESHOW&#039;&quot;); <br />
+$filerow    = mysql_fetch_array($result);<br />
+$result     = mysql_query(&quot;SELECT CODE FROM HBDX_BASEINFO WHERE TAGSECOND = &#039;PAGENUM&#039;&quot;); <br />
+$pagerow    = mysql_fetch_array($result);<br />
+$perNumber  = $filerow[&#039;CODE&#039;];  //每页显示的最大记录数<br />
+$limit_page = $pagerow[&#039;CODE&#039;];<br />
+$startCount = ($page-1)*$perNumber;<br />
+if (empty($type))<br />
+{<br />
+	echo &#039;&lt;script type=&quot;text/javascript&quot;&gt;&#039;;<br />
+	echo &#039;AutoOpenURL(&quot;index.php&quot;)&#039;;<br />
+	echo &#039;&lt;/script&gt;&#039;;<br />
+}<br />
+else<br />
+{<br />
+	echo &quot;&lt;script type=&#039;text/javascript&#039;&gt;&quot;;<br />
+	echo &quot;document.title = &#039;$type&#039;&quot;;<br />
+	echo &quot;&lt;/script&gt;&quot;;<br />
+}<br />
+if (empty($hot))<br />
+{<br />
+	$hot = &quot;,ID DESC&quot;;<br />
+}<br />
+else<br />
+{<br />
+	$hot = &quot;,FILENUM DESC&quot;;<br />
+}<br />
+$result  = mysql_query(&quot;SELECT * FROM HBDX_BLUE WHERE FILETYPE = &#039;&quot;.$type.&quot;&#039;&quot;); <br />
+$num_max = mysql_num_rows($result); <br />
+$result  = mysql_query(&quot;SELECT * FROM HBDX_BLUE WHERE FILETYPE = &#039;&quot;.$type.&quot;&#039; ORDER BY TOP &quot;.$hot.&quot; LIMIT $startCount,$perNumber&quot;); <br />
+echo &#039;&lt;table class=&quot;table&quot;&gt;&lt;tr&gt;&#039;;<br />
+echo &quot;&lt;th&gt;操作&lt;/th&gt;&lt;th&gt;名称&lt;/th&gt;&lt;th&gt;大小&lt;/th&gt;&lt;th&gt;&lt;a href=&#039;catalogue.php?type=&quot;.$type.&quot;&amp;hot=hot&#039; style=&#039;color:green;&#039;&gt;下载量&lt;/a&gt;&lt;/th&gt;&lt;th&gt;发布者/联盟&lt;/th&gt;&lt;th&gt;标签&lt;/th&gt;&lt;th&gt;发布时间&lt;/th&gt;&quot;;<br />
+echo &#039;&lt;/tr&gt;&#039;;<br />
+while($row = mysql_fetch_array($result))<br />
+{<br />
+	$fileuser  = $row[&#039;FILEUSER&#039;];<br />
+	$usersinfo = mysql_query(&quot;SELECT USER_DISPLAYNAME FROM HBDX_USERS WHERE ID = &#039;&quot;.$fileuser.&quot;&#039;&quot;); <br />
+	$usersrows = mysql_fetch_array($usersinfo);<br />
+	echo &quot;&lt;td&gt;&lt;a href=&#039;pages.php?id=&quot;.$row[&#039;ID&#039;].&quot;&#039;&gt;详情&amp;nbsp;&amp;nbsp;&lt;/a&gt;&quot;;<br />
+	if( $row[&#039;FILEEXT&#039;] == &#039;net&#039; )<br />
+	{<br />
+		$fileid = $row[&#039;ID&#039;];<br />
+		echo &quot;&lt;a href=&#039;&quot;.$row[&#039;FILEURL&#039;].&quot;&#039; target=&#039;_blank&#039; onClick=\&quot;javascript:ClickNumber(&#039;$fileid&#039;);\&quot;&gt;下载&amp;nbsp;&amp;nbsp;&lt;/a&gt;&lt;/td&gt;&quot;;<br />
+	} <br />
+	else<br />
+	{<br />
+		echo &quot;&lt;a href=&#039;download.php?id=&quot;.$row[&#039;ID&#039;].&quot;&#039;&gt;下载&amp;nbsp;&amp;nbsp;&lt;/a&gt;&lt;/td&gt;&quot;;<br />
+	}<br />
+	echo &quot;&lt;td&gt;&quot;;<br />
+	if( $row[&#039;FILEEXT&#039;] == &#039;torrent&#039; )<br />
+	{<br />
+		echo &#039;&lt;a style=&quot;background:#1369A4;color:#fff;&quot;&gt;&amp;nbsp;&amp;nbsp;种子&amp;nbsp;&amp;nbsp;&lt;/a&gt;&#039;;<br />
+	}<br />
+	$pos = strpos( $row[&#039;FILEURL&#039;], &#039;ed2k://|file|&#039;);<br />
+	if ($pos !== false)<br />
+	{<br />
+		echo &#039;&lt;a style=&quot;background:#467500;color:#fff;&quot;&gt;&amp;nbsp;&amp;nbsp;电驴&amp;nbsp;&amp;nbsp;&lt;/a&gt;&#039;;<br />
+	}<br />
+	$baidu = strpos( $row[&#039;FILEURL&#039;], &#039;pan.baidu.com/share/link?&#039;);<br />
+	if ($baidu !== false)<br />
+	{<br />
+		echo &#039;&lt;a style=&quot;background:#BB3D00;color:#fff;&quot;&gt;&amp;nbsp;&amp;nbsp;百度&amp;nbsp;&amp;nbsp;&lt;/a&gt;&#039;;<br />
+	}<br />
+	$kuai = strpos( $row[&#039;FILEURL&#039;], &#039;kuai.xunlei.com/d/&#039;);<br />
+	if ($kuai !== false)<br />
+	{<br />
+		echo &#039;&lt;a style=&quot;background:#7E3D76;color:#fff;&quot;&gt;&amp;nbsp;&amp;nbsp;快传&amp;nbsp;&amp;nbsp;&lt;/a&gt;&#039;;<br />
+	}<br />
+	<br />
+	echo &quot;&lt;a href=&#039;pages.php?id=&quot;.$row[&#039;ID&#039;].&quot;&#039;&gt;&lt;b&gt;&quot;.$row[&#039;FILETITLE&#039;].&quot;&lt;/b&gt;&lt;/a&gt;&quot;;<br />
+<br />
+	if ($row[&#039;TOP&#039;] == 0) {<br />
+		echo &quot;&lt;img src=&#039;images/top.gif&#039;&gt;&lt;/img&gt;&quot;;<br />
+	}<br />
+	$datetoday = date(&quot;Y-m-d&quot;);<br />
+	$d1   = strtotime($datetoday);<br />
+	$d2   = strtotime($row[&#039;LOADDATE&#039;]);<br />
+	$days = round(($d1-$d2)/3600/24);<br />
+	if( $days &lt; 10 )<br />
+	{<br />
+		echo &quot;&lt;img src=&#039;images/new.gif&#039;&gt;&lt;/img&gt;&quot;;<br />
+	}<br />
+	if( $row[&#039;FILENUM&#039;] &gt; 99 )<br />
+	{<br />
+		echo &quot;&lt;img src=&#039;images/hot.gif&#039;&gt;&lt;/img&gt;&quot;;<br />
+	}<br />
+	echo &quot;&lt;/td&gt;&quot;;<br />
+<br />
+	echo &quot;&lt;td&gt;&quot;.$row[&#039;FILESIZE&#039;].&quot;&lt;/td&gt;&quot;;<br />
+	echo &quot;&lt;td&gt;&quot;.$row[&#039;FILENUM&#039;].&quot;&lt;/td&gt;&quot;;<br />
+	echo &quot;&lt;td&gt;&quot;.$usersrows[&#039;USER_DISPLAYNAME&#039;].&quot;&lt;/td&gt;&quot;;<br />
+	$tags   = strtok( $row[&#039;FILETAG&#039;],&#039;,&#039;);<br />
+	echo &quot;&lt;td&gt;&quot;;<br />
+	while( $tags ) {<br />
+		echo &quot;&lt;a href=\&quot;javascript:void(0)\&quot; onClick=\&quot;javascript:send_request(&#039;tools.php?seacher=&quot;.$tags.&quot;&#039;);\&quot;&gt;&quot;.$tags.&quot;&amp;nbsp;&amp;nbsp;&lt;/a&gt;&quot;;<br />
+		$tags = strtok (&quot;,&quot;); <br />
+	}<br />
+	echo &quot;&lt;/td&gt;&quot;;<br />
+	echo &quot;&lt;td&gt;&quot;.$row[&#039;LOADDATE&#039;].&quot;&lt;/td&gt;&quot;;<br />
+	echo &#039;&lt;/tr&gt;&#039;;<br />
+}<br />
+echo &quot;&lt;/table&gt;&quot;;<br />
+$pagecount = ceil($num_max/$perNumber);   //总页数<br />
+<br />
+if ($page == 1) {<br />
+echo &quot;&lt;a href=&#039;catalogue.php?type=&quot;.$type.&quot;&#039;&gt;&lt;strong&gt;首页&amp;nbsp;&amp;nbsp;&lt;/strong&gt;&lt;/a&gt;&quot;;<br />
+}<br />
+if ($page != 1) <br />
+{<br />
+	echo &quot;&lt;a href=&#039;catalogue.php?type=&quot;.$type.&quot;&#039;&gt;&lt;strong&gt;首页&amp;nbsp;&amp;nbsp;&lt;/strong&gt;&lt;/a&gt;&quot;;<br />
+	echo &quot;&lt;a href=&#039;catalogue.php?type=&quot;.$type.&quot;&amp;page=&quot;.($page-1).&quot;&#039;&gt;&lt;strong&gt;上一页&amp;nbsp;&amp;nbsp;&lt;/strong&gt;&lt;/a&gt;&quot;;<br />
+}<br />
+for ($i=1;$i&lt;=$pagecount;$i++)<br />
+{<br />
+	if($i &lt;= $limit_page)<br />
+	{<br />
+		echo &quot;&lt;a href=&#039;catalogue.php?type=&quot;.$type.&quot;&amp;page=&quot;.$i.&quot;&#039;&gt;$i&amp;nbsp;&amp;nbsp;&lt;/a&gt;&quot;;<br />
+	}<br />
+}<br />
+if ($page&lt;$pagecount)<br />
+{<br />
+	echo &quot;&lt;a href=&#039;catalogue.php?type=&quot;.$type.&quot;&amp;page=&quot;.($page+1).&quot;&#039;&gt;&lt;strong&gt;下一页&amp;nbsp;&amp;nbsp;&lt;/strong&gt;&lt;/a&gt;&quot;;<br />
+	echo &quot;&lt;a href=&#039;catalogue.php?type=&quot;.$type.&quot;&amp;page=&quot;.$pagecount.&quot;&#039;&gt;&lt;strong&gt;尾页&amp;nbsp;&amp;nbsp;&lt;/strong&gt;&lt;/a&gt;&quot;;<br />
+}<br />
+<br />
+if ($page==$pagecount)<br />
+{<br />
+	echo &quot;&lt;a href=&#039;catalogue.php?type=&quot;.$type.&quot;&amp;page=&quot;.$pagecount.&quot;&#039;&gt;&lt;strong&gt;尾页&amp;nbsp;&amp;nbsp;&lt;/strong&gt;&lt;/a&gt;&quot;;<br />
+}<br />
+<br />
+echo &quot;第&lt;b&gt;&quot;.$page.&quot;&lt;/b&gt;页 &quot;;<br />
+echo &quot; 共&lt;b&gt;&quot;.$pagecount.&quot;&lt;/b&gt;页 &quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这个页面可控参数太多<br />
+<br />
+@$type      = strval($_GET[&#039;type&#039;]);  //得到type的值<br />
+<br />
+@$page      = intval($_GET[&#039;page&#039;]);  //得到page的值<br />
+<br />
+@$hot       = strval($_GET[&#039;hot&#039;]);  //得到type的值<br />
+<br />
+$page       = isset($_GET[&#039;page&#039;])?intval($_GET[&#039;page&#039;]):1; //当前页数<br />
+<br />
+<br />
+<br />
+这个页面也同样无任何过滤。我们尝试type参数，除了出现注入以外，还出现了输出在&lt;script&gt;中的情况<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/151248055542f3c7dc6983a7ec5bad98fb4dc15f.png" target="_blank"><img src="../images/151248055542f3c7dc6983a7ec5bad98fb4dc15f.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我们闭合之后：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/15124952bed762cf3d9dff021501fa41983a5cd9.png" target="_blank"><img src="../images/15124952bed762cf3d9dff021501fa41983a5cd9.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">以上详细说明附带证明过程。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">幸好你的后台很简单。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/LaiX" title="LaiX">LaiX</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037204" title="代码审计系列2:Simple Down 简单下载系统 v5.4 各种SQLi、XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37204";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

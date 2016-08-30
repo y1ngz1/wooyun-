@@ -1,0 +1,344 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Ecmall某建站模板搜索框SQL注射  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Ecmall某建站模板搜索框SQL注射  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/HackBraid">HackBraid</a> 
+</li><li>提交时间：		2014-01-05 16:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-09：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-26：	细节向普通白帽子公开<br/>
+									2014-02-15：	细节向实习白帽子公开<br/>
+									2014-04-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">SQL注射</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://www.tuutao.com/index.php 土淘网<br />
+<br />
+用的Ecmall的建站模板，用过这个模板的应该都通杀了吧<br />
+<br />
+</p><p class="detail"><a href="../images/05154854944082e59c2c01112613d85009ccb2b2.jpg" target="_blank"><img src="../images/05154854944082e59c2c01112613d85009ccb2b2.jpg" alt="s1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+存在搜索框注入，注入点为：<br />
+<br />
+http://www.tuutao.com/index.php?app=store&amp;act=search&amp;id=45&amp;keyword=aaa&amp;min_price=100&amp;max_price=10000<br />
+<br />
+<br />
+<br />
+首先将获取get传来的参数，然后组合到一个sql查询语句condition中：<br />
+<br />
+1.search.app.php中的这段代码就是构建查询min和max价格的sql代码，没有过滤：<br />
+<br />
+</p><pre><code>/**<br />
+     * 取得查询条件语句<br />
+     *<br />
+     * @param   array   $param  查询参数（参加函数_get_query_param的返回值说明）<br />
+     * @return  string  where语句<br />
+     */<br />
+    function _get_goods_conditions($param)<br />
+    {<br />
+        /* 组成查询条件 */<br />
+        $conditions = &quot; g.if_show = 1 AND g.closed = 0 AND s.state = 1&quot;; // 上架且没有被禁售，店铺是开启状态,<br />
+        if (isset($param[&#039;keyword&#039;]))<br />
+        {<br />
+            $conditions .= $this-&gt;_get_conditions_by_keyword($param[&#039;keyword&#039;], ENABLE_SEARCH_CACHE);<br />
+        }<br />
+        if (isset($param[&#039;cate_id&#039;]))<br />
+        {<br />
+            $conditions .= &quot; AND g.cate_id_{$param[&#039;layer&#039;]} = &#039;&quot; . $param[&#039;cate_id&#039;] . &quot;&#039;&quot;;<br />
+        }<br />
+        if (isset($param[&#039;brand&#039;]))<br />
+        {<br />
+            $conditions .= &quot; AND g.brand = &#039;&quot; . $param[&#039;brand&#039;] . &quot;&#039;&quot;;<br />
+        }<br />
+        if (isset($param[&#039;region_id&#039;]))<br />
+        {<br />
+            $conditions .= &quot; AND s.region_id = &#039;&quot; . $param[&#039;region_id&#039;] . &quot;&#039;&quot;;<br />
+        }<br />
+        if (isset($param[&#039;price&#039;]))<br />
+        {<br />
+            $min = $param[&#039;price&#039;][&#039;min&#039;];<br />
+            $max = $param[&#039;price&#039;][&#039;max&#039;];<br />
+            $min &gt; 0 &amp;&amp; $conditions .= &quot; AND g.price &gt;= &#039;$min&#039;&quot;;<br />
+            $max &gt; 0 &amp;&amp; $conditions .= &quot; AND g.price &lt;= &#039;$max&#039;&quot;;<br />
+        }<br />
+<br />
+        return $conditions;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+2.下面这部分代码是query执行部分，直接将上面的参数带入查询了：<br />
+<br />
+</p><pre><code>/* 按价格统计 */<br />
+                if ($total_count &gt; NUM_PER_PAGE)<br />
+                {<br />
+                    $sql = &quot;SELECT MIN(g.price) AS min, MAX(g.price) AS max FROM {$table} WHERE&quot; . $conditions;<br />
+                    $row = $goods_mod-&gt;getRow($sql);<br />
+                    $min = $row[&#039;min&#039;];<br />
+                    $max = min($row[&#039;max&#039;], MAX_STAT_PRICE);<br />
+                    $step = max(ceil(($max - $min) / PRICE_INTERVAL_NUM), MIN_STAT_STEP);<br />
+                    $sql = &quot;SELECT FLOOR((g.price - &#039;$min&#039;) / &#039;$step&#039;) AS i, count(*) AS count FROM {$table} WHERE &quot; . $conditions . &quot; GROUP BY i ORDER BY i&quot;;<br />
+                    $res = $goods_mod-&gt;db-&gt;query($sql);<br />
+                    while ($row = $goods_mod-&gt;db-&gt;fetchRow($res))<br />
+                    {<br />
+                        $data[&#039;by_price&#039;][] = array(<br />
+                            &#039;count&#039; =&gt; $row[&#039;count&#039;],<br />
+                            &#039;min&#039;   =&gt; $min + $row[&#039;i&#039;] * $step,<br />
+                            &#039;max&#039;   =&gt; $min + ($row[&#039;i&#039;] + 1) * $step,<br />
+                        );<br />
+                    }<br />
+                }<br />
+            }</code></pre><p class='detail'><br />
+<br />
+3.这个页面上很多参数都没过滤，排查下吧<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">数据库：<br />
+<br />
+</p><pre><code>available databases [2]:<br />
+[*] information_schema<br />
+[*] tuutao</code></pre><p class='detail'><br />
+<br />
+账户：<br />
+<br />
+</p><pre><code>current user:    &#039;tuutao_u@localhost&#039;</code></pre><p class='detail'><br />
+<br />
+数据库tuutao包含的表：<br />
+<br />
+</p><pre><code>Database: tuutao<br />
+[84 tables]<br />
++------------------------+<br />
+| _ecm_third_login       |<br />
+| chat_customgroup       |<br />
+| chat_pals              |<br />
+| chat_session           |<br />
+| chat_transfer_fileinfo |<br />
+| chat_users             |<br />
+| ecm_acategory          |<br />
+| ecm_address            |<br />
+| ecm_ads_left           |<br />
+| ecm_article            |<br />
+| ecm_ative              |<br />
+| ecm_attribute          |<br />
+| ecm_brand              |<br />
+| ecm_cart               |<br />
+| ecm_category_goods     |<br />
+| ecm_category_store     |<br />
+| ecm_collect            |<br />
+| ecm_coupon             |<br />
+| ecm_coupon_sn          |<br />
+| ecm_friend             |<br />
+| ecm_function           |<br />
+| ecm_game               |<br />
+| ecm_gcategory          |<br />
+| ecm_get_prize          |<br />
+| ecm_goods              |<br />
+| ecm_goods_attr         |<br />
+| ecm_goods_image        |<br />
+| ecm_goods_integral     |<br />
+| ecm_goods_qa           |<br />
+| ecm_goods_spec         |<br />
+| ecm_goods_statistics   |<br />
+| ecm_goods_tpl          |<br />
+| ecm_goods_tuijian      |<br />
+| ecm_groupbuy           |<br />
+| ecm_groupbuy_log       |<br />
+| ecm_handsel            |<br />
+| ecm_hdlog              |<br />
+| ecm_integral           |<br />
+| ecm_logistics          |<br />
+| ecm_logistics_conf     |<br />
+| ecm_logsingle          |<br />
+| ecm_mail_queue         |<br />
+| ecm_member             |<br />
+| ecm_member_ofields     |<br />
+| ecm_message            |<br />
+| ecm_module             |<br />
+| ecm_money_logs         |<br />
+| ecm_navigation         |<br />
+| ecm_order              |<br />
+| ecm_order_extm         |<br />
+| ecm_order_goods        |<br />
+| ecm_order_integral     |<br />
+| ecm_order_log          |<br />
+| ecm_pageview           |<br />
+| ecm_partner            |<br />
+| ecm_payment            |<br />
+| ecm_privilege          |<br />
+| ecm_prize              |<br />
+| ecm_promotion          |<br />
+| ecm_promotion_local    |<br />
+| ecm_promotion_log      |<br />
+| ecm_recommend          |<br />
+| ecm_recommended_goods  |<br />
+| ecm_refer              |<br />
+| ecm_region             |<br />
+| ecm_scategory          |<br />
+| ecm_seckill            |<br />
+| ecm_seckill_subject    |<br />
+| ecm_sessions           |<br />
+| ecm_sessions_data      |<br />
+| ecm_sgrade             |<br />
+| ecm_ship               |<br />
+| ecm_shipping           |<br />
+| ecm_specialpage        |<br />
+| ecm_specialpage_goods  |<br />
+| ecm_specify            |<br />
+| ecm_store              |<br />
+| ecm_template           |<br />
+| ecm_third_login        |<br />
+| ecm_timedisc           |<br />
+| ecm_uploaded_file      |<br />
+| ecm_user_coupon        |<br />
+| ecm_user_priv          |<br />
+| ecm_user_prize         |<br />
++------------------------+</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">各种过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/HackBraid" title="HackBraid">HackBraid</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047944" title="Ecmall某建站模板搜索框SQL注射">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-06 15:22</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47944";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

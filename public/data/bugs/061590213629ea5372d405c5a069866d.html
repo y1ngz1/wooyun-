@@ -1,0 +1,221 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		livcms 内容管理系统存在注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		livcms 内容管理系统存在注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xyhk5558">xyhk5558</a> 
+</li><li>提交时间：		2012-08-27 18:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-27：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-10-11：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">此程序多用于网络媒体各大地方卫视，程序目录dealfunc下comment_stat.php和comment_js.php，<br />
+对cmid未做过滤。直接导致注射。<br />
+后台默认地址为 http://cp.xxxx.com/ws</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">comment_stat.php文件源码<br />
+<br />
+</p><pre><code>&lt;?php <br />
+/**<br />
+* comment_stat.php :: 评论回复统计文件 :: dealfunc<br />
+* <br />
+* $Id: comment_stat.php 67 2007-06-01 03:48:20Z $<br />
+*/<br />
+define (&#039;INCLUDE_PATH&#039;, &#039;./../&#039;);<br />
+require_once &quot;./../liv_global.php&quot;;<br />
+$staticfile = $_REQUEST[&#039;staticfile&#039;];<br />
+$commresult = $DB-&gt;query_first(&quot;SELECT count(*) as cmtnum  FROM liv_comment where contentid=&quot;.$_REQUEST[&#039;cmid&#039;] . &quot; and auditing=1 &quot;);<br />
+<br />
+?&gt;<br />
+document.write(&#039;&lt;?php echo intval($commresult[&#039;cmtnum&#039;]);?&gt;&#039;);<br />
+&lt;?php<br />
+<br />
+?&gt;<br />
+comment_js.php文件源码<br />
+<br />
+&lt;?php <br />
+/**<br />
+* comment_js.php :: 评论JS调用 :: dealfunc<br />
+* <br />
+* $Id: comment_js.php 67 2007-06-01 03:48:20Z $<br />
+*/<br />
+define(&#039;INCLUDE_PATH&#039;,&#039;./../&#039;);<br />
+require &quot;./../liv_global.php&quot;;<br />
+<br />
+$cmid = $_REQUEST[&#039;cmid&#039;];<br />
+if ($cmid)<br />
+{<br />
+$cond = &#039; AND contentid=&#039; . $cmid;<br />
+}<br />
+$limit = intval($_REQUEST[&#039;limit&#039;]) ? intval($_REQUEST[&#039;limit&#039;]) : 6;<br />
+$brieflength = intval($_REQUEST[&#039;brieflength&#039;]) ? intval($_REQUEST[&#039;brieflength&#039;]) : 100;<br />
+<br />
+?&gt;<br />
+	document.write(&#039;&lt;ul style=&quot;border-bottom:1px solid #ccc;margin-bottom:10px;&quot;&gt;&lt;li style=&quot;font-size:14px;font-weight:bold;&quot;&gt;文章评论：&lt;/li&gt;&#039;);<br />
+&lt;?php<br />
+<br />
+$result = $DB-&gt;query(&quot;SELECT * FROM &quot; . DB_PREFIX . &quot;comment WHERE auditing = 1 and siteid = &quot; . intval($siteinfo[&#039;siteid&#039;]) . $cond . &quot; ORDER BY pubdate DESC LIMIT $limit&quot;);<br />
+//echo &quot;SELECT * FROM &quot; . DB_PREFIX . &quot;comment WHERE auditing = 1 and siteid = &quot; . intval($siteinfo[&#039;siteid&#039;]) . $cond . &quot; and contentid=&quot;.$cmid.&quot; ORDER BY pubdate DESC LIMIT $limit&quot;;<br />
+$rst = $DB-&gt;num_rows($result);<br />
+//$commentlink = $siteinfo[&#039;sitepath&#039;].&#039;comment/comment.php?cmid=&#039;.$cmid.&#039;&amp;modeid=&#039;.$modeid;<br />
+$commentlink = $siteinfo[&#039;sitepath&#039;].&#039;comment/comment.php?cmid=&#039;.$cmid;<br />
+while($row = $DB-&gt;fetch_array($result))<br />
+{<br />
+	$content = cutchars($row[&#039;content&#039;],$brieflength);<br />
+           //     $content = nl2br($content);<br />
+                $content = str_replace(array(chr(10),chr(13)),&quot;&quot;,$content);<br />
+	$pubdate = date(&#039;Y-m-d&#039;,$row[&#039;pubdate&#039;]);<br />
+	$author = $row[&#039;author&#039;];<br />
+	$ips = explode(&quot;.&quot;,$row[&#039;ip&#039;]);<br />
+	$newip = $ips[0].&#039;.&#039;.$ips[1].&#039;.*.*&#039;;<br />
+	$link = $siteinfo[&#039;weburl&#039;] . &#039;comment/comment.php?cmid=&#039; . $row[&#039;contentid&#039;];<br />
+	?&gt;<br />
+		document.write(&#039;&lt;li style=&quot;background:#f1f1f1;border-bottom:1px solid #d8d8d8;padding:5px;&quot;&gt;网友：&lt;b&gt;&lt;?php echo $author ?&gt;&lt;/b&gt; 时间：&lt;?php echo $pubdate ?&gt; IP：&lt;?php echo $newip ?&gt;&lt;/li&gt;&lt;li style=&quot;line-height:22px;padding:5px;&quot;&gt;&lt;a href=&quot;&lt;?php echo $link ?&gt;&quot; target=&quot;_blank&quot;&gt;&lt;?php echo $content;?&gt;&lt;/a&gt;&lt;/li&gt;&#039;);<br />
+	&lt;?php<br />
+}<br />
+if($rst != 0)<br />
+{<br />
+	?&gt;<br />
+	document.write(&#039;&lt;li style=&quot;text-align:right;line-height:22px;font-weight:bold;padding-right:10px;&quot;&gt;&lt;a href=&quot;&lt;?php echo $commentlink ?&gt;&quot; target=&quot;_blank&quot;&gt;更多留言&lt;/a&gt;&lt;/li&gt;&#039;);<br />
+	&lt;?php<br />
+}<br />
+?&gt;<br />
+	document.write(&#039;&lt;/ul&gt;&#039;);<br />
+&lt;?php<br />
+<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+没任何过滤，直接带入查询 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/24193514bd4ae10ac12157578a0f1d1b7a5489f5.jpg" target="_blank"><img src="../images/24193514bd4ae10ac12157578a0f1d1b7a5489f5.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">加强过滤或直接删除此目录下的文件， </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xyhk5558" title="xyhk5558">xyhk5558</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-011296" title="livcms 内容管理系统存在注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="11296";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

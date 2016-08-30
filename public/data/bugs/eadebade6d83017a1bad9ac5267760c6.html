@@ -1,0 +1,326 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop2.73 api.php 两处鸡肋注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop2.73 api.php 两处鸡肋注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-09-05 16:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-26：	细节向普通白帽子公开<br/>
+									2013-10-06：	细节向实习白帽子公开<br/>
+									2013-10-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">null</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">switch ($_POST[&#039;act&#039;])<br />
+<br />
+{<br />
+<br />
+    case &#039;search_goods_list&#039;: search_goods_list(); break;<br />
+<br />
+    case &#039;search_products_list&#039;: search_products_list(); break;<br />
+<br />
+......<br />
+<br />
+}<br />
+<br />
+function search_products_list()<br />
+<br />
+{<br />
+<br />
+    check_auth(); <br />
+<br />
+......<br />
+<br />
+if (!empty($_POST[&#039;goods_id&#039;]) &amp;&amp; is_numeric($_POST[&#039;goods_id&#039;]) || !empty($_POST[&#039;bn&#039;])) //goods_id不为数字,bn不为空.假假得假,假真得真.<br />
+<br />
+    {<br />
+<br />
+        $sql = &#039;SELECT goods_id, last_update AS last_modify, shop_price AS price, goods_sn AS bn, goods_name AS name,  goods_weight         AS weight, goods_number AS store, add_time AS uptime&#039; .<br />
+<br />
+               &#039; FROM &#039; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;goods&#039;) .<br />
+<br />
+               &#039; WHERE &#039; . empty($_POST[&#039;bn&#039;]) ? &quot;goods_id = $_POST[goods_id]&quot; : &quot;goods_sn = $_POST[bn]&quot;; //bn带入查询.<br />
+<br />
+        $goods_data = $GLOBALS[&#039;db&#039;]-&gt;getRow($sql);<br />
+<br />
+......<br />
+<br />
+}<br />
+<br />
+function search_goods_list()<br />
+<br />
+{<br />
+<br />
+......<br />
+<br />
+        $page = empty($_POST[&#039;pages&#039;]) ? 1 : $_POST[&#039;pages&#039;]; //没过滤  <br />
+<br />
+<br />
+<br />
+        $counts = empty($_POST[&#039;counts&#039;]) ? 100 : $_POST[&#039;counts&#039;]; //没过滤.  1 union select 1,user()<br />
+<br />
+<br />
+<br />
+        $sql = &#039;SELECT goods_id, last_update AS last_modify&#039; .<br />
+<br />
+               &#039; FROM &#039; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;goods&#039;) .<br />
+<br />
+               &quot; WHERE is_delete = 0 AND is_on_sale = 1 AND (last_update &gt; &#039;&quot; . $_POST[&#039;last_modify_st_time&#039;] . &quot;&#039; OR last_update = 0)&quot;.<br />
+<br />
+               &quot; LIMIT &quot;.($page - 1) * $counts . &#039;, &#039; . $counts;//联合查询select...limit 1,1 union select 1,user()<br />
+<br />
+        $date_arr = $GLOBALS[&#039;db&#039;]-&gt;getAll($sql);<br />
+<br />
+)<br />
+<br />
+function check_auth()<br />
+<br />
+{<br />
+<br />
+    $license = get_shop_license();  // 取出网店 license信息<br />
+<br />
+    if (empty($license[&#039;certificate_id&#039;]) || empty($license[&#039;token&#039;]) || empty($license[&#039;certi&#039;]))<br />
+<br />
+    {<br />
+<br />
+        api_err(&#039;0x006&#039;, &#039;no certificate&#039;);   //没有证书数据，输出系统级错误:用户权限不够<br />
+<br />
+    }<br />
+<br />
+    if (!check_shopex_ac($_POST, $license[&#039;token&#039;])) //带入token,需要知道数据库里token的值.<br />
+<br />
+    {<br />
+<br />
+        api_err(&#039;0x009&#039;);   //输出系统级错误:签名无效<br />
+<br />
+    }<br />
+<br />
+    /* 对应用申请的session进行验证 */<br />
+<br />
+    $certi[&#039;certificate_id&#039;] = $license[&#039;certificate_id&#039;]; // 网店证书ID<br />
+<br />
+    $certi[&#039;app_id&#039;] = &#039;ecshop_b2c&#039;; // 说明客户端来源<br />
+<br />
+    $certi[&#039;app_instance_id&#039;] = &#039;webcollect&#039;; // 应用服务ID<br />
+<br />
+    $certi[&#039;version&#039;] = VERSION . &#039;#&#039; .  RELEASE; // 网店软件版本号<br />
+<br />
+    $certi[&#039;format&#039;] = &#039;json&#039;; // 官方返回数据格式<br />
+<br />
+    $certi[&#039;certi_app&#039;] = &#039;sess.valid_session&#039;; // 证书方法<br />
+<br />
+    $certi[&#039;certi_session&#039;] = $_POST[&#039;app_session&#039;]; //应用服务器申请的session值<br />
+<br />
+    $certi[&#039;certi_ac&#039;] = make_shopex_ac($certi, $license[&#039;token&#039;]); // 网店验证字符串<br />
+<br />
+<br />
+<br />
+    $request_arr = exchange_shop_license($certi, $license);<br />
+<br />
+<br />
+<br />
+    if ($request_arr[&#039;res&#039;] != &#039;succ&#039;)<br />
+<br />
+    {<br />
+<br />
+        api_err(&#039;0x001&#039;, &#039;session is invalid&#039;);   //输出系统级错误:身份验证失败<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+}<br />
+<br />
+function check_shopex_ac($post_params,$token)<br />
+<br />
+{<br />
+<br />
+    ksort($post_params);<br />
+<br />
+    $str = &#039;&#039;;<br />
+<br />
+    foreach($post_params as $key=&gt;$value)<br />
+<br />
+    {<br />
+<br />
+        if ($key!=&#039;ac&#039;)<br />
+<br />
+        {<br />
+<br />
+            $str.=$value;<br />
+<br />
+        }<br />
+<br />
+    }<br />
+<br />
+    if ($post_params[&#039;ac&#039;] == md5($str.$token))//ac的值要等于提交的参数加上$license[&#039;token&#039;]的值的md5码.<br />
+<br />
+    { <br />
+<br />
+        return true;<br />
+<br />
+    }<br />
+<br />
+    else<br />
+<br />
+    {<br />
+<br />
+        return true;<br />
+<br />
+    }<br />
+<br />
+} </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/05155603b6f89adbece5160845ffd090f261a531.jpg" target="_blank"><img src="../images/05155603b6f89adbece5160845ffd090f261a531.jpg" alt="QQ图片20130905155707.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/05155911e913f01556afc7e10a39b8b08c7895fc.jpg" target="_blank"><img src="../images/05155911e913f01556afc7e10a39b8b08c7895fc.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036191" title="ecshop2.73 api.php 两处鸡肋注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：7 </p>
+													<p class="detail">确认时间：2013-09-06 08:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36191";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

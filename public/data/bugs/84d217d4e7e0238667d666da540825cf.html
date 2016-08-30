@@ -1,0 +1,315 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ECSHOP手机订单程序漏洞能获取大量用户信息  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ECSHOP手机订单程序漏洞能获取大量用户信息  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Mr.Zhang">Mr.Zhang</a> 
+</li><li>提交时间：		2014-01-18 20:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-23：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-09：	细节向普通白帽子公开<br/>
+									2014-03-01：	细节向实习白帽子公开<br/>
+									2014-04-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ECSHOP手机订单获取有漏洞，导致客户订单资料外泄</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>elseif ($act == &#039;order_list&#039;)<br />
+{<br />
+    $record_count = $db-&gt;getOne(&quot;SELECT COUNT(*) FROM &quot; .$ecs-&gt;table(&#039;order_info&#039;). &quot; WHERE user_id = {$_SESSION[&#039;user_id&#039;]}&quot;);<br />
+    if ($record_count &gt; 0)<br />
+    {<br />
+        include_once(ROOT_PATH . &#039;includes/lib_transaction.php&#039;);<br />
+        $page_num = &#039;10&#039;;<br />
+        $page = !empty($_GET[&#039;page&#039;]) ? intval($_GET[&#039;page&#039;]) : 1;<br />
+        $pages = ceil($record_count / $page_num);<br />
+<br />
+        if ($page &lt;= 0)<br />
+        {<br />
+            $page = 1;<br />
+        }<br />
+        if ($pages == 0)<br />
+        {<br />
+            $pages = 1;<br />
+        }<br />
+        if ($page &gt; $pages)<br />
+        {<br />
+            $page = $pages;<br />
+        }<br />
+        $pagebar = get_wap_pager($record_count, $page_num, $page, &#039;user.php?act=order_list&#039;, &#039;page&#039;);<br />
+        $smarty-&gt;assign(&#039;pagebar&#039; , $pagebar);<br />
+        /* 订单状态 */<br />
+        $_LANG[&#039;os&#039;][OS_UNCONFIRMED] = &#039;未确认&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_CONFIRMED] = &#039;已确认&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_SPLITED] = &#039;已确认&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_SPLITING_PART] = &#039;已确认&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_CANCELED] = &#039;已取消&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_INVALID] = &#039;无效&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_RETURNED] = &#039;退货&#039;;<br />
+<br />
+        $_LANG[&#039;ss&#039;][SS_UNSHIPPED] = &#039;未发货&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_PREPARING] = &#039;配货中&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_SHIPPED] = &#039;已发货&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_RECEIVED] = &#039;收货确认&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_SHIPPED_PART] = &#039;已发货(部分商品)&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_SHIPPED_ING] = &#039;配货中&#039;; // 已分单<br />
+<br />
+        $_LANG[&#039;ps&#039;][PS_UNPAYED] = &#039;未付款&#039;;<br />
+        $_LANG[&#039;ps&#039;][PS_PAYING] = &#039;付款中&#039;;<br />
+        $_LANG[&#039;ps&#039;][PS_PAYED] = &#039;已付款&#039;;<br />
+        $_LANG[&#039;cancel&#039;] = &#039;取消订单&#039;;<br />
+        $_LANG[&#039;pay_money&#039;] = &#039;付款&#039;;<br />
+        $_LANG[&#039;view_order&#039;] = &#039;查看订单&#039;;<br />
+        $_LANG[&#039;received&#039;] = &#039;确认收货&#039;;<br />
+        $_LANG[&#039;ss_received&#039;] = &#039;已完成&#039;;<br />
+        $_LANG[&#039;confirm_received&#039;] = &#039;你确认已经收到货物了吗？&#039;;<br />
+        $_LANG[&#039;confirm_cancel&#039;] = &#039;您确认要取消该订单吗？取消后此订单将视为无效订单&#039;;<br />
+<br />
+        $orders = get_user_orders($_SESSION[&#039;user_id&#039;], $page_num, $page_num * ($page - 1));<br />
+        if (!empty($orders))<br />
+        {<br />
+            foreach ($orders as $key =&gt; $val)<br />
+            {<br />
+                $orders[$key][&#039;total_fee&#039;] = encode_output($val[&#039;total_fee&#039;]);<br />
+            }<br />
+        }<br />
+        //$merge  = get_user_merge($_SESSION[&#039;user_id&#039;]);<br />
+<br />
+        $smarty-&gt;assign(&#039;orders&#039;, $orders);<br />
+    }<br />
+    $smarty-&gt;assign(&#039;footer&#039;, get_footer());<br />
+    $smarty-&gt;display(&#039;order_list.html&#039;);<br />
+    exit;<br />
+}</code></pre><p class='detail'><br />
+<br />
+没有对访问这个页面的用户进行过滤，直接可以输出所有查询出来的值<br />
+<br />
+甚至可以对订单进行操作 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>elseif ($act == &#039;order_list&#039;)<br />
+{<br />
+    $record_count = $db-&gt;getOne(&quot;SELECT COUNT(*) FROM &quot; .$ecs-&gt;table(&#039;order_info&#039;). &quot; WHERE user_id = {$_SESSION[&#039;user_id&#039;]}&quot;);<br />
+    if ($record_count &gt; 0)<br />
+    {<br />
+        include_once(ROOT_PATH . &#039;includes/lib_transaction.php&#039;);<br />
+        $page_num = &#039;10&#039;;<br />
+        $page = !empty($_GET[&#039;page&#039;]) ? intval($_GET[&#039;page&#039;]) : 1;<br />
+        $pages = ceil($record_count / $page_num);<br />
+<br />
+        if ($page &lt;= 0)<br />
+        {<br />
+            $page = 1;<br />
+        }<br />
+        if ($pages == 0)<br />
+        {<br />
+            $pages = 1;<br />
+        }<br />
+        if ($page &gt; $pages)<br />
+        {<br />
+            $page = $pages;<br />
+        }<br />
+        $pagebar = get_wap_pager($record_count, $page_num, $page, &#039;user.php?act=order_list&#039;, &#039;page&#039;);<br />
+        $smarty-&gt;assign(&#039;pagebar&#039; , $pagebar);<br />
+        /* 订单状态 */<br />
+        $_LANG[&#039;os&#039;][OS_UNCONFIRMED] = &#039;未确认&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_CONFIRMED] = &#039;已确认&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_SPLITED] = &#039;已确认&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_SPLITING_PART] = &#039;已确认&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_CANCELED] = &#039;已取消&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_INVALID] = &#039;无效&#039;;<br />
+        $_LANG[&#039;os&#039;][OS_RETURNED] = &#039;退货&#039;;<br />
+<br />
+        $_LANG[&#039;ss&#039;][SS_UNSHIPPED] = &#039;未发货&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_PREPARING] = &#039;配货中&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_SHIPPED] = &#039;已发货&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_RECEIVED] = &#039;收货确认&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_SHIPPED_PART] = &#039;已发货(部分商品)&#039;;<br />
+        $_LANG[&#039;ss&#039;][SS_SHIPPED_ING] = &#039;配货中&#039;; // 已分单<br />
+<br />
+        $_LANG[&#039;ps&#039;][PS_UNPAYED] = &#039;未付款&#039;;<br />
+        $_LANG[&#039;ps&#039;][PS_PAYING] = &#039;付款中&#039;;<br />
+        $_LANG[&#039;ps&#039;][PS_PAYED] = &#039;已付款&#039;;<br />
+        $_LANG[&#039;cancel&#039;] = &#039;取消订单&#039;;<br />
+        $_LANG[&#039;pay_money&#039;] = &#039;付款&#039;;<br />
+        $_LANG[&#039;view_order&#039;] = &#039;查看订单&#039;;<br />
+        $_LANG[&#039;received&#039;] = &#039;确认收货&#039;;<br />
+        $_LANG[&#039;ss_received&#039;] = &#039;已完成&#039;;<br />
+        $_LANG[&#039;confirm_received&#039;] = &#039;你确认已经收到货物了吗？&#039;;<br />
+        $_LANG[&#039;confirm_cancel&#039;] = &#039;您确认要取消该订单吗？取消后此订单将视为无效订单&#039;;<br />
+<br />
+        $orders = get_user_orders($_SESSION[&#039;user_id&#039;], $page_num, $page_num * ($page - 1));<br />
+        if (!empty($orders))<br />
+        {<br />
+            foreach ($orders as $key =&gt; $val)<br />
+            {<br />
+                $orders[$key][&#039;total_fee&#039;] = encode_output($val[&#039;total_fee&#039;]);<br />
+            }<br />
+        }<br />
+        //$merge  = get_user_merge($_SESSION[&#039;user_id&#039;]);<br />
+<br />
+        $smarty-&gt;assign(&#039;orders&#039;, $orders);<br />
+    }<br />
+    $smarty-&gt;assign(&#039;footer&#039;, get_footer());<br />
+    $smarty-&gt;display(&#039;order_list.html&#039;);<br />
+    exit;<br />
+}</code></pre><p class='detail'><br />
+<br />
+去百度 搜索powered by ecshop<br />
+<br />
+所有开通手机网站的ecshop商城 域名后加mobile/user.php?act=order_list<br />
+<br />
+即可访问所有匿名购买者的订单，并可对其订单进行操作<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1817455717aaf5949592d46b76e5c7ff4616184a.jpg" target="_blank"><img src="../images/1817455717aaf5949592d46b76e5c7ff4616184a.jpg" alt="_20140118174535.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">建议对访问者进行登录验证，非登录用户禁止访问 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Mr.Zhang" title="Mr.Zhang">Mr.Zhang</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049250" title="ECSHOP手机订单程序漏洞能获取大量用户信息">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2014-01-20 11:18</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49250";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

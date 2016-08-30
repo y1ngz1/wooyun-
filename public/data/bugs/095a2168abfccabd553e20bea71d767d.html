@@ -1,0 +1,314 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		安全狗测试--注入篇  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		安全狗测试--注入篇  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/在路上">在路上</a> 
+</li><li>提交时间：		2013-08-10 15:06</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-15：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">简单闲的蛋疼，从官方网站上下载http://www.anquangou.cn/  IISv3.0 安装  简单测试一下...<br />
+<br />
+希望以此文，庆祝自己变成普通白帽子...<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">构造一个简单的注入页面asp+sqlserver 开始测试:<br />
+<br />
+</p><p class="detail"><a href="../images/1014060798bfc7df9593fe0c8a31830c1d7bb7dc.png" target="_blank"><img src="../images/1014060798bfc7df9593fe0c8a31830c1d7bb7dc.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+绕过:<br />
+<br />
+</p><p class="detail"><a href="../images/101406499dc1f25d758979aa883ac7d35a9ac586.png" target="_blank"><img src="../images/101406499dc1f25d758979aa883ac7d35a9ac586.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+原来如此简单,顿时信心百倍<br />
+<br />
+<br />
+<br />
+二、基础篇<br />
+<br />
+<br />
+<br />
+1.数据流向<br />
+<br />
+http://zone.wooyun.org/content/5091<br />
+<br />
+学习剑总大作感觉受益匪浅(没有办法这年头不拍马屁，不给过)，正向剑总说的，对于一个请求，在有防护的情况下，数据的流向:<br />
+<br />
+data-&gt;安全狗-&gt;webserver-&gt;app-&gt;database<br />
+<br />
+<br />
+<br />
+可见，一个数据流在整个流程中会经过多个&quot;程序&quot;,而安全狗是优先对数据进行处理，检查到危险就会阻断请求。<br />
+<br />
+<br />
+<br />
+2.所谓的安全狗被绕过:<br />
+<br />
+<br />
+<br />
+对于一个有效攻击，安全狗没有正确识别成功阻断，导致攻击成功。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+3.安全狗被绕过的原因:<br />
+<br />
+<br />
+<br />
+对于同样的一个请求，安全狗与webserver、app、database理解不同，导致安全狗被绕过。<br />
+<br />
+<br />
+<br />
+三、测试<br />
+<br />
+<br />
+<br />
+对于注入，当然是希望获得数据库里面保存的数据了，因此测试:<br />
+<br />
+</p><p class="detail"><a href="../images/10140948316e8f3295d7050f92c440bd65052b38.png" target="_blank"><img src="../images/10140948316e8f3295d7050f92c440bd65052b38.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+额，安全狗毫无反应，难道安全狗认为这个没有必要么？也是这个危害是小了一些<br />
+<br />
+<br />
+<br />
+继续测试 select from<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10141059880842c1d80c9ef8d9e57a15979c8f3c.png" target="_blank"><img src="../images/10141059880842c1d80c9ef8d9e57a15979c8f3c.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10141114b71cfeb0cf5b53fbb3609b7e7c477014.png" target="_blank"><img src="../images/10141114b71cfeb0cf5b53fbb3609b7e7c477014.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+原来安全狗防护的是select from<br />
+<br />
+<br />
+<br />
+怎么绕过?就要用到各种安全狗理解上的不同了...<br />
+<br />
+<br />
+<br />
+1)复参测试<br />
+<br />
+<br />
+<br />
+首先想到的是80sec牛人说的那个iis复参问题了<br />
+<br />
+</p><p class="detail"><a href="../images/1014123410c6d7b112e1f5d8f242bc2d7be7bdc7.png" target="_blank"><img src="../images/1014123410c6d7b112e1f5d8f242bc2d7be7bdc7.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+发现失败了，安全狗可以识别。<br />
+<br />
+<br />
+<br />
+2)iis对%解码特性测试<br />
+<br />
+有人分析说iis的asp.dll在进行参数url解码存在特性:<br />
+<br />
+IIS下的asp.dll文件在对asp文件后参数串进行url解码时，会直接过滤掉09-0d、20、%(下两个字符有一个不是十六进制)字符。<br />
+<br />
+将Get请求变成post请求，然后再from的f后面添加一个空格:<br />
+<br />
+</p><p class="detail"><a href="../images/10141335f2ac378adcf144a6dd6aff9f00ef4d2a.png" target="_blank"><img src="../images/10141335f2ac378adcf144a6dd6aff9f00ef4d2a.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+绕过成功.<br />
+<br />
+<br />
+<br />
+3)Unicode编码测试<br />
+<br />
+IIS支持unicode编码，因此使用unicode编码看看安全狗是否会拦截?<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/10141445b87996ced3080e5018769308bea09759.png" target="_blank"><img src="../images/10141445b87996ced3080e5018769308bea09759.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+安全狗没有进行unicode解码<br />
+<br />
+<br />
+<br />
+4)mssql特性测试<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/101415346613fd2aa23f38efd6b6095587d74994.png" target="_blank"><img src="../images/101415346613fd2aa23f38efd6b6095587d74994.png" alt="9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+也可以，但是有点鸡肋，在某些情况下可以..<br />
+<br />
+<br />
+<br />
+四、总结<br />
+<br />
+<br />
+<br />
+这里仅使用知道的几种方法，测试了一下select from规则，发现安全狗做的还是不错的，但是也存在一定程度的绕过。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+作为一个网络层防护软件目标应该是实现0攻击，但是在真实环境中,网络层防御的作用是提高攻击的门槛，因为它要考虑一个叫误报的东西…<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如上 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">考虑到各种特殊情况即可 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/在路上" title="在路上">在路上</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034031" title="安全狗测试--注入篇">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-08-10 15:06</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34031";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

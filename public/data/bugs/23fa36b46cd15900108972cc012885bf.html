@@ -1,0 +1,410 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 12. Dom Xss进阶 [路径con]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 12. Dom Xss进阶 [路径con]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-20 15:38</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-09：	细节向普通白帽子公开<br/>
+									2013-01-19：	细节向实习白帽子公开<br/>
+									2013-02-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我不是萝莉con,我是路径con。<br />
+<br />
+一些程序员会动态的加载json数据，同域的时候，可以使用ajax；而有时候，数据所在域和当前页面所在域又不一致。所以需要跨域请求。跨域请求数据的手段中，有一种叫做jsonp。<br />
+<br />
+用代码表示的话，就是<br />
+somescript.src=&quot;http://otherdomain.com/xx?jsonp=callback&quot;<br />
+<br />
+某些时候，程序员会在调用外部数据的时候带上可控的参数。<br />
+<br />
+somescript.src=&quot;http://otherdomain.com/xx?jsonp=callback&amp;id=&quot;+id;<br />
+<br />
+如果这个id我们可控，将可能带来XSS问题。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">本次教程，就不像前面的一样，去细说操作过程了，前面的几次教程也基本将常用操作全部介绍到了。直接来看例子。<br />
+<br />
+<br />
+<br />
+1. 在扫描过程中，经常遇到下面的例子。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20151938087a62d88444137933a09ec58b7538b0.jpg" target="_blank"><img src="../images/20151938087a62d88444137933a09ec58b7538b0.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 初看看，这种情况，似乎没有什么利用价值。<br />
+<br />
+<br />
+<br />
+3. 但是我们不难想象，如果这个地址是我们可控的话，一样会带来威胁。<br />
+<br />
+<br />
+<br />
+地址的可控可以分为3个层面。<br />
+<br />
+<br />
+<br />
+3.1  script src=&quot;完全可控&quot; ,这种就简单了，直接将地址换为我们的JS地址<br />
+<br />
+<br />
+<br />
+3.2  script src=&quot;/path/xxx/[路径可控]/1.js&quot;<br />
+<br />
+<br />
+<br />
+	这种要利用的话，需要同域名下有可控的文件。可控文件又分为2种。<br />
+<br />
+<br />
+<br />
+	3.2.1  可以直接上传文本至同域名下，不一定要是HTML文件，需要上传点有过滤缺陷。<br />
+<br />
+	3.2.2  参数可控，利用可用的json接口。<br />
+<br />
+<br />
+<br />
+		   最终变为 script src=&quot;/path/xxx/.../yyy/xx.json?callback=alert(1)&quot;<br />
+<br />
+<br />
+<br />
+3.3  script src=&quot;/xxxx/json.php?callback=xxxx&amp;param1=yyy&amp;param2=[参数可控]&quot;<br />
+<br />
+<br />
+<br />
+	这种情况，和3.2.2类似，如果参数可控，且json的参数没有很好的过滤时。我们就有机可乘了。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+4. 本文以拍拍网一处XSS为例，来描述以上可能性。<br />
+<br />
+<br />
+<br />
+扫描器扫到的点，见步骤1中的图。进一步，我们可以通过抓包的方式，看到页面在打开时，所加载的外部JS文件地址。<br />
+<br />
+<br />
+<br />
+http://sse1.paipai.com/comm_json?callback=commentListCallBack&amp;dtag=1&amp;ac=1&amp;cluster=1&amp;sellquality=0&amp;NewProp=&amp;Property=256&amp;PageNum=1&amp;PageSize=48&amp;OrderStyle=80&amp;Address=&amp;SaleType=1&amp;degree=1&amp;AuthType=2&amp;BeginPrice=&amp;EndPrice=&amp;KeyWord=2012%20%D0%C2&amp;OnlineState=2&amp;Paytype=4&amp;ranking=&amp;sClassid=&#039;aaaaaaaa&amp;t=1354854681<br />
+<br />
+<br />
+<br />
+我们打开这个JSON，用扫描反射型的方式，可以测试出，<br />
+<br />
+<br />
+<br />
+callback, dtag 以及 ranking可控。但均无法使用&lt;, &gt;，也就是说，这个JSON接口本身是无XSS风险的。<br />
+<br />
+<br />
+<br />
+此外 dtag, 和 ranking 都在双引号里面，我们在后续无法进行利用，而callback则在最前面，比较好控制。<br />
+<br />
+<br />
+<br />
+我们可以想象下，如果我们可以让这个页面调用：<br />
+<br />
+<br />
+<br />
+http://sse1.paipai.com/comm_json?callback=alert(1);<br />
+<br />
+<br />
+<br />
+那么将会产生XSS。<br />
+<br />
+<br />
+<br />
+那么怎么让页面调用上面的情况呢？<br />
+<br />
+<br />
+<br />
+4.1 直接控制callback参数，但是从实际情况来看，我们此处无法直接控制它，【失败】<br />
+<br />
+4.2 将后面的参数, param=xxx修改为param=xxx&amp;callback=alert(1) ，从而覆盖前面的callback<br />
+<br />
+<br />
+<br />
+5. 上面说到的第2种方案，似乎可行。但是实际上还是有问题的。<br />
+<br />
+<br />
+<br />
+譬如我们页面上的 type参数，对应着json的sclassid参数。<br />
+<br />
+<br />
+<br />
+我们访问以下地址：<br />
+<br />
+<br />
+<br />
+http://bag.paipai.com/search_list.shtml?type=&amp;callback=alert(1);&amp;np=11&amp;pro=256&amp;searchtype=2&amp;cs=0010000&amp;keyword=&amp;PTAG=20058.13.13<br />
+<br />
+<br />
+<br />
+其实很明显上面这样是不行的。。因为 &amp; 本身就是参数分隔符。这样写type就为空了<br />
+<br />
+<br />
+<br />
+可能很快就有人想到另外一个写法：&amp; 写为 %26<br />
+<br />
+<br />
+<br />
+http://bag.paipai.com/search_list.shtml?type=%26callback=alert(1);&amp;np=11&amp;pro=256&amp;searchtype=2&amp;cs=0010000&amp;keyword=&amp;PTAG=20058.13.13<br />
+<br />
+<br />
+<br />
+很好，但是实际上，你会发现，访问的json接口的参数也还是原封不动的 %26，而不是所希望的 &amp;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20152247dad7bd96c563a6fe20db4d501c5ab192.jpg" target="_blank"><img src="../images/20152247dad7bd96c563a6fe20db4d501c5ab192.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6. 为了看看参数是怎么从页面，传递到了 comm_json 这个接口上的。我们定位到以下代码。<br />
+<br />
+<br />
+<br />
+http://static.paipaiimg.com/js/search.js?t=20121108<br />
+<br />
+<br />
+<br />
+</p><pre><code>function init() {<br />
+        var keyword = decodeURIComp($getQuery(&#039;keyword&#039;)),<br />
+        type = $getQuery(&#039;type&#039;),<br />
+        searchtype = $getQuery(&#039;searchtype&#039;);<br />
+        option.keyword = keyword;<br />
+        option.classId = type;<br />
+        option.searchType = searchtype || option.searchType;<br />
+        option.beginPrice = $getQuery(&#039;bp&#039;);<br />
+        option.endPrice = $getQuery(&#039;ep&#039;);<br />
+        option.NewProp = $getQuery(&#039;np&#039;) || $getQuery(&#039;newprop&#039;);<br />
+        option.property = $getQuery(&#039;pro&#039;) || option.property;<br />
+        option.cid = $getQuery(&#039;cid&#039;);<br />
+        option.Paytype = $getQuery(&#039;pt&#039;) || option.Paytype;<br />
+        option.hongbaoKeyword = $getQuery(&#039;hb&#039;);<br />
+        option.conditionStatus = $getQuery(&#039;cs&#039;) || option.conditionStatus;<br />
+        option.showType = $getQuery(&#039;show&#039;) || option.showType;<br />
+        option.mode = $getQuery(&#039;mode&#039;) || option.mode;<br />
+        option.address = decodeURIComp($getQuery(&#039;adr&#039;));<br />
+        option.orderStyle = $getQuery(&#039;os&#039;) || option.orderStyle || 80;<br />
+        option.hideKeyword = $getQuery(&#039;hkwd&#039;) == &quot;true&quot; ? true: false;<br />
+        option.ptag.currentPage = $getQuery(&#039;ptag&#039;) || $getQuery(&#039;PTAG&#039;);<br />
+        var pageIndex = $getQuery(&#039;pi&#039;),<br />
+        pageSize = $getQuery(&#039;ps&#039;);<br />
+        option.pageIndex = (pageIndex &amp;&amp; $isPInt(pageIndex)) ? pageIndex * 1: option.pageIndex;<br />
+        option.pageSize = (pageSize &amp;&amp; $isPInt(pageSize)) ? pageSize * 1: option.pageSize;<br />
+    };</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在这个文件里，我们很容易的看出，当前页面参数和json参数的对应关系<br />
+<br />
+<br />
+<br />
+option.JSON参数=$getQuery(&quot;页面参数&quot;)<br />
+<br />
+<br />
+<br />
+7. 一个函数让我眼前一亮啊，decodeURIComp。。也就是说，传入的keyword，会解码一次。<br />
+<br />
+<br />
+<br />
+也就是说，如果我们<br />
+<br />
+<br />
+<br />
+keyword=%26callback=alert(1);<br />
+<br />
+<br />
+<br />
+decodeURIComp就会变为<br />
+<br />
+<br />
+<br />
+&amp;callback=alert(1);<br />
+<br />
+<br />
+<br />
+为了证明我们的想法：我们直接写利用代码。注意keyword=那一部分<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://bag.paipai.com/search_list.shtml?type=213280&amp;np=11&amp;pro=256&amp;searchtype=2&amp;cs=0010000&amp;keyword=%26callback=eval(String.fromCharCode(97,108,101,114,116,40,100,111,99,117,109,101,110,116,46,99,111,111,107,105,101,41));void&amp;PTAG=20058.13.13</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+8. 看效果：弹了吧<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20152420febd554d430e49ca469b27ca886651c0.jpg" target="_blank"><img src="../images/20152420febd554d430e49ca469b27ca886651c0.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+抓包可以看到，被动态加载的keyword参数，我们在后面插入了一个callback，覆盖了前面的callback<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2015254909581c9583b46bd6461f5734b2e62886.jpg" target="_blank"><img src="../images/2015254909581c9583b46bd6461f5734b2e62886.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+同样，看到返回的comm_json的内容<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20152610ec7b00937a8a616b561837cd6ac4e07a.jpg" target="_blank"><img src="../images/20152610ec7b00937a8a616b561837cd6ac4e07a.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细证明。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 可在调用外部json数据时，对参数进行严格控制。<br />
+<br />
+2. 也可对jsonp接口的callback参数进行更加严格的字符控制，一般的callback，只需要允许，字母，数字+下划线即可。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016279" title="[腾讯实例教程] 那些年我们一起学XSS - 12. Dom Xss进阶 [路径con]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-20 17:03</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16279";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

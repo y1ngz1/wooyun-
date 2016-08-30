@@ -1,0 +1,343 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSAAS SQL注入漏洞打包1-5  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSAAS SQL注入漏洞打包1-5  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2014-02-24 16:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-27：	细节向第三方安全合作伙伴开放<br/>
+									2014-03-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-16：	细节向普通白帽子公开<br/>
+									2014-04-05：	细节向实习白帽子公开<br/>
+									2014-05-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">漏洞很多，一个一个提交太麻烦了，一起提交吧，希望能走个大厂商</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">第一处SQL注入<br />
+<br />
+/app/group/action/do.php<br />
+<br />
+</p><pre><code>//编辑小组基本信息<br />
+        case &quot;edit_base&quot;:<br />
+        <br />
+                $groupname = t($_POST[&#039;groupname&#039;]);<br />
+                $groupdesc = tsClean($_POST[&#039;groupdesc&#039;]);<br />
+        <br />
+                if($groupname==&#039;&#039; || $groupdesc==&#039;&#039;) tsNotice(&quot;小组名称和介绍都不能为空！&quot;);<br />
+                <br />
+                //过滤内容开始<br />
+                aac(&#039;system&#039;)-&gt;antiWord($groupname);<br />
+                aac(&#039;system&#039;)-&gt;antiWord($groupdesc);<br />
+                //过滤内容结束<br />
+                <br />
+                $isgroupname = $new[&#039;group&#039;]-&gt;findCount(&#039;group&#039;,array(<br />
+                        &#039;groupname&#039;=&gt;$groupname,<br />
+                ));<br />
+                <br />
+                $groupid = intval($_POST[&#039;groupid&#039;]);<br />
+                <br />
+                $strGroup = $new[&#039;group&#039;]-&gt;find(&#039;group&#039;,array(<br />
+                        &#039;groupid&#039;=&gt;$groupid,<br />
+                ));<br />
+                <br />
+                if($isgroupname &gt; 0 &amp;&amp; $strGroup[&#039;groupname&#039;]!=$groupname) tsNotice(&#039;小组名称已经存在！&#039;);<br />
+                <br />
+                <br />
+                $new[&#039;group&#039;]-&gt;update(&#039;group&#039;,array(<br />
+                        &#039;groupid&#039;=&gt;$groupid,<br />
+                ),array(<br />
+                        &#039;groupname&#039;     =&gt; trim($_POST[&#039;groupname&#039;]),<br />
+                        &#039;groupdesc&#039;     =&gt; trim($_POST[&#039;groupdesc&#039;]),<br />
+                        &#039;joinway&#039;               =&gt; intval($_POST[&#039;joinway&#039;]),<br />
+                        &#039;ispost&#039;        =&gt; intval($_POST[&#039;ispost&#039;]),<br />
+                        &#039;isopen&#039;                =&gt; intval($_POST[&#039;isopen&#039;]),<br />
+                        &#039;ispostaudit&#039;           =&gt; intval($_POST[&#039;ispostaudit&#039;]),<br />
+                ));<br />
+                <br />
+                tsNotice(&#039;基本信息修改成功！&#039;);<br />
+                <br />
+                break;</code></pre><p class='detail'><br />
+<br />
+在编辑小组信息时，groupname和groupdesc都没有过滤直接进入update的row参数，导致SQL注入。<br />
+<br />
+<br />
+<br />
+第二处SQL注入：<br />
+<br />
+/app/group/action/do.php<br />
+<br />
+</p><pre><code>//回复评论<br />
+        case &quot;recomment&quot;:<br />
+        <br />
+                if($_POST[&#039;token&#039;] != $_SESSION[&#039;token&#039;]) {<br />
+                        echo 1;exit;<br />
+                }<br />
+                <br />
+                $referid = intval($_POST[&#039;referid&#039;]);<br />
+                $topicid = intval($_POST[&#039;topicid&#039;]);<br />
+                $content = tsClean($_POST[&#039;content&#039;]);<br />
+                $addtime = time();<br />
+<br />
+                $db-&gt;query(&quot;insert into &quot;.dbprefix.&quot;group_topic_comment (`referid`,`topicid`,`userid`,`content`,`addtime`) values (&#039;$referid&#039;,&#039;$topicid&#039;,&#039;$userid&#039;,&#039;$content&#039;,&#039;$addtime&#039;)&quot;);</code></pre><p class='detail'><br />
+<br />
+回复评论处content没有过滤，导致insert行盲注。<br />
+<br />
+证明如图，会延迟10s：<br />
+<br />
+</p><p class="detail"><a href="../images/2416273585193309bcc9554e4e23bc99f44a8271.png" target="_blank"><img src="../images/2416273585193309bcc9554e4e23bc99f44a8271.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第三处SQL注入：<br />
+<br />
+/app/group/action/topicedit.php<br />
+<br />
+</p><pre><code>/编辑帖子执行        <br />
+        case &quot;do&quot;:<br />
+        <br />
+                if($_POST[&#039;token&#039;] != $_SESSION[&#039;token&#039;]) {<br />
+                        tsNotice(&#039;非法操作！&#039;);<br />
+                }<br />
+                <br />
+                $topicid = intval($_POST[&#039;topicid&#039;]);<br />
+                $title = trim($_POST[&#039;title&#039;]);<br />
+                $typeid = intval($_POST[&#039;typeid&#039;]);<br />
+                $content = cleanJs($_POST[&#039;content&#039;]);<br />
+                <br />
+                $iscomment = intval($_POST[&#039;iscomment&#039;]);<br />
+......<br />
+if($strTopic[&#039;userid&#039;]==$userid || $strGroup[&#039;userid&#039;]==$userid || $TS_USER[&#039;user&#039;][&#039;isadmin&#039;]==1 || $strGroupUser[&#039;isadmin&#039;]==1){<br />
+<br />
+                        $new[&#039;group&#039;]-&gt;update(&#039;group_topic&#039;,array(<br />
+                                &#039;topicid&#039;=&gt;$topicid,<br />
+                        ),array(<br />
+                                &#039;typeid&#039; =&gt; $typeid,<br />
+                                &#039;title&#039;=&gt;$title,<br />
+                                &#039;content&#039;=&gt;$content,<br />
+                                &#039;iscomment&#039; =&gt; $iscomment,<br />
+                        ));</code></pre><p class='detail'><br />
+<br />
+在编辑帖子是，title和content存在注入。<br />
+<br />
+证明如图：<br />
+<br />
+</p><p class="detail"><a href="../images/24162832f9db686f4d49df8ea804331ac1eba995.png" target="_blank"><img src="../images/24162832f9db686f4d49df8ea804331ac1eba995.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第四处SQL注入：<br />
+<br />
+/app/photo/action/edit.php<br />
+<br />
+</p><pre><code>case &quot;do&quot;:<br />
+        <br />
+                if($_POST[&#039;token&#039;] != $_SESSION[&#039;token&#039;]) {<br />
+                        tsNotice(&#039;非法操作！&#039;);<br />
+                }<br />
+        <br />
+                $photoid = intval($_POST[&#039;photoid&#039;]);<br />
+                $photoname = tsClean($_POST[&#039;photoname&#039;]);<br />
+                $photodesc = tsClean($_POST[&#039;photodesc&#039;]);<br />
+                <br />
+                $new[&#039;photo&#039;]-&gt;update(&#039;photo&#039;,array(<br />
+                        &#039;photoid&#039;=&gt;$photoid,<br />
+                ),array(<br />
+                        &#039;photoname&#039;=&gt;$photoname,<br />
+                        &#039;photodesc&#039;=&gt;$photodesc,<br />
+                ));<br />
+                <br />
+                header(&#039;Location: &#039;.tsUrl(&#039;photo&#039;,&#039;show&#039;,array(&#039;id&#039;=&gt;$photoid)));<br />
+        <br />
+                break;</code></pre><p class='detail'><br />
+<br />
+修改单个图片信息时，photoname和photodesc没有过滤，导致SQL注入。<br />
+<br />
+证明如图：<br />
+<br />
+</p><p class="detail"><a href="../images/241629253b6b42745416a3f5241903cdb991d09f.png" target="_blank"><img src="../images/241629253b6b42745416a3f5241903cdb991d09f.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第五处SQL注入<br />
+<br />
+/app/tag/action/add.php<br />
+<br />
+</p><pre><code>case &quot;do&quot;:<br />
+        <br />
+                $objname = tsFilter($_POST[&#039;objname&#039;]);<br />
+                $idname = tsFilter($_POST[&#039;idname&#039;]);<br />
+                $objid = intval($_POST[&#039;objid&#039;]);<br />
+                $tags = t($_POST[&#039;tags&#039;]);<br />
+                <br />
+                $new[&#039;tag&#039;]-&gt;addTag($objname,$idname,$objid,$tags);<br />
+                <br />
+                tsNotice(&#039;标签添加成功！&#039;);<br />
+        <br />
+                break;</code></pre><p class='detail'><br />
+<br />
+在函数addTag()中：<br />
+<br />
+</p><pre><code>$tagIndexCount = $this-&gt;findCount(&#039;tag_&#039;.$objname.&#039;_index&#039;,array(<br />
+                                                        $idname=&gt;$objid,<br />
+                                                        &#039;tagid&#039;=&gt;$tagid,<br />
+                                                ));</code></pre><p class='detail'><br />
+<br />
+idname通过tsFilter()函数过滤，然后做了key，但是tsFilter()函数可被制表符顺利绕过，而key没有过滤，导致SQL注入。<br />
+<br />
+证明如图：<br />
+<br />
+</p><p class="detail"><a href="../images/2416313701e8165e7621efc00a0563b4869a423e.png" target="_blank"><img src="../images/2416313701e8165e7621efc00a0563b4869a423e.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+在日志中看到注入结果：<br />
+<br />
+</p><p class="detail"><a href="../images/24163150696ebfa7554a9608cc45e45713de9e44.png" target="_blank"><img src="../images/24163150696ebfa7554a9608cc45e45713de9e44.png" alt="2.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">严格过滤，过滤完全点 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051897" title="ThinkSAAS SQL注入漏洞打包1-5">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-02-24 16:46</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢您的反馈，由于未修复完全导致漏洞存在。<br />
+我们会进一步修复，完善，见官方安装包，再次感谢！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51897";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

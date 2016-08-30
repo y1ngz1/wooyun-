@@ -1,0 +1,209 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHPYUN设计缺陷验证码形同虚设  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHPYUN设计缺陷验证码形同虚设  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/齐迹">齐迹</a> 
+</li><li>提交时间：		2014-01-16 15:23</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-16：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-19：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-26：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-05：	细节向普通白帽子公开<br/>
+									2014-02-25：	细节向实习白帽子公开<br/>
+									2014-04-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">PHPYUN设计缺陷验证码形同虚设</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">所有地方的验证码 验证后都未进行过期操作。导致验证码形同虚设<br />
+<br />
+以找回密码为例<br />
+<br />
+model/forgetpw.class.php<br />
+<br />
+</p><pre><code>function sendpw_action()<br />
+	{<br />
+		if(md5($_POST[&quot;authcode&quot;])!=$_SESSION[&#039;authcode&#039;]){<br />
+			$this-&gt;obj-&gt;ACT_msg(&quot;index.php?M=forgetpw&quot;,&quot;验证码错误&quot;,&quot;2&quot;);<br />
+		}<br />
+		$pass =array(&quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,&quot;E&quot;,&quot;F&quot;,&quot;G&quot;,&quot;H&quot;,&quot;I&quot;,&quot;J&quot;,&quot;K&quot;,&quot;L&quot;,&quot;M&quot;,&quot;N&quot;,&quot;O&quot;,&quot;P&quot;,&quot;Q&quot;,&quot;R&quot;,&quot;S&quot;,&quot;T&quot;,&quot;U&quot;,&quot;V&quot;,&quot;W&quot;,&quot;X&quot;,&quot;Y&quot;,&quot;Z&quot;,&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;d&quot;,&quot;e&quot;,&quot;f&quot;,&quot;g&quot;,&quot;h&quot;,&quot;i&quot;,&quot;g&quot;,&quot;k&quot;,&quot;l&quot;,&quot;m&quot;,&quot;n&quot;,&quot;o&quot;,&quot;p&quot;,&quot;q&quot;,&quot;r&quot;,&quot;s&quot;,&quot;t&quot;,&quot;u&quot;,&quot;v&quot;,&quot;w&quot;,&quot;x&quot;,&quot;w&quot;,&quot;z&quot;,&quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,&quot;5&quot;,&quot;6&quot;,&quot;7&quot;,&quot;8&quot;,&quot;9&quot;,&quot;0&quot;);<br />
+		$len = rand(8,12);<br />
+		for($i=0;$i&lt;$len;$i++)<br />
+		{<br />
+			$k = rand(0,36);<br />
+			$password.=$pass[$k];<br />
+		}<br />
+		$info = $this-&gt;obj-&gt;DB_select_once(&quot;member&quot;,&quot;`username`=&#039;&quot;.$_POST[&quot;username&quot;].&quot;&#039;&quot;);<br />
+		if(is_array($info))<br />
+		{<br />
+			if($this-&gt;config[&#039;sy_uc_type&#039;]==&quot;uc_center&quot; &amp;&amp;$info[&#039;name_repeat&#039;]!=&quot;1&quot;)<br />
+			{<br />
+				$this-&gt;obj-&gt;uc_open();<br />
+				uc_user_edit($info[&#039;username&#039;], &quot;&quot;, $password, $info[&#039;email&#039;],&quot;0&quot;);<br />
+			}else{<br />
+				$salt = substr(uniqid(rand()), -6);<br />
+				$pass2 = md5(md5($password).$salt);<br />
+				$value=&quot;`password`=&#039;&quot;.$pass2.&quot;&#039;,`salt`=&#039;&quot;.$salt.&quot;&#039;&quot;;<br />
+				$this-&gt;obj-&gt;DB_update_all(&quot;member&quot;,$value,&quot;`username`=&#039;&quot;.$_POST[&quot;username&quot;].&quot;&#039;&quot;);<br />
+			}<br />
+			$this-&gt;send_msg_email(array(&quot;username&quot;=&gt;$_POST[&quot;username&quot;],&quot;password&quot;=&gt;$password,&quot;email&quot;=&gt;$info[&#039;email&#039;],&quot;moblie&quot;=&gt;$info[&#039;moblie&#039;],&quot;type&quot;=&gt;&quot;getpass&quot;));<br />
+			$this-&gt;obj-&gt;ACT_msg(&quot;index.php?M=forgetpw&quot;, $msg = &quot;新密码已发送到您的邮箱，请查收后登录系统修改密码！&quot;, $st = 2, $tm = 3);<br />
+		}else{<br />
+			$this-&gt;obj-&gt;ACT_msg(&quot;index.php?M=login&quot;, $msg = &quot;对不起！没有该用户！&quot;, $st = 2, $tm = 3);<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这里验证通过和输入错误后都没有unset session 导致之前的验证码不会过期可以重复使用。<br />
+<br />
+从而只要得知用户邮箱 即可批量帮别人修改密码！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">我这里就不用Bp跑了！<br />
+<br />
+输入邮箱 就可以重置用户密码，怎么都觉得不是很妥，万一用户是假邮箱注册的 岂不是这么一搞密码就永远不知道了啊？ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">验证码不管用户对还是错，都应该过期重新让用户输入！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/齐迹" title="齐迹">齐迹</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049064" title="PHPYUN设计缺陷验证码形同虚设">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2014-01-16 16:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">我们会完善这一块！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49064";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

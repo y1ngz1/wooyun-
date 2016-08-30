@@ -1,0 +1,205 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		奇虎360任意用户密码修改漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		奇虎360任意用户密码修改漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/牛奶坦克">牛奶坦克</a> 
+</li><li>提交时间：		2012-06-15 15:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-05：	细节向普通白帽子公开<br/>
+									2012-07-15：	细节向实习白帽子公开<br/>
+									2012-07-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">奇虎360用户通行证取回密码存在逻辑问题，导致可以修改任意用户的密码。<br />
+怕影响别的用户帐号安全，所以只用了3个朋友的帐号进行测试，均成功。<br />
+<br />
+360的业务线也很广了，比如360安全卫士系统云备份，云盘存储，网站宝，团购等项目，利用这个sso漏洞可以通杀，危害还是很严重的。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">先正常流程取回一次密码，查看邮箱，邮件内容类似：<br />
+<br />
+</p><pre><code>360个人中心找回密码（重要）！<br />
+<br />
+重设密码地址：http://i.360.cn/findpwd/setpwdfromemail?vc=c4ce4dd3d566ef83f9[马赛克]&amp;u=[马赛克]%40gmail.com,马上重设密码！<br />
+<br />
+如果您没有进行过找回密码的操作，请不要点击上述链接，并删除此邮件。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+vc可以看出是一串md5，解密一下发现是个数字，类似1339744000，第一感觉是个id，那么遍历id并且修改u变量是否可以修改任意用户密码呢，试了一下不可以，在看这个数字，感觉有点太大了，在看，在看，在看，怎么像是个unix时间戳呢？<br />
+<br />
+<br />
+<br />
+解开一下发现真的是个时间戳！那么可以大胆的猜测一下此处的流程，用户取回密码时，产生一个精确的时间戳，与帐号绑定，记录在某个密码重置库内，那么修改这个用户密码必须得知道这个时间戳才可以，看似合理，但程序员忽略了一个细节，就是假如这个时间戳是新生成得，我在一定得时间段内进行暴力猜解，很快就可以获取到这个有效得链接！<br />
+<br />
+<br />
+<br />
+写了个exp测试一下。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1515190519da8eac213a328d8a5519023eeb4f9b.png" target="_blank"><img src="../images/1515190519da8eac213a328d8a5519023eeb4f9b.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+打开果然是<br />
+<br />
+</p><p class="detail"><a href="../images/151521277aadc00c7281a1d7b50892a6cf632398.png" target="_blank"><img src="../images/151521277aadc00c7281a1d7b50892a6cf632398.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+修改密码后跳到了登陆首页，用刚刚修改得密码登陆<br />
+<br />
+</p><p class="detail"><a href="../images/15152347e32803c27c358fefff7b18ed3c836503.png" target="_blank"><img src="../images/15152347e32803c27c358fefff7b18ed3c836503.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+Bingo~看看其他应用。<br />
+<br />
+</p><p class="detail"><a href="../images/151531253d555a0f4c2467e1a8f99e852737c760.png" target="_blank"><img src="../images/151531253d555a0f4c2467e1a8f99e852737c760.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+奇怪，不是sso，但是既然知道了密码，so不o的无所谓啦。<br />
+<br />
+<br />
+<br />
+PS:另外发现了一个小小的问题，如果某个重置密码链接未使用的话，时间戳貌似不会失效，这样给预测带来了点麻烦，但这只是时间问题。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">不可预测性没有做到位，设计之初就做错了，真是。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/牛奶坦克" title="牛奶坦克">牛奶坦克</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08333" title="奇虎360任意用户密码修改漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2012-06-15 15:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对360的支持，我们正在修复该问题...</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8333";
+var bugRating="2";
+var myRating="";
+var ratingCount="5";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

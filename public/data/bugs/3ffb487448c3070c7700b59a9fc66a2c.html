@@ -1,0 +1,223 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		简单CMS多处SQL注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		简单CMS多处SQL注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2013-08-01 10:25</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-01：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-10-30：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">sql注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1，注射一<br />
+<br />
+</p><pre><code>public function accountAction() {<br />
+		$user_mod = M ( &quot;User&quot; );<br />
+		$data [&#039;name&#039;] = $_POST [&quot;name&quot;];<br />
+		$data [&#039;age&#039;] = $_POST [&quot;age&quot;];<br />
+		$data [&#039;sex&#039;] = $_POST [&quot;sex&quot;];<br />
+		$data [&#039;info&#039;] = $_POST [&quot;info&quot;];<br />
+		$province = ($_POST [&#039;province&#039;] == &quot;请选择&quot;) ? &#039;&#039; : $_POST [&#039;province&#039;];<br />
+		$city = ($_POST [&#039;city&#039;] == &quot;请选择&quot;) ? &#039;&#039; : &quot;|&quot; . $_POST [&#039;city&#039;];<br />
+		;<br />
+		$county = ($_POST [&#039;county&#039;] == &quot;请选择&quot;) ? &#039;&#039; : &quot;|&quot; . $_POST [&#039;county&#039;];<br />
+		;<br />
+		$data [&#039;address&#039;] = $province . $city . $county;<br />
+		<br />
+		$name = $_POST [&quot;name&quot;];<br />
+		$id = $_POST [&quot;id&quot;];//获取<br />
+		$user_info = $user_mod-&gt;where ( &quot;name=&#039;$name&#039; and is_del=0&quot; )-&gt;find ();//查询<br />
+		$oldUname = $user_mod-&gt;where ( &quot;id=$id and is_del=0&quot; )-&gt;getField ( &quot;name&quot; );<br />
+		echo &quot;id=$id and is_del=0&quot; ;</code></pre><p class='detail'><br />
+<br />
+http://127.0.0.1/jd/index.php?a=accountAction&amp;m=Uc&amp;g=Home&amp;id=1<br />
+<br />
+post id=1%Inject_Here%<br />
+<br />
+<br />
+<br />
+2，注射二<br />
+<br />
+</p><pre><code>public function likeItemsDel() {<br />
+		$items_mod = M ( &quot;Items&quot; );<br />
+		$user_mod = M ( &quot;User&quot; );<br />
+		$items_id = $_GET [&#039;id&#039;];<br />
+		$uid = $_COOKIE [&#039;id&#039;];<br />
+		$items_likes_mod = M ( &quot;Items_likes&quot; );<br />
+		$del = $items_likes_mod-&gt;where ( &quot;items_id=$items_id and uid=$uid&quot; )-&gt;delete ();<br />
+		if ($del) {<br />
+			$items_mod-&gt;where ( &quot;id=$items_id&quot; )-&gt;setDec ( &#039;likes&#039;, 1 ); // 商品的喜欢数减1<br />
+			$user_mod-&gt;where ( &quot;id=$uid&quot; )-&gt;setDec ( &#039;likes_num&#039;, 1 );<br />
+			$url = get_url ( &#039;like&#039;, &#039;&#039;, &#039;user&#039; );<br />
+			header ( &#039;location:&#039; . $url );<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+http://127.0.0.1/jd/index.php?a=likeItemsDel&amp;m=Uc&amp;g=Home&amp;id=1<br />
+<br />
+Accept: */*<br />
+<br />
+Cookie: id=1%Inject_Here%<br />
+<br />
+User-Agent: Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727) Havij<br />
+<br />
+<br />
+<br />
+3，注射三<br />
+<br />
+</p><pre><code>public function albumItemsDel() {<br />
+		C ( &#039;TOKEN_ON&#039;, false );<br />
+		$items_id = $_GET [&#039;id&#039;];//获取<br />
+		$aid = $_GET [&#039;aid&#039;];//获取<br />
+		$items_mod = M ( &quot;Items&quot; );<br />
+		$album_mod = M ( &quot;Album&quot; );<br />
+		$album_items_mod = M ( &quot;Album_items&quot; );<br />
+		$uid = $album_mod-&gt;where ( &quot;id=$aid and is_del=0&quot; )-&gt;getField ( &quot;uid&quot; );<br />
+		echo &quot;id=$aid and is_del=0&quot;;<br />
+		if ($uid == $_COOKIE [&#039;id&#039;]) {<br />
+			$del = $album_items_mod-&gt;where ( &quot;pid=$aid and items_id=$items_id&quot; )-&gt;delete ();<br />
+			if ($del) {<br />
+				$url = get_url ( &#039;albumDetail&#039;, $aid, &#039;user&#039; );<br />
+				header ( &#039;location:&#039; . $url );<br />
+			}<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+http://127.0.0.1/jd/index.php?a=albumItemsDel&amp;m=Uc&amp;g=Home&amp;aid=1 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/31221237f00cf9fd38b266825a97fb4d8d3caddb.png" target="_blank"><img src="../images/31221237f00cf9fd38b266825a97fb4d8d3caddb.png" alt="QQ截图20130703182442.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033065" title="简单CMS多处SQL注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33065";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

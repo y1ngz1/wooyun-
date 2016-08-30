@@ -1,0 +1,209 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQDLL加载漏洞可能导致用户密码被窃取  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQDLL加载漏洞可能导致用户密码被窃取  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/liyang">liyang</a> 
+</li><li>提交时间：		2011-12-11 13:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-12-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-12-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-12-15：	细节向第三方安全合作伙伴开放<br/>
+									2011-12-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-01-01：	细节向普通白帽子公开<br/>
+									2012-01-21：	细节向实习白帽子公开<br/>
+									2012-01-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQDLL加载漏洞可能导致用户密码被窃取</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><p class="detail"><a href="../images/11130505f2cbae351fb03d34e26f221a73c60670.jpg" target="_blank"><img src="../images/11130505f2cbae351fb03d34e26f221a73c60670.jpg" alt="" width="600"/></a></p><p class="detail">	利用了Windows加载DLL的一个特点。由于输入表中只包含DLL名而没有它的路径名，因此加载程序必须在磁盘上搜索DLL文件，而不是按照指定路径加载。<br />
+<br />
+	在Windows XP sp2以上的系统会默认开启Safe Dll Search Mode，启用了这个模式后，DLL文件的搜索顺序是：<br />
+<br />
+	可执行程序的加载目录<br />
+<br />
+	系统目录（即system32文件夹）<br />
+<br />
+	16位系统目录<br />
+<br />
+	Windows目录<br />
+<br />
+	当前目录<br />
+<br />
+	Path环境变量中列出的目录<br />
+<br />
+	伪造的DLL制作好后，放到程序目录下，这样当原程序调用原函数时就会优先调用了伪造的DLL文件，进入劫持DLL的代码。该文件也提供了和系统文件一样的输出表，并最终转向真正的系统文件。<br />
+<br />
+	Lpk.dll是系统关键文件之一，QQ启动时也要加载这个文件。在平时我们使用普通的键盘记录器记录的QQ密码是错误的，因为QQ的密码框使用了特殊的设计，保护密码安全。但是我制作了一个假冒的lpk.dll，这个文件能够通过Hook部分API函数解除对QQ密码框的保护。<br />
+<br />
+	先到http://www.kuaipan.cn/file/id_774356833665645.html下载键盘记录器及lpk.dll文件（只支持Windows XP系统）。然后将lpk.dll文件复制到QQ目录下（一般是C:\Program Files\Tencent\QQ\Bin文件夹。启动QQ，查看lpk.dll文件的调用情况。<br />
+<br />
+</p><p class="detail"><a href="../images/11130423ba4c6f346bed6b8082929eec7ad83caa.jpg" target="_blank"><img src="../images/11130423ba4c6f346bed6b8082929eec7ad83caa.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+	这里显示QQ的两个进程加载了两个lpk.dll文件。别忘了，真正的lpk.dll文件最后也是要加载的。我们再看一下这两个文件的路径，一个是system32文件夹，一个是QQ目录。说明DLL劫持试验成功。<br />
+<br />
+	QQ加载的这个文件破坏了密码框的保护，在输入密码的时候，我们记录下了正确的密码。<br />
+<br />
+</p><p class="detail"><a href="../images/11130505f2cbae351fb03d34e26f221a73c60670.jpg" target="_blank"><img src="../images/11130505f2cbae351fb03d34e26f221a73c60670.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+所以为了断绝木马窃取密码的另一种方式，请修复该漏洞。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1113054342d74dc48d10e4ae23986c02f2bbf1db.jpg" target="_blank"><img src="../images/1113054342d74dc48d10e4ae23986c02f2bbf1db.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">微软的解释请访问http://msdn.microsoft.com/en-us/library/ff919712(VS.85).aspx<br />
+<br />
+　　(1）调用LoadLibrary，LoadLibraryEx，CreateProcess的，或者的ShellExecute等涉及到模块加载的函数的时候，指定DLL加载的完整路径，貌似应该有API可以获取当前程序运行的目录的<br />
+<br />
+　　（2）考虑使用的DLL重定向或Manifests文件，以确保程序使用正确的DLL。<br />
+<br />
+　　HKEY_LOCAL_MACHINESYSTEMCurrentControlSetControlSessionManagerKnownDLLs<br />
+<br />
+　　（3）确保DLL安全搜索模式被激活。未使用安全搜索设置的话，第二加载项就是当前目录。<br />
+<br />
+　　HKLMSystemCurrentControlSetControlSessionManagerSafeDllSearchMode<br />
+<br />
+　　（4）从搜索列表中取消当前目录，可以通过调用SetDllDirectory参数设置为一个空字符串<br />
+<br />
+	 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/liyang" title="liyang">liyang</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-03605" title="QQDLL加载漏洞可能导致用户密码被窃取">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2011-12-12 09:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">thanks</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="3605";
+var bugRating="1";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

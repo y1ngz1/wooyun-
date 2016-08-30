@@ -1,0 +1,413 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		乐视网众多web容器配置失误，导致核心应用架构及敏感信息暴露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		乐视网众多web容器配置失误，导致核心应用架构及敏感信息暴露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/shine">shine</a> 
+</li><li>提交时间：		2012-08-06 16:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-08-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-08-26：	细节向普通白帽子公开<br/>
+									2012-09-05：	细节向实习白帽子公开<br/>
+									2012-09-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">  这是个常见的问题，但很容易忽视它危害，今天发现乐视网的此问题比较典型，说明总结一下。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>首先看一个以前典型的case:<br />
+<br />
+   <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-07329">WooYun: 去哪儿任意文件读取（基本可重构该系统原工程）</a> <br />
+<br />
+  或哥这篇粗糙的文章：<br />
+<br />
+http://hi.baidu.com/shine%5F%C9%C1%C1%E9/blog/item/7d7d57445f523a4384352468.html</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>通常在做反向代理、负载均衡或集群等情况时，都会使用两种或多种不同web容器搭配使用（特别在j2ee应用上体现更明显（如：Ngnix + Tomcat ;Apache + Tomcat）），由于配置不当，造成上述问题，昨天发现此问题的站点就不下上百个，今天发现你们应用尤其鲜明：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>首先看这个：<br />
+<br />
+http://enp.letv.com/WEB-INF/web.xml (指向同一ip的域名比较多哦！所以很多Struts2远程代码执行的漏洞都在这一ip找到的！这个有人提醒给你们的，好象你们不是很重视！)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/061529192835d8cc5ef750197403729a0d75f0e3.png" target="_blank"><img src="../images/061529192835d8cc5ef750197403729a0d75f0e3.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>可浏览web.xml是会导致整个应用结构暴露的，这是j2ee的一个特点，同时加上使用的MVC模式的开源常用框架，所以文件读取尤其简单了，各个配置文件被读取也简单了。<br />
+<br />
+http://enp.letv.com/WEB-INF/classes/struts.xml<br />
+<br />
+http://enp.letv.com/WEB-INF/classes/struts_manager.xml<br />
+<br />
+http://enp.letv.com/WEB-INF/classes/struts_user.xml<br />
+<br />
+http://enp.letv.com/WEB-INF/classes/struts_ad.xml<br />
+<br />
+http://enp.letv.com/WEB-INF/classes/application_config.xml</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/061539560257178b0cee4e5b79b729de874d53c5.png" target="_blank"><img src="../images/061539560257178b0cee4e5b79b729de874d53c5.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>其他文件及敏感信息不一一列举了，看个你们防Struts2远程代码执行的一个拦截器源代码：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0615344789fa0e99bef0af93e2d71ccb7021f76c.png" target="_blank"><img src="../images/0615344789fa0e99bef0af93e2d71ccb7021f76c.png" alt="" width="600"/></a></p><p class="detail"></code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+EnpFilter.java<br />
+<br />
+<br />
+<br />
+</p><pre><code>package com.letv.enp.web;<br />
+<br />
+import java.io.IOException;<br />
+import java.util.Map;<br />
+import java.util.Set;<br />
+import javax.servlet.Filter;<br />
+import javax.servlet.FilterChain;<br />
+import javax.servlet.FilterConfig;<br />
+import javax.servlet.ServletException;<br />
+import javax.servlet.ServletRequest;<br />
+import javax.servlet.ServletResponse;<br />
+import javax.servlet.http.HttpServlet;<br />
+import javax.servlet.http.HttpServletRequest;<br />
+import javax.servlet.http.HttpServletResponse;<br />
+<br />
+public class EnpFilter extends HttpServlet<br />
+  implements Filter<br />
+{<br />
+  private static final long serialVersionUID = -3887911983201144807L;<br />
+<br />
+  public final void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain)<br />
+    throws IOException, ServletException<br />
+  {<br />
+    HttpServletRequest request = (HttpServletRequest)servletRequest;<br />
+    HttpServletResponse response = (HttpServletResponse)servletResponse;<br />
+<br />
+    if (request.getParameterMap().size() &gt; 0) {<br />
+      Set set = request.getParameterMap().keySet();<br />
+      boolean auth = false;<br />
+<br />
+      for (String key : set)<br />
+      {<br />
+        if ((key.indexOf(&quot;#&quot;) &gt; -1) || (key.indexOf(&quot;\\u0023&quot;) &gt; -1) || (key.indexOf(&quot;\\43&quot;) &gt; -1) || (key.indexOf(&quot;\\043&quot;) &gt; -1)) {<br />
+          auth = true;<br />
+          break;<br />
+        }<br />
+      }<br />
+<br />
+      if (auth) {<br />
+        response.sendRedirect(&quot;http://enp.letv.com&quot;);<br />
+        return;<br />
+      }<br />
+    }<br />
+<br />
+    chain.doFilter(servletRequest, servletResponse);<br />
+  }<br />
+<br />
+  public void init(FilterConfig arg0)<br />
+    throws ServletException<br />
+  {<br />
+  }<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>对两种带有“#”关键编码方式的拦截，喜欢绕过的童子们，绕绕看！</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>接下再看两处：<br />
+<br />
+第一个：http://220.181.117.74/letv/WEB-INF/web.xml<br />
+<br />
+这个就不多说了，懒得去看了！</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0615430830ba9fc2392f25f5d719a88f958a4d63.png" target="_blank"><img src="../images/0615430830ba9fc2392f25f5d719a88f958a4d63.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>重点说接下来的这个：http://passport.letv.com/<br />
+<br />
+另个造成这一问题的典型case,这个直接是目录浏览。当看到这个应用的域名时，哥瞬间被战术性击倒，相信你们的系统架构师也同样如此。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0615481424d73a2aa8949c45a033570f324e5ba2.png" target="_blank"><img src="../images/0615481424d73a2aa8949c45a033570f324e5ba2.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/061556130050fdfd0562831629072642c3935ae0.png" target="_blank"><img src="../images/061556130050fdfd0562831629072642c3935ae0.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>统一登录应用，它暴露的的东西就太多了（重复一句，在j2ee应用尤其明显），其他就不多说了，只说j2ee暴露的典型问题。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://passport.letv.com/WEB-INF/web.xml<br />
+<br />
+<br />
+查看配置文件，发现这一应用跟域名显示的一样，比较庞大。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06155454a03a918063e45b169f228f26d9f11ed8.png" target="_blank"><img src="../images/06155454a03a918063e45b169f228f26d9f11ed8.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>如：与人人的接口：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06155859d60a85673319e92dee711ed0ec9afe74.png" target="_blank"><img src="../images/06155859d60a85673319e92dee711ed0ec9afe74.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>以及memcached众多配置信息（多插一句，发现都喜欢用阿里的memcached规范，真有这么好？）：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06160229995d2437f5a0f0aac000a9ce9940b044.png" target="_blank"><img src="../images/06160229995d2437f5a0f0aac000a9ce9940b044.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+（其他源代码及敏感信息就不列举了（数据库使用JNDI连接池，太坏了！不过除非远程数据库，其他的也没什么用，源代码也难得去看了），所以危害性是应用程序结构或整体架构的暴露！）<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"><br />
+<br />
+  至少禁止掉j2ee应用重要的WEB-INF目录！（同一部署人员的所有应用都检查一下，应该还有不少！）<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+  正好奥运会期间，加上你们公司的服务正好是这个方向的，乐视网送台电视机给哥吧！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/shine" title="shine">shine</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010635" title="乐视网众多web容器配置失误，导致核心应用架构及敏感信息暴露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-08-06 16:45</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢shine挖掘，此问题已经转交给我们业务负责人。我们会尽快修改。<br />
+谢谢。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10635";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

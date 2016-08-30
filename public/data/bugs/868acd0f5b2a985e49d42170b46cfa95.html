@@ -1,0 +1,323 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Pconline某后台源码泄露之后续代码执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Pconline某后台源码泄露之后续代码执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Mr .LZH">Mr .LZH</a> 
+</li><li>提交时间：		2014-01-06 16:32</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-26：	细节向普通白帽子公开<br/>
+									2014-02-05：	细节向实习白帽子公开<br/>
+									2014-02-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Pconline某后台环境配置问题导致部分源码及隐私信息泄露<br />
+通过上次的漏洞获得源码，一时没有时间继续挖掘就发布漏洞，昨晚无聊拿源码继续挖，发现了问题。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">一 http://pdscore.pconline.com.cn/util/cvs.jsp页面<br />
+<br />
+该页面没有任何权限检查，由command关键词传参，调用Runtime.getRuntime().exec()执行命令。源码如下：<br />
+<br />
+</p><pre><code>&lt;%@page contentType=&quot;text/html; charset=GBK&quot; import=&quot;java.io.*&quot; %&gt;&lt;%<br />
+    response.setHeader(&quot;Expires&quot;, &quot;0&quot;);<br />
+    String path = getServletContext().getRealPath(&quot;/&quot;);<br />
+    String cmd = request.getParameter(&quot;command&quot;);<br />
+    if(cmd == null) cmd = &quot;up&quot;;<br />
+    Process p = Runtime.getRuntime().exec(&quot;cvs -q &quot;+cmd,null,new File(path));<br />
+    BufferedReader stdout = new BufferedReader(new InputStreamReader(p.getInputStream()));<br />
+    BufferedReader stderr = new BufferedReader(new InputStreamReader(p.getErrorStream()));<br />
+    boolean err = false;<br />
+<br />
+    out.println(&quot;CVS updating at &quot;+new java.sql.Timestamp(System.currentTimeMillis())+&quot;&lt;pre&gt;&quot;);<br />
+<br />
+    while(true) {<br />
+        if(!stdout.ready() &amp;&amp; !stderr.ready()) {<br />
+            try {<br />
+                p.exitValue(); //test if Ant process terminated<br />
+                break;<br />
+            } catch(IllegalThreadStateException ex) { //not terminated<br />
+                Thread.sleep(100);<br />
+                continue;<br />
+            }<br />
+        }<br />
+<br />
+        if(stderr.ready()) err = true;<br />
+        boolean fromOut = stdout.ready();<br />
+        String s = fromOut ? stdout.readLine() : stderr.readLine();<br />
+        if(s == null) break;<br />
+<br />
+        System.out.println(s);<br />
+        out.println(s.replaceAll(&quot;&lt;&quot;,&quot;&amp;lt;&quot;));<br />
+        out.flush();<br />
+    }<br />
+    stdout.close();<br />
+    stderr.close();<br />
+%&gt;</code></pre><p class='detail'><br />
+<br />
+附上之前获取到的cvs连接信息  :pserver:canny@192.168.10.213:/usr/cvs/pconline<br />
+<br />
+二 http://pdscore.pconline.com.cn/util/exception/javax.jdo.JDOException.jsp页面<br />
+<br />
+该页面也没有任何权限检查，通过检查参数，最后调用Runtime.getRuntime().exec()执行命令。参数由用户传过去，只做简单判断，源码如下：<br />
+<br />
+</p><pre><code>&lt;%@page contentType=&quot;text/html; charset=GBK&quot; %&gt;<br />
+&lt;%@page isErrorPage=&quot;true&quot; import=&quot;java.io.*,java.util.*&quot; %&gt;<br />
+&lt;% if(request.getAttribute(&quot;exception&quot;) != null) exception = (Throwable) request.getAttribute(&quot;exception&quot;); %&gt;<br />
+&lt;%<br />
+    String msg = exception == null ? &quot;&quot; : exception.getMessage();<br />
+<br />
+    boolean needEnhance = request.getParameter(&quot;enhance&quot;) != null<br />
+        || msg.startsWith(&quot;One or more classes in the JDO meta data have not been enhanced:&quot;);<br />
+<br />
+    boolean needMigrate = request.getParameter(&quot;migrate&quot;) != null<br />
+        || msg.startsWith(&quot;javax.jdo.JDOFatalDataStoreException: Mapping error &quot;) //启动时数据库检查失败<br />
+        || msg.startsWith(&quot;java.sql.SQLException: ORA-00942: &quot;) //表丢失<br />
+        || msg.startsWith(&quot;Query failed: java.sql.SQLException: ORA-00904: &quot;) //表字段丢失<br />
+        || msg.startsWith(&quot;java.sql.SQLException: ORA-00904: &quot;); //表字段丢失<br />
+<br />
+    if(!needEnhance &amp;&amp; !needMigrate) if(exception == null) return; else throw exception;<br />
+<br />
+    if(needMigrate || needEnhance &amp;&amp; exception == null)<br />
+    try { //非异常调用时(直接访问本页)，检查管理员权限<br />
+        pageContext.include(&quot;/sys-adm.jsp&quot;);<br />
+        if(request.getAttribute(&quot;needLogin&quot;) != null) return;<br />
+    } catch(IOException ex) {} //无“/sys-adm.jsp”则不检查权限<br />
+<br />
+    if(exception != null &amp;&amp; application.getAttribute(&quot;__UPDATING__&quot;) != null) {<br />
+        out.println(&quot;服务器正在更新，请稍候，10秒钟本页面会自动刷新。&lt;meta http-equiv=&#039;refresh&#039; content=&#039;10&#039;&gt;&quot;);<br />
+        return;<br />
+    }<br />
+    application.setAttribute(&quot;__UPDATING__&quot;,&quot;&quot;);<br />
+    if(exception != null) out.println(&quot;&lt;font color=red&gt;&lt;pre&gt;&quot;+exception+&quot;&lt;/pre&gt;&lt;/font&gt;&lt;p&gt;&quot;);<br />
+    out.println(&quot;Sorry, the server was updated recently, please wait a while for re-enhancement...&lt;pre&gt;&quot;);<br />
+    out.println(new char[255]); out.flush();<br />
+<br />
+    //执行Ant脚本完成增强或数据结构同步：<br />
+    boolean isWindows = System.getProperty(&quot;os.name&quot;).startsWith(&quot;Windows&quot;);<br />
+    String ant =  isWindows ? &quot;ant.bat&quot; : &quot;ant&quot;;<br />
+    String quot =  isWindows ? &quot;\&quot;&quot; : &quot;&quot;;<br />
+    Process p = null;<br />
+    try {<br />
+        ant += &quot; -f &quot;+quot+getServletContext().getRealPath(&quot;/WEB-INF/build.xml&quot;)+quot;<br />
+        if(needEnhance) ant += &quot; enhance&quot;;<br />
+        if(needMigrate) {<br />
+            String db = request.getParameter(&quot;db&quot;);<br />
+            ant += &quot; migrate&quot;<br />
+                +&quot; -Ddirect=&quot;+(request.getParameter(&quot;direct&quot;) != null)<br />
+                +(db == null ? &quot;&quot; : &quot; -Ddb=&quot;+db)<br />
+                +&quot; -DcheckExtraColumns=&quot;+(request.getParameter(&quot;allowdrop&quot;) != null);<br />
+        }<br />
+<br />
+        p = Runtime.getRuntime().exec(ant);<br />
+<br />
+    } catch(Exception ex) {<br />
+        application.removeAttribute(&quot;__UPDATING__&quot;);<br />
+        ex.printStackTrace(new PrintWriter(out));<br />
+        return;<br />
+    }<br />
+<br />
+    BufferedReader stdout = new BufferedReader(new InputStreamReader(p.getInputStream()));<br />
+    BufferedReader stderr = new BufferedReader(new InputStreamReader(p.getErrorStream()));<br />
+    boolean err = false;<br />
+<br />
+    while(true) {<br />
+        if(!stdout.ready() &amp;&amp; !stderr.ready()) {<br />
+            try {<br />
+                p.exitValue(); //test if Ant process terminated<br />
+                break;<br />
+            } catch(IllegalThreadStateException ex) { //not terminated<br />
+                Thread.sleep(100);<br />
+                continue;<br />
+            }<br />
+        }<br />
+<br />
+        if(stderr.ready()) err = true;<br />
+        boolean fromOut = stdout.ready();<br />
+        String s = fromOut ? stdout.readLine() : stderr.readLine();<br />
+        if(s == null) break;<br />
+<br />
+        System.out.println(s);<br />
+        out.println(s.replaceAll(&quot;&lt;(?!/?font)&quot;,&quot;&amp;lt;&quot;));<br />
+        out.flush();<br />
+    }<br />
+    stdout.close();<br />
+    stderr.close();<br />
+<br />
+    application.removeAttribute(&quot;__UPDATING__&quot;);<br />
+<br />
+    if(err) {<br />
+        out.println(&quot;!!!!!! Ant build failed. Please contact webmaster...&quot;);<br />
+        return;<br />
+    }<br />
+<br />
+    if(exception == null) return;<br />
+<br />
+    if(needEnhance) {<br />
+        out.println(&quot;&lt;/pre&gt;Now restarting... &lt;meta http-equiv=&#039;refresh&#039; content=&#039;0&#039;&gt;&quot;);<br />
+    } else if(needMigrate) {<br />
+        out.println(&quot;&lt;/pre&gt;After synchronizing the DB schema, you can reload the page then...&quot;);<br />
+    }<br />
+%&gt;</code></pre><p class='detail'><br />
+<br />
+此页面虽然是山路十八弯，但只要构造好参数，最终还是可以到达Runtime.getRuntime().exec()执行命令的。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">个人对代码执行不是很熟悉，证明的话麻烦主页君给贴上吧。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">给页面加上权限验证。其他页面虽然有些没加上验证，但影响不大，这两个页面影响较大，故反馈上来。<br />
+<br />
+代码审计到此，没找到其他bug，已将源码删除。<br />
+<br />
+接下来要考试了，祝我不挂科吧。(*^__^*) 嘻嘻 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Mr .LZH" title="Mr .LZH">Mr .LZH</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048041" title="Pconline某后台源码泄露之后续代码执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-01-06 18:13</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感激“Mr .LZH”提供的漏洞信息，我们已经在安排修复该漏洞了。<br />
+<br />
+对“Mr .LZH”大大专业的“挖洞”精神非常的敬佩，有大大们的支持我们相信会做的更好更完善，为用户提供更优质的服务~<br />
+<br />
+帅气滴“Mr .LZH”，礼物已安排投递。<br />
+<br />
+感谢你对 太平洋系列网站 信息安全作出的贡献。<br />
+<br />
+预祝学业进步！(*^__^*)</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48041";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

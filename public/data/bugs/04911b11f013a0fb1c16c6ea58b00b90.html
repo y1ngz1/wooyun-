@@ -1,0 +1,246 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		高版本正方教务系统上传后缀过滤不严导致能直接上传Webshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		高版本正方教务系统上传后缀过滤不严导致能直接上传Webshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/光的圆周率">光的圆周率</a> 
+</li><li>提交时间：		2013-07-30 22:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-06：	细节向第三方安全合作伙伴开放<br/>
+									2013-08-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-23：	细节向普通白帽子公开<br/>
+									2013-09-12：	细节向实习白帽子公开<br/>
+									2013-10-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">在旧版本中有一个利用插件上传文件的漏洞,但是在新版本中已经没有了这个插件.这个漏洞是由于过滤不严造成的,可以直接上传Webshell进行提权,由于代码在DLL中,全国大部分高校均有此漏洞,影响范围很大,90%以上的学校均可使用这个方法进行提权</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">上传函数仅判断是否包含&quot;.asp&quot; &quot;.php&quot;&quot;.exe&quot;字符串 因此可以直接上传如CER格式的Webshell进行提权<br />
+<br />
+<br />
+<br />
+jwggfbb.cs<br />
+<br />
+</p><pre><code>private void btn_sc_Click(object sender, EventArgs e)<br />
+        {<br />
+            if (Strings.InStr(this.loFile.get_PostedFile().get_FileName(), &quot;.asp&quot;, 0) &gt; 0)<br />
+            {<br />
+                this.RegisterStartupScript(&quot;Startup&quot;, &quot;&lt;script language=&#039;javascript&#039;&gt;alert(&#039;不能上传asp文件！！&#039;);&lt;/script&gt;&quot;);<br />
+            }<br />
+            else if (Strings.InStr(this.loFile.get_PostedFile().get_FileName(), &quot;.php&quot;, 0) &gt; 0)<br />
+            {<br />
+                this.RegisterStartupScript(&quot;Startup&quot;, &quot;&lt;script language=&#039;javascript&#039;&gt;alert(&#039;不能上传php文件！！&#039;);&lt;/script&gt;&quot;);<br />
+            }<br />
+            else if (Strings.InStr(this.loFile.get_PostedFile().get_FileName(), &quot;.exe&quot;, 0) &gt; 0)<br />
+            {<br />
+                this.RegisterStartupScript(&quot;Startup&quot;, &quot;&lt;script language=&#039;javascript&#039;&gt;alert(不能上传exe文件,请压缩后上传！！&#039;);&lt;/script&gt;&quot;);<br />
+            }<br />
+            else<br />
+            {<br />
+                this.tcf = false;<br />
+                this.Button1_Click();<br />
+                if (!this.tcf)<br />
+                {<br />
+                    if (StringType.StrCmp(this.scms, &quot;1&quot;, false) == 0)<br />
+                    {<br />
+                        this.data_dir.set_Text(ConfigurationSettings.get_AppSettings().get_Item(&quot;HTTP1&quot;) + &quot;/wbwj/&quot; + this.lstrFileName);<br />
+                    }<br />
+                    if (StringType.StrCmp(this.scms, &quot;2&quot;, false) == 0)<br />
+                    {<br />
+                        this.data_dir.set_Text(&quot;wbwj/&quot; + this.lstrFileName);<br />
+                    }<br />
+                }<br />
+            }<br />
+        }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+scglwj.cs<br />
+<br />
+</p><pre><code>private void Button2_Click(object sender, EventArgs e)<br />
+        {<br />
+            if (Strings.InStr(this.loFile1.get_PostedFile().get_FileName(), &quot;.asp&quot;, 0) &gt; 0)<br />
+            {<br />
+                this.get_Response().Write(&quot;&lt;script language=&#039;javascript&#039;&gt;alert(&#039;不能上传asp文件！！&#039;);&lt;/script&gt;&quot;);<br />
+            }<br />
+            else if (Strings.InStr(this.loFile1.get_PostedFile().get_FileName(), &quot;.php&quot;, 0) &gt; 0)<br />
+            {<br />
+                this.get_Response().Write(&quot;&lt;script language=&#039;javascript&#039;&gt;alert(&#039;不能上传php文件！！&#039;);&lt;/script&gt;&quot;);<br />
+            }<br />
+            else<br />
+            {<br />
+                this.Button1_Click();<br />
+                string mysql = &quot;insert into jwggfbb (GGBT,GGZW,FBDW,FBSJ,YXQX,mxddx,mxxdx,fbnr,scip) values (&#039;&quot; + this.ggbt.get_Text() + &quot;&#039;,&#039;&quot; + ConfigurationSettings.get_AppSettings().get_Item(&quot;HTTP1&quot;) + &quot;UpLoad/&quot; + this.lstrFileName + &quot;&#039;,&#039;&quot; + this.fbdw.get_Text() + &quot;&#039;,to_char(sysdate,&#039;YYYY-MM-DD hh:mi:ss&#039;),&#039;&quot; + this.yxqx.get_Text() + &quot;&#039;,&#039;&#039;,&#039;&#039;,&#039;wjgl&#039;,&#039;&quot; + this.get_Request().get_UserHostAddress() + &quot;&#039;)&quot;;<br />
+                OracleConnection objConnection = new OracleConnection(ConfigurationSettings.get_AppSettings().get_Item(&quot;MyConn&quot;) + this.zhj.jiemi(ConfigurationSettings.get_AppSettings().get_Item(&quot;MyPwd&quot;), this.zhj.str_jm));<br />
+                if (Module1_sjf.checksql(mysql))<br />
+                {<br />
+                    OracleCommand objCommand = new OracleCommand(mysql, objConnection);<br />
+                    objConnection.Open();<br />
+                    objCommand.ExecuteNonQuery();<br />
+                    objConnection.Dispose();<br />
+                    this.DataGrid1.set_EditItemIndex(-1);<br />
+                    this.zhj.BindtoGrid(&quot;select * from jwggfbb where fbnr=&#039;wjgl&#039; order by fbsj,yxqx&quot;, this.DataGrid1);<br />
+                }<br />
+            }<br />
+        }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">当为asp文件时会提示不能上传asp文件<br />
+<br />
+</p><p class="detail"><a href="../images/3021153758af2fef36df4c42e478005c4e4c75f0.png" target="_blank"><img src="../images/3021153758af2fef36df4c42e478005c4e4c75f0.png" alt="1.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+直接将asp大马改成CER格式 直接上传无鸭梨 麻麻再也不用担心我的学习啦<br />
+<br />
+</p><p class="detail"><a href="../images/30211624f3e06e9a354065a06cb6e7a9e5d619ba.png" target="_blank"><img src="../images/30211624f3e06e9a354065a06cb6e7a9e5d619ba.png" alt="2.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+文件存放在网站根目录的wbwj文件夹中 虽然叫wbwj但是还是没有限制运行权限,直接提权得到服务器权限<br />
+<br />
+</p><p class="detail"><a href="../images/3021171105994d25b4b123163c1eb3e784894e50.png" target="_blank"><img src="../images/3021171105994d25b4b123163c1eb3e784894e50.png" alt="3.PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.如果有源代码的话编译DLL文件做好文件过滤<br />
+<br />
+2.限制wbwj文件夹和UPLOAD文件夹的运行权限 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/光的圆周率" title="光的圆周率">光的圆周率</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-032857" title="高版本正方教务系统上传后缀过滤不严导致能直接上传Webshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2013-08-03 17:21</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="32857";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

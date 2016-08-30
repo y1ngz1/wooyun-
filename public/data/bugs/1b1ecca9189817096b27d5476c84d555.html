@@ -1,0 +1,245 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		JEEBBS v3.0 一处逻辑漏洞和一处定向XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		JEEBBS v3.0 一处逻辑漏洞和一处定向XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/园长">园长</a> 
+</li><li>提交时间：		2013-07-31 23:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-31：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-04：	细节向第三方安全合作伙伴开放<br/>
+									2013-08-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-21：	细节向普通白帽子公开<br/>
+									2013-09-10：	细节向实习白帽子公开<br/>
+									2013-10-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">两个两个一起发吧，凑一对。Jeebbs 一处逻辑漏洞和一处定向XSS。轻易的获取对方cookie...明文密码... </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">Jeebbs基本上都没有判断referer，没有token，可造成csrf。<br />
+<br />
+<br />
+<br />
+1、不科学的积分漏洞<br />
+<br />
+<br />
+<br />
+积分兑换方法如下：<br />
+<br />
+</p><pre><code>@RequestMapping(value = &quot;/member/creditExchange.jspx&quot;)<br />
+	public void creditExchange(Integer creditIn, Integer creditOut,<br />
+			Integer creditOutType, Integer miniBalance, String password,<br />
+			HttpServletRequest request, HttpServletResponse response) {<br />
+}</code></pre><p class='detail'><br />
+<br />
+可以看到这里直接用了SpringMvc注入参数，而这些参数恰恰是控制程序逻辑的关键。比如构建如下URL，通过GET或者POST方式都能恶意修改用户的积分：<br />
+<br />
+<br />
+<br />
+http://localhost/jeebbs/member/creditExchange.jspx?creditIn=26&amp;creditOut=-27600&amp;creditOutType=1&amp;miniBalance=-10000000&amp;password=wooyun<br />
+<br />
+<br />
+<br />
+因为他的逻辑是这么写的：<br />
+<br />
+</p><pre><code>if(user.getPoint()-creditOut&gt;miniBalance){<br />
+    balance=true;<br />
+}else{<br />
+    flag=1;<br />
+}</code></pre><p class='detail'><br />
+<br />
+从User对象里面取出积分的数值，而积分兑换威望具体需要多少是在确定兑换关系后由ajax去后台计算出来的，提交的时候也没有验证计算的结果有没有被客户端改过。其中的creditOut和miniBalance都是我们可控的。所以这个等式不管在什么情况下我们都可以让它成立。<br />
+<br />
+Cookie不加密我的明文密码又出来晒太阳了。<br />
+<br />
+</p><p class="detail"><a href="../images/312232480e1c2ff8f21c5aa65a03914d35db65c7.png" target="_blank"><img src="../images/312232480e1c2ff8f21c5aa65a03914d35db65c7.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/31223533a63fea5fb05874c2558eadaeac5cd69a.png" target="_blank"><img src="../images/31223533a63fea5fb05874c2558eadaeac5cd69a.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2、打招呼XSS<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/312238591971c925b6a5089bd55d06579ec7317e.png" target="_blank"><img src="../images/312238591971c925b6a5089bd55d06579ec7317e.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+逻辑有做判断：1、用户名为空。2、不允许发送消息给自己。3、用户名不存在。<br />
+<br />
+<br />
+<br />
+在控制层并没有做过滤：<br />
+<br />
+</p><p class="detail"><a href="../images/3122391158857af1e141f348de91a419e1eecffd.png" target="_blank"><img src="../images/3122391158857af1e141f348de91a419e1eecffd.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+    在调用com.jeecms.bbs.manager.impl. BbsMessageMngImpl.java的sendMsg方法的时候依旧没有过滤。到最终的BbsMessageDaoImpl 的save方法还是没有过滤就直接储存了;<br />
+<br />
+一般性的做法，关系到用户交互的地方最好做referer和xss过滤检测，控制层负责收集数据的同时最好处理下用户的请求，就算controller不处理起码在service层做下处理吧。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/312239493839a280fbb712d2f56e9a74b6593acf.png" target="_blank"><img src="../images/312239493839a280fbb712d2f56e9a74b6593acf.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/31223533a63fea5fb05874c2558eadaeac5cd69a.png" target="_blank"><img src="../images/31223533a63fea5fb05874c2558eadaeac5cd69a.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/312239493839a280fbb712d2f56e9a74b6593acf.png" target="_blank"><img src="../images/312239493839a280fbb712d2f56e9a74b6593acf.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修改下逻辑验证，不要信任客户端传递的参数。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/园长" title="园长">园长</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033072" title="JEEBBS v3.0 一处逻辑漏洞和一处定向XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-08-01 15:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对jeecms系列软件提供漏洞信息，我们会在本周内修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33072";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

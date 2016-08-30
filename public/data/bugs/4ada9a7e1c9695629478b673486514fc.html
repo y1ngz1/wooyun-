@@ -1,0 +1,320 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		乐视渗透纪实第三章.送货上门 （员工安全意识不足导致大量敏感信息可获取）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		乐视渗透纪实第三章.送货上门 （员工安全意识不足导致大量敏感信息可获取）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/3King">3King</a> 
+</li><li>提交时间：		2014-02-13 10:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-05：	细节向普通白帽子公开<br/>
+									2014-03-15：	细节向实习白帽子公开<br/>
+									2014-03-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">本专题发布到乌云的目的第一是为了交流基本思路（本人也是菜鸟 ╮(╯▽╰)╭），第二是获取rank以作为回报，第三是就大企业整体的安全防御进行讨论。不足之处，还望指正。<br />
+<br />
+※ 本次渗透是基于乐视官方授权许可的基础上进行的，这些漏洞在上报乌云前均已得到了修复。建议各位做持续或内部渗透前，先和官方联系，取得相应许可，以免出现不必要的误会和麻烦。<br />
+<br />
+※ 本报告中部分信息涉及的隐私部分，将做屏蔽或替换处理。<br />
+<br />
+※ 应厂商意向，本专题希望各位基友仅在乌云讨论，不要外发，谢谢!</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">现在手里掌握的资料有：4个系统权限，和一些内网系统段和内网办公段。<br />
+<br />
+<br />
+<br />
+按道理说，办公段和系统段应该要有所隔离，但是经过探测，一些似乎没有进行有效隔离。<br />
+<br />
+<br />
+<br />
+由于在线代理只能进行一些基本的操作，所以只能进行简单的web服务探测，看看有没有员工因为安全意识不足而泄露一些信息。比如测试站弱口令，上传测试点等基本挖掘。<br />
+<br />
+<br />
+<br />
+果然，运气不错。不一会便在10.B1.C1.D105的80端口上发现了名为“dedecms”的目录，打开后发现为安装完后的默认页面，猜测是没有更改默认密码的，而且版本较低。于是直接利用网上的dedecms getshell方法得到了shell。<br />
+<br />
+<br />
+<br />
+里面有一些文件。另外这台机器装了TortoiseSVN，可以获取到SVN密码，但是里面没项目，所以就没什么用。<br />
+<br />
+<br />
+<br />
+乐视的OA用的是通达的OA，从Program Files可以看到，有通达OA的客户端。那么里面是否会有自动登录要用到的员工密码呢？<br />
+<br />
+<br />
+<br />
+经过查找，在/data/user.db文件中，发现了以下内容<br />
+<br />
+</p><p class="detail"><a href="../images/11233358e6bc6cdf16b3b360fef5fc735581b958.jpg" target="_blank"><img src="../images/11233358e6bc6cdf16b3b360fef5fc735581b958.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>auto_login_passzhan****henDarren</code></pre><p class='detail'><br />
+<br />
+那么密码是不是就是zhan****henDarren呢？<br />
+<br />
+答案是对的。<br />
+<br />
+于是利用他的密码进入了乐视OA。<br />
+<br />
+</p><p class="detail"><a href="../images/112336476846cf86ed3f147b5e4a5ea8685b334a.jpg" target="_blank"><img src="../images/112336476846cf86ed3f147b5e4a5ea8685b334a.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+OA中有一些聊天记录和开发项目信息。<br />
+<br />
+<br />
+<br />
+继续。<br />
+<br />
+<br />
+<br />
+随后，在10.B1.C1.D123的80端口上，发现了appserv的默认安装页面。<br />
+<br />
+</p><p class="detail"><a href="../images/11235155f1660b66db04b9f4140609e6af2c14c4.jpg" target="_blank"><img src="../images/11235155f1660b66db04b9f4140609e6af2c14c4.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如果是测试程序，打开80端口后应该是显示web程序的内容啊，怎么会是默认页面？这么说，appserv的默认配置也没改？<br />
+<br />
+<br />
+<br />
+于是百度了appserv的mysql默认密码，配合appserv默认自带的phpmyadmin，成功登录进数据库。<br />
+<br />
+<br />
+<br />
+然后利用appserv自带的phpinfo获得web绝对路径，再利用sql导出shell，成功获得权限。<br />
+<br />
+</p><p class="detail"><a href="../images/131041437629e1eddd5c2058ade9869a7cf4744b.jpg" target="_blank"><img src="../images/131041437629e1eddd5c2058ade9869a7cf4744b.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+同样的问题还在继续。<br />
+<br />
+<br />
+<br />
+在10.B1.C3.D136，发现了Vertrigo Serv的默认页面，百度Vertrigo Serv的默认密码后，用appserv相同的方法，获得了权限。<br />
+<br />
+</p><p class="detail"><a href="../images/12000324ec5116a489f1cbf487ed8bcf58a9a396.jpg" target="_blank"><img src="../images/12000324ec5116a489f1cbf487ed8bcf58a9a396.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/12000333d1b790cebd5f53175b6f75621ecabfa6.jpg" target="_blank"><img src="../images/12000333d1b790cebd5f53175b6f75621ecabfa6.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+俗话说再一再二不再三，但是随着渗透的继续，wamp也来凑热闹了...<br />
+<br />
+<br />
+<br />
+这些段全部扫下来，出现默认配置不修改，测试程序弱口令等此类安全意识不足的机器多达10台。<br />
+<br />
+<br />
+<br />
+其中一台机器里就存着这么个东西<br />
+<br />
+</p><p class="detail"><a href="../images/1310403049974ed708d53755c439f2b69c882d3d.jpg" target="_blank"><img src="../images/1310403049974ed708d53755c439f2b69c882d3d.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+将近20台外网应用机的密码。这不是送货上门么？正愁没办法代理来着。。<br />
+<br />
+<br />
+<br />
+于是用已有的外网机执行ssh转发，转发至任意一台机器，然后root登录，开代理。。<br />
+<br />
+<br />
+<br />
+从机器内可以看出，这些机器都是乐视手机站的应用机。而通过挖掘，也成功获得了大量数据库信息。<br />
+<br />
+<br />
+<br />
+随后经查看，又获取到了乐视手机站的后台地址。通过得到的数据库内容，拿到了管理员信息，并成功登录乐视手机站后台。<br />
+<br />
+</p><p class="detail"><a href="../images/1200224570927535ea3633ceb4cbe33a0fd18470.jpg" target="_blank"><img src="../images/1200224570927535ea3633ceb4cbe33a0fd18470.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+后台权限极大，例如可直接修改客户端显示内容等信息。<br />
+<br />
+</p><p class="detail"><a href="../images/120023054314a6b1f74964676e45086729d0b346.jpg" target="_blank"><img src="../images/120023054314a6b1f74964676e45086729d0b346.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+甚至可替换所有乐视移动端的开机大图。<br />
+<br />
+</p><p class="detail"><a href="../images/12002355a3120b29d364bef442dc3933b9d228d8.jpg" target="_blank"><img src="../images/12002355a3120b29d364bef442dc3933b9d228d8.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可见，乐视员工的安全意识急需得到加强。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/11233358e6bc6cdf16b3b360fef5fc735581b958.jpg" target="_blank"><img src="../images/11233358e6bc6cdf16b3b360fef5fc735581b958.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/112336476846cf86ed3f147b5e4a5ea8685b334a.jpg" target="_blank"><img src="../images/112336476846cf86ed3f147b5e4a5ea8685b334a.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/11235155f1660b66db04b9f4140609e6af2c14c4.jpg" target="_blank"><img src="../images/11235155f1660b66db04b9f4140609e6af2c14c4.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/131041437629e1eddd5c2058ade9869a7cf4744b.jpg" target="_blank"><img src="../images/131041437629e1eddd5c2058ade9869a7cf4744b.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/12000324ec5116a489f1cbf487ed8bcf58a9a396.jpg" target="_blank"><img src="../images/12000324ec5116a489f1cbf487ed8bcf58a9a396.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/12000333d1b790cebd5f53175b6f75621ecabfa6.jpg" target="_blank"><img src="../images/12000333d1b790cebd5f53175b6f75621ecabfa6.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1310403049974ed708d53755c439f2b69c882d3d.jpg" target="_blank"><img src="../images/1310403049974ed708d53755c439f2b69c882d3d.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1200224570927535ea3633ceb4cbe33a0fd18470.jpg" target="_blank"><img src="../images/1200224570927535ea3633ceb4cbe33a0fd18470.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/120023054314a6b1f74964676e45086729d0b346.jpg" target="_blank"><img src="../images/120023054314a6b1f74964676e45086729d0b346.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/12002355a3120b29d364bef442dc3933b9d228d8.jpg" target="_blank"><img src="../images/12002355a3120b29d364bef442dc3933b9d228d8.jpg" alt="11.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">·员工尽量不要在10段做web测试。<br />
+<br />
+<br />
+<br />
+·提高安全意识，杜绝弱口令。<br />
+<br />
+<br />
+<br />
+·做好域隔离，员工尽量不要再10段办公。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/3King" title="3King">3King</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050815" title="乐视渗透纪实第三章.送货上门 （员工安全意识不足导致大量敏感信息可获取）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2014-02-13 10:50</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">费心了，小伙子的漏洞在批量进行修复中，内容均提前告知，内部员工安全意识差啊。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50815";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

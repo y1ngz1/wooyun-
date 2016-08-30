@@ -1,0 +1,208 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国铁建股份有限公司某业务系统漏洞（多漏洞打包）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国铁建股份有限公司某业务系统漏洞（多漏洞打包）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/鶆鶈">鶆鶈</a> 
+</li><li>提交时间：		2013-07-14 11:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-07：	细节向普通白帽子公开<br/>
+									2013-08-17：	细节向实习白帽子公开<br/>
+									2013-08-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">任意文件文件下载和SQL注射及由此引发的渗透测试。<br />
+<br />
+(漏洞类型不能多选额，建议做成多选；另外建议加个备注框，可以说些题外话，之前提交过一次，不知道为什么没通过，我觉得这个问题还是有一定影响的，那个123456条我也不知道是哪个，大侠们稍微麻烦下，在下面给个具体原因描述吧。)</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.任意文件下载:<br />
+<br />
+http://ec.crcc.cn/b2b/web/fileuploadAction.do?method=downLoad&amp;fileName=web.xml&amp;fileType=text&amp;fjbh=web&amp;fjml=/WEB-INF/<br />
+<br />
+翻了源程序后发现程序中还有几处文件下载，都存在问题，比如这个就更方便了：<br />
+<br />
+http://ec.crcc.cn/b2b/web/uploadAction.do?method=downLoad&amp;fileType=text&amp;fileName=/etc/shadow<br />
+<br />
+2.SQL注射：<br />
+<br />
+http://ec.crcc.cn/b2b/web/two/indexinfoAction.do?actionType=showOneProduct&amp;xh=2&amp;dwbm=-1&#039; union select NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL from dual--&amp;sbwzly=0<br />
+<br />
+3.渗透测试：<br />
+<br />
+1) 先下载些网站源程序来看看，特别是weblogic的config.xml和WEB-INF下的一些常见配置文件，再根据struts-config.xml批量下载类文件；<br />
+<br />
+2) 结合源码，SQL注射起来就简单多了，密码只是简单地通过base64加密，读取admin帐号密码登入系统，得到该系统管理员权限；<br />
+<br />
+3) 在翻源码时发现程序中存在一个用户信息导出的操作(在com.sunwayworld.srm30.web.sysuser.action.SysUserAction这个类中)，可导出全部上万用户信息，其中email带crcc的当然是内部人员了，可用作后续渗透;<br />
+<br />
+4) admin帐号可以修改系统文件上传类型，添加jsp，在系统系统里翻半天没找到上传，根据struts-config.xml直接去源程序里翻，猜也猜得到是那个fileuploadAction，就看怎么调用了，上传了一个jspshell文件，不过上传后没返回文件名有点奇怪，保存的是&quot;年月+4位数字.后缀&quot;的形式，扫一下吧。<br />
+<br />
+5) 拿到了webshell，不出意外，当然是系统权限。ec.crcc.cn的ip地址是114.247.103.7，而114.247.103.6这个IP的8000端口也跑着这个系统，依法施为，这台主机当然也跑不了。通过这两服务器可以尝试渗透内网中其它主机，笔者就没测试了。<br />
+<br />
+6) 导出的用户信息中没密码，weblogic里有关密码的东西都是加密的，笔者也不知道怎么去调用它的datasource，对这些东西不熟，不过不是还有SQL注射么，根据SQL注射漏洞获取用户对应的密码（多数是弱口令），使用这些帐号密码再去测试企业应用中心(work.crcc.cn)和邮件系统(mail.crcc.com)，从中都找到了能登陆的用户。<br />
+<br />
+7) 现在能掌控两台服务器，部分多处通用的帐号密码，足够向中国铁建股份有限公司发起进一步渗透了，笔者就木有继续了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">使用admin登陆:<br />
+<br />
+</p><p class="detail"><a href="../images/131922560eeb81a70006098205b0b1255ce0a8c6.jpg" target="_blank"><img src="../images/131922560eeb81a70006098205b0b1255ce0a8c6.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+getshell:<br />
+<br />
+</p><p class="detail"><a href="../images/13193029bff153155f5613ea49507e2e94fee5d9.jpg" target="_blank"><img src="../images/13193029bff153155f5613ea49507e2e94fee5d9.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+大量用户信息泄露：<br />
+<br />
+</p><p class="detail"><a href="../images/132000188a0d6d3a7f5298c792c637c59ecde9ac.jpg" target="_blank"><img src="../images/132000188a0d6d3a7f5298c792c637c59ecde9ac.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+登陆email及企业应用系统：<br />
+<br />
+</p><p class="detail"><a href="../images/13192729f788e1489913266a7b5b44c4fc180d85.jpg" target="_blank"><img src="../images/13192729f788e1489913266a7b5b44c4fc180d85.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/131926499e4b3d2aef38491a4eb8ce364e1c57a7.jpg" target="_blank"><img src="../images/131926499e4b3d2aef38491a4eb8ce364e1c57a7.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">系统应该是sunwayworld开发的，最好联系他们修复吧。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/鶆鶈" title="鶆鶈">鶆鶈</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-028795" title="中国铁建股份有限公司某业务系统漏洞（多漏洞打包）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2013-07-18 15:28</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="28795";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

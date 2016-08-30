@@ -1,0 +1,270 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		TCCMS某处设计缺陷，成功打入官网后台  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		TCCMS某处设计缺陷，成功打入官网后台  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/齐迹">齐迹</a> 
+</li><li>提交时间：		2013-11-24 14:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-27：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-14：	细节向普通白帽子公开<br/>
+									2014-01-03：	细节向实习白帽子公开<br/>
+									2014-02-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">TCCMS某处设计缺陷，成功打入官网后台！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题发生在<br />
+<br />
+app\controller\user.class.php<br />
+<br />
+146行<br />
+<br />
+</p><pre><code>public function update() {<br />
+		$_Obj = M ( &#039;user&#039; );<br />
+		if (($_POST [&#039;info&#039;] [&#039;password&#039;] !== $_POST [&#039;password1&#039;])) {<br />
+			StringUtil::msgbox ( Config::lang ( &quot;PWDNOTTHESAME&quot; ), &#039;index.php?ac=users_info&#039;, 1 );<br />
+			exit ();<br />
+		}<br />
+		$_Obj-&gt;create ();<br />
+		if ($_POST [&#039;info&#039;] [&#039;password&#039;] != &quot;&quot; &amp;&amp; ($_POST [&#039;info&#039;] [password] == $_POST [&#039;password1&#039;])) {<br />
+			$_Obj-&gt;password = strlen ( $_POST [&#039;info&#039;] [&#039;password&#039;] ) &gt; 15 ? $_POST [&#039;info&#039;] [&#039;password&#039;] : md5 ( $_POST [&#039;info&#039;] [&#039;password&#039;] );<br />
+		}<br />
+		if (empty ( $_POST [&#039;info&#039;] [&#039;area&#039;] )) {<br />
+			$_Obj-&gt;area = &quot;&quot;;<br />
+		}<br />
+		if (empty ( $_POST [&#039;info&#039;] [&#039;city&#039;] )) {<br />
+			$_Obj-&gt;city = &quot;&quot;;<br />
+		}<br />
+		//禁止修改管理员<br />
+		$userObj = get ( &quot;user&quot;, $_Obj-&gt;id );<br />
+		if ($userObj-&gt;grade == 1) {<br />
+			self::checkIsAdmin ();<br />
+		}<br />
+		//禁止修改别人的<br />
+		$IsSelfData = Authen::checkIsSelfData ( $_Obj-&gt;id );<br />
+		if (! $IsSelfData) {<br />
+			$this-&gt;setValue ( &quot;error&quot;, Config::lang ( &quot;NOTRIGHT&quot; ) );<br />
+			$this-&gt;forward ( &quot;error.html&quot; );<br />
+			exit ();<br />
+		}<br />
+		$_Obj-&gt;update ();<br />
+		StringUtil::msgbox ( Config::lang ( &quot;MODIFYSUCCESS&quot; ), &#039;index.php?ac=user_info&#039;, 1 );<br />
+	}</code></pre><p class='detail'><br />
+<br />
+这里调用了 $_Obj-&gt;create ();<br />
+<br />
+学TP！<br />
+<br />
+然后在看看<br />
+<br />
+$_Obj-&gt;create (); 这个里面什么情况<br />
+<br />
+<br />
+<br />
+</p><pre><code>public function create($datas = &#039;&#039;) {<br />
+        $data = array();<br />
+        $data = $datas;<br />
+        if (empty($data)) {<br />
+            $data = $_POST[&#039;info&#039;];<br />
+        } elseif (is_object($data)) {<br />
+            $data = get_object_vars($data);<br />
+        } elseif (!is_array($data)) {<br />
+        	$msg = Config::lang(&quot;ILLEGALDATA&quot;);<br />
+            exit($msg);<br />
+        }<br />
+        if (empty($_POST[&#039;info&#039;]) &amp;&amp; empty($data)) { return false; }<br />
+        $fieldsType = $this-&gt;types; //字段和默认值<br />
+        $fieldsName = $this-&gt;fields; //字段和类型<br />
+        $formKeyAry = array_keys($data); //post过来的所有$key<br />
+        /* @var $key type */<br />
+        foreach ($formKeyAry as $key) {<br />
+            if (array_key_exists($key, $this-&gt;fields)) {<br />
+                $val = isset($data[$key]) ? $data[$key] : NULL;<br />
+                if (is_scalar($val)) {<br />
+                    if (false !== strpos($fieldsType[$key], &#039;int&#039;)) {<br />
+                        $val = intval($val);<br />
+                    } elseif (false !== strpos($fieldsType[$key], &#039;float&#039;) || false !== strpos($fieldsType[$key], &#039;double&#039;)) {<br />
+                        $val = floatval($val);<br />
+                    }<br />
+                }<br />
+                if (!is_null($val)) {<br />
+                    $this-&gt;$key = $val;<br />
+                }<br />
+                if (($data[$key] == &quot;&quot; || $data[$key] == NULL || $data[$key] === 0) &amp;&amp; $fieldsName[$key] != &quot;&quot;) {<br />
+                    $this-&gt;$key = $fieldsName[$key];<br />
+                }<br />
+<br />
+            }<br />
+        }<br />
+        return $this;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+$_POST[&#039;info&#039;][xx]  xx 直接是数据库字段 可以成功修改！<br />
+<br />
+<br />
+<br />
+在<br />
+<br />
+http://www.teamcen.com/index.php?ac=user_info<br />
+<br />
+页面通过修改表单名称 成功把注册的普通帐号修改为了管理员帐号 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">成功打入后台！<br />
+<br />
+<br />
+<br />
+什么注入都弱爆了！<br />
+<br />
+直接执行SQL 好舒服<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2411335859bc8c7f86cefd329a5c545390153b4c.jpg" target="_blank"><img src="../images/2411335859bc8c7f86cefd329a5c545390153b4c.jpg" alt="tcms_admin.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂的！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/齐迹" title="齐迹">齐迹</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043885" title="TCCMS某处设计缺陷，成功打入官网后台">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-11-24 16:10</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢关注TCCMS开源项目。<br />
+有前台会员模块的用户受到影响，官方已经将会下一个版本采取后台登陆URL自定义，会员编辑判断是否管理员身份。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43885";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

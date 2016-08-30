@@ -1,0 +1,314 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcms v9 前台无限制GETSHELL（第一弹）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcms v9 前台无限制GETSHELL（第一弹）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/狗狗侠">狗狗侠</a> 
+</li><li>提交时间：		2013-11-26 11:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-29：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-16：	细节向普通白帽子公开<br/>
+									2014-01-05：	细节向实习白帽子公开<br/>
+									2014-02-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"></p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">  第一次玩乌云，希望给个邀请码，壮我大乌云<br />
+<br />
+0x01:介绍<br />
+<br />
+    PHPCMS V9（后面简称V9）采用PHP5+MYSQL做为技术基础进行开发。V9采用OOP（面向对象）方式进行基础运行框架搭建。模块化开发方式做为功能开发形式。框架易于功能扩展，代码维护，优秀的二次开发能力，可满足所有网站的应用需求。 5年开发经验的优秀团队，在掌握了丰富的WEB开发经验和CMS产品开发经验的同时，勇于创新追求完美的设计理念，为全球多达10万网站提供助力，并被更多的政府机构、教育机构、事业单位、商业企业、个人站长所认可。<br />
+<br />
+<br />
+<br />
+0x02:漏洞分析<br />
+<br />
+在中 v9\phpcms\modules\member\index.php381行处<br />
+<br />
+</p><pre><code>public function account_manage_avatar() {<br />
+		$memberinfo = $this-&gt;memberinfo;<br />
+		//初始化phpsso<br />
+		$phpsso_api_url = $this-&gt;_init_phpsso();<br />
+		$ps_auth_key = pc_base::load_config(&#039;system&#039;, &#039;phpsso_auth_key&#039;);<br />
+		$auth_data = $this-&gt;client-&gt;auth_data(array(&#039;uid&#039;=&gt;$this-&gt;memberinfo[&#039;phpssouid&#039;], &#039;ps_auth_key&#039;=&gt;$ps_auth_key), &#039;&#039;, $ps_auth_key);<br />
+		$upurl = base64_encode($phpsso_api_url.&#039;/index.php?m=phpsso&amp;c=index&amp;a=uploadavatar&amp;auth_data=&#039;.$auth_data);<br />
+		//获取头像数组<br />
+		$avatar = $this-&gt;client-&gt;ps_getavatar($this-&gt;memberinfo[&#039;phpssouid&#039;]);<br />
+		<br />
+		include template(&#039;member&#039;, &#039;account_manage_avatar&#039;);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+这里是一个上传头像的功能模块，我们继续跟踪上传地址为<br />
+<br />
+v9/phpsso_server/index.php?m=phpsso&amp;c=index&amp;a=uploadavatar<br />
+<br />
+读取v9\phpsso_server\phpcms\modules\phpsso\index.php文件<br />
+<br />
+其中uploadavatar为我们处理上传头像函数<br />
+<br />
+具体函数如下<br />
+<br />
+</p><pre><code>public function uploadavatar() {<br />
+		<br />
+		//根据用户id创建文件夹<br />
+		if(isset($this-&gt;data[&#039;uid&#039;]) &amp;&amp; isset($this-&gt;data[&#039;avatardata&#039;])) {<br />
+			$this-&gt;uid = $this-&gt;data[&#039;uid&#039;];<br />
+			$this-&gt;avatardata = $this-&gt;data[&#039;avatardata&#039;];<br />
+		} else {<br />
+			exit(&#039;0&#039;);<br />
+		}<br />
+		<br />
+		$dir1 = ceil($this-&gt;uid / 10000);<br />
+		$dir2 = ceil($this-&gt;uid % 10000 / 1000);<br />
+		<br />
+		//创建图片存储文件夹<br />
+		$avatarfile = pc_base::load_config(&#039;system&#039;, &#039;upload_path&#039;).&#039;avatar/&#039;;<br />
+		$dir = $avatarfile.$dir1.&#039;/&#039;.$dir2.&#039;/&#039;.$this-&gt;uid.&#039;/&#039;;<br />
+		if(!file_exists($dir)) {<br />
+			mkdir($dir, 0777, true);<br />
+		}<br />
+		<br />
+		//存储flashpost图片<br />
+		$filename = $dir.$this-&gt;uid.&#039;.zip&#039;;<br />
+		file_put_contents($filename, $this-&gt;avatardata);<br />
+		echo $filename;exit();<br />
+		//解压缩文件<br />
+		pc_base::load_app_class(&#039;pclzip&#039;, &#039;phpsso&#039;, 0);<br />
+		$archive = new PclZip($filename);<br />
+		if ($archive-&gt;extract(PCLZIP_OPT_PATH, $dir) == 0) {<br />
+			die(&quot;Error : &quot;.$archive-&gt;errorInfo(true));<br />
+		}<br />
+		<br />
+		//判断文件安全，删除压缩包和非jpg图片<br />
+		$avatararr = array(&#039;180x180.jpg&#039;, &#039;30x30.jpg&#039;, &#039;45x45.jpg&#039;, &#039;90x90.jpg&#039;);<br />
+		if($handle = opendir($dir)) {<br />
+		    while(false !== ($file = readdir($handle))) {<br />
+				if($file !== &#039;.&#039; &amp;&amp; $file !== &#039;..&#039;) {<br />
+					if(!in_array($file, $avatararr)) {<br />
+						@unlink($dir.$file);<br />
+					} else {<br />
+						$info = @getimagesize($dir.$file);<br />
+						if(!$info || $info[2] !=2) {<br />
+							@unlink($dir.$file);<br />
+						}<br />
+					}<br />
+				}<br />
+		    }<br />
+		    closedir($handle);    <br />
+		}<br />
+		$this-&gt;db-&gt;update(array(&#039;avatar&#039;=&gt;1), array(&#039;uid&#039;=&gt;$this-&gt;uid));<br />
+		exit(&#039;1&#039;);<br />
+	}</code></pre><p class='detail'><br />
+<br />
+其中关键代码<br />
+<br />
+</p><pre><code>pc_base::load_app_class(&#039;pclzip&#039;, &#039;phpsso&#039;, 0);<br />
+		$archive = new PclZip($filename);<br />
+		if ($archive-&gt;extract(PCLZIP_OPT_PATH, $dir) == 0) {<br />
+			die(&quot;Error : &quot;.$archive-&gt;errorInfo(true));<br />
+		}</code></pre><p class='detail'><br />
+<br />
+这里为解压缩文件<br />
+<br />
+接下来为判断是否为图片类型<br />
+<br />
+</p><pre><code>//判断文件安全，删除压缩包和非jpg图片<br />
+		$avatararr = array(&#039;180x180.jpg&#039;, &#039;30x30.jpg&#039;, &#039;45x45.jpg&#039;, &#039;90x90.jpg&#039;);<br />
+		if($handle = opendir($dir)) {<br />
+		    while(false !== ($file = readdir($handle))) {<br />
+				if($file !== &#039;.&#039; &amp;&amp; $file !== &#039;..&#039;) {<br />
+					if(!in_array($file, $avatararr)) {<br />
+						@unlink($dir.$file);<br />
+					} else {<br />
+						$info = @getimagesize($dir.$file);<br />
+						if(!$info || $info[2] !=2) {<br />
+							@unlink($dir.$file);<br />
+						}<br />
+					}<br />
+				}<br />
+		    }<br />
+		    closedir($handle);    <br />
+		}</code></pre><p class='detail'><br />
+<br />
+为180x180.jpg&#039;, &#039;30x30.jpg&#039;, &#039;45x45.jpg&#039;, &#039;90x90.jpg ，如果不为这几种，则就删除，但是他考虑到的仅仅是当前目录下的，没做循环遍历，导致我们可以新建一个目录，然后里面放入我们的PHP木马，然后压缩成zip，然后再上传，然后即可达到任意上传文件，直接前台无限制getshell<br />
+<br />
+<br />
+<br />
+0x03:漏洞利用<br />
+<br />
+  新建一个如图文件<br />
+<br />
+  新建一个22目录，目录里面放入我们的test.php文件，test.php里面放入我们的一句话，然后压缩成zip文件 </p><p class="detail"><a href="../images/26102841fc161caf38f80d8d0a0f210cfccd7dc3.jpg" target="_blank"><img src="../images/26102841fc161caf38f80d8d0a0f210cfccd7dc3.jpg" alt="HSSE)T74AXF@JMDD{BL5F_7.jpg" width="600"/></a></p><p class="detail"> <br />
+<br />
+然后上传一个正常头像，获取一个路径，如正常头像地址为http://127.0.0.1/v9/phpsso_server/uploadfile/avatar/1/1/3/90x90.jpg<br />
+<br />
+然后我们再次上传，通过burpsuit抓包，将其中post的内容用paste from file替换掉<br />
+<br />
+</p><p class="detail"><a href="../images/26103242687658a38a646188a02d9a0da7ae94c4.jpg" target="_blank"><img src="../images/26103242687658a38a646188a02d9a0da7ae94c4.jpg" alt="88NP})5AQ]M2])JN6188P22.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后发送<br />
+<br />
+最好获取shell路径为 在之前的正常路径下面加上我们的解压路径，如http://127.0.0.1/v9/phpsso_server/uploadfile/avatar/1/1/3/22/test.php<br />
+<br />
+</p><p class="detail"><a href="../images/26103505c35351e918fee21c67f01b5449bddb20.jpg" target="_blank"><img src="../images/26103505c35351e918fee21c67f01b5449bddb20.jpg" alt="90F4_{2CYE{REA[D~}K8UQH.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+0x04:修复<br />
+<br />
+这个phpcms 直接循环遍历一下验证吧<br />
+<br />
+<br />
+<br />
+0x05:奖励<br />
+<br />
+听说乌云通用型奖励很给力哦？ 是真的么？ 如果给力，我再来几发？ xsser? </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/26103505c35351e918fee21c67f01b5449bddb20.jpg" target="_blank"><img src="../images/26103505c35351e918fee21c67f01b5449bddb20.jpg" alt="90F4_{2CYE{REA[D~}K8UQH.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">循环遍历验证下吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/狗狗侠" title="狗狗侠">狗狗侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044084" title="phpcms v9 前台无限制GETSHELL（第一弹）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2013-11-26 13:36</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交！！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44084";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

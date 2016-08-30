@@ -1,0 +1,242 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		金山毒霸多处DLL文件劫持漏洞（可能被用于提权或后门等）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		金山毒霸多处DLL文件劫持漏洞（可能被用于提权或后门等）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/336">336</a> 
+</li><li>提交时间：		2013-08-07 10:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-07：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-17：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-27：	细节向普通白帽子公开<br/>
+									2013-09-16：	细节向实习白帽子公开<br/>
+									2013-11-05：	厂商提前公开漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">金山毒霸在加载DLL文件时考虑不周导致可能的DLL劫持，对用户造成潜在的安全隐患。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">金山毒霸SP4最新版（版本2013.sp4.0.080215） windows xp sp3环境<br />
+<br />
+金山毒霸的几个主程序在运行中会加载几个不存在的DLL文件，导致可能被恶意软件利用进入其进程空间胡做非为。具体见下（不想再分开报告了，打字都嫌累啊）：<br />
+<br />
+kxescore.exe进程加载的缺失DLL列表：<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirus\ksinst.dll<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirus\security\ksde\sqlite.dll<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirus\sqlite.dll<br />
+<br />
+kxetray.exe进程加载的缺失DLL列表：<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirus\security\ksde\sqlite.dll<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirus\sqlite.dll<br />
+<br />
+kavlog2.exe进程加载的缺失DLL列表：<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirus\security\ksde\sqlite.dll<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirus\sqlite.dll<br />
+<br />
+kscan.exe进程加载的缺失DLL列表：<br />
+<br />
+%ProgramFiles%Kingsoft\Kingsoft Antivirus\ilog.dll<br />
+<br />
+%ProgramFiles%Kingsoft\Kingsoft Antivirus\kavifr.dll<br />
+<br />
+%ProgramFiles%Kingsoft\Kingsoft Antivirus\ksinst.dll<br />
+<br />
+%ProgramFiles%Kingsoft\Kingsoft Antivirus\security\kxescan\kavifr.dll<br />
+<br />
+%ProgramFiles%Kingsoft\Kingsoft Antivirus\subsystem\kxede\kxedecs.dll<br />
+<br />
+<br />
+<br />
+需要说明的一点是：金山毒霸在运行时对自己的安装目录已进行自我保护，防止恶意行为向目录里改写或增加文件，想要在金山毒霸的眼皮下把假的DLL文件送进安装目录下让金山毒霸进行加载，难度还是不小的，但不是没可能，需要一定的技巧。金山毒霸做为一款系统安全防护软件，拥有的权限不是一般的高，攻击者一旦让金山毒霸加载起自己的冒名DLL文件，那很容易就可以实现各种非法的行为。<br />
+<br />
+<br />
+<br />
+下面是重点来了：<br />
+<br />
+如果说要在金山毒霸的自我保护下增加这些缺失的DLL文件让一般的攻击者束手无策，那下面的漏洞一定会让他们笑开花的。<br />
+<br />
+kscan.exe进程加载的缺失DLL列表：(区别于上面的，不带全路径)<br />
+<br />
+ksmbrfix.dll<br />
+<br />
+kavifr.dll<br />
+<br />
+这两个缺失的DLL文件在加载时没有指定绝对路径，让攻击者有了可乘之机，攻击者可以把这个假的DLL文件放在系统目录windows或windows\system32下，就有了混水摸鱼的机会。原理不用我说明了吧。<br />
+<br />
+<br />
+<br />
+最后重点中的重点来了：<br />
+<br />
+一个严格的程序员在写程序时会尽量多做一些细节的检查，避免不必要的漏洞，下面的这个漏洞可以说是马虎程序员的悲剧了，一个小小的疏忽让金山毒霸构建的马其诺防线在一夜之间就被攻破，希望金山在代码的审查上还要再注意啊。<br />
+<br />
+kxescore.exe进程加载的缺失DLL列表：<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirusksapi.dll<br />
+<br />
+注意到上面那个DLL文件的文件名了吗？很明显的是，它本来应该是<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirus\ksapi.dll<br />
+<br />
+一个小小的&#039;\&#039;让攻击者心花怒放，金山毒霸尽管对<br />
+<br />
+%ProgramFiles%\Kingsoft\Kingsoft Antivirus<br />
+<br />
+目录做了自我保护，却没有对<br />
+<br />
+%ProgramFiles%\Kingsoft<br />
+<br />
+目录做保护，攻击可以在该目录下构造一个名为&quot;Kingsoft Antivirusksapi.dll&quot;的恶意DLL文件，从而达成攻击。证明见图片。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在%ProgramFiles%\Kingsoft目录下构造一个名为&quot;Kingsoft Antivirusksapi.dll&quot;的DLL文件，当电脑重启或金山毒霸重新加载运行kxescore.exe文件时，该DLL文件随即被加载进kxescore.exe进程内。<br />
+<br />
+</p><p class="detail"><a href="../images/070907367129e388194e3c0abea3baa362a0ccbc.png" target="_blank"><img src="../images/070907367129e388194e3c0abea3baa362a0ccbc.png" alt="1.PNG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">厂商懂得。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/336" title="336">336</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033708" title="金山毒霸多处DLL文件劫持漏洞（可能被用于提权或后门等）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-08-07 11:43</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">收到，该问题同属dll劫持，根据漏洞的利用难度、严重程度、影响范围评估为低危，同时报告比较详细，综合给5分。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-09-03：已经修复完毕，有兴趣的朋友欢迎继续测试。有纪念礼品</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33708";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

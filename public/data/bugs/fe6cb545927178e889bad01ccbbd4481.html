@@ -1,0 +1,302 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		淘宝某站源码泄露及SQL注入分析  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		淘宝某站源码泄露及SQL注入分析  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Mr .LZH">Mr .LZH</a> 
+</li><li>提交时间：		2014-04-08 16:48</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-04-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-04-09：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-04-19：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-04-29：	细节向普通白帽子公开<br/>
+									2014-05-09：	细节向实习白帽子公开<br/>
+									2014-05-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">拿下淘宝某站源码，分析sql注入漏洞及绕过</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">svn导致源码泄露：http://ip.taobao.com/.svn/entries<br />
+<br />
+拿下源码<br />
+<br />
+</p><p class="detail"><a href="../images/081434309f2f76819d13071f1f872fb263341122.png" target="_blank"><img src="../images/081434309f2f76819d13071f1f872fb263341122.png" alt="QQ截图20140408143313.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接下来分析源码：<br />
+<br />
+1.敏感信息泄露，数据库信息：<br />
+<br />
+</p><p class="detail"><a href="../images/081437242dde2602cf40bf6a08f1fde8bbaee3bd.png" target="_blank"><img src="../images/081437242dde2602cf40bf6a08f1fde8bbaee3bd.png" alt="QQ截图20140408143313.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2.sql注入分析<br />
+<br />
+getFeedbackRecord.php源码：<br />
+<br />
+</p><pre><code>&lt;?php<br />
+<br />
+require_once(&quot;./common.php&quot;);<br />
+require_once(&#039;../runtime_start.php&#039;);<br />
+<br />
+if (!is_user_login()) {<br />
+    response_data(FAILED, &#039;user not login&#039;);<br />
+    exit(1);<br />
+}<br />
+<br />
+$page = 1;<br />
+$rows = 1;<br />
+<br />
+if (!isset($_REQUEST[&#039;page&#039;])) {<br />
+    response_data(FAILED, &#039;no page param.&#039;);<br />
+    exit(1);<br />
+} else {<br />
+    $page = $_REQUEST[&#039;page&#039;];<br />
+}<br />
+<br />
+if (!isset($_REQUEST[&#039;rows&#039;])) {<br />
+    response_data(FAILED, &#039;no rows param.&#039;);<br />
+    exit(1);<br />
+} else {<br />
+    $rows = $_REQUEST[&#039;rows&#039;];<br />
+}<br />
+<br />
+$wangwang_id = $_COOKIE[&#039;wangwang_id&#039;];<br />
+<br />
+$start = $rows * ($page-1);<br />
+$len = $rows;<br />
+<br />
+$con = init_db();<br />
+if (!$con) {<br />
+    response_data(FAILED, &#039;database error&#039;);<br />
+    echo &quot;conn error\n&quot;;<br />
+    exit(1);<br />
+}<br />
+<br />
+$query_sql = &quot;SELECT SQL_CALC_FOUND_ROWS ip, country, region, city, county, isp, feedback_type, feedback_date FROM user_feedback_item WHERE wangwang_id=&#039;&quot;.addslashes($wangwang_id). &quot;&#039; order by id desc LIMIT &quot;.intval($start).&quot;, &quot;.intval($len);<br />
+<br />
+$res = mysql_query($query_sql, $con);<br />
+<br />
+if ($res) {<br />
+    $rows = array();<br />
+    while($temp = mysql_fetch_array($res, MYSQL_ASSOC)) {<br />
+        $rows[] = $temp;<br />
+    }<br />
+<br />
+    $item_num = 0;<br />
+    $ttl_sql = &quot;SELECT FOUND_ROWS() as item_num &quot;;<br />
+    $ttl_rlt = mysql_query($ttl_sql, $con);<br />
+    if($ttl_rlt &amp;&amp; $ttl_row = mysql_fetch_array($ttl_rlt, MYSQL_ASSOC)) {<br />
+        $item_num  = $ttl_row[&#039;item_num&#039;];<br />
+        mysql_free_result($ttl_rlt);<br />
+    }<br />
+<br />
+    $items = array();<br />
+    $items[&#039;total&#039;] = ceil($item_num/$len);<br />
+    $items[&#039;rows&#039;]  = $rows;<br />
+    $items[&#039;records&#039;] = $item_num;<br />
+    $items[&#039;page&#039;] = $page;<br />
+<br />
+    response_data(SUCCESS, $items);<br />
+<br />
+    mysql_free_result($res);<br />
+} else {<br />
+    response_data(FAILED, &#039;database error&#039;);<br />
+}<br />
+<br />
+mysql_close($con);<br />
+<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可知只要登录账户，提交page，rows参数，控制$_COOKIE[&#039;wangwang_id&#039;]，可构造$query_sql 语句执行。其中：<br />
+<br />
+</p><pre><code>$query_sql = &quot;SELECT SQL_CALC_FOUND_ROWS ip, country, region, city, county, isp, feedback_type, feedback_date FROM user_feedback_item WHERE wangwang_id=&#039;&quot;.addslashes($wangwang_id). &quot;&#039; order by id desc LIMIT &quot;.intval($start).&quot;, &quot;.intval($len);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$wangwang_id经过addslashes处理，但仍让可以通过双字符绕过，形成注入。page，rows参数最终经过取整，无法利用，于是抓包构造cookies。<br />
+<br />
+</p><p class="detail"><a href="../images/08144658a923f0a268dadd53486be89231216a7c.png" target="_blank"><img src="../images/08144658a923f0a268dadd53486be89231216a7c.png" alt="QQ截图20140408143313.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+额。。。修改了wangwang_id导致is_user_login()判断用户未登录。伤心<br />
+<br />
+于是查看文件function.inc.php<br />
+<br />
+</p><pre><code>//判断用户是否登陆<br />
+<br />
+function is_user_login() {<br />
+    return !empty($_COOKIE[&#039;_t&#039;])<br />
+        &amp;&amp; !empty($_COOKIE[&#039;wangwang_id&#039;])<br />
+        &amp;&amp; get_passport_token($_COOKIE[&#039;wangwang_id&#039;]) == $_COOKIE[&#039;_t&#039;];<br />
+}</code></pre><p class='detail'><br />
+<br />
+额...如此坑爹的程序员，判断是否登录都能这么屌，完全是$_COOKIE[&#039;_t&#039;])和$_COOKIE[&#039;wangwang_id&#039;]两个用户能自己构造的参数来判断，两个参数还不是HttpOnly<br />
+<br />
+不过我目的不是绕过登录任意用户，俺要的是注入时绕过is_user_login()，于是再看看get_passport_token():<br />
+<br />
+</p><pre><code>define(ALIBENCH_ENCRYPT_KEY, &#039;XXX专业打码30年&#039;);<br />
+<br />
+//获取登陆密钥<br />
+function get_passport_token($uid)<br />
+{<br />
+    return substr(md5($uid . ALIBENCH_ENCRYPT_KEY), 0, 12); <br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这样一来只要构造$_COOKIE[&#039;wangwang_id&#039;]为注入语句，并且通过上面的算法构造$_COOKIE[&#039;_t&#039;]就能无视注入时is_user_login()判断用户是否登录的限制了。<br />
+<br />
+<br />
+<br />
+功夫不负有心人，懒得自己写脚本去构造注入了，于是乎。。。。你们自己搞定 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">阿里最近在招实习，求机会，拜谢 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Mr .LZH" title="Mr .LZH">Mr .LZH</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-055928" title="淘宝某站源码泄露及SQL注入分析">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-04-09 11:45</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对我们的支持与关注，该问题我们正在修复。谢谢!</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="55928";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

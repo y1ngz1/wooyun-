@@ -1,0 +1,248 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSNS 2.8 上传任意文件漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSNS 2.8 上传任意文件漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/yelo">yelo</a> 
+</li><li>提交时间：		2012-10-18 15:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-11-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-12：	细节向普通白帽子公开<br/>
+									2012-11-22：	细节向实习白帽子公开<br/>
+									2012-12-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ThinkSNS 2.8 可上传任意文件</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">微博上传图片时只在前端进行验证, 服务器端没有进行安全过滤。<br />
+<br />
+<br />
+<br />
+\api\StatusesApi.class.php<br />
+<br />
+</p><pre><code>function uploadpic(){<br />
+     	if( $_FILES[&#039;pic&#039;] ){<br />
+    		//执行上传操作<br />
+    		$savePath =  $this-&gt;_getSaveTempPath();<br />
+    		$filename = md5( time().&#039;teste&#039; ).&#039;.&#039;.substr($_FILES[&#039;pic&#039;][&#039;name&#039;],strpos($_FILES[&#039;pic&#039;][&#039;name&#039;],&#039;.&#039;)+1);<br />
+	    	if(@copy($_FILES[&#039;pic&#039;][&#039;tmp_name&#039;], $savePath.&#039;/&#039;.$filename) || @move_uploaded_file($_FILES[&#039;pic&#039;][&#039;tmp_name&#039;], $savePath.&#039;/&#039;.$filename))<br />
+	        {<br />
+	        	$result[&#039;boolen&#039;]    = 1;<br />
+	        	$result[&#039;type_data&#039;] = &#039;temp/&#039;.$filename;<br />
+	        	$result[&#039;picurl&#039;]    = SITE_PATH.&#039;/uploads/temp/&#039;.$filename;<br />
+	        } else {<br />
+	        	$result[&#039;boolen&#039;]    = 0;<br />
+	        	$result[&#039;message&#039;]   = &#039;上传失败&#039;;<br />
+	        }<br />
+    	}else{<br />
+        	$result[&#039;boolen&#039;]    = 0;<br />
+        	$result[&#039;message&#039;]   = &#039;上传失败&#039;;<br />
+    	}<br />
+		return $result;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+unloadpic()方法没有对文件类型进行验证<br />
+<br />
+<br />
+<br />
+可以构建表单, 选择任意文件, 提交到<br />
+<br />
+/index.php?app=w3g&amp;mod=Index&amp;act=doPost<br />
+<br />
+<br />
+<br />
+在新提交的微博上可以找到上传的文件地址(去掉small_、middle_ 前缀) </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在登录thinksns官方微博后,<br />
+<br />
+构建以下表单:<br />
+<br />
+</p><pre><code>&lt;form action=&quot;http://t.thinksns.com/index.php?app=w3g&amp;mod=Index&amp;act=doPost&quot; method=&quot;post&quot; enctype=&quot;multipart/form-data&quot; /&gt;<br />
+		&lt;textarea name=&quot;content&quot;&gt;test&lt;/textarea&gt;<br />
+		file: &lt;input id=&quot;file&quot; type=&quot;file&quot; name=&quot;pic&quot; /&gt;<br />
+		&lt;input type=&quot;submit&quot; value=&quot;Post&quot; /&gt;<br />
+	&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+去掉缩略图的前缀(small_ )<br />
+<br />
+</p><p class="detail"><a href="../images/18150227a92bf00a11c4283f7e75dabaf23b7903.png" target="_blank"><img src="../images/18150227a92bf00a11c4283f7e75dabaf23b7903.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">\api\StatusesApi.class.php<br />
+<br />
+</p><pre><code>function uploadpic(){<br />
+    	/**<br />
+    	 * 20121018 @yelo<br />
+    	 * 增加上传类型验证<br />
+    	 */<br />
+    	$pathinfo = pathinfo($_FILES[&#039;pic&#039;][&#039;name&#039;]);<br />
+    	$ext = $pathinfo[&#039;extension&#039;];<br />
+    	$allowExts = array(&#039;jpg&#039;, &#039;png&#039;, &#039;gif&#039;, &#039;jpeg&#039;);<br />
+<br />
+    	$uploadCondition = $_FILES[&#039;pic&#039;] &amp;&amp; in_array(strtolower($ext),$allowExts,true);<br />
+<br />
+    	if( $uploadCondition ){<br />
+    		//执行上传操作<br />
+    		$savePath =  $this-&gt;_getSaveTempPath();<br />
+    		$filename = md5( time().&#039;teste&#039; ).&#039;.&#039;.substr($_FILES[&#039;pic&#039;][&#039;name&#039;],strpos($_FILES[&#039;pic&#039;][&#039;name&#039;],&#039;.&#039;)+1);<br />
+	    	if(@copy($_FILES[&#039;pic&#039;][&#039;tmp_name&#039;], $savePath.&#039;/&#039;.$filename) || @move_uploaded_file($_FILES[&#039;pic&#039;][&#039;tmp_name&#039;], $savePath.&#039;/&#039;.$filename))<br />
+	        {<br />
+	        	$result[&#039;boolen&#039;]    = 1;<br />
+	        	$result[&#039;type_data&#039;] = &#039;temp/&#039;.$filename;<br />
+	        	$result[&#039;picurl&#039;]    = SITE_PATH.&#039;/uploads/temp/&#039;.$filename;<br />
+	        } else {<br />
+	        	$result[&#039;boolen&#039;]    = 0;<br />
+	        	$result[&#039;message&#039;]   = &#039;上传失败&#039;;<br />
+	        }<br />
+    	}else{<br />
+        	$result[&#039;boolen&#039;]    = 0;<br />
+        	$result[&#039;message&#039;]   = &#039;上传失败&#039;;<br />
+    	}<br />
+		return $result;<br />
+    }</code></pre><p class='detail'> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/yelo" title="yelo">yelo</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013505" title="ThinkSNS 2.8 上传任意文件漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-10-23 10:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">这个已修复过了，不过还没通知用户，还是感谢您发现了问题，截图很详尽。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13505";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

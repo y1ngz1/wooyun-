@@ -1,0 +1,326 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		大数据HACK系列#4 百姓网论坛基础架构逻辑缺陷 (Discuz某设计缺陷的实战Fuzz篇)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		大数据HACK系列#4 百姓网论坛基础架构逻辑缺陷 (Discuz某设计缺陷的实战Fuzz篇)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪猪侠">猪猪侠</a> 
+</li><li>提交时间：		2013-08-15 15:57</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-04：	细节向普通白帽子公开<br/>
+									2013-09-14：	细节向实习白帽子公开<br/>
+									2013-09-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">大数据HACK的前提是数据+信息收集，二次处理后利用规则进行自动化Fuzz；<br />
+这是基于Discuz逻辑设计缺陷Fuzz的实战篇，闲来无聊，就以百姓网为研究基础案例，京东商城论坛客串。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 原理介绍<br />
+<br />
+Discuz为了实现其Web2.0的特性，设计了许多SNS应有特有的功能，比如查看用户信息：<br />
+<br />
+</p><pre><code>http://bbs.jd.com/home.php?mod=space&amp;uid=1&amp;do=profile</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+当你点开上面的链接，你会发现什么？对，你通过UID捕捉到了对应用户的如下信息：<br />
+<br />
+管理组：管理员<br />
+<br />
+用户组：管理员<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/151535453f07d26c68ab3e8176bfa88bac987c37.jpg" target="_blank"><img src="../images/151535453f07d26c68ab3e8176bfa88bac987c37.jpg" alt="discuz_admin_space_info.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+暴漏了用户的管理组信息，是很大的一个威胁，后面会细谈到。<br />
+<br />
+<br />
+<br />
+再看如下链接：<br />
+<br />
+</p><pre><code>http://bbs.jd.com/forum.php?mod=viewthread&amp;tid=25&amp;extra=page%3D1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/15153419d9023fc56612dc357abfc321cca8014f.jpg" target="_blank"><img src="../images/15153419d9023fc56612dc357abfc321cca8014f.jpg" alt="discuz_celou.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+在左边，测漏了对应用户的组别信息<br />
+<br />
+<br />
+<br />
+我们都知道，拥有一个Discuz论坛管理员权限的用户意味着你能间接控制WEB服务器，和WEB服务器所承载的业务数据。<br />
+<br />
+<br />
+<br />
+#2 继续利用<br />
+<br />
+<br />
+<br />
+既然上面谈到的链接，在默认安装Discuz论坛的基础下，未登录论坛就可以查看任意用户信息，那么也说明 搜索引擎 也能够爬到与之对应的信息。<br />
+<br />
+<br />
+<br />
+</p><pre><code>site:bbs.jd.com inurl:profile 管理员</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1515401465e09caf95fb5ff8925c32a97448fe96.jpg" target="_blank"><img src="../images/1515401465e09caf95fb5ff8925c32a97448fe96.jpg" alt="discuz_google_admin.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+http://bbs.jd.com/home-space-uid-4-do-profile-view-me.html<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/15153919f042818f6583d281109a03ca41572a5b.jpg" target="_blank"><img src="../images/15153919f042818f6583d281109a03ca41572a5b.jpg" alt="discuz_连环火柴.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+通过介绍的原理，分析出对应的规则，再找出收集信息的方式，就能将所有论坛管理员的信息都获取下来了。<br />
+<br />
+<br />
+<br />
+#3 有了管理员用户名，还需要登录接口辅助<br />
+<br />
+Discuz很多默认的登录接口，都为我们Fuzz提供了便利<br />
+<br />
+# 前台<br />
+<br />
+</p><p class="detail"><a href="../images/1515442781633c3bc87b12a0cc4ab1bce420deac.jpg" target="_blank"><img src="../images/1515442781633c3bc87b12a0cc4ab1bce420deac.jpg" alt="discuz_login.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+# 后台<br />
+<br />
+http://bbs.jd.com/admin.php<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/15154534ff37348d9b5528dfce344c963d36e648.jpg" target="_blank"><img src="../images/15154534ff37348d9b5528dfce344c963d36e648.jpg" alt="discuz_login_houtai.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#4 通过以上原理，我们可以先获取一堆管理员用户名的列表，然后写一个HTTP FORM自动化POST的工具。(可能有很多人在这里会说验证码呀，安全提问等限制啊！但是大多数Discuz论坛默认都没用上这些东西的，我想这个比列在80%以上)<br />
+<br />
+<br />
+<br />
+Discuz这里的默认策略是，同一个IP尝试登陆同一个用户超过5次就会锁定15分钟后才能再次登陆。<br />
+<br />
+<br />
+<br />
+对应解决，我们都知道Discuz属于php应用层，获取IP的函数如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>$onlineip = &#039;&#039;;<br />
+if(getenv(&#039;HTTP_CLIENT_IP&#039;) &amp;&amp; strcasecmp(getenv(&#039;HTTP_CLIENT_IP&#039;), &#039;unknown&#039;)) {<br />
+		$onlineip = getenv(&#039;HTTP_CLIENT_IP&#039;);<br />
+} elseif(getenv(&#039;HTTP_X_FORWARDED_FOR&#039;) &amp;&amp; strcasecmp(getenv(&#039;HTTP_X_FORWARDED_FOR&#039;), &#039;unknown&#039;)) {<br />
+		$onlineip = getenv(&#039;HTTP_X_FORWARDED_FOR&#039;);<br />
+} elseif(getenv(&#039;REMOTE_ADDR&#039;) &amp;&amp; strcasecmp(getenv(&#039;REMOTE_ADDR&#039;), &#039;unknown&#039;)) {<br />
+		$onlineip = getenv(&#039;REMOTE_ADDR&#039;);<br />
+} elseif(isset($_SERVER[&#039;REMOTE_ADDR&#039;]) &amp;&amp; $_SERVER[&#039;REMOTE_ADDR&#039;] &amp;&amp; strcasecmp($_SERVER[&#039;REMOTE_ADDR&#039;], &#039;unknown&#039;)) {<br />
+		$onlineip = $_SERVER[&#039;REMOTE_ADDR&#039;];<br />
+}<br />
+		<br />
+return $onlineip;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+你只需要在客户端重写HTTP_X_FORWARDED_FOR，就能欺骗Discuz绕过IP限制了。<br />
+<br />
+<br />
+<br />
+#5 实战流程<br />
+<br />
+<br />
+<br />
+获取用户信息 --&gt; 通过用户名信息检索自有的大数据资源 --&gt; 生成字典 --&gt; 自动化Fuzz -&gt; 输出结果<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#6 实战百姓网的结果<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1515523337b18ce57865e69f829a5c3dc4deb9b5.jpg" target="_blank"><img src="../images/1515523337b18ce57865e69f829a5c3dc4deb9b5.jpg" alt="baixing_find_admin.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#7 实战结果<br />
+<br />
+<br />
+<br />
+通过前台的登录接口，结合Fuzz的密码字典，成功得到管理员(百姓网合作)的密码为123456<br />
+<br />
+直接到达后台<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/15155412fe16bf2ad062480e11d338e04b1d7177.jpg" target="_blank"><img src="../images/15155412fe16bf2ad062480e11d338e04b1d7177.jpg" alt="baixing_bbs_adminlist.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#8 搞到SHELl<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.80vul.com/dzvul/sodb/18/sodb-2009-02.txt</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/15155530aa9481f7795c33473d41e10280ee4ce9.jpg" target="_blank"><img src="../images/15155530aa9481f7795c33473d41e10280ee4ce9.jpg" alt="baixing_shell.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"># 管理入口更名或加IP限制<br />
+<br />
+# 登录接口加入验证码或重复次数暴力猜解限制 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪猪侠" title="猪猪侠">猪猪侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-034438" title="大数据HACK系列#4 百姓网论坛基础架构逻辑缺陷 (Discuz某设计缺陷的实战Fuzz篇)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-08-15 16:36</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">一个半死不活的bbs果然还是被hack了。。。密码用123456的人真该tjjtds啊。。。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="34438";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

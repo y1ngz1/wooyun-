@@ -1,0 +1,218 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		湖北两省级政府网站基于任意文件下载成功入侵实例  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		湖北两省级政府网站基于任意文件下载成功入侵实例  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小点兵">小点兵</a> 
+</li><li>提交时间：		2013-06-03 14:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-26：	细节向普通白帽子公开<br/>
+									2013-07-06：	细节向实习白帽子公开<br/>
+									2013-07-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">湖北两省级政府网站可下载/etc/shadow，通过破解，获得拥有root权限的用户名与密码。由于网站对外开放ssh，成功入侵。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">站点一，湖北省人民政府机关事务管理局 http://www.jghq.gov.cn/<br />
+<br />
+漏洞点：http://www.jghq.gov.cn/download.jsp?fileName=../../../../etc/shadow<br />
+<br />
+<br />
+<br />
+站点二，湖北省知识产权局（这个局有两个domain） http://www.hbipo.gov.cn/ 以及 http://2.zbsjzd.org.cn/<br />
+<br />
+漏洞点： http://www.hbipo.gov.cn/download.jsp?fileName=../../../../etc/shadow 以及 http://2.zbsjzd.org.cn/download.jsp?fileName=../../../../etc/shadow<br />
+<br />
+<br />
+<br />
+  </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">先破解www.jghq.gov.cn的shadow, 拿John the Ripper password cracker进行破解，1分钟不到，出来3个账号，如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/0220153960c0bf5452e08be89bd57737ca98efec.jpg" target="_blank"><img src="../images/0220153960c0bf5452e08be89bd57737ca98efec.jpg" alt="password.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+注意最后一个“zcfg:zcfg123:0:0::/var/www/zcfg:/bin/bash” UID和GID都是0，root权限，很不错。<br />
+<br />
+<br />
+<br />
+ssh连上去，“ssh -l zcfg www.jghq.gov.cn”密码“zcfg123”。运行命令&quot;whoami&quot;,果然root权限，并不错。如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/0220190600fb2e2c9d86808cc2ad99787c797870.jpg" target="_blank"><img src="../images/0220190600fb2e2c9d86808cc2ad99787c797870.jpg" alt="www_jghq_gov_cn.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后破解www.hbipo.gov.cn以及2.zbsjzd.org.cn的shadow，发现用户名和密码一样的，仔细以观察，原来是同一台机器，ip都是219.139.243.203。好吧，原来是一台机器上开了多个站点服务，运行在不同的虚拟目录下面而已。<br />
+<br />
+<br />
+<br />
+ssh链接www.hbipo.gov.cn， 如下图：<br />
+<br />
+</p><p class="detail"><a href="../images/02202257be95ea47061b554b2fc4862d8b7f0525.jpg" target="_blank"><img src="../images/02202257be95ea47061b554b2fc4862d8b7f0525.jpg" alt="www_hbipo_gov_cn.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+经分析，www.jghq.gov.cn在目录/var/www/jghq_utf8/下，而www.hbipo.gov.cn在目录/var/www/hbipo/front/下。为验证分析的正确性，分别在两个目录下建立了test.htm文件，可以通过http://www.hbipo.gov.cn/front/test.htm以及http://www.jghq.gov.cn/test.htm访问。<br />
+<br />
+<br />
+<br />
+到此打住，不再进行内网渗透。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤<br />
+<br />
+web服务器不要运行在root权限下<br />
+<br />
+用户名密码过于简单<br />
+<br />
+ssh还是不要对外开放链接的好，即使开放，建议不要使用默认的22端口<br />
+<br />
+<br />
+<br />
+请修复时，将我添加的/var/www/jghq_utf8/test.htm和/var/www/hbipo/front/test.htm删除，谢谢！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小点兵" title="小点兵">小点兵</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025033" title="湖北两省级政府网站基于任意文件下载成功入侵实例">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-06-06 08:43</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况（含文件包含及弱口令情况），已经在5日转由CNCERT下发给湖北分中心，由其以正式函件方式通报当地主管部门。<br />
+<br />
+按多个案例进行评分，rank=12+8=20</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25033";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

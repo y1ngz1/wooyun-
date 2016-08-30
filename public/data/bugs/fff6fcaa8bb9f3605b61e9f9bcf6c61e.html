@@ -1,0 +1,165 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		mysql注入sleep语句引发的拒绝服务  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		mysql注入sleep语句引发的拒绝服务  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小雨">小雨</a> 
+</li><li>提交时间：		2012-02-14 11:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-02-14：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-02-14：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">mysql注入sleep语句引发的拒绝服务</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">mysql存在注入，并且注入的sleep语句如果传入一个足够大的参数，比如：sleep(9999999999).<br />
+<br />
+如果数据库用的是myisam引擎，且注入点是某个会锁表的语句（insert,replace,update,delete），那么整个数据表的访问都会被阻塞。<br />
+<br />
+使用该表的所有应用的读库请求都会被阻塞。<br />
+<br />
+如果数据库使用的是主从分离的架构，那么Master和Slave的同步会被sleep语句阻塞，导致从库无法从主库正常同步数据。一些依赖于主从同步的应用也会无法正常工作。<br />
+<br />
+就算仅仅是读操作，经过有限次的请求，也会很快的达到数据库的max_connections限制，而导致数据库拒绝服务。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">注入语句update test_inj set xx=1 and sleep(9999999999);<br />
+<br />
+<br />
+<br />
+mysql&gt; select * from test_inj;<br />
+<br />
+请求会被阻塞。直到手动杀死那个锁表的语句。<br />
+<br />
+<br />
+<br />
+线上实验后果会比较严重，就不贴真实的例子了。测试者请用自己搭建的数据库。不要害人。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">禁用mysql的sleep函数。或者修改它的sleep上限，拒绝不合理的超长sleep。现实中很少用到这个sleep功能，就算遇到需要sleep的场景，也可以通过外部应用来实现sleep。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小雨" title="小雨">小雨</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-04489" title="mysql注入sleep语句引发的拒绝服务">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="4489";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,253 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Espcms v5.6 暴力注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Espcms v5.6 暴力注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Yaseng">Yaseng</a> 
+</li><li>提交时间：		2013-03-28 11:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-02：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Espcms  某处挺有意思的注入,虽然对传值有加密并且随机key,但可以逆向重举这个弱伪随机数来控制sql任意参数,导致系统注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">interface\membermain.php  第 33行<br />
+<br />
+</p><pre><code>$db_sql = &quot;SELECT * FROM $db_table1 LEFT JOIN $db_table2 ON a.userid = b.userid  WHERE a.userid = $this-&gt;ec_member_username_id &quot;;</code></pre><p class='detail'><br />
+<br />
+ec_member_username_id 直接从cookies的ecisp_member_info<br />
+<br />
+系统对cookie进行特定的加密 并且随机出key<br />
+<br />
+加密函数:<br />
+<br />
+public\class_function.php  第179 行<br />
+<br />
+</p><pre><code>function eccode($string, $operation = &#039;DECODE&#039;, $key = &#039;@LFK24s224%@safS3s%1f%&#039;) {<br />
+		$result = &#039;&#039;;<br />
+		if ($operation == &#039;ENCODE&#039;) {<br />
+			for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+				$char = substr($string, $i, 1);<br />
+				$keychar = substr($key, ($i % strlen($key)) - 1, 1);<br />
+				$char = chr(ord($char) + ord($keychar));<br />
+				$result.=$char;<br />
+			}<br />
+			$result = base64_encode($result);<br />
+			$result = str_replace(array(&#039;+&#039;, &#039;/&#039;, &#039;=&#039;), array(&#039;-&#039;, &#039;_&#039;, &#039;&#039;), $result);<br />
+		} elseif ($operation == &#039;DECODE&#039;) {<br />
+			$data = str_replace(array(&#039;-&#039;, &#039;_&#039;), array(&#039;+&#039;, &#039;/&#039;), $string);<br />
+			$mod4 = strlen($data) % 4;<br />
+			if ($mod4) {<br />
+				$data .= substr(&#039;====&#039;, $mod4);<br />
+			}<br />
+			$string = base64_decode($data);<br />
+			for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+				$char = substr($string, $i, 1);<br />
+				$keychar = substr($key, ($i % strlen($key)) - 1, 1);<br />
+				$char = chr(ord($char) - ord($keychar));<br />
+				$result.=$char;<br />
+			}<br />
+		}<br />
+		return $result;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+key的生成:<br />
+<br />
+install\fun_center.php 第 238 行<br />
+<br />
+</p><pre><code>$pscode = rand(&#039;99&#039;, &#039;999&#039;);<br />
+$config .= &quot;define(&#039;db_pscode&#039;, &#039;&quot; . md5(md5($pscode)) . &quot;&#039;);\r\n&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+额  两次md5 随机值<br />
+<br />
+在围观下 cookies中 ecisp_member_info的生成吧 <br />
+<br />
+interface\member.php  第 110 行<br />
+<br />
+</p><pre><code>$this-&gt;fun-&gt;setcookie(&#039;ecisp_member_info&#039;, $this-&gt;fun-&gt;eccode(&quot;$memberread[userid]|$memberread[alias]|$memberread[integral]|$memberread[mcid]|$memberread[email]|$memberread[lastip]|$ipadd|&quot; . md5($_SERVER[&#039;HTTP_USER_AGENT&#039;]) . &#039;|&#039; . md5(admin_ClassURL), &#039;ENCODE&#039;, db_pscode));</code></pre><p class='detail'><br />
+<br />
+用户id 名称  邮箱 等等信息,这些对于攻击者都是可知的,那不是可以重举99到999 的key来匹配这些信息<br />
+<br />
+<br />
+<br />
+简单计算出key之后,即可以操作cookie,传入任意sql语句<br />
+<br />
+例如 官方演示站  <br />
+<br />
+</p><p class="detail"><a href="../images/27154741e578361dae24b7a160651255cfa5554c.jpg" target="_blank"><img src="../images/27154741e578361dae24b7a160651255cfa5554c.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+key为 95e87f86a2ffde5110e93c2823634927<br />
+<br />
+查看当前语句<br />
+<br />
+把member_info 明文为<br />
+<br />
+ 1 and  1=2  union select  1,2,3,user(),5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28<br />
+<br />
+eccode  之后修改cookie值即可查询出mysql 当前用户<br />
+<br />
+</p><p class="detail"><a href="../images/271634071ca9e556afb0ac9d5d3536858f728752.jpg" target="_blank"><img src="../images/271634071ca9e556afb0ac9d5d3536858f728752.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">通过一系列编码cookie操作可以获取管理员用户名 密码<br />
+<br />
+</p><p class="detail"><a href="../images/27163448ed818f07f7a717a325ef998504f67775.jpg" target="_blank"><img src="../images/27163448ed818f07f7a717a325ef998504f67775.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+登陆系统后台 可在模板编辑处 getshell,从而拿下权限<br />
+<br />
+</p><p class="detail"><a href="../images/271638133555eb84f9700e8b8969ab3b6aae5ade.jpg" target="_blank"><img src="../images/271638133555eb84f9700e8b8969ab3b6aae5ade.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤<br />
+<br />
+使用mt_rand<br />
+<br />
+改变算法 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Yaseng" title="Yaseng">Yaseng</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020759" title="Espcms v5.6 暴力注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-03-28 11:01</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：16 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-04-23：此漏洞已经过官方修正，下载最新包即可!</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20759";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,214 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		盛大网站漏洞修复方案不完整导致可能代码执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		盛大网站漏洞修复方案不完整导致可能代码执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/BNE">BNE</a> 
+</li><li>提交时间：		2011-02-21 01:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-02-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-02-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-03-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-03-13：	细节向普通白帽子公开<br/>
+									2011-03-23：	细节向实习白帽子公开<br/>
+									2011-03-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">盛大网站由于对漏洞理解有所偏差，没有按照实际情况进行漏洞修复，导致修复方案可以被绕过而失效。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">之前盛大出过因为nginx+fastcgi-php造成的代码执行漏洞。后续盛大依照80sec的漏洞公告上的解决方案，对漏洞进行了简单修补:<br />
+<br />
+</p><pre><code>if ( $fastcgi_script_name ~ \..*\/.*php ) {<br />
+	return 403;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然而实际上，盛大的网站php fastcgi设置则不光是扩展名为php才能访问。<br />
+<br />
+我们随便一个sdo的网站做一下实验：<br />
+<br />
+</p><pre><code>http://forum.dev.sdo.com/robots.txt/s.<br />
+http://forum.dev.sdo.com/robots.txt/s.php<br />
+http://forum.dev.sdo.com/robots.txt/s.php5</code></pre><p class='detail'><br />
+<br />
+以上连接均返回：<br />
+<br />
+</p><pre><code>No input file specified.</code></pre><p class='detail'><br />
+<br />
+而其余的链接则返回标准的http 404错误页面。<br />
+<br />
+这说明只要扩展名为空、php、php5，都会被nginx传入后端的fastcgi进行处理，因此返回的是php-fastcgi的输出结果。<br />
+<br />
+由此我们推测，盛大的php-fastcgi配置如下：<br />
+<br />
+</p><pre><code>location ~ .*\.(php|php5)?$<br />
+	{      <br />
+      #fastcgi_pass  unix:/tmp/php-cgi.sock;<br />
+      fastcgi_pass  127.0.0.1:9001;<br />
+      fastcgi_index index.php;<br />
+      include fcgi.conf;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+如果厂家没有选择关闭cgi.fix_pathinfo的方式进行修补，而只是机械照搬80sec提供的临时性解决方案针对了url中包含php的链接进行了屏蔽，就可以通过以上几种链接方式绕过修复方案重现漏洞。<br />
+<br />
+<br />
+<br />
+BTW:实际上这个问题不光是盛大出现，我估计网络上是有个教程之类的东东误导了大家，有很多人的php-fastcgi是配置成&quot;location ~ .*\.(php|php5)?$&quot;形式的。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">经过测试，果然发现盛大创新园的blog存在问题配置，可以利用：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://in.sdo.com/wp-content/plugins/tdo-mini-forms/tdomf-style-form.css/s.</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/2101162310564b38f8da017677e3b74121a42b94.jpg" target="_blank"><img src="../images/2101162310564b38f8da017677e3b74121a42b94.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">使用cgi.fix_pathinfo=0的方式，一劳永逸。<br />
+<br />
+或者根据自己网站的php-fastcgi设置，定制一个url屏蔽列表。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/BNE" title="BNE">BNE</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01376" title="盛大网站漏洞修复方案不完整导致可能代码执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2011-02-21 10:02</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">多谢BNE提交漏洞信息！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1376";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

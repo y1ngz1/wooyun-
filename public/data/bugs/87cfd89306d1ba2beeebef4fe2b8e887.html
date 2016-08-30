@@ -1,0 +1,595 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯通RTX企业用户存在渗透风险！  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯通RTX企业用户存在渗透风险！  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/有礼物送上">有礼物送上</a> 
+</li><li>提交时间：		2012-10-13 11:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-18：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">  腾讯说了没问题，意思就是说欢迎大家去搞，关我毛事。<br />
+<br />
+  企业用户还是比较多，哥还是负责，自己还是做一份，请管理员叫给CNCERT处理吧！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>完整测试过程：<br />
+  首先，去官网下载一个完整安装包：<br />
+<br />
+  http://rtx.tencent.com/rtx/download/index.shtml<br />
+  <br />
+  安装服务器端和客户端：<br />
+ <br />
+（默认下载是TRX2011版，是否是所有版本有影响，没完全测试，但根据部分实例测试来看，大部分版本都有此问题！）</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/130848058dc0002f9081f0f9c713bdd9fbb6faa7.png" target="_blank"><img src="../images/130848058dc0002f9081f0f9c713bdd9fbb6faa7.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>然后，发现<br />
+http://127.0.0.1:8012/userlist.php<br />
+<br />
+可以直接访问到，里面包含所有用户的用户名等信息的json（里面我添加一个存在弱口令的test帐号，以便后面的测试）：<br />
+<br />
+ 为什么会直接就能访问到这个userlist.php了？<br />
+<br />
+  不管后面的危害如何，这些重要数据是不是不能对普通用户？</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>看看源代码（虽然不喜欢看代码，也没有用过php），发现是个比较2的失误：<br />
+<br />
+<br />
+<br />
+ 在RTXServer\WebRoot路径下找到userlist.php文件：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php <br />
+header(&#039;Content-Type: text/html; charset=utf-8&#039;);<br />
+//require_once &quot;IPLimit.php&quot;;<br />
+$connstr = &quot;Driver={Microsoft access Driver (*.mdb)};DBQ=../db/rtxdb.mdb&quot;;<br />
+<br />
+$conn = @new COM(&quot;ADODB.Connection&quot;) or die (&quot;ADO连接失败!&quot;);<br />
+$conn-&gt;Open($connstr);<br />
+$rs = @new COM(&quot;ADODB.RecordSet&quot;);<br />
+$sql =&quot;select ID,UserName from Sys_user where AccountState&lt;&gt;1 or AccountState is null order by ID&quot;;<br />
+$rs-&gt;Open($sql,$conn,1,3);<br />
+<br />
+$rs-&gt;MoveFirst();<br />
+<br />
+$result = array();  <br />
+<br />
+while(!$rs-&gt;EOF)<br />
+{<br />
+  $idField = $rs-&gt;Fields(0);<br />
+  $id = $idField-&gt;value;<br />
+  $nameField = $rs-&gt;Fields(1);<br />
+  $name = $nameField-&gt;value;<br />
+  <br />
+  $name = iconv(&quot;gb2312&quot;,&quot;utf-8&quot;, $name);<br />
+  array_push($result, array(&#039;id&#039;=&gt;$id,&#039;name&#039;=&gt;$name));<br />
+	$rs-&gt;MoveNext();<br />
+}<br />
+<br />
+<br />
+$rs-&gt;close(); <br />
+<br />
+//print_r($result);<br />
+<br />
+echo json_encode($result);<br />
+<br />
+<br />
+<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>第三行代码被注释掉了：<br />
+<br />
+//require_once &quot;IPLimit.php&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>那么这个IPLimit.php是干什么的了？看命名就知道了，做ip限制的：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+if (PHP_VERSION&gt;=&#039;5&#039;)<br />
+ require_once(&#039;domxml-php4-to-php5.php&#039;);<br />
+<br />
+$visitorIP = $_SERVER[&#039;REMOTE_ADDR&#039;];<br />
+$visitorIP = trim($visitorIP);<br />
+//$visitorDns = $_SERVER[&#039;REMOTE_HOST&#039;];<br />
+<br />
+define(&quot;LOCAL_IP_PREFIX&quot;, 			&quot;127.0.0.&quot;);<br />
+define(&quot;IPLIMIT_CONFIGFILE_NAME&quot;, 	&quot;SDKProperty.xml&quot;);<br />
+define(&quot;ELEM_SDKHTTP&quot;, 				&quot;SDKHttp&quot;);<br />
+define(&quot;ELEM_IPLIMIT&quot;, 				&quot;IPLimit&quot;);<br />
+define(&quot;ATTR_LIMITENABLED&quot;, 		&quot;Enabled&quot;);<br />
+define(&quot;ELEM_IP&quot;, 					&quot;IP&quot;);<br />
+<br />
+function GetIPLimitConfigFilePath()<br />
+{<br />
+	$path = dirname(__FILE__); // webroot<br />
+	$path = dirname($path); // RTXServer<br />
+	$path .= &quot;\\&quot;;<br />
+	$path .= IPLIMIT_CONFIGFILE_NAME;<br />
+	<br />
+	return $path;<br />
+}<br />
+<br />
+function IsVisitorLimited($visitorIP)<br />
+{<br />
+	if (strpos($visitorIP, LOCAL_IP_PREFIX) !== false)<br />
+	{<br />
+		return false;<br />
+	}<br />
+	<br />
+	$iplimitConfigFilePath = GetIPLimitConfigFilePath();<br />
+	if (!file_exists($iplimitConfigFilePath))<br />
+	{<br />
+		return false;<br />
+	}<br />
+	<br />
+	$isLimitEnabled = &quot;0&quot;;<br />
+	$arPermittedIP = array();<br />
+	GetIPLimitInfo($iplimitConfigFilePath, $isLimitEnabled, $arPermittedIP);<br />
+	<br />
+	if ($isLimitEnabled == &quot;0&quot;)<br />
+	{<br />
+		return false;<br />
+	}<br />
+	<br />
+	if (in_array($visitorIP, $arPermittedIP, false))<br />
+	{<br />
+		return false;<br />
+	}<br />
+	<br />
+	return true;<br />
+}<br />
+<br />
+function GetIPLimitInfo($iplimitConfigFilePath, &amp;$isLimitEnabled, &amp;$arPermittedIP)<br />
+{<br />
+	$isLimitEnabled = &quot;0&quot;;<br />
+	<br />
+	$dom = domxml_open_file($iplimitConfigFilePath);<br />
+	if ($dom == null)<br />
+	{<br />
+		header(&quot;http/1.1 404 domxml_open_file failed!&quot;);<br />
+		exit;<br />
+	}<br />
+	<br />
+	$dom_root = $dom-&gt;document_element();<br />
+	if ($dom_root == NULL)<br />
+	{<br />
+		header(&quot;http/1.1 404 ip limit config file invalid!&quot;);<br />
+		exit;		<br />
+	}<br />
+	<br />
+	$sdkhttpNode = NULL;<br />
+	$arPropertyChildNodes = $dom_root-&gt;child_nodes();<br />
+	for ($i = 0; $i &lt; count($arPropertyChildNodes); $i++)<br />
+	{<br />
+		if (strcasecmp($arPropertyChildNodes[$i]-&gt;node_name(), ELEM_SDKHTTP) == 0)<br />
+		{<br />
+			$sdkhttpNode = $arPropertyChildNodes[$i];<br />
+			break;<br />
+		}<br />
+	}<br />
+	<br />
+	if ($sdkhttpNode != NULL)<br />
+	{<br />
+		 $arSDKCgiChildNodes = $sdkhttpNode-&gt;child_nodes();<br />
+		 foreach ($arSDKCgiChildNodes as $sdkcgiChildNode)<br />
+		 {<br />
+		 	if (strcasecmp($sdkcgiChildNode-&gt;node_name(), ELEM_IPLIMIT) == 0)<br />
+		 	{<br />
+		 		$arAttr = $sdkcgiChildNode-&gt;attributes();<br />
+		 		for ($i = 0; $i &lt; count($arAttr); $i++)<br />
+		 		{<br />
+		 			if (strcasecmp($arAttr[$i]-&gt;name, ATTR_LIMITENABLED) == 0)<br />
+		 			{<br />
+		 				$isLimitEnabled = $arAttr[$i]-&gt;value();<br />
+		 			}<br />
+		 		}<br />
+		 		<br />
+		 		if ($isLimitEnabled == &quot;1&quot;)<br />
+		 		{			 	<br />
+				 	$arChildNodesIP = $sdkcgiChildNode-&gt;child_nodes();<br />
+				 	foreach ($arChildNodesIP as $childNodeIP)<br />
+				 	{<br />
+				 		if (strcasecmp($childNodeIP-&gt;node_name(), ELEM_IP) == 0)<br />
+				 		{<br />
+				 			array_push($arPermittedIP, trim($childNodeIP-&gt;get_content()));<br />
+				 		}<br />
+				 	}<br />
+				}<br />
+			 	<br />
+			 	break;<br />
+		 	}<br />
+		}<br />
+	}	<br />
+}<br />
+<br />
+if (IsVisitorLimited($visitorIP))<br />
+{<br />
+	echo &quot;IP 受限，请联系管理员开放您的 IP&quot;;<br />
+	//header(&quot;http/1.1 404 IP limited!&quot;);<br />
+	exit;<br />
+}<br />
+<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>这里就有个问题了，这与腾讯的说法就矛盾了，如果userlist.php是正常权限，为什么会有这个功能限制了？</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>如果是代码审计失误造成的就算了；如果是主动注释掉，怕影响用户体验，那这是个最2的功能了，那这样为什么不做管理页面里？各种看不懂！</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>然后使用test，在“查看审核结果”处尝试弱口令：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p><p class="detail"><a href="../images/13091558c3ead7d3fc11b0c9594641882fd8e1e0.png" target="_blank"><img src="../images/13091558c3ead7d3fc11b0c9594641882fd8e1e0.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>一般的大企业都是成百上千用户，只要一个存在弱口令，整个公司人员的信息都要暴露等：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>在有用户名的情况下，在这个简单登录界面破解一个内网用户密码我想太容易了：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13091929a30ef89b83e5d9025b0fa96d7a32a864.png" target="_blank"><img src="../images/13091929a30ef89b83e5d9025b0fa96d7a32a864.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>然后是简单配置一下客户端就成功登录了！</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/130921024c5aa828442812ebbf2acc10f84f50fc.png" target="_blank"><img src="../images/130921024c5aa828442812ebbf2acc10f84f50fc.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/130921558373ce30d5894e4418df419ecedfdf21.png" target="_blank"><img src="../images/130921558373ce30d5894e4418df419ecedfdf21.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>然后给点实际案例（除了之前发的一些，我另外又找了些）：<br />
+<br />
+110.86.9.189:8012/ <br />
+rtx.hebstd.gov.cn:8012/<br />
+rtx.szvienna.com:8012/ <br />
+218.75.206.108:8012/ <br />
+202.91.227.110:8012/ <br />
+rtx2009.kanion.com:8012/ <br />
+rtx.sinoma-ncdri.cn:8012/<br />
+211.68.208.34:8012/ <br />
+120.209.176.9:8012/<br />
+222.90.72.34:8012/<br />
+rtx.at-express.com:8012/<br />
+218.62.80.218:8012/ <br />
+61.156.217.52:8012/<br />
+118.112.186.35:8012/<br />
+61.175.218.170:8012/ <br />
+rtx.pkuyy.com:8012/<br />
+rtx.jianxin.com:8012/<br />
+rtx.cometgroup.com.cn:8012/<br />
+hzng.com.cn:8012/<br />
+124.117.253.19:8012/ <br />
+211.81.31.61:8012/<br />
+rtx.enweixi.com:8012/<br />
+221.212.46.188:8012/ <br />
+218.56.106.149:8012/<br />
+125.43.85.116:8012/<br />
+58.128.148.10:8012/ <br />
+www.pearlcoin.cn:8012/<br />
+202.113.48.145:8012/<br />
+218.20.201.30:8012/ <br />
+222.89.168.62:8012/ <br />
+rtx.caams.org.cn:8012/ <br />
+218.29.37.196:8012/ <br />
+219.141.70.238:8012/<br />
+cszyz.zpjy.net:8012/<br />
+www.ynxt56.com:8012/<br />
+tgzdh.tangsteel.com:92/ <br />
+www.pssyy.cn:8012/ <br />
+www.76tzx.com:8012/<br />
+foisongroup.com:8012/<br />
+www.hbaxle.com:8012/<br />
+58.248.49.93:8012/ <br />
+www.nbqinyuanoa.com:8012/<br />
+www.gaokegroup.com:8012/<br />
+sales.midea.com.cn:8012/<br />
+rtxc.satrip.com:8012/<br />
+rtx.dycoal.cn:8012/<br />
+218.90.212.84:8012/<br />
+60.191.40.4:8012/<br />
+sucai.nxyc2z.com:8012/<br />
+www.kt10000.com:8012/ <br />
+qq.huiyuan.com.cn:8012/</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>没有一个个测试，有些可能限制了，如：登录8000端口更换了等！</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>下面是成功入侵的案例（123456密码测试）：<br />
+<br />
+rtx10.ougz.com.cn:8012/userlist.php<br />
+8442 123456<br />
+<br />
+http://rtx.dycoal.cn:8012/userlist.php<br />
+zsx 123456<br />
+<br />
+http://rtx.evoc.cn:8012/userlist.php<br />
+sz2054 123456<br />
+<br />
+<br />
+http://www.gaokegroup.com:8012/userlist.php<br />
+3102 123456</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>就以高科集团为例（在客户端填好上面的地址，默认8000端口）：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/130934030c1c0f3671f34ec3a1eb6ed3573a85bb.png" target="_blank"><img src="../images/130934030c1c0f3671f34ec3a1eb6ed3573a85bb.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>这样就能获得公司领导的联系方式了：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/130936206c13d8ed998e835d82bc511027706a25.png" target="_blank"><img src="../images/130936206c13d8ed998e835d82bc511027706a25.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>还可以使用你们做安全的专业术语，伪造他人与公司财务MM视频传情：</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13093811ae788f55cdbe2ed67d81fcbac5e00b8e.png" target="_blank"><img src="../images/13093811ae788f55cdbe2ed67d81fcbac5e00b8e.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/130938291e60a09f6c7de7f25a3e0a6342f439fb.png" target="_blank"><img src="../images/130938291e60a09f6c7de7f25a3e0a6342f439fb.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过程算完整了，真是影响哥周末的心情（这么明显的信息泄露，是真2吗？）！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/有礼物送上" title="有礼物送上">有礼物送上</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013290" title="腾讯通RTX企业用户存在渗透风险！">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-10-13 11:03</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-10-18：不小心忽略了，向大家致歉。涉及的部分案例，如：人民银行项目系统，已通过正式函件向人民银行科技司提交事件处置函。
+
+同时，在16日已联系腾讯公司，腾讯公司回复已经关注到案例情况，但目前暂未提供进一步的解决方案。
+
+CNCERT认为，对相关页面、用户管理的权限审计设计存在缺陷。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13290";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,198 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		UCWEB浏览器密码泄漏隐患  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		UCWEB浏览器密码泄漏隐患  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2012-02-22 00:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-02-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-02-27：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">UCWEB浏览器在登录一些SSL站点时会由于代理机制导致用户信息被明文传递，导致密码类隐私数据会明文传输，可能会遭到泄漏。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">UCWEB浏览器在开启极速模式后，用户的web请求会先传递给uc的代理服务器，代理服务器对目标服务器发出请求后对结果进行压缩处理，使返回页面体积大大减小。但是要清楚的一点就是，这个过程用户和目标服务都不是面对面通信的，也就导致了一个问题，SSL会话中就多了UC代理服务器这么一个中间人。在登录SSL站点时，由于没有实现这个合法的登录过程。用户提交用户名密码后，UC代理服务器通过用户提交的信息重构或者模拟登录，然后再将登陆认证信息返回给客户端，这就导致了用户密码在过程中被明文传递了一次，打破了SSL的安全机制。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/212337012353c7d8146cc15cff03ade6fcb5208e.png" target="_blank"><img src="../images/212337012353c7d8146cc15cff03ade6fcb5208e.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这个请求是登录gmail时抓到的，包括当前gmail帐号的明文用户名和密码，敏感信息已经打码。其中包括了提交程序地址，在返回信息中可以看到登录成功后google给用户返回的gmail票据交换的URL，交还给客户端。<br />
+<br />
+<br />
+<br />
+在看一下正常的gmail登录请求所需的参数：<br />
+<br />
+continue=http%3A%2F%2Fmail.google.com%2Fmail%2F&amp;service=mail&amp;rm=false&amp;dsh=6108296191112472557&amp;ltmpl=default&amp;ltmpl=default&amp;scc=1&amp;GALX=eAPJkeTsItY&amp;pstMsg=1&amp;dnConn=&amp;checkConnection=&amp;checkedDomains=youtube&amp;timeStmp=&amp;secTok=&amp;Email=[email]&amp;Passwd=[]password&amp;signIn=%E7%99%BB%E5%BD%95&amp;rmShown=1<br />
+<br />
+<br />
+<br />
+其中所包含的参数在发送向UCWEB代理的数据中均可发现，由此可以大胆猜测，客户端发现登录ssl站点后，会分析出登录流程（目标url，提交参数），代理服务器根据这些信息进行重构，拿到返回的合法认证信息，比如跳转云云。<br />
+<br />
+<br />
+<br />
+从google服务器返回的成功登录页面可以大致证实这个猜想：<br />
+<br />
+</p><pre><code>HTTP/1.1 302 Moved Temporarily<br />
+Content-Type: text/html; charset=UTF-8<br />
+Strict-Transport-Security: max-age=2592000; includeSubDomains<br />
+... ...<br />
+Location: https://mail.google.com/mail/?auth=DQAAAIQAAAAOAOrxR6zzXl4F0U8eN3XzEmLp7zIOWXIEZULqfg0UJwLcPQ8WPshF1MqoqMiU8QmOJtzDjjqLXmfDQmgPWROjUxxaVdSlvNlckWRAb-RRaYaTS_nqvUjtzGsP646VMOSxYC7A9lDKFdQeW68uv_i98FDlp29b38fn_tcFzKHfW01dVhmk2sVQ4H4_tNcQSfk<br />
+... ...<br />
+X-Content-Type-Options: nosniff<br />
+X-XSS-Protection: 1; mode=block<br />
+Content-Length: 420<br />
+Server: GSE<br />
+<br />
+&lt;HTML&gt;<br />
+&lt;HEAD&gt;<br />
+&lt;TITLE&gt;Moved Temporarily&lt;/TITLE&gt;<br />
+&lt;/HEAD&gt;<br />
+&lt;BODY BGCOLOR=&quot;#FFFFFF&quot; TEXT=&quot;#000000&quot;&gt;<br />
+&lt;H1&gt;Moved Temporarily&lt;/H1&gt;<br />
+The document has moved &lt;A HREF=&quot;https://mail.google.com/mail/?auth=DQAAAIQAAAAOAOrxR6zzXl4F0U8eN3XzEmLp7zIOWXIEZULqfg0UJwLcPQ8WPshF1MqoqMiU8QmOJtzDjjqLXmfDQmgPWROjUxxaVdSlvNlckWRAb-RRaYaTS_nqvUjtzGsP646VMOSxYC7A9lDKFdQeW68uv_i98FDlp29b38fn_tcFzKHfW01dVhmk2JU8Ba4_tNcQSfk&quot;&gt;here&lt;/A&gt;.<br />
+&lt;/BODY&gt;<br />
+&lt;/HTML&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">在整个登录信息传递过程中，UCWEB代理服务器对google的传输还是SSL保护的，但是用户与UCWEB代理服务器这段路程却还是明文的，额。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-04717" title="UCWEB浏览器密码泄漏隐患">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-02-22 00:09</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="4717";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

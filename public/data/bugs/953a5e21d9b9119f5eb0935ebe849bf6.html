@@ -1,0 +1,268 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		中国电信某站点JBOSS任意文件上传漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		中国电信某站点JBOSS任意文件上传漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/在路上">在路上</a> 
+</li><li>提交时间：		2013-07-23 10:41</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-16：	细节向普通白帽子公开<br/>
+									2013-08-26：	细节向实习白帽子公开<br/>
+									2013-09-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">中国电信某站点jboss漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.目标站点 http://125.69.112.239/login.jsp<br />
+<br />
+</p><p class="detail"><a href="../images/211335591e4441266028ec6f43ba62b7339cd1e2.jpg" target="_blank"><img src="../images/211335591e4441266028ec6f43ba62b7339cd1e2.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2.简单测试 发现是jboss，HEAD请求头绕过失败，猜测弱口令失败，发现没有删除<br />
+<br />
+http://125.69.112.239/invoker/JMXInvokerServlet<br />
+<br />
+<br />
+<br />
+这个是jboss的另一个漏洞了.<br />
+<br />
+<br />
+<br />
+3.大家都懂这里简单分析一下<br />
+<br />
+<br />
+<br />
+ Jboss在默认安装的时候，会安装http-invoker.sar站点,其web.xml配置如下：<br />
+<br />
+</p><p class="detail"><a href="../images/211341062ec1cfd45a4aaec80192c43ea0930666.jpg" target="_blank"><img src="../images/211341062ec1cfd45a4aaec80192c43ea0930666.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可知当请求invoker/JMXInvokerServlet或invoker/EJBInvokerServlet会调用org.jboss.invocation.http.servlet.InvokerServlet.class处理请求。该类对GET请求和POST请求，统一调用processRequest函数处理.<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/211343017b64375d0089a7f9c7463dc3d1a763c7.jpg" target="_blank"><img src="../images/211343017b64375d0089a7f9c7463dc3d1a763c7.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2113431335834128a849dade8868fd732a35a394.jpg" target="_blank"><img src="../images/2113431335834128a849dade8868fd732a35a394.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+该漏洞主要原因是jboss直接获得客户端提交数据进行反序列化，获得对象，然后调用对象。<br />
+<br />
+<br />
+<br />
+因此，攻击者需要自己构造一个jboss的类，并且将其序列化，然后将序列化的数据直接提交到存在漏洞站点的invoker/JMXInvokerServlet页面，恶意代码将会被执行。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+牛人写了攻击代码:<br />
+<br />
+可从http://www.hsc.fr/ressources/outils/jisandwis/download下载<br />
+<br />
+<br />
+<br />
+学习后可以写出自己的利用工具(因为原工具有个功能有点问题,当然也可以直接使用msf)最主要原因自己写的可以随心所欲修改，可以批...,额废话太多，直接上图。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/21134756d814185e8fa8a04a8e3271dc8b0c7b87.jpg" target="_blank"><img src="../images/21134756d814185e8fa8a04a8e3271dc8b0c7b87.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第一个功能是调用jboss的ServerInfo类的 OSVersion方法，可以获得系统版本信息。<br />
+<br />
+<br />
+<br />
+第二个功能是调用jboss的DeploymentFileRepository类的 store方法，后面是其参数。<br />
+<br />
+<br />
+<br />
+执行成功后，会获得shell。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+4.shell路径<br />
+<br />
+然后上传大马即可<br />
+<br />
+</p><p class="detail"><a href="../images/211352519f2a04d81c3177d27e5515145d016d4a.jpg" target="_blank"><img src="../images/211352519f2a04d81c3177d27e5515145d016d4a.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+权限还挺高<br />
+<br />
+<br />
+<br />
+5.看到后门无数<br />
+<br />
+</p><p class="detail"><a href="../images/21135343aacfa596f500576d212bca4eda64d956.jpg" target="_blank"><img src="../images/21135343aacfa596f500576d212bca4eda64d956.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1.留下验证<br />
+<br />
+http://125.69.112.239/myname/index.jsp<br />
+<br />
+<br />
+<br />
+2.别人的还在<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">删掉无用的包 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/在路上" title="在路上">在路上</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-031621" title="中国电信某站点JBOSS任意文件上传漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-07-27 18:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认漏洞所述情况，并向白帽子请教所述新的exp。拟于下周继续推进该案例的处置，拟通报中国电信集团公司。<br />
+<br />
+rank 10</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="31621";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

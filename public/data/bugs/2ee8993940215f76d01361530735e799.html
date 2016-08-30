@@ -1,0 +1,363 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		当 |XSS蠕虫| 与 |QQ系统消息推送| 双剑合璧之后 …  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		当 |XSS蠕虫| 与 |QQ系统消息推送| 双剑合璧之后 …  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-08-11 18:43</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-08-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-09-02：	细节向普通白帽子公开<br/>
+									2012-09-12：	细节向实习白帽子公开<br/>
+									2012-09-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQ某处页面存在缺陷，导致我们可以恶意推送QQ系统消息，但是单纯的推送消息并不能太实质性的危害！但是，如果这个“系统消息”的链接能够被我们修改为我们自定义的页面的话，那就危险了！在自定义的页面内，结合一个FLASH XSS，进而自动获取用户的好友列表，自动给受害者的好友推送恶意的“系统消息”！ 想想看，那会是一个什么效果？ 当XSS蠕虫结合腾讯的系统消息功能，会是个什么疯狂的效果呢？  可惜，我们是白帽子，无法去实际测试会产生的恐怖后果 :) ，但是利用过程中的一些思路却可以被借鉴。<br />
+<br />
+PS：该漏洞最初由我们全宇宙最帅的男人only_guest发现！！<br />
+<br />
+在PKAV官网，我们也对此漏洞相关细节进行了描述，http://pkav.net/2012/08/xssworm-qqxiaoxi-vul/ (考虑到漏洞的实际危害，目前对此文进行了加密操作，在腾讯进行修复后，将会予以公开。)</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 首先是我们全宇宙最帅的男人only_guest发现在QQ奥运竞猜处，可以无限给好友发送邀请消息，而且可以自定义消息窗口的内容。这样一来，我们就可以给好友发送一些虚假公告，或者是一些搞笑的“鄙视“信息。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/111713222ead6b9ad802da2b0e7786d0ee72288e.jpg" target="_blank"><img src="../images/111713222ead6b9ad802da2b0e7786d0ee72288e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/111713307c4b9040ecc284b967a2f8db49d4bfbc.jpg" target="_blank"><img src="../images/111713307c4b9040ecc284b967a2f8db49d4bfbc.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 但是如果仅仅是这样的话，只能算是一个鸡肋，甚至都算不上是一个安全漏洞了！<br />
+<br />
+<br />
+<br />
+3. QQ系统消息是可以点击进去查看详情的，如果我们可以把这个链接都改为自己的呢？那么造成的危害将会瞬间升级！<br />
+<br />
+<br />
+<br />
+4. 带着这个思路，我们可以开始对“奥运竞猜邀请”这个模块进行抓包分析。<br />
+<br />
+<br />
+<br />
+5. 经过抓包，我们可以看到给好友发送一个邀请，主要是2步～ <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/111713409be83b0b0edb440e39da2a03b90fbb86.jpg" target="_blank"><img src="../images/111713409be83b0b0edb440e39da2a03b90fbb86.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5.1 获取好友列表的请求<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://apps.2012.qq.com/guess/friends/list?url=http%3A%2F%2Fapps.2012.qq.com%2Fguess%2Fguess-tid-18-id-363&amp;message=%E5%A5%B3%E7%AF%AE%E5%B0%8F%E7%BB%84%E8%B5%9B-%E4%B8%AD%E5%9B%BDvs%E5%AE%89%E5%93%A5%E6%8B%89%EF%BC%8C%E8%B0%81%E5%B0%86%E8%8E%B7%E8%83%9C%EF%BC%9F<br />
+<br />
+Query String:<br />
+<br />
+url	http://apps.2012.qq.com/guess/guess-tid-18-id-363<br />
+message	女篮小组赛-中国vs安哥拉，谁将获胜？</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在这个请求中，我们看到，有“系统消息”里点击的那个链接。那么这个链接出现在这个请求里有什么用呢？ 我们看看这个请求里的源码。会看到以下内容：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&quot;text/javascript&quot;&gt;<br />
+//邀提Url<br />
+_MI.invate.invateUrl = &quot;/guess/friends/invite?url=http%3A%2F%2Fapps.2012.qq.com%2Fguess%2Fguess-tid-18-id-363&amp;hash=bc85ea9ed27178416dfe984ef58fb657&quot;;<br />
+_MI.invate.maxNumber = 5;<br />
+var message=&quot;女篮小组赛-中国vs安哥拉，谁将获胜？&quot;;<br />
+var uin=&quot;22871560&quot;;<br />
+var invateUrl=&quot;http://apps.2012.qq.com/guess/guess-tid-18-id-363&quot;;<br />
+window.onload =function(){_MI.invate.run(message,uin);}<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们可以看到，在这段代码里，有invateUrl (这个单词是不是写错了,invite?)，还有invateUrl对应的hash <br />
+<br />
+<br />
+<br />
+而在下一个请求5.2中，正好又用到了这个hash值。<br />
+<br />
+<br />
+<br />
+5.2 给好友发送邀请的请求。<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST方式：<br />
+<br />
+http://apps.2012.qq.com/guess/friends/invite?url=http%3A%2F%2Fapps.2012.qq.com%2Fguess%2Fguess-tid-18-id-363&amp;hash=bc85ea9ed27178416dfe984ef58fb657<br />
+<br />
+Query String:<br />
+<br />
+url	http://apps.2012.qq.com/guess/guess-tid-18-id-363<br />
+hash	bc85ea9ed27178416dfe984ef58fb657   &lt;--- 5.1 步骤中得到的hash值<br />
+<br />
+Post Data<br />
+uin0	86****0<br />
+nickname0	小号1号<br />
+token0	12a0d8a2b3d9c</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6. 经过以上抓包分析，我们不难做出以下开发逻辑的猜测：<br />
+<br />
+<br />
+<br />
+6.1 首先通过http://apps.2012.qq.com/guess/friends/list得到好友的QQ号码，token值，以及被邀请竞猜的URL以及URL对应的HASH值<br />
+<br />
+6.2 利用6.1中得到的数据给用户发送邀请<br />
+<br />
+<br />
+<br />
+7. 那么，我们将第一步url里的http://apps.2012.qq.com/guess/guess-tid-18-id-363修改成我们自己的呢？于是我们测试，将url修改为 http://pkav.net，得不到返回结果。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/11171354ef511a93563bdb9dbc29055aee451535.jpg" target="_blank"><img src="../images/11171354ef511a93563bdb9dbc29055aee451535.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8. 看来这里对域名进行了判断过滤, 那么我们找一个同域名下的XSS试一下吧～ <br />
+<br />
+http://apps.2012.qq.com/guess/friends/list?url=http%3A%2F%2Fapps.2012.qq.com%2Fguess%2Fguess-tid-18-id-363&quot;;alert(1)//&amp;message=ok<br />
+<br />
+<br />
+<br />
+10. 不幸的是，上面这个XSS URL通过了5.1步，但是在5.2步，由于长度限制，返回了错误。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/111714032b5d11c6634968f5d74f08f834c05483.jpg" target="_blank"><img src="../images/111714032b5d11c6634968f5d74f08f834c05483.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+11. 那么这里到底限制了多少长度呢？为了方便测试，用俺的魔盒(http://www.toolmao.com)写了一个利用程序进行了测试。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/111714111eba96a3596fbb3bcc45d89b8c051ffb.jpg" target="_blank"><img src="../images/111714111eba96a3596fbb3bcc45d89b8c051ffb.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+12. 随后我将这个程序发送给了only_guest, 过一会，他发现在5.1这个步骤上，QQ的域名判断存在问题，用http://pkav.net/#.qq.com/?http://1.qq.com一样可以发送成功。 看来QQ在这里的判断正则写的不到位？或者是indexOf(&quot;qq.com&quot;)的方式检测？<br />
+<br />
+<br />
+<br />
+13. 这样一来，我们就可以向自己的好友推送恶意的“系统消息”，并且用户点击系统消息后，会打开我们所设置的链接，http://pkav.net，如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/111714190c56477d4b25b8be3d53ab6c862ef611.jpg" target="_blank"><img src="../images/111714190c56477d4b25b8be3d53ab6c862ef611.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+14. 当然这个还不算什么， 如果把这个系统消息推送，再配合一个QQ的XSS，效果该如何呢？ 因为FLASH XSS具有独特的优势（http://zone.wooyun.org/content/368），我就去腾讯的域名下找一个FLASH XSS，然后进行下一步的利用。<br />
+<br />
+<br />
+<br />
+15. 利用思路可以用下图表示：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/11171427dd281096f692a07d6e212e150cf5793f.png" target="_blank"><img src="../images/11171427dd281096f692a07d6e212e150cf5793f.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+16. 按照上面的思路，我们可以写一下利用代码！<br />
+<br />
+<br />
+<br />
+16.1 首先是FLASH XSS的利用代码。<br />
+<br />
+</p><pre><code>@see http://itsokla.duapp.com/aoyun_js.php.txt</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+16.2 FLASH XSS会调用我们的JS文件。<br />
+<br />
+</p><pre><code>@see http://itsokla.duapp.com/aoyun_worm.js</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+16.3 aoyun_worm.js会将用户的QQ号码和cookies发送给aoyun_receive.php<br />
+<br />
+</p><pre><code>@see http://itsokla.duapp.com/aoyun_receive.php.txt</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+16.4 aoyun_receive.php 就会利用用户的cookies向用户的好友自动推送消息。<br />
+<br />
+<br />
+<br />
+这里用mysql来存储了以及推送过的QQ号码，防止对同一个用户的全部好友进行多次重复推送。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">用我的大号打开危害页面后，可以看到大号在不知情的情况下，自动对我的好友小号发送了恶意的“系统消息”<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1117143804916d8019704bf64834649c1961769e.jpg" target="_blank"><img src="../images/1117143804916d8019704bf64834649c1961769e.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 等奥运结束，活动下线即可<br />
+<br />
+<br />
+<br />
+2. 对推送消息处的域名判断做审查并修改<br />
+<br />
+<br />
+<br />
+3. 对消息推送次数做限制<br />
+<br />
+<br />
+<br />
+4. 修复FLASH XSS，不修复也可以 :)，留着我下次再用吧～～  </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010800" title="当 |XSS蠕虫| 与 |QQ系统消息推送| 双剑合璧之后 …">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-08-13 14:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，我们正在跟进处理中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10800";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

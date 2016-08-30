@@ -1,0 +1,211 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		开放平台单点登录SSO方案设计缺陷导致钓鱼风险  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		开放平台单点登录SSO方案设计缺陷导致钓鱼风险  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/我真的不是V">我真的不是V</a> 
+</li><li>提交时间：		2013-03-27 23:56</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-27：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-21：	细节向普通白帽子公开<br/>
+									2013-05-01：	细节向实习白帽子公开<br/>
+									2013-05-11：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一般来说，开放平台的oauth协议设计会使得B网站（app）不能够伪造成A网站（app）来引导用户进行授权，并进一步得到用户对A网站（app）授权的access_token。这个机制会通过redirect_uri/refer等来进行控制。<br />
+<br />
+流行开放平台都设计了手机app的SSO机制，使得用户在手机端已安装指定app（如Qzone）的前提下，再使用第三方app，通过腾讯互联开放平台登录时，不需要重复登录。其实现原理是Qzone app获得第三方app的appid，并替代完成授权操作。<br />
+<br />
+然而此机制设计考虑不完善，导致B app可伪造为A app向用户要求授权，并拿到access_token。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">一般来说，开放平台的oauth协议设计会使得B网站（app）不能够伪造成A网站（app）来引导用户进行授权，并进一步得到用户对A网站（app）授权的access_token。这个机制会通过redirect_uri/refer等来进行控制。<br />
+<br />
+<br />
+<br />
+流行开放平台都设计了手机app的SSO机制，使得用户在手机端已安装指定app（如Qzone）的前提下，再使用第三方app，通过腾讯互联开放平台登录时，不需要重复登录。其实现原理是Qzone app获得第三方app的appid，并替代完成授权操作。<br />
+<br />
+<br />
+<br />
+然而此机制设计考虑不完善，导致B app可伪造为A app向用户要求授权，并拿到access_token。<br />
+<br />
+<br />
+<br />
+详情：<br />
+<br />
+腾讯的Android SSO demo（http://wiki.opensns.qq.com/wiki/%E3%80%90QQ%E7%99%BB%E5%BD%95%E3%80%91SDK%E4%B8%8B%E8%BD%BD），仅凭一个appid参数即可初始化SSO机制的调用：<br />
+<br />
+<br />
+<br />
+</p><pre><code>mTencent = Tencent.createInstance(appid, ctxContext);<br />
+省略部分代码<br />
+    private void onClickLogin() {<br />
+        if (!mTencent.isSessionValid()) {<br />
+            IUiListener listener = new BaseUiListener() {<br />
+                @Override<br />
+                protected void doComplete(JSONObject values) {<br />
+                    updateLoginButton();<br />
+                }<br />
+            };<br />
+            mTencent.login(this, SCOPE, listener);<br />
+        } else {<br />
+            mTencent.logout(this);<br />
+            updateLoginButton();<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+而在开放平台体系中，各app的appid实际是公开的，所以非常容易拿到其他app的appid。<br />
+<br />
+<br />
+<br />
+我们可以自己写一个恶意app，在其中假冒某高权限app的appid引导用户授权，此时，SSO组件会引导用户对appid所属的应用进行授权确认， 此时用户一般不太会关注其授权的应用名字，而完成授权后，即拿到该用户的access_token，进而可以调用开放平台的各接口。 <br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">不可多言（实际是懒得找高权限app） </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">参考facebook的方案，要求开发者导出签名并配置到开放平台。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/我真的不是V" title="我真的不是V">我真的不是V</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020790" title="开放平台单点登录SSO方案设计缺陷导致钓鱼风险">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-04-01 11:32</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，已在处理中。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20790";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

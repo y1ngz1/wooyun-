@@ -1,0 +1,223 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop最新版本前台二次注入系列(1)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop最新版本前台二次注入系列(1)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blue">blue</a> 
+</li><li>提交时间：		2013-06-20 16:42</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-23：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-10：	细节向普通白帽子公开<br/>
+									2013-07-30：	细节向实习白帽子公开<br/>
+									2013-09-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">二次注入第一枚，通读ecshop代码的结果，我是今天早上从ecshop新下的程序包，你懂的～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">先上结果图：<br />
+<br />
+</p><p class="detail"><a href="../images/2016231791ef808a82b34fe58d329690b313abb5.png" target="_blank"><img src="../images/2016231791ef808a82b34fe58d329690b313abb5.png" alt="QQ20130620-6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注入利用过程：<br />
+<br />
+1.添加商品到购物车时，写入注入代码到商品属性id<br />
+<br />
+http://localhost/test/ecshop/flow.php?step=add_to_cart<br />
+<br />
+POST: goods={&quot;quick&quot;:1,&quot;spec&quot;:[&quot;163&quot;,&quot;158&#039;&quot;],&quot;goods_id&quot;:32,&quot;number&quot;:&quot;1&quot;,&quot;parent&quot;:0}<br />
+<br />
+注意，需要spec有两个或以上id<br />
+<br />
+2.在查看购物车页面，点击更新购物车，执行注入代码(二次注入嘛，单引号可用了)<br />
+<br />
+<br />
+<br />
+代码分析：<br />
+<br />
+1./includes/lib_goods.php 942行<br />
+<br />
+</p><pre><code>function spec_price($spec)<br />
+{<br />
+    if (!empty($spec))<br />
+    {<br />
+        $where = db_create_in($spec, &#039;goods_attr_id&#039;);  //这里是注入位置，能控制$spec就可以了<br />
+<br />
+        $sql = &#039;SELECT SUM(attr_price) AS attr_price FROM &#039; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;goods_attr&#039;) . &quot; WHERE $where&quot;;<br />
+        $price = floatval($GLOBALS[&#039;db&#039;]-&gt;getOne($sql));<br />
+    }<br />
+    else<br />
+    {<br />
+        $price = 0;<br />
+    }<br />
+<br />
+    return $price;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2./includes/lib_common.php 2266行get_final_price有spec_price的调用<br />
+<br />
+3.再看get_final_price方法的调用 在ecshop/flow.php flow_update_cart方法，2272行<br />
+<br />
+</p><pre><code>/* 处理普通商品或非优惠的配件 */<br />
+            else<br />
+            {<br />
+                $attr_id    = empty($goods[&#039;goods_attr_id&#039;]) ? array() : explode(&#039;,&#039;, $goods[&#039;goods_attr_id&#039;]); //看,$attr_id是读取的购物车商品的goods_attr_id字段，所以只要在添加商品到购物车时写入注入代码就可以了<br />
+                $goods_price = get_final_price($goods[&#039;goods_id&#039;], $val, true, $attr_id);<br />
+<br />
+                //更新购物车中的商品数量<br />
+                $sql = &quot;UPDATE &quot; .$GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;cart&#039;).<br />
+                        &quot; SET goods_number = &#039;$val&#039;, goods_price = &#039;$goods_price&#039; WHERE rec_id=&#039;$key&#039; AND session_id=&#039;&quot; . SESS_ID . &quot;&#039;&quot;;<br />
+            }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/2016231791ef808a82b34fe58d329690b313abb5.png" target="_blank"><img src="../images/2016231791ef808a82b34fe58d329690b313abb5.png" alt="QQ20130620-6.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">在flow_update_cart中对goods_attr_id进行addslashes </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blue" title="blue">blue</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-026421" title="ecshop最新版本前台二次注入系列(1)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：16 </p>
+													<p class="detail">确认时间：2013-06-20 16:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="26421";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,218 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ECSHOP 后台注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ECSHOP 后台注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2013-12-20 09:57</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-23：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-09：	细节向普通白帽子公开<br/>
+									2014-01-29：	细节向实习白帽子公开<br/>
+									2014-03-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ECSHOP 后台注入漏洞 刚挖的 热乎的。。之前分次提交是因为 一边挖一边提交的</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>admin/favourable.php<br />
+<br />
+if ($_REQUEST[&#039;act&#039;] == &#039;list&#039;)<br />
+{<br />
+    admin_priv(&#039;favourable&#039;);<br />
+<br />
+<br />
+function favourable_list()<br />
+{echo 22222222222222;<br />
+    $result = get_filter();<br />
+    if ($result === false)<br />
+    {<br />
+        /* 过滤条件 */<br />
+        $filter[&#039;keyword&#039;]    = empty($_REQUEST[&#039;keyword&#039;]) ? &#039;&#039; : trim($_REQUEST[&#039;keyword&#039;]);<br />
+        if (isset($_REQUEST[&#039;is_ajax&#039;]) &amp;&amp; $_REQUEST[&#039;is_ajax&#039;] == 1)<br />
+        {<br />
+            $filter[&#039;keyword&#039;] = json_str_iconv($filter[&#039;keyword&#039;]);<br />
+        }<br />
+        $filter[&#039;is_going&#039;]   = empty($_REQUEST[&#039;is_going&#039;]) ? 0 : 1;<br />
+        $filter[&#039;sort_by&#039;]    = empty($_REQUEST[&#039;sort_by&#039;]) ? &#039;act_id&#039; : trim($_REQUEST[&#039;sort_by&#039;]);//参数没过滤<br />
+        $filter[&#039;sort_order&#039;] = empty($_REQUEST[&#039;sort_order&#039;]) ? &#039;DESC&#039; : trim($_REQUEST[&#039;sort_order&#039;]);<br />
+<br />
+        $where = &quot;&quot;;<br />
+        if (!empty($filter[&#039;keyword&#039;]))<br />
+        {<br />
+            $where .= &quot; AND act_name LIKE &#039;%&quot; . mysql_like_quote($filter[&#039;keyword&#039;]) . &quot;%&#039;&quot;;<br />
+        }<br />
+        if ($filter[&#039;is_going&#039;])<br />
+        {<br />
+            $now = gmtime();<br />
+            $where .= &quot; AND start_time &lt;= &#039;$now&#039; AND end_time &gt;= &#039;$now&#039; &quot;;<br />
+        }<br />
+<br />
+        $sql = &quot;SELECT COUNT(*) FROM &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;favourable_activity&#039;) .<br />
+                &quot; WHERE 1 $where&quot;;<br />
+        $filter[&#039;record_count&#039;] = $GLOBALS[&#039;db&#039;]-&gt;getOne($sql);<br />
+<br />
+        /* 分页大小 */<br />
+        $filter = page_and_size($filter);<br />
+<br />
+        /* 查询 */<br />
+        $sql = &quot;SELECT * &quot;.<br />
+                &quot;FROM &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;favourable_activity&#039;) .<br />
+                &quot; WHERE 1 $where &quot;.<br />
+                &quot; ORDER BY $filter[sort_by] $filter[sort_order] &quot;.//直接带入查询<br />
+                &quot; LIMIT &quot;. $filter[&#039;start&#039;] .&quot;, $filter[page_size]&quot;;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试方法<br />
+<br />
+<br />
+<br />
+127.0.0.1/ec/admin/favourable.php?act=query&amp;sort_by=&#039;1&amp;id=1<br />
+<br />
+</p><p class="detail"><a href="../images/19191723affef75b36ed1ea4e7cc2c83de202108.jpg" target="_blank"><img src="../images/19191723affef75b36ed1ea4e7cc2c83de202108.jpg" alt="_20131219180651.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你猜 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046494" title="ECSHOP 后台注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：2 </p>
+													<p class="detail">确认时间：2013-12-20 09:59</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46494";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

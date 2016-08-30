@@ -1,0 +1,308 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		论升级的重要性,低版本squirrel mail的XSS利用实例  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		论升级的重要性,低版本squirrel mail的XSS利用实例  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/nyannyannyan">nyannyannyan</a> 
+</li><li>提交时间：		2013-06-07 23:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-07：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-07-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">低版本的sqmail有几个xss洞...但是没有exploit...这次通过实例补充一下<br />
+求不要跨省...我还要读几年书呢</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">香港科技大学喜欢使用squirrel mail作为webmail后端<br />
+<br />
+屡次标榜先进性却不思升级...这不就跪了么<br />
+<br />
+<br />
+<br />
+这次实战的洞有CVE-2008-2379<br />
+<br />
+和一个老洞...但是sqmail的最新版好像也没完全修好<br />
+<br />
+<br />
+<br />
+先看看科大用的sqmail版本<br />
+<br />
+logout以后任意访问一个需要login的页面就可以了<br />
+<br />
+</p><p class="detail"><a href="../images/0714484951b23cf830d7e8a14a83dc9733d6b35b.jpg" target="_blank"><img src="../images/0714484951b23cf830d7e8a14a83dc9733d6b35b.jpg" alt="p1.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+1.4.10a恩...<br />
+<br />
+http://squirrelmail.org/security/<br />
+<br />
+来看看对应版本有什么洞...<br />
+<br />
+我注意到的是<br />
+<br />
+2008-12-04	Cross site scripting in HTML filter	1.4.0 - 1.4.16	0	CVE-2008-2379<br />
+<br />
+这个洞...先搜一下网上有没有现成的exploit好了....<br />
+<br />
+...<br />
+<br />
+...<br />
+<br />
+没有...那就自己研究<br />
+<br />
+先看一下patch<br />
+<br />
+http://squirrelmail.svn.sourceforge.net/viewvc/squirrelmail/branches/SM-1_4-STABLE/squirrelmail/functions/mime.php?r1=13276&amp;r2=13338&amp;view=patch<br />
+<br />
+然后抓源码下来研究一番<br />
+<br />
+原来啊...洞在于在函数的一开始，把链接两边的quote去掉了<br />
+<br />
+</p><p class="detail"><a href="../images/07150017a7de38ea27416b6f1e77fb9bec455400.jpg" target="_blank"><img src="../images/07150017a7de38ea27416b6f1e77fb9bec455400.jpg" alt="p2.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+但是在处理完以后，忘记加上quote了..<br />
+<br />
+</p><p class="detail"><a href="../images/0715012171e314f732df35cda5817fdad4b30b5d.jpg" target="_blank"><img src="../images/0715012171e314f732df35cda5817fdad4b30b5d.jpg" alt="p3.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+但是啊....仔细研究这段源码...发现了一些棘手的事情<br />
+<br />
+</p><p class="detail"><a href="../images/0715023269f002ab690b92411bf13db3259929cc.jpg" target="_blank"><img src="../images/0715023269f002ab690b92411bf13db3259929cc.jpg" alt="p4.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+开发者提前探测了一些危险字符，然后是一旦出现直接打入冷宫= =<br />
+<br />
+这里我想再要吐槽一下....尼玛过滤其他的字符我还能理解，过滤20空格,21感叹号,23井号,24美元符号,25百分号是要逆天么?<br />
+<br />
+你这样让一个正常的url也要悲剧啊...<br />
+<br />
+好了...那么也即...要在大多数已经用惯的分隔符不能使用之际，来构造XSS<br />
+<br />
+第一个任务...<br />
+<br />
+如何将tag name同tag attribute分隔开<br />
+<br />
+因为过滤空格等分隔符的原因<br />
+<br />
+</p><pre><code>&lt;img onload=xxx&gt;</code></pre><p class='detail'><br />
+<br />
+这样是不行的...<br />
+<br />
+但是啊...我表示曾经试出过一个奇葩的用法<br />
+<br />
+</p><pre><code>&lt;img/onload=xxx&gt;</code></pre><p class='detail'><br />
+<br />
+也即...用反斜杠是可以分隔tag name和tag attribute的<br />
+<br />
+而且经测试是通杀各大浏览器的<br />
+<br />
+其实呢...按照sqmail直接返回内容的尿性...到这里已经够了...<br />
+<br />
+因为直接script标签就搞定了...<br />
+<br />
+但是呢...我还想来试试用img标签怎么搞<br />
+<br />
+这就涉及到第二个问题...分隔tag attribute的方法<br />
+<br />
+这时候是不能用反斜杠分隔的，因为反斜杠会被认为在attribute里面<br />
+<br />
+这时候我另一个奇葩的发现又派出了用场...那就是，各大浏览器会把\127当成单引号来parse....<br />
+<br />
+于是可以有如下的代码<br />
+<br />
+</p><pre><code>&lt;img/src=\127\48\127onerror=\127console.log(/xss/)\127/&gt;</code></pre><p class='detail'><br />
+<br />
+然后这个洞的完整exploit就是<br />
+<br />
+</p><pre><code>&lt;a href=&#039;http://test/?p=&gt;&lt;/a&gt;&lt;img/src=\127\48\127onerror=\127console.log(/xss/)\127/&gt;&#039; &gt;test&lt;/a&gt;</code></pre><p class='detail'><br />
+<br />
+效果最后再给<br />
+<br />
+<br />
+<br />
+然后接下来是一个老洞<br />
+<br />
+就是svg里面xlink:href插入javascript的问题<br />
+<br />
+不多说...直接上exploit<br />
+<br />
+</p><pre><code>&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; style=&quot;width:700px;height:400px;z-index:101;display:block;margin-top:-400px;&quot;&gt; &lt;a xmlns:xlink=&quot;http://www.w3.org/1999/xlink&quot; xlink:actuate=&quot;onClick&quot; xlink:href=&quot;javascript:console.log(/xss/)&quot;&gt;&lt;rect width=&quot;1000&quot; height=&quot;1000&quot; fill=&quot;transparent&quot;/&gt;&lt;/a&gt; &lt;/svg&gt;</code></pre><p class='detail'><br />
+<br />
+为什么说新版的sqmail修了一半呢...<br />
+<br />
+这段exploit原意是用一个很大的可点击的透明rect覆盖几乎整个页面，让用户只要点击就会触发脚本<br />
+<br />
+新版的sqmail修正了用style覆盖页面的漏洞，但是没有修正xlink:href含有javasctipt的漏洞<br />
+<br />
+<br />
+<br />
+最后是这个版本的sqmail所有cookie包括session都不是http only的...所以xss是致命的<br />
+<br />
+</p><p class="detail"><a href="../images/07151707d416f2bcfeeee5f89c741bae9fcd61e1.jpg" target="_blank"><img src="../images/07151707d416f2bcfeeee5f89c741bae9fcd61e1.jpg" alt="p5.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+然后赶紧实战一下<br />
+<br />
+send封email给自己<br />
+<br />
+</p><p class="detail"><a href="../images/0715201051edca8c29b609ce108bcb78da680974.jpg" target="_blank"><img src="../images/0715201051edca8c29b609ce108bcb78da680974.jpg" alt="p6.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+查看邮件页面里赫然已有痕迹<br />
+<br />
+</p><p class="detail"><a href="../images/07152324d48ae8901ff993e0329292a9f7c9ceae.jpg" target="_blank"><img src="../images/07152324d48ae8901ff993e0329292a9f7c9ceae.jpg" alt="p7.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/07152414cad5952949bc223e38ca4b5b23436921.jpg" target="_blank"><img src="../images/07152414cad5952949bc223e38ca4b5b23436921.jpg" alt="p8.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+然后那个onerror的已然执行<br />
+<br />
+</p><p class="detail"><a href="../images/07152537aabd0b8451cb4b5b6c0fac3635f00749.jpg" target="_blank"><img src="../images/07152537aabd0b8451cb4b5b6c0fac3635f00749.jpg" alt="p9.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+那个骗点击的工作正常<br />
+<br />
+</p><p class="detail"><a href="../images/07153127a4fd5d754a756de5aef25d203d1ef095.jpg" target="_blank"><img src="../images/07153127a4fd5d754a756de5aef25d203d1ef095.jpg" alt="p10.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+所以啊...不升级伤不起啊 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/07152324d48ae8901ff993e0329292a9f7c9ceae.jpg" target="_blank"><img src="../images/07152324d48ae8901ff993e0329292a9f7c9ceae.jpg" alt="p7.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/07152414cad5952949bc223e38ca4b5b23436921.jpg" target="_blank"><img src="../images/07152414cad5952949bc223e38ca4b5b23436921.jpg" alt="p8.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/07152537aabd0b8451cb4b5b6c0fac3635f00749.jpg" target="_blank"><img src="../images/07152537aabd0b8451cb4b5b6c0fac3635f00749.jpg" alt="p9.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/07153127a4fd5d754a756de5aef25d203d1ef095.jpg" target="_blank"><img src="../images/07153127a4fd5d754a756de5aef25d203d1ef095.jpg" alt="p10.JPG" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">升级啊升级<br />
+<br />
+然后那个xlink:href的小洞squirrel mail修一下?<br />
+<br />
+之前不是说好升级换代成Google Apps吗....怎么没动静了<br />
+<br />
+要我说啊...科大赶紧换Google Apps嘛... </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/nyannyannyan" title="nyannyannyan">nyannyannyan</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025361" title="论升级的重要性,低版本squirrel mail的XSS利用实例">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25361";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

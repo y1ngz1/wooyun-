@@ -1,0 +1,500 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		友宝自动贩卖机多处高危漏洞导致主控端+内部权限泄漏  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		友宝自动贩卖机多处高危漏洞导致主控端+内部权限泄漏  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/s0mun5">s0mun5</a> 
+</li><li>提交时间：		2013-08-07 14:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-07：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-17：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-27：	细节向普通白帽子公开<br/>
+									2013-09-06：	细节向实习白帽子公开<br/>
+									2013-09-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">每次去友宝买饮料，都有那激动人心的游戏环节，是张根硕？是矿泉水还是珍珍？中奖到底是个什么算法？这个问题深深的埋在了一个少年的心底，让他走上了探索怎么免费喝饮料的不归路。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">目测主站是没什么搞的，没有发现可利用的地方。<br />
+<br />
+然后对主站的c段进行扫描，发现了下列几个web系统<br />
+<br />
+<br />
+<br />
+http://service.uboxol.com/login/login   客服后台<br />
+<br />
+http://211.151.164.47/seeyon/index.jsp   OA系统<br />
+<br />
+http://211.151.164.78/index.php   仙人掌<br />
+<br />
+http://211.151.164.62/  站台app官网 目测又是一约炮神器<br />
+<br />
+http://neirong.uboxol.com/index.php   友乐汇后台<br />
+<br />
+http://vms.uboxol.com/ubox-vms/login.do  后台管理系统（核心系统）<br />
+<br />
+<br />
+<br />
+大致看一下，弱口令没得，嘛也找不到，放弃正面攻击。<br />
+<br />
+回到vms后台管理系统，发现版权后面有一个故障管理的链接，点进去<br />
+<br />
+</p><p class="detail"><a href="../images/0620035330bcc46bf4217b0731a463f5f4cf4fdb.jpg" target="_blank"><img src="../images/0620035330bcc46bf4217b0731a463f5f4cf4fdb.jpg" alt="11111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+http://124.127.89.53:8080/zentao/<br />
+<br />
+<br />
+<br />
+来到了禅道项目管理系统，弱口令没的，又是一个c段，又是一顿扫。<br />
+<br />
+http://124.127.89.57/   客户管理系统（CRM）<br />
+<br />
+https://124.127.89.49/   友宝统一账号密码修改<br />
+<br />
+http://124.127.89.51:8080/  目测是一个down脚本的地方<br />
+<br />
+down一个ubox-whitelist.wanup白名单脚本<br />
+<br />
+</p><pre><code>iptables -I wanout -d 211.151.164.32/27 -j ACCEPT<br />
+iptables -I wanout -d 124.127.89.48/28 -j ACCEPT<br />
+iptables -I wanout -d 10.0.0.1 -j ACCEPT<br />
+iptables -I wanout -d 10.0.0.254 -j ACCEPT</code></pre><p class='detail'><br />
+<br />
+友宝的ip段，跟我开始目测的<br />
+<br />
+124.127.89.47 -124.127.89.64<br />
+<br />
+211.151.164.1 -211.151.164.80<br />
+<br />
+差不多。<br />
+<br />
+<br />
+<br />
+既然这样，也就不再找新的ip段了，就在已经找到的系统上下功夫把。<br />
+<br />
+<br />
+<br />
+先是故障管理系统又目录遍历，但是没有找到任何有用的东西。<br />
+<br />
+http://124.127.89.53:8080/zentao/data/upload/1/<br />
+<br />
+<br />
+<br />
+然后。。卡住了<br />
+<br />
+<br />
+<br />
+那么多struts的系统，让我秒一个多好啊，可惜好像都补了。<br />
+<br />
+<br />
+<br />
+后来突然发现<br />
+<br />
+http://124.127.89.57/ 客户管理系统 是 .NET写的<br />
+<br />
+然后又神器的发现可以目录遍历，然后更神奇的发现是编译好的dll,果断全部脱下来反编译。<br />
+<br />
+先是抓包得到登陆的post地址是<br />
+<br />
+http://124.127.89.57/Login.ashx?&amp;Type=Login<br />
+<br />
+然后源码里找到登陆模块。<br />
+<br />
+</p><p class="detail"><a href="../images/062022057f77c206420a37fbb6b803468fa8b751.jpg" target="_blank"><img src="../images/062022057f77c206420a37fbb6b803468fa8b751.jpg" alt="22.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+各位看官看明白了么，每天晚上7点到8点，返回-1<br />
+<br />
+如果cookie值里的account不为空，就执行<br />
+<br />
+select password from sys_user where ACCOUNT=&#039;&quot; + str9 + &quot;&#039;&quot;<br />
+<br />
+活生生的把密码给select出来了。。当然是要用户名存在的情况下<br />
+<br />
+然后给你把用户名和密码显示在  &quot;❄&quot;  这朵菊花的两侧。。这朵菊花。。。<br />
+<br />
+最终利用方法就是修改<br />
+<br />
+http://124.127.89.57/Login.ashx?Type=Load<br />
+<br />
+的cookie 加上一个account<br />
+<br />
+<br />
+<br />
+为了方便，写了个php脚本进行中转<br />
+<br />
+http://localhost/zz.php?a=xxx a就是cookie中account的值<br />
+<br />
+用后来获得的一个用户名证明一下<br />
+<br />
+</p><p class="detail"><a href="../images/0620315550b6a902df6a734623c403faf7918af0.jpg" target="_blank"><img src="../images/0620315550b6a902df6a734623c403faf7918af0.jpg" alt="3333.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+赤裸裸的菊花和密码就这么显示出来了<br />
+<br />
+想问我是怎么获得的用户名？注意上面的sql语句，这是个注入点！<br />
+<br />
+</p><p class="detail"><a href="../images/06203303504c8c047d2dd54347ae37fae7dbd148.jpg" target="_blank"><img src="../images/06203303504c8c047d2dd54347ae37fae7dbd148.jpg" alt="444.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+很开心有木有。注入后获得管理员账号是gly密码是1，对，就一个1。<br />
+<br />
+进入后台后发现毫无可利用的地方，只是一个管理和查询客户信息的后台。<br />
+<br />
+<br />
+<br />
+但是不要紧，这里的注入点给我们提供了宝贵的员工账号和密码资源。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">有账号密码了怎么搞，当然是登陆最有可能有内部信息的地方，邮箱。<br />
+<br />
+挑了一些账号测试，发现几乎有一小半的账号密码能直接登陆邮箱，下面贴出一部分获得的信息，仅作为证明危害。<br />
+<br />
+</p><pre><code>data.uboxol.com:8001<br />
+组织:dom<br />
+ID:admin<br />
+<br />
+密码:admin<br />
+<br />
+<br />
+<br />
+望账号：xa_songmengen<br />
+期望账号密码:woaibaobao<br />
+<br />
+您的VMS后台账号已经建立。<br />
+<br />
+用户名： suyi<br />
+密  码:  sy@2012<br />
+账号zongjiajun 密码ubox1369<br />
+新VMS后台访问地址：<br />
+<br />
+http://vms.uboxol.com:9080/ubox-vms<br />
+<br />
+<br />
+mengyan2012 mengyan2012<br />
+mengyan邮箱 my430@#<br />
+bj-haidao	haidao@0828<br />
+<br />
+<br />
+<br />
+<br />
+用户名：xuge<br />
+<br />
+密码:xg@2013<br />
+<br />
+地址：http://vs2.ubox.cn/ubox-vms/<br />
+<br />
+<br />
+<br />
+http://ubox-fms-tmp.uboxol.com/logins/toLogin  （盒饭管理系统，之前在扫描时没有发现）<br />
+wenyong<br />
+1ubox123<br />
+<br />
+<br />
+<br />
+新同事刘轩崇的账号已开通：<br />
+<br />
+企业邮箱用户名：liuxuanchong 密码：2013@ubox 登录地址为http://mail.ubox.cn/<br />
+<br />
+友宝统一账号：liuxuanchong 密码：2013@ubox 密码修改地址为http://password.ubox.cn<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+杨炯<br />
+内网技术组<br />
+<br />
+Add:北京市朝阳区亮马桥路39号第一上海中心C座6层 (100016)<br />
+<br />
+Tel: 5798 2456<br />
+<br />
+Email:yangjiong@ubox.cn<br />
+<br />
+<br />
+limulan<br />
+<br />
+企业邮箱用户名：yangguoqing 密码：2013@ubox 登录地址为http://mail.ubox.cn/<br />
+<br />
+友宝统一账号：yangguoqing 密码：2013@ubox 密码修改地址为http://password.ubox.cn<br />
+<br />
+<br />
+同时，文件共享服务器启用，共享地址为\\192.168.8.6，请使用新的域帐号、密码进行登录，在用户名处输入ubox\chenyang或者chenyang@ubox.cn 均可登录。目前“友宝总部”、“友宝北分”文件夹下尚未创建太多共享文件夹，有需要的部门或项目组请发邮件与我联系。<br />
+<br />
+<br />
+内网技术组 陈洋<br />
+<br />
+<br />
+各位好：<br />
+<br />
+       现请大家马上登陆新的客服系统。           （客服电话，这个比较犀利！！）<br />
+<br />
+       系统网址：http://119.254.230.74:32766/agent/  （建议在IE7-IE9浏览器下使用）<br />
+<br />
+       登陆密码及账号(分配的两个账号)：<br />
+<br />
+     <br />
+<br />
+   第一个账号：<br />
+<br />
+       队列号码：200<br />
+<br />
+       电话分机: 801  （以电话机上的贴的标签为准）或按*61听取分机号码。<br />
+<br />
+       工号：1201<br />
+<br />
+       密码：1234<br />
+<br />
+      <br />
+<br />
+   第二个账号：<br />
+<br />
+       队列号码：200<br />
+<br />
+       电话分机: 802  （以电话机上的贴的标签为准）或按*61听取分机号码。<br />
+<br />
+       工号：1202<br />
+<br />
+       密码：1234<br />
+<br />
+       系统的使用说明书，昨天已发过附件。<br />
+<br />
+       <br />
+<br />
+        特别注意：<br />
+<br />
+       在退出客服系统时，不能直接将IE浏览器关闭。要点击系统中的退出系统按钮才可以。请大家牢记。<br />
+	   <br />
+	   <br />
+	   wangjiaren邮箱 wjr122400<br />
+	   chenxi tc6119<br />
+	   lishu kiki6011<br />
+	   zhuji 071217kkpajkklcz</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+这些信息当时不是我的最终目的，我的目的是免费喝饮料，游戏必中将！<br />
+<br />
+通过分析一些信息后发现 VMS 后台是管理整个友宝网络的核心系统<br />
+<br />
+于是继续拿之前获得的账号登陆。<br />
+<br />
+成功进入一个高权限账号，顺便说一下，这个后台的权限控制很严，等级分明，比较赞。<br />
+<br />
+</p><p class="detail"><a href="../images/06204919a8d7c8ecd09007499bd0eda7c8ef8029.jpg" target="_blank"><img src="../images/06204919a8d7c8ecd09007499bd0eda7c8ef8029.jpg" alt="55555.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+哈哈，运气比较好，已经可以直接喝免费饮料了<br />
+<br />
+</p><p class="detail"><a href="../images/0620502879c673b48e01b2b4aa05c8597791059f.jpg" target="_blank"><img src="../images/0620502879c673b48e01b2b4aa05c8597791059f.jpg" alt="6666.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+随便改，可以控制全国任意一台友宝机器的价格，开售停售，等等等等，并且还可以直接下发文件，更新机器屏幕上显示的东西。<br />
+<br />
+<br />
+<br />
+尼玛，全国性的屏幕广告啊！！！！！！！！<br />
+<br />
+<br />
+<br />
+然后发现了一个不痛不痒的注入，对我来说不痛不痒，应为我没有获得任何有用的信息，不能执行子查询。<br />
+<br />
+</p><p class="detail"><a href="../images/062054058bec59f31e806894d693acdaf8b4170a.jpg" target="_blank"><img src="../images/062054058bec59f31e806894d693acdaf8b4170a.jpg" alt="77777.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+不过，这个人的权限好像不是最高的，好想获得一个admin级别的账号，肿么办么。<br />
+<br />
+<br />
+<br />
+分析邮件发现，公司里经常会有员工申请开设某一模块的权限，刚才说过了，这个系统权限控制的非常严格。也就是说，超级管理员每天会登陆后台编辑用户权限，也就是说后台会存在一个用户列表。这又什么用呢？ 跨他！<br />
+<br />
+修改个人资料，</p><p class="detail"><a href="../images/0621002285fcf714e6ca1fb1d80164a69a8dd777.jpg" target="_blank"><img src="../images/0621002285fcf714e6ca1fb1d80164a69a8dd777.jpg" alt="8888.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这里js验证不能填写特殊字符，那么burp改包，在姓名里插入xss代码，果然没有过滤，截至执行。那么，等吧。<br />
+<br />
+<br />
+<br />
+一段时间过后，pia，cookie来了。<br />
+<br />
+</p><p class="detail"><a href="../images/062102565bc495e2f90663004462f996368aa3b7.jpg" target="_blank"><img src="../images/062102565bc495e2f90663004462f996368aa3b7.jpg" alt="999.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+原来权限控制是单独的后台。<br />
+<br />
+</p><p class="detail"><a href="../images/062103369b0a8b9d070914604d3d141ffc4e129d.jpg" target="_blank"><img src="../images/062103369b0a8b9d070914604d3d141ffc4e129d.jpg" alt="a.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后成功进入后台，最高权限账号，哇哈哈。<br />
+<br />
+</p><p class="detail"><a href="../images/06210439e87ade554a0b6fc812b2f7d7440d6cb5.gif" target="_blank"><img src="../images/06210439e87ade554a0b6fc812b2f7d7440d6cb5.gif" alt="QQ截图20130806185927.gif" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+现在终于可以舒舒坦坦的喝上免费饮料了，留后门什么的都不是问题。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+最后 附送一个盒饭管理系统<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/06210545534c708614491a43acc1ab354cfe49fb.gif" target="_blank"><img src="../images/06210545534c708614491a43acc1ab354cfe49fb.gif" alt="QQ截图20130806193524.gif" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/071403173607b9654ab42a60329ecf994ffb9522.jpg" target="_blank"><img src="../images/071403173607b9654ab42a60329ecf994ffb9522.jpg" alt="xxx.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+问题比较多，能想到的比较严重的就这样了。目的已经达到了，就不再窥探内网了，到此为止。<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">测试过程中收集的数据已经全部销毁，不过，还是让员工统一改一次密码吧。<br />
+<br />
+对整个系统进行一次安全评估，乌云众测是个不错的方式。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/s0mun5" title="s0mun5">s0mun5</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033675" title="友宝自动贩卖机多处高危漏洞导致主控端+内部权限泄漏">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-08-07 16:07</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢 s0mun5 ，我们正在积级处理此漏洞。可否留下您的联系方式。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33675";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

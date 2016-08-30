@@ -1,0 +1,235 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		小米MIUI漏洞可以导致大量系统、软件和用户数据泄露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		小米MIUI漏洞可以导致大量系统、软件和用户数据泄露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Claud">Claud</a> 
+</li><li>提交时间：		2012-06-12 17:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-15：	细节向第三方安全合作伙伴开放<br/>
+									2012-06-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-02：	细节向普通白帽子公开<br/>
+									2012-07-22：	细节向实习白帽子公开<br/>
+									2012-07-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">该漏洞的成功利用不需要任何条件。<br />
+通过该漏洞，任何应用软件可以获取下列信息：<br />
+  -  硬件数据，包括：系统版本、系统编译信息、内存和CPU信息、电池信息、IMEI、基带版本、设备生产序号等<br />
+  -  当前状态数据，包括：当前进程基本信息、所有进程的trace结果、分区挂载信息、路由表和ARP缓存表、运营商、当前系统服务状态、系统维护的Content Provider和Broadcast数据结构和权限管理信息、各软件运行时间<br />
+  -  日志数据，包括：系统日志、系统事件日志、内核事件日志、内核消息、<br />
+  -  软件数据，包括：已安装软件的包名、版本、签名证书、使用权限、安装时间、上次使用时间<br />
+  -  用户敏感数据，包括：已连接的WiFi网络（MAC地址、SSID、类型、IP、DNS、网关、DHCP）、周围可用WiFi网络的SSID/BSSID和类型等；、Broadcast处理的历史记录（可以对用户行为做统计）、当前地理位置、历史地理位置、用户当前账户的用户名、用户数据同步账户的用户名和时间、软件使用情况统计数据<br />
+<br />
+（借地方说句话：希望小米能给我一些测试机，昨晚对其他几个问题的测试已经把我自用手机的系统和硬件搞坏几次了）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">当前的MIUI系统存在两个问题：<br />
+<br />
+1. 以普通shell权限可以运行/system/bin/bugreport程序，该程序用于搜集系统各类信息并输出<br />
+<br />
+2. 安装了一个软件/system/app/Cit.apk，原用于出厂硬件测试用，该软件中，com.miui.cit.CitBroadcastReceiver组件存在permission re-delegation类型漏洞，通过利用该漏洞，可导致任何软件通过特定参数远程触发该接收器，触发该软件自动调用bugreport，并将结果保存在SD卡的特定目录/sdcard/MIUI/debug_log/下，如前所述，SD卡的文件可以被任意软件读写<br />
+<br />
+上述两个问题中的任何一个都可以导致对本漏洞的利用。任何应用软件通过解析bugreport的输出结果，得到上述信息。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">三种利用方法：<br />
+<br />
+1. adb shell进去，不提权，直接bugreport &gt; /sdcard/dump.txt即可，如图所示：<br />
+<br />
+</p><p class="detail"><a href="../images/121643048f4fbce09e51772f9ec16cac49633449.png" target="_blank"><img src="../images/121643048f4fbce09e51772f9ec16cac49633449.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+2. 对应用软件，在源码中用Runtime.getRuntime().exec()函数执行bug report即可。获得输出结果有两种方法，一是上面所示的重定向，二是对返回的Process对象调用getOutputStream()方法。不具体演示了，我在小米的代码里有看到使用。<br />
+<br />
+3. 对CitBroadcastReceiver的permission re-delegation攻击，代码片段如下：<br />
+<br />
+Intent intent = new Intent();<br />
+<br />
+intent.setAction(&quot;android.provider.Telephony.SECRET_CODE&quot;);<br />
+<br />
+intent.setData(Uri.parse(&quot;android_secret_code://284&quot;));<br />
+<br />
+sendBroadcast(intent);<br />
+<br />
+然后稍等十秒即可从SD卡的/sdcard/MIUI/debug_log/目录读到类似于bugreport-&lt;date&gt;-&lt;time&gt;.log的文件<br />
+<br />
+<br />
+<br />
+可以读取到的部分数据如下：<br />
+<br />
+IMEI<br />
+<br />
+</p><p class="detail"><a href="../images/12164321615008b02bd08b775f9faff20f860b45.png" target="_blank"><img src="../images/12164321615008b02bd08b775f9faff20f860b45.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+已安装软件信息<br />
+<br />
+</p><p class="detail"><a href="../images/121644127667df585f398bd13f021ee36529e21c.png" target="_blank"><img src="../images/121644127667df585f398bd13f021ee36529e21c.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+已安装软件的签名<br />
+<br />
+</p><p class="detail"><a href="../images/121644223d43402eba9dfca780f294db27bacabe.png" target="_blank"><img src="../images/121644223d43402eba9dfca780f294db27bacabe.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+用户账户<br />
+<br />
+</p><p class="detail"><a href="../images/1216444699ca8d9dfd0b569882112a75d908b251.png" target="_blank"><img src="../images/1216444699ca8d9dfd0b569882112a75d908b251.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+正在使用的和周边的WiFi网络信息<br />
+<br />
+</p><p class="detail"><a href="../images/12164459748c09502173a94b83ae297bf8898e4a.png" target="_blank"><img src="../images/12164459748c09502173a94b83ae297bf8898e4a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+地理位置信息和历史记录<br />
+<br />
+</p><p class="detail"><a href="../images/12164512bba7f8bd738c9a96f1bbc746f8cd2782.png" target="_blank"><img src="../images/12164512bba7f8bd738c9a96f1bbc746f8cd2782.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">建议：<br />
+<br />
+1. 将bugreport的执行权限调为root<br />
+<br />
+2. 删掉Cit.apk软件，或为其CitBroadcastReceiver接收器的调用加入静态或者动态的自定义权限检查代码<br />
+<br />
+3. 考虑对bugreport输出结果进行加密，既然这个东西只有小米的工程师看，可以在设备上部署同一个公钥，私钥只有小米官方掌握就可以了<br />
+<br />
+<br />
+<br />
+再次建议给我发测试机，已经遇到一些问题让我的手机无法正常工作了。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Claud" title="Claud">Claud</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08222" title="小米MIUI漏洞可以导致大量系统、软件和用户数据泄露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-06-12 19:42</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">多谢上报，确认中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8222";
+var bugRating="2";
+var myRating="";
+var ratingCount="5";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

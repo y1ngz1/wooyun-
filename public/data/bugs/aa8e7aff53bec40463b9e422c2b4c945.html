@@ -1,0 +1,230 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Z-Blog PHP版之三低权限管理员POST注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Z-Blog PHP版之三低权限管理员POST注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/只发通用型">只发通用型</a> 
+</li><li>提交时间：		2013-09-24 12:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-27：	细节向第三方安全合作伙伴开放<br/>
+									2013-10-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-14：	细节向普通白帽子公开<br/>
+									2013-11-03：	细节向实习白帽子公开<br/>
+									2013-12-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">注册个评论者账号就能注到管理员</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">木有找到你们接受POST变量的函数在哪，所以认为问题出在/zb_system/function/lib/dbsql.php<br />
+<br />
+</p><pre><code>public function ParseWhere($where){<br />
+		global $zbp;<br />
+<br />
+		$sqlw=null;<br />
+		if(!empty($where)) {<br />
+			$sqlw .= &#039; WHERE &#039;;<br />
+			$comma = &#039;&#039;;<br />
+			foreach($where as $k =&gt; $w) {<br />
+				$eq=$w[0];<br />
+				if($eq==&#039;=&#039;|$eq==&#039;&lt;&#039;|$eq==&#039;&gt;&#039;|$eq==&#039;LIKE&#039;|$eq==&#039;&lt;&gt;&#039;|$eq==&#039;!=&#039;){<br />
+					$x = (string)$w[1];<br />
+					$y = (string)$w[2];<br />
+					$y = $zbp-&gt;db-&gt;EscapeString($y);<br />
+					$sqlw .= $comma . &quot; $x $eq &#039;$y&#039; &quot;;<br />
+				}<br />
+				if($eq==&#039;BETWEEN&#039;){<br />
+					$b1 = (string)$w[1];<br />
+					$b2 = (string)$w[2];<br />
+					$b3 = (string)$w[3];<br />
+					$sqlw .= $comma . &quot; $b1 BETWEEN &#039;$b2&#039; AND &#039;$b3&#039; &quot;;<br />
+				}<br />
+				if($eq==&#039;search&#039;){<br />
+					$j=count($w);<br />
+					$sql_search=&#039;&#039;;<br />
+					$c=&#039;&#039;;<br />
+					for ($i=1; $i &lt;= $j-1-1; $i++) { <br />
+						$x=(string)$w[$i];<br />
+						$y=(string)$w[$j-1];<br />
+						$y=$zbp-&gt;db-&gt;EscapeString($y);<br />
+						$y=$w[$j-1];<br />
+						$sql_search .= $c . &quot; ($x LIKE &#039;%$y%&#039;) &quot;;<br />
+						$c=&#039;OR&#039;;<br />
+					}<br />
+					$sqlw .= $comma .  &#039;(&#039; . $sql_search . &#039;)&#039;;<br />
+				}<br />
+				if($eq==&#039;array&#039;){<br />
+					$c=&#039;&#039;;<br />
+					$sql_array=&#039;&#039;;<br />
+					if(!is_array($w[1]))continue;<br />
+					if(count($w[1])==0)continue;<br />
+					foreach ($w[1] as $x=&gt;$y) {<br />
+						$y[1]=$zbp-&gt;db-&gt;EscapeString($y[1]);<br />
+						$sql_array .= $c . &quot; $y[0]=&#039;$y[1]&#039; &quot;;<br />
+						$c=&#039;OR&#039;;<br />
+					}<br />
+					$sqlw .= $comma .  &#039;(&#039; . $sql_array . &#039;)&#039;;<br />
+				}<br />
+				if($eq==&#039;custom&#039;){<br />
+					$sqlw .= $comma .  &#039;(&#039; . $w[1] . &#039;)&#039;;<br />
+				}<br />
+				$comma = &#039;AND&#039;;<br />
+			}<br />
+		}<br />
+		echo $sqlw;//顺便把SQL语句ehco 出来,你们的拼接写得好蛋疼<br />
+		return $sqlw;<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/24122032c561068e338545038ee1e4e150fd9873.jpg" target="_blank"><img src="../images/24122032c561068e338545038ee1e4e150fd9873.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+注入方法的利用和这个一样 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-037956">WooYun: Z-Blog的php版前台正则SQL盲注漏洞</a> <br />
+<br />
+，拿sqlmap跑一下就出来了 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/24122032c561068e338545038ee1e4e150fd9873.jpg" target="_blank"><img src="../images/24122032c561068e338545038ee1e4e150fd9873.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">接受的POST都过滤一下 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/只发通用型" title="只发通用型">只发通用型</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037962" title="Z-Blog PHP版之三低权限管理员POST注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-09-24 13:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢！！！已着手处理中了。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-09-24：2013-09-24：dbsql.php第197行，删除就好了。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37962";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

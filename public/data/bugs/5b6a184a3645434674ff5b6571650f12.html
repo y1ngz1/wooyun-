@@ -1,0 +1,298 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		深信服上网行为管理系统权限绕过  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		深信服上网行为管理系统权限绕过  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/an1k3r">an1k3r</a> 
+</li><li>提交时间：		2012-08-26 14:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-09-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-09-15：	细节向普通白帽子公开<br/>
+									2012-09-25：	细节向实习白帽子公开<br/>
+									2012-10-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">深信服上网行为管理系统及广域网优化网关权限绕过，另外还包括VPN的一个漏洞。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">本来在找常见的web漏洞，但是呢，无意间去看了一下apahce的配置文件。<br />
+<br />
+<br />
+<br />
+</p><pre><code>#    Alias /manual/ &quot;/virus/apache/apache/htdocs/manual/&quot;<br />
+#    &lt;Directory &quot;/virus/apache/apache/htdocs/manual&quot;&gt;<br />
+#        Options Indexes FollowSymlinks -MultiViews -Indexes<br />
+#        AllowOverride None<br />
+#        Order allow,deny<br />
+#        Allow from all<br />
+#    &lt;/Directory&gt;<br />
+    Alias /file/ &quot;/&quot;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看到这里汗了一下～  最后一行的意思是把系统根目录设置为file别名。 0.0  刚开始不太相信，以为是前面哪位大牛留的后门，但后来经过分析文件修改时间及其它版本的几个设备，推测应该不是。<br />
+<br />
+然后呢，就是这样了。能直接访问shadow，说明是root权限。<br />
+<br />
+</p><p class="detail"><a href="../images/0314052740765d409ae61d6361e7110d787cb495.png" target="_blank"><img src="../images/0314052740765d409ae61d6361e7110d787cb495.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+但现在只是拿到了系统的shadow文件，只能暴力破解。所以我们需要先找到后台维护的密码。<br />
+<br />
+路径为：http://58.251.x.x:85/file/etc/updatemepasswd<br />
+<br />
+</p><p class="detail"><a href="../images/031357424f991d65209fc3708cd15ba00256e24d.png" target="_blank"><img src="../images/031357424f991d65209fc3708cd15ba00256e24d.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+用后台维护软件连上去之后，用OD添加新的用户就可以了。<br />
+<br />
+命令是：</p><pre><code>useradd -u 0 -o -g root -G root -d /tmp root4 -p &quot;cryptpass&quot;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/26125324bbe950e42c4a6deb6e1293a236d89101.png" target="_blank"><img src="../images/26125324bbe950e42c4a6deb6e1293a236d89101.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+这样就添加了一个root4的账户，-p参数后的字符串必须是加密后的，这样写入shadow文件里后才能登录系统。<br />
+<br />
+</p><p class="detail"><a href="../images/0313585153af0190892c767b457200f1e9fb4c28.png" target="_blank"><img src="../images/0313585153af0190892c767b457200f1e9fb4c28.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+WEB前台的密码是保存在ctrluser.ini文件里的，貌似用了sha1加密（具体不清楚，加密菜鸟一枚）。不过我们既然拿到root权限了，就直接将之替换为已知明文的密文即可。<br />
+<br />
+</p><p class="detail"><a href="../images/03140004d20591ee9a59ff6909c9da53694c59df.png" target="_blank"><img src="../images/03140004d20591ee9a59ff6909c9da53694c59df.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+保存配置文件后，可以成功登录系统。<br />
+<br />
+</p><p class="detail"><a href="../images/0314012026154be1787ea994013bba2a392d72e2.png" target="_blank"><img src="../images/0314012026154be1787ea994013bba2a392d72e2.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+目前测试有漏洞的上网行为管理系统的版本为<br />
+<br />
+</p><pre><code>AC2.0 http://125.33.*.*:85<br />
+AC2.1 http://115.238.*.*:85<br />
+AC3.5 http://60.2.*.*:85<br />
+部分的AC4.01 http://58.251.*.*:85</code></pre><p class='detail'><br />
+<br />
+以及广域网优化产品的<br />
+<br />
+</p><pre><code>WANACC 6.0SP3 http://222.143.*.*:85<br />
+WANACC 7.0SP1 http://58.251.*.*:85</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+好了，接下来是VPN的简单绕过，不过有版本和其它一些限制。问题出在备份机制和BOA（类似于Apache的服务）的配置文件上。<br />
+<br />
+先说VPN的备份机制。在WEB管理界面里点击备份配置后，系统会将一些配置文件和带有用户信息的数据库加密并导出为一个bcf文件，类似于sangfor_all_20120825.bcf这样的格式。<br />
+<br />
+密码是不知道的，到这里应该没什么问题。但是呢，备份后系统会在stmp目录下保存一份没有经过加密的文件。<br />
+<br />
+我们再来看下BOA的配置文件是怎么写的。<br />
+<br />
+</p><pre><code># Aliases: Aliases one path to another.<br />
+# Example: Alias /path1/bar /path2/foo<br />
+<br />
+#Alias /doc /usr/doc<br />
+Alias /stmp /stmp <br />
+<br />
+# ScriptAlias: Maps a virtual path to a directory for serving scripts<br />
+# Example: ScriptAlias /htbin/ /www/htbin/</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看到这里大家应该都知道了吧，是的，还是别名的问题，系统把stmp目录放在web目录下了。这样只要做过备份的系统，我们都可以就可以直接下载备份文件，不需要验证。<br />
+<br />
+</p><p class="detail"><a href="../images/031402339d0802a96ddbedf045406415a3180aaf.png" target="_blank"><img src="../images/031402339d0802a96ddbedf045406415a3180aaf.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+将下载下来的cfgbk文件解压即可。<br />
+<br />
+解压后的db目录里有数据库的备份文件，数据库使用sqlite，里面保存了用户名，密码等信息。<br />
+<br />
+</p><p class="detail"><a href="../images/26133439f6ecb7975899d735ced3e86a868598f6.png" target="_blank"><img src="../images/26133439f6ecb7975899d735ced3e86a868598f6.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这样对只使用密码验证一种方式的用户来说，就可以直接连VPN了。<br />
+<br />
+</p><p class="detail"><a href="../images/221055240a86252098d1ecee8cfe1962a977e5de.jpg" target="_blank"><img src="../images/221055240a86252098d1ecee8cfe1962a977e5de.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+所以呢，绕过权限需要满足的条件有<br />
+<br />
+1. 做过系统备份<br />
+<br />
+2. 目前测试有漏洞的版本为<br />
+<br />
+</p><pre><code>VPN 4.12<br />
+VPN 4.21 <br />
+VPN 4.30</code></pre><p class='detail'><br />
+<br />
+其实还有其它的系统如SC4.2、WANACC 7.0 SP1都有该漏洞，建议厂商自查一下。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在详细说明里了。<br />
+<br />
+另外，俺觉得把一些东西放在系统出厂之前做，比在实施环节要好。毕竟从研发层面把控也就是从源头把控，实施环节有太多不确定的因素，如客户或渠道因素等。<br />
+<br />
+这就比如一个网站有SQL注入漏洞，想的不是如果去修补这个漏洞，而是防火墙，WAF，IPS一股脑的往上堆，最后可能还是会被攻击。<br />
+<br />
+好了，俺只是在这里瞎掰，不用听俺的哈～  &gt;.&lt; </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修改Apache，BOA配置文件及备份机制。<br />
+<br />
+另外，请提醒文中提到几个公司，其中几个有弱口令。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/an1k3r" title="an1k3r">an1k3r</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-011367" title="深信服上网行为管理系统权限绕过">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：13 </p>
+													<p class="detail">确认时间：2012-08-26 14:05</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-08-31：感谢您的意见，我们确认后的情况如下：以上漏洞为已知漏洞，针对以上问题深信服已经发放过补丁包、自动升级包进行修正。出现以上情况应该是没有打上相应的补丁包或者没有自动升级导致的，建议用户尽快更新到最新版本。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="11367";
+var bugRating="2";
+var myRating="";
+var ratingCount="8";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

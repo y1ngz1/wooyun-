@@ -1,0 +1,245 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯TM2013最新版远程拒绝服务漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯TM2013最新版远程拒绝服务漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/nine8">nine8</a> 
+</li><li>提交时间：		2013-06-05 10:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-05：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-08：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-25：	细节向普通白帽子公开<br/>
+									2013-07-15：	细节向实习白帽子公开<br/>
+									2013-09-03：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">TM2013最新版存在一处远程拒绝服务，无需是好友。TSRC审核二进制客户端的自己都不懂，拿什么审核别人。<br />
+<br />
+TM2013是腾讯公司推出的一款面向个人的即时通讯软件，能够与QQ互联互通，具有无广告、抗骚扰、安静高效的特点，风格简约清新，侧重在办公环境中使用。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">TM2013用户登陆后，common.dll模块会创建命名管道，问题出在连接后，被释放，会尝试往内核地址写1，导致Write Acess Violation，引起远程拒绝服务。<br />
+<br />
+<br />
+<br />
+问题代码位置：<br />
+<br />
+<br />
+<br />
+IDA for Common.dll (数字签名时间: 2013年2月20日)<br />
+<br />
+</p><pre><code>.text:300CFA78                                         ; sub_300CF93A+4Dj ...<br />
+.text:300CFA78                 push    [ebp+hObject]   ; hFile<br />
+.text:300CFA7B                 call    ds:FlushFileBuffers<br />
+.text:300CFA81                 push    [ebp+hObject]   ; hNamedPipe<br />
+.text:300CFA84                 call    ds:DisconnectNamedPipe<br />
+.text:300CFA8A                 push    [ebp+hObject]   ; hObject<br />
+.text:300CFA8D                 call    ds:CloseHandle<br />
+.text:300CFA93                 cmp     [ebp+var_8], ebx<br />
+.text:300CFA96                 jnz     short loc_300CFAA8<br />
+.text:300CFA98                 mov     ecx, [ebp+var_C] ; void *<br />
+.text:300CFA9B                 cmp     ecx, ebx<br />
+.text:300CFA9D                 jz      short loc_300CFAB2<br />
+.text:300CFA9F                 push    1               ; char<br />
+.text:300CFAA1                 call    sub_300CCAFA<br />
+.text:300CFAA6                 jmp     short loc_300CFAB2<br />
+.text:300CFAA8 ; ---------------------------------------------------------------------------<br />
+.text:300CFAA8<br />
+.text:300CFAA8 loc_300CFAA8:                           ; CODE XREF: sub_300CF93A+15Cj<br />
+.text:300CFAA8                 mov     eax, [ebp+var_C]<br />
+.text:300CFAAB                 mov     dword ptr [eax+18h], 1 ; &lt;-- here !<br />
+.text:300CFAB2</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">根据说明，懂的人很容易写出远程拒绝服务的EXP，攻击条件，知道对方IP, QQ号码，开个共享文件夹即可<br />
+<br />
+<br />
+<br />
+crash info<br />
+<br />
+</p><pre><code>icrosoft Windows XP Service Pack 3 [Build 5.1.2600]<br />
+CPU:         Intel(R) Core(TM) i3-2120 CPU @ 3.30GHz<br />
+TM 0.00.26119  91797BAA0E17E957E010DF86057FBE47<br />
+----------------------------------------<br />
+Type: EXCEPTION_ACCESS_VIOLATION<br />
+Error: Write address 0x806D3C4D<br />
+Address: 300CFAAB<br />
+<br />
+CallStack:<br />
+0x30000000[CFAAB] Common.dll: (00000394,027AFC70,00150000,0E3BA798)<br />
+<br />
+Regs:<br />
+EAX=806D3C35, EBX=00000000, ECX=00E4FF7C, EDX=7C92E4F4<br />
+ESI=00064000, EDI=012C51C0, EBP=00E4FFB4, ESP=00E4FF94, EIP=300CFAAB<br />
+<br />
+DWORDs at CS:EIP:<br />
+011840C7 5F000000 405EC033 04C2C95B B80C6A00 3014458A 05F8C5E8 8DFF3300 <br />
+pid=000003BC init_tid=00000830 crashtid=0000013C<br />
+DWORDs at teb:<br />
+00E4F6CC 00E50000 00E4D000 00000000 00001E00 00000000 7FFDE000 00000000 000003BC 0000013C 00000000 00000000 7FFDB000 00000000 00000000 00000000 00000000 <br />
+<br />
+Modules:<br />
+[00400000,014000] C:\Tencent\TM\Bin\TM.exe [1.88.5482.0,2013-02-20 02:46:53 GMT] [88088]</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/0423164066e733afc1129507a07cd49635b3ab7b.png" target="_blank"><img src="../images/0423164066e733afc1129507a07cd49635b3ab7b.png" alt="屏幕快照 2013-05-30 下午11.47.12.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+TM2013在启动登陆后，其Common.dll默块会创建命名管道 QQ_QQ号码_pipe的命名管道，可以远程打开，问题出在打开关闭后，调用DisconnectNamedPipe，判断返回值后，会跳转一分支，会尝试往非法的内核地址写1，导致Write Acess Violation，引起远程拒绝服务。<br />
+<br />
+<br />
+<br />
+利用场景：<br />
+<br />
+知道对方IP和QQ号码，对方开放文件共享即可，通过远程连接被攻击者的命名管道，然后断开命名管道的连接即可触发问题，使对方的QQ瞬间crash掉，安全软件、防火墙均无法防护，非常稳定。<br />
+<br />
+直接打开命名管道，然后sleep几秒ExitProcess即可。很好写。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/nine8" title="nine8">nine8</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025163" title="腾讯TM2013最新版远程拒绝服务漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-06-05 14:12</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，已经在修复中……</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25163";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

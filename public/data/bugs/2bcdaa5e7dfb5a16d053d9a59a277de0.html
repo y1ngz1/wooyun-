@@ -1,0 +1,280 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		对微信Android版的交互协议和加密模式的进一步分析  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		对微信Android版的交互协议和加密模式的进一步分析  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/学习乌云">学习乌云</a> 
+</li><li>提交时间：		2013-09-18 21:18</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-12：	细节向普通白帽子公开<br/>
+									2013-10-22：	细节向实习白帽子公开<br/>
+									2013-11-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">老外做的，credit属于老外。虽然我觉得老外没有找到真正直接可用的漏洞，但是我觉得分析很透彻，已经为之后可能更深入的攻击做了铺垫。<br />
+我这里再对一些攻击点总结提炼下，加上了一些我自己的手工分析，作为对它的补充。<br />
+btw, 撰写时发现已经在微博转发了。。这里对它的安全性做些澄清，没有这个博客里写的那么严重。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">原文见：http://blog.emaze.net/2013/09/a-look-at-wechat-security.html<br />
+<br />
+<br />
+<br />
+我测试的版本：<br />
+<br />
+3.6:   http://static.apk.hiapk.com/html/2012/06/614689.html<br />
+<br />
+4.3:   http://apk.hiapk.com/html/2012/11/997381.html<br />
+<br />
+4.5.1: http://apk.hiapk.com/html/2013/05/1495796.html<br />
+<br />
+5.0.1: https://play.google.com/store/apps/details?id=com.tencent.mm<br />
+<br />
+<br />
+<br />
+1. 老外提到微信之前版本用了a custom communication protocol，在HTTP上的。<br />
+<br />
+并简单弄出了它的协议规范。这个没测试。<br />
+<br />
+<br />
+<br />
+2. 微信的Debugging和Remote logging protocol。<br />
+<br />
+这个主要依赖于一个并不存在的Content Provider，它的scheme是com.tencent.mm.coolassist.debugprovider/config。我仔细分析了以上四个版本，相应的Provider是不存在的，应该只是在微信内部测试版里有，方便调试。所以这也是为什么老外说了这句：“an attacker can develop a malicious application which exposes the aforementioned ContentProvider”。也就是说，只有被攻击者重打包的微信，才会出现老外说的“Any (unprivileged) application installed on an Android phone can instruct WeChat to send an hash of your password to an external, attacker-controlled server”。<br />
+<br />
+<br />
+<br />
+在下面的【漏洞证明】里，微信的四个版本全部有对debugprovider进行query。<br />
+<br />
+<br />
+<br />
+用户登录认证时，password是直接md5的，没有加salt。可想在腾讯服务器上，用户的密码也是直接md5的。<br />
+<br />
+<br />
+<br />
+3. 本地数据库加密模式被破解：<br />
+<br />
+老外这段写的很详细了，没测试。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">对第2点做下证明，其他的老外都说了。<br />
+<br />
+<br />
+<br />
+(1) 四个版本都存在那个debugprovider的URL，但相应的Provider是不存在的。<br />
+<br />
+</p><pre><code>$ grep -r debugprovider *<br />
+com.tencent.mm_134345_apktool/smali/com/tencent/mm/coolassist/DebugProviderConstants$Config.smali:    const-string v0, &quot;content://com.tencent.mm.coolassist.debugprovider/config&quot;<br />
+com.tencent.mm_134345_src/src/com/tencent/mm/coolassist/DebugProviderConstants$Config.java:   public static final Uri a = Uri.parse(&quot;content://com.tencent.mm.coolassist.debugprovider/config&quot;);<br />
+com.tencent.mm_134600_apktool/smali/com/tencent/mm/g/b.smali:    const-string v0, &quot;content://com.tencent.mm.coolassist.debugprovider/config&quot;<br />
+com.tencent.mm_134600_src/src/com/tencent/mm/g/b.java:   public static final Uri CONTENT_URI = Uri.parse(&quot;content://com.tencent.mm.coolassist.debugprovider/config&quot;);<br />
+com.tencent.mm_145215_apktool/smali/com/tencent/mm/c/b.smali:    const-string v0, &quot;content://com.tencent.mm.coolassist.debugprovider/config&quot;<br />
+com.tencent.mm_145215_src/src/com/tencent/mm/c/b.java:   public static final Uri CONTENT_URI = Uri.parse(&quot;content://com.tencent.mm.coolassist.debugprovider/config&quot;);<br />
+com.tencent.mm-352-v5.0.1_apktool/smali/com/tencent/mm/h/b.smali:    const-string v0, &quot;content://com.tencent.mm.coolassist.debugprovider/config&quot;<br />
+com.tencent.mm-352-v5.0.1_src/src/com/tencent/mm/h/b.java:   public static final Uri CONTENT_URI = Uri.parse(&quot;content://com.tencent.mm.coolassist.debugprovider/config&quot;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+(2) 可以进而搜出谁用了这个URI<br />
+<br />
+</p><pre><code>$ grep -r &quot;b.CONTENT_URI&quot; *<br />
+com.tencent.mm_134600_src/src/com/tencent/mm/ui/LauncherUI.java:      Cursor var1 = this.getContentResolver().query(com.tencent.mm.g.b.CONTENT_URI, this.Az, (String)null, (String[])null, (String)null);<br />
+com.tencent.mm_134600_src/src/com/tencent/mm/booter/h.java:      Cursor var2 = var1.getContentResolver().query(com.tencent.mm.g.b.CONTENT_URI, this.Az, (String)null, (String[])null, (String)null);<br />
+com.tencent.mm_145215_src/src/com/tencent/mm/booter/e.java:      Cursor var2 = var1.getContentResolver().query(com.tencent.mm.c.b.CONTENT_URI, this.iZ, (String)null, (String[])null, (String)null);<br />
+com.tencent.mm-352-v5.0.1_src/src/com/tencent/mm/ui/LauncherUI.java:      Cursor var1 = this.getContentResolver().query(com.tencent.mm.h.b.CONTENT_URI, this.aSA, (String)null, (String[])null, (String)null);<br />
+com.tencent.mm-352-v5.0.1_src/src/com/tencent/mm/booter/i.java:      Cursor var2 = var1.getContentResolver().query(com.tencent.mm.h.b.CONTENT_URI, this.aSA, (String)null, (String[])null, (String)null);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+(3) 主要的代码类似这样：<br />
+<br />
+</p><pre><code>private void adx()<br />
+{<br />
+Cursor localCursor = getContentResolver().query(com.tencent.mm.g.b.CONTENT_URI, this.Az, null, null, null);<br />
+if (localCursor == null)<br />
+  o.ak(&quot;MicroMsg.LauncherUI&quot;, &quot;setDebug, cursor is null&quot;);<br />
+while (true)<br />
+{<br />
+  return;<br />
+  int i = localCursor.getColumnIndex(&quot;key&quot;);<br />
+  int j = localCursor.getColumnIndex(&quot;type&quot;);<br />
+  int k = localCursor.getColumnIndex(&quot;value&quot;);<br />
+  while (localCursor.moveToNext())</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+(4) 对于下面这段隐私信息泄漏：<br />
+<br />
+</p><pre><code>09-09 14:32:51 810 D/MicroMsg.AutoAuth account info updated:AccInfo:<br />
+|-uin =-1893467821<br />
+|-user =ukcd_ao03gex3y2731v<br />
+|-session =<br />
+|-pass =5f4dcc3b5aa765d61d8327deb882cf99<br />
+|-pass2 =5f4dcc3b5aa765d61d8327deb882cf99<br />
+`-cookie =(null)</code></pre><p class='detail'><br />
+<br />
+应该就是来源于下面的代码（四个版本全部感染）<br />
+<br />
+</p><pre><code>$ grep -r &quot;MicroMsg.AutoAuth&quot; * | grep account<br />
+com.tencent.mm_134345_src/src/com/tencent/mm/network/MMAutoAuth.java:         Log.d(&quot;MicroMsg.AutoAuth&quot;, &quot;account info updated:&quot; + var0.a);<br />
+com.tencent.mm_134600_src/src/com/tencent/mm/ad/ao.java:         com.tencent.mm.sdk.platformtools.o.an(&quot;MicroMsg.AutoAuth&quot;, &quot;account info updated:&quot; + var0.aee);<br />
+com.tencent.mm_145215_src/src/com/tencent/mm/t/am.java:         com.tencent.mm.sdk.platformtools.l.Z(&quot;MicroMsg.AutoAuth&quot;, &quot;account info updated:&quot; + var0.Io);<br />
+com.tencent.mm-352-v5.0.1_src/src/com/tencent/mm/network/al.java:      com.tencent.mm.sdk.platformtools.y.aw(&quot;MicroMsg.AutoAuth&quot;, &quot;account info updated:&quot; + var0.bzu);</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">腾讯：<br />
+<br />
+1. 再仔细评估下自己的协议交互、加密模式如果attacker已知的话，微信是否还安全。<br />
+<br />
+2. 再评估下password直接md5这点，似乎有点弱。虽然比国内大部分公司都好了。<br />
+<br />
+3. debug信息，以及相关的设置应该完全从release版移出。虽然你们没有把最重要的那个Content Provider给放进来。<br />
+<br />
+<br />
+<br />
+用户：<br />
+<br />
+1. 千万别root，要不然攻击者就可以拿到微信加密的数据库，然后在知道加密模式的情况下一样可以破。<br />
+<br />
+2. 别用被重打包的微信，从官方可信渠道下载apk。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/学习乌云" title="学习乌云">学习乌云</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037507" title="对微信Android版的交互协议和加密模式的进一步分析">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-09-22 10:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢反馈，我们已经在跟进确认中</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37507";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

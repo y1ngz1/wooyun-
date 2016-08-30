@@ -1,0 +1,250 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		搜狐微博首页储存型XSS，可以插任意东西，可以大范围蠕虫、刷粉丝、钓鱼 ~~(☆_☆)/~~  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		搜狐微博首页储存型XSS，可以插任意东西，可以大范围蠕虫、刷粉丝、钓鱼 ~~(☆_☆)/~~  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/px1624">px1624</a> 
+</li><li>提交时间：		2013-02-11 21:29</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-02-11：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-02-11：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-02-21：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-03-03：	细节向普通白帽子公开<br/>
+									2013-03-13：	细节向实习白帽子公开<br/>
+									2013-03-28：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">这里先祝大家新年好，恭喜发财~<br />
+<br />
+春晚后上网看到刘谦、力宏和云迪三人的故事，然后顺藤摸瓜就来到了搜狐微博，然后觉得那个位置比较可疑，就去试了试，果然感觉比较准，确实存在严重的漏洞，随便插啥玩意都行。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞原因：post数据中的pics没有过滤 \<br />
+<br />
+漏洞影响：随便插啥代码都行，可以大范围蠕虫、刷粉丝、钓鱼等<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+1 位置在搜狐微博发图片的那个pics参数中。<br />
+<br />
+<br />
+<br />
+下面是一条普通的带图微博的post数据<br />
+<br />
+</p><pre><code>msg	分享图片<br />
+pics	[{&quot;url&quot;:&quot;http://s3.t.itc.cn/mblog/pic/20132_11_3/s_pzenz7686783935702.jpg&quot;,&quot;extraData&quot;:{&quot;smallest&quot;:{&quot;w&quot;:90, &quot;h&quot;:120, &quot;size&quot;:5010},&quot;small&quot;:{&quot;w&quot;:160, &quot;h&quot;:213, &quot;size&quot;:11146},&quot;middle&quot;:{&quot;w&quot;:312, &quot;h&quot;:416, &quot;size&quot;:24486},&quot;big&quot;:{&quot;w&quot;:312, &quot;h&quot;:416, &quot;size&quot;:24486}}}]</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到其中的pics是以json的形式发送的。<br />
+<br />
+<br />
+<br />
+2 于是这里果断去测试了一下 \ ,因为在js中可以用 \+ASCII码 的形式表示任意字符的，果然没有过滤。<br />
+<br />
+<br />
+<br />
+然后就顺手在url参数的jpg后面加了 &quot;onload=&quot;alert(1) 的js编码（我就这么叫吧）形式，post数据就变成了下面的代码<br />
+<br />
+</p><pre><code>msg	分享图片<br />
+pics [{&quot;url&quot;:&quot;http://s3.t.itc.cn/mblog/pic/20132_11_3/s_pzenz7686783935702.jpg\u0022\u006f\u006e\u006c\u006f\u0061\u0064\u003d\u0022\u0061\u006c\u0065\u0072\u0074\u0028\u0031\u0029&quot;,&quot;extraData&quot;:{&quot;smallest&quot;:{&quot;w&quot;:90, &quot;h&quot;:120, &quot;size&quot;:5010},&quot;small&quot;:{&quot;w&quot;:160, &quot;h&quot;:213, &quot;size&quot;:11146},&quot;middle&quot;:{&quot;w&quot;:312, &quot;h&quot;:416, &quot;size&quot;:24486},&quot;big&quot;:{&quot;w&quot;:312, &quot;h&quot;:416, &quot;size&quot;:24486}}}]</code></pre><p class='detail'><br />
+<br />
+ps：这里可以利用gainover的工具进行js编码转换 http://app.baidu.com/app/enter?appid=280383<br />
+<br />
+<br />
+<br />
+发现成功插入了代码，弹出了1<br />
+<br />
+<br />
+<br />
+图1</p><p class="detail"><a href="../images/1103434842b0938d44c6af2124d786ccd2e6f5b8.jpg" target="_blank"><img src="../images/1103434842b0938d44c6af2124d786ccd2e6f5b8.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3 接着又分别测测试了插入&lt;img&gt;、&lt;iframe&gt;、&lt;script&gt;等标签对，表示都毫无任何压力的成功插入了。（有没有成功插入可以通过谷歌浏览器F12用颜色区分，或者复制到外部txt中查看）<br />
+<br />
+<br />
+<br />
+图2 3 4<br />
+<br />
+<br />
+<br />
+插&lt;img&gt;</p><p class="detail"><a href="../images/1103435956b17292abd5d9cf5270b3de19faf30e.jpg" target="_blank"><img src="../images/1103435956b17292abd5d9cf5270b3de19faf30e.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+插&lt;iframe&gt;</p><p class="detail"><a href="../images/1103440957c1efbf3a032a080fe9931845b9df61.jpg" target="_blank"><img src="../images/1103440957c1efbf3a032a080fe9931845b9df61.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+插&lt;script&gt;</p><p class="detail"><a href="../images/11034419d30b380ca8a844e9e05301278ca5a30a.jpg" target="_blank"><img src="../images/11034419d30b380ca8a844e9e05301278ca5a30a.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4 如上，可以调用任意外部js文件，由于post数据中没有key、token等东西，所以蠕虫表示毫无压力。<br />
+<br />
+具体蠕虫和刷粉丝的利用可以查看 @imlonghao 的这个帖子 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2012-010167">WooYun: 搜狐微博某处存储型小松鼠+顺便提一提相关接口未加上TOKEN</a> <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+5 cookie就算了，能盗取到，不过搜狐微博是http-only的，盗取到了也么啥用，也登不上（不过可以通过伪造钓鱼页面 骗取账号和密码）。还不如搞蠕虫，刷粉丝实在。<br />
+<br />
+<br />
+<br />
+6 最后，也不奢求能有礼物，只求把rank给够。不要直接啥都不回复甩个 5rank 给我，因为这个的确危害影响蛮大的！~<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">漏洞证明上面描述的已经很清楚了，这里就发个弹cookie的图吧。。<br />
+<br />
+<br />
+<br />
+图5</p><p class="detail"><a href="../images/11034500ec98c3349fca1ea99751ed70b504f6af.jpg" target="_blank"><img src="../images/11034500ec98c3349fca1ea99751ed70b504f6af.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤 \<br />
+<br />
+<br />
+<br />
+ps：字符\全部都被乌云编辑器转换成了\\，剑心帮忙给改下。（改好后这句话删了额） </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/px1624" title="px1624">px1624</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-018599" title="搜狐微博首页储存型XSS，可以插任意东西，可以大范围蠕虫、刷粉丝、钓鱼 ~~(☆_☆)/~~">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2013-02-11 23:56</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="18599";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

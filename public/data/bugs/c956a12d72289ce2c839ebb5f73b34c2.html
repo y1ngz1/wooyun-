@@ -1,0 +1,376 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		smartoa 企业版 政务办 任意文件上传 获取webshell（多处）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		smartoa 企业版 政务办 任意文件上传 获取webshell（多处）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/what_news">what_news</a> 
+</li><li>提交时间：		2014-02-19 10:16</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-27：	细节向第三方安全合作伙伴开放<br/>
+									2014-03-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-16：	细节向普通白帽子公开<br/>
+									2014-04-05：	细节向实习白帽子公开<br/>
+									2014-05-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">没有对用户上传类型就行判断过滤，虽然在客户端进行了过滤筛选，但是到服务端没有进行多一步的验证，使得可以通过改包绕过客户端验证</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">测试网站：http://demo.smartoa.com.cn/ 随机选择一个普通用户登录进去（管理员更不用说了）<br />
+<br />
+<br />
+<br />
+第1处<br />
+<br />
+在应用中心-&gt;新闻管理-&gt;新增 按钮 -&gt; 基础信息 -&gt; 点击上传 <br />
+<br />
+<br />
+<br />
+主要代码如下<br />
+<br />
+</p><pre><code>public JsonResult UpLoadImage()<br />
+{<br />
+    ArticleBLL.UpFileImage image = new ArticleBLL().UpLoadImage(); //跟进<br />
+    base.G2Result.Data = image;<br />
+    if (string.IsNullOrEmpty(image.ImageUrl))<br />
+    {<br />
+        base.G2Result.Result = false;<br />
+        base.G2Result.Message = &quot;上传失败&quot;;<br />
+    }<br />
+    return base.Json(base.G2Result);<br />
+}<br />
+public UpFileImage UpLoadImage()<br />
+{<br />
+    UpFileImage image = new UpFileImage();<br />
+    UploadedFileCollection uploadedFiles = HttpUploadModule.GetUploadedFiles();<br />
+    if (uploadedFiles != null)<br />
+    {<br />
+        foreach (UploadedFile file in uploadedFiles)<br />
+        {<br />
+            try<br />
+            {<br />
+                string path = string.Concat(new object[] { @&quot;CMS\Article\TitleImage\&quot;, Guid.NewGuid(), &quot;.&quot;, file.Extension }); //没判断文件类型，直接利用 导致任意文件上传<br />
+                file.SaveAs(path);<br />
+                image.ImageName = file.ClientName;<br />
+                image.ImageUrl = path;<br />
+                image.FileServerUrl = FileManage.FileServerPath;<br />
+            }<br />
+            catch<br />
+            {<br />
+                throw;<br />
+            }<br />
+        }<br />
+    }<br />
+    return image;<br />
+}</code></pre><p class='detail'><br />
+<br />
+正常上传 我把一句话木马改成jpg格式<br />
+<br />
+</p><p class="detail"><a href="../images/181852599a6b890eab6f85bea3a433f62ad2fb22.png" target="_blank"><img src="../images/181852599a6b890eab6f85bea3a433f62ad2fb22.png" alt="cms.png" width="600"/></a></p><p class="detail"><br />
+<br />
+修改成aspx格式<br />
+<br />
+</p><p class="detail"><a href="../images/18185329107a086632c5ba8772f5bdd615de001e.png" target="_blank"><img src="../images/18185329107a086632c5ba8772f5bdd615de001e.png" alt="cms1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+shell路径<br />
+<br />
+</p><p class="detail"><a href="../images/181854365d7492aa111622b74ce3b3f6ad5f43f9.png" target="_blank"><img src="../images/181854365d7492aa111622b74ce3b3f6ad5f43f9.png" alt="cm3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第2处<br />
+<br />
+在应用中心-&gt;新闻管理-&gt;新增 按钮 -&gt; 文章内容 -&gt; 有个添加图片的图标 点击上传<br />
+<br />
+<br />
+<br />
+主要代码如下<br />
+<br />
+</p><pre><code>public JsonResult UploadImage()<br />
+{<br />
+    G2JsonObject data = new G2JsonObject();<br />
+    string str = Path.Combine(this.storeRootPath, DateTime.Now.ToString(&quot;yyyyMMdd&quot;));<br />
+    UploadedFileCollection uploadedFiles = HttpUploadModule.GetUploadedFiles();<br />
+    foreach (UploadedFile file in uploadedFiles)<br />
+    {<br />
+        try<br />
+        {<br />
+            file.SaveAs(Path.Combine(str, file.ClientName)); //没过滤，可上传任意文件<br />
+            data.Result = true;<br />
+            data.Data = Path.Combine(str, file.ClientName);<br />
+        }<br />
+        catch (Exception exception)<br />
+        {<br />
+            data.Message = exception.Message;<br />
+            data.Result = false;<br />
+        }<br />
+    }<br />
+    return base.Json(data);<br />
+}</code></pre><p class='detail'><br />
+<br />
+正常上传 把木马改成jpg格式<br />
+<br />
+</p><p class="detail"><a href="../images/181913277d49965c8cca0d2ea2661a0a71d9495a.png" target="_blank"><img src="../images/181913277d49965c8cca0d2ea2661a0a71d9495a.png" alt="html1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+抓包，修改成aspx格式<br />
+<br />
+</p><p class="detail"><a href="../images/1819140816e9c15e6777d341eb20aea658626625.png" target="_blank"><img src="../images/1819140816e9c15e6777d341eb20aea658626625.png" alt="html2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+木马地址<br />
+<br />
+</p><p class="detail"><a href="../images/1819142457b99bdaefe0b3655c0b969c58956992.png" target="_blank"><img src="../images/1819142457b99bdaefe0b3655c0b969c58956992.png" alt="html3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+菜刀链接<br />
+<br />
+</p><p class="detail"><a href="../images/18191440b5e34f19af193ea64e2215069d6b7356.png" target="_blank"><img src="../images/18191440b5e34f19af193ea64e2215069d6b7356.png" alt="html4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第3处<br />
+<br />
+任务中心-&gt;任务派发-&gt;新增-&gt;附件浏览<br />
+<br />
+<br />
+<br />
+页面主要代码如下<br />
+<br />
+</p><pre><code>public JsonResult UploadAttachment(string ID)<br />
+{<br />
+    UploadedFileCollection uploadedFiles = HttpUploadModule.GetUploadedFiles();<br />
+    if ((uploadedFiles != null) &amp;&amp; (uploadedFiles.Count &gt;= 1))<br />
+    {<br />
+        UploadedFile file = uploadedFiles[0];<br />
+        AttachmentContract contract = new AttachmentContract();<br />
+        contract.AttachmentID = Guid.NewGuid();<br />
+        contract.AttachmentSize = file.ContentLength;<br />
+        contract.Extension = file.Extension.ToLower();<br />
+        contract.AttachmentName = file.ClientName;<br />
+        contract.AttachmentNameWithNotExtension = file.ClientNameWithoutExtension;<br />
+        contract.CreateEmployeeName = this.CurrentUserName;<br />
+        contract.CreateTime = DateTime.Now;<br />
+        string str = Path.Combine(&quot;UDF&quot;, DateTime.Now.ToString(&quot;yyyyMM&quot;));<br />
+        contract.StorePath = Path.Combine(str, contract.AttachmentID.ToString() + &quot;.&quot; + contract.Extension);//没过滤直接利用<br />
+        file.SaveAs(contract.StorePath, true);<br />
+        base.G2Result.Data = contract;<br />
+    }<br />
+    return base.Json(base.G2Result);<br />
+}</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/18193600dde1a1a7cdb3a7da591d45e18ea6804d.png" target="_blank"><img src="../images/18193600dde1a1a7cdb3a7da591d45e18ea6804d.png" alt="udf.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/18193651ca3e72a4265383114074166e6e06e33d.png" target="_blank"><img src="../images/18193651ca3e72a4265383114074166e6e06e33d.png" alt="udf1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/181937059cabcba2afdf74b092bd9896374015b5.png" target="_blank"><img src="../images/181937059cabcba2afdf74b092bd9896374015b5.png" alt="udf3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/181937247c50e6c932382eded553f413a99f7e5a.png" target="_blank"><img src="../images/181937247c50e6c932382eded553f413a99f7e5a.png" alt="udf4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/18193740991b7cb2c1c3f63a22181670c9d10487.png" target="_blank"><img src="../images/18193740991b7cb2c1c3f63a22181670c9d10487.png" alt="udf5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第4处 应用中心-&gt;人事管理-&gt;劳动合同—&gt;附件信息-&gt;上传附件<br />
+<br />
+<br />
+<br />
+主要代码如下<br />
+<br />
+</p><pre><code>public JsonResult UpLoadFile()<br />
+{<br />
+    ContractAttachmentBLL tbll = new ContractAttachmentBLL();<br />
+    return base.Json(tbll.UpLoadFile()); //跟进<br />
+}<br />
+public ListDataResult&lt;ContractAttachmentContract&gt; UpLoadFile()<br />
+{<br />
+    ListDataResult&lt;ContractAttachmentContract&gt; result = new ListDataResult&lt;ContractAttachmentContract&gt;();<br />
+    result.Result = true;<br />
+    UploadedFileCollection uploadedFiles = HttpUploadModule.GetUploadedFiles();<br />
+    try<br />
+    {<br />
+        if (uploadedFiles == null)<br />
+        {<br />
+            return result;<br />
+        }<br />
+        foreach (UploadedFile file in uploadedFiles)<br />
+        {<br />
+            ContractAttachmentContract contract2 = new ContractAttachmentContract();<br />
+            contract2.AttachmentID = new Guid?(Guid.NewGuid());<br />
+            ContractAttachmentContract item = contract2;<br />
+            string str = item.AttachmentID.ToString();<br />
+            string str2 = @&quot;ContractAttachment\&quot; + str + &quot;.&quot; + file.Extension;//没判断 产生漏洞<br />
+            file.SaveAs(@&quot;HRCM\&quot; + str2);<br />
+            item.AttachmentName = file.ClientNameWithoutExtension;<br />
+            item.AttachmentUrl = str2;<br />
+            item.ExtName = file.Extension;<br />
+            item.FileSize = file.ContentLength;<br />
+            result.Rows.Add(item);<br />
+        }<br />
+    }<br />
+    catch (Exception exception)<br />
+    {<br />
+        result.Result = false;<br />
+        result.Message = exception.Message;<br />
+    }<br />
+    return result;<br />
+}</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/18200846624388106d5df7b9f2b212ed9537bc13.png" target="_blank"><img src="../images/18200846624388106d5df7b9f2b212ed9537bc13.png" alt="xls.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1820090139745a11d2847efad44cd6e9a1fb7e5e.png" target="_blank"><img src="../images/1820090139745a11d2847efad44cd6e9a1fb7e5e.png" alt="xls1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/18200915eb24a080f907a1cf51a96609e04c8d6f.png" target="_blank"><img src="../images/18200915eb24a080f907a1cf51a96609e04c8d6f.png" alt="xls2.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/18200930a48a8c0553c5c62bf43c032b90e60661.png" target="_blank"><img src="../images/18200930a48a8c0553c5c62bf43c032b90e60661.png" alt="xls3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+第5处 个人办公 我的网盘那 可以随便上传任意文件 只是上传后暂时找不到文件上传后的路径比较悲催 但是也存在任意文件上传漏洞<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+  </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">如上 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">白名单判断类型修复 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/what_news" title="what_news">what_news</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051339" title="smartoa 企业版 政务办 任意文件上传 获取webshell（多处）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-02-24 09:15</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD未在本地实例或其他实例上复现，仅确认所述DEMO实例及原理分析，rank 15</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51339";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

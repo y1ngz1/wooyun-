@@ -1,0 +1,410 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		贵州省交通警察总队车辆管理所存在注入漏洞 导致车主信息数据泄露  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		贵州省交通警察总队车辆管理所存在注入漏洞 导致车主信息数据泄露  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Fate">Fate</a> 
+</li><li>提交时间：		2012-10-16 12:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-16：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-11-09：	细节向普通白帽子公开<br/>
+									2012-11-19：	细节向实习白帽子公开<br/>
+									2012-11-30：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">贵州省交通警察总队车辆管理所存在注入漏洞 导致车主信息数据泄露</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">注入点 </p><pre><code>http://58.42.245.133:9080/vehicleweb/businessSite_QryAct.do?action=newQuery&amp;dwdm=52010000</code></pre><p class='detail'>  通过注入可以获得车辆管理所存储在服务器上的车主数据。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/151721028d238a96a50c4b5ee707e37f60d1def4.jpg" target="_blank"><img src="../images/151721028d238a96a50c4b5ee707e37f60d1def4.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"></p><pre><code>1.（简单又有效的方法）PreparedStatement<br />
+<br />
+ <br />
+<br />
+采用预编译语句集，它内置了处理SQL注入的能力，只要使用它的setXXX方法传值即可。<br />
+<br />
+ <br />
+<br />
+使用好处：<br />
+<br />
+(1).代码的可读性和可维护性.<br />
+<br />
+(2).PreparedStatement尽最大可能提高性能.<br />
+<br />
+(3).最重要的一点是极大地提高了安全性.<br />
+<br />
+ <br />
+<br />
+原理：<br />
+<br />
+sql注入只对sql语句的准备(编译)过程有破坏作用<br />
+<br />
+而PreparedStatement已经准备好了,执行阶段只是把输入串作为数据处理,<br />
+<br />
+而不再对sql语句进行解析,准备,因此也就避免了sql注入问题.<br />
+<br />
+=============================================<br />
+<br />
+ <br />
+<br />
+2.使用正则表达式过滤传入的参数<br />
+<br />
+ <br />
+<br />
+要引入的包：<br />
+<br />
+import java.util.regex.*;<br />
+<br />
+ <br />
+<br />
+正则表达式：<br />
+<br />
+private String CHECKSQL = “^(.+)\\sand\\s(.+)|(.+)\\sor(.+)\\s$”;<br />
+<br />
+ <br />
+<br />
+判断是否匹配：<br />
+<br />
+Pattern.matches(CHECKSQL,targerStr);<br />
+<br />
+ <br />
+<br />
+下面是具体的正则表达式：<br />
+<br />
+检测SQL meta-characters的正则表达式 ：<br />
+<br />
+/(\%27)|(\’)|(\-\-)|(\%23)|(#)/ix<br />
+<br />
+修正检测SQL meta-characters的正则表达式 ：/((\%3D)|(=))[^\n]*((\%27)|(\’)|(\-\-)|(\%3B)|(:))/i<br />
+<br />
+典型的SQL 注入攻击的正则表达式 ：/\w*((\%27)|(\’))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/ix<br />
+<br />
+检测SQL注入，UNION查询关键字的正则表达式 ：/((\%27)|(\’))union/ix(\%27)|(\’)<br />
+<br />
+检测MS SQL Server SQL注入攻击的正则表达式：<br />
+<br />
+/exec(\s|\+)+(s|x)p\w+/ix<br />
+<br />
+等等…..<br />
+<br />
+==========================================<br />
+<br />
+ <br />
+<br />
+3.字符串过滤<br />
+<br />
+ <br />
+<br />
+比较通用的一个方法：<br />
+<br />
+（||之间的参数可以根据自己程序的需要添加）<br />
+<br />
+=======================================<br />
+<br />
+ <br />
+<br />
+public static boolean sql_inj(String str)<br />
+<br />
+ {<br />
+<br />
+    String inj_str = &quot;&#039;|and|exec|insert|select|delete|update|<br />
+<br />
+count|*|%|chr|mid|master|truncate|char|declare|;|or|-|+|,&quot;;<br />
+<br />
+    String inj_stra[] = split(inj_str,&quot;|&quot;);<br />
+<br />
+    for (int i=0 ; i &amp;lt; inj_stra.length ; i++ )<br />
+<br />
+    {<br />
+<br />
+        if (str.indexOf(inj_stra[i])&amp;gt;=0)<br />
+<br />
+        {<br />
+<br />
+            return true;<br />
+<br />
+        }<br />
+<br />
+    }<br />
+<br />
+    return false;<br />
+<br />
+ }<br />
+<br />
+ <br />
+<br />
+==========================================<br />
+<br />
+4.jsp中调用该函数检查是否包函非法字符<br />
+<br />
+=======================================<br />
+<br />
+ <br />
+<br />
+防止SQL从URL注入：<br />
+<br />
+ <br />
+<br />
+sql_inj.java代码：<br />
+<br />
+=======================================<br />
+<br />
+ <br />
+<br />
+package sql_inj;<br />
+<br />
+ <br />
+<br />
+import java.net.*;<br />
+<br />
+import java.io.*;<br />
+<br />
+import java.sql.*;<br />
+<br />
+import java.text.*;<br />
+<br />
+import java.lang.String;<br />
+<br />
+ <br />
+<br />
+public class sql_inj{<br />
+<br />
+public static boolean sql_inj(String str)<br />
+<br />
+{<br />
+<br />
+    String inj_str = &quot;&#039;|and|exec|insert|select|delete|update|<br />
+<br />
+count|*|%|chr|mid|master|truncate|char|declare|;|or|-|+|,&quot;;<br />
+<br />
+//这里的东西还可以自己添加<br />
+<br />
+String[] inj_stra=inj_str.split(&quot;\\|&quot;);<br />
+<br />
+    for (int i=0 ; i &amp;lt; inj_stra.length ; i++ )<br />
+<br />
+    {<br />
+<br />
+        if (str.indexOf(inj_stra[i])&amp;gt;=0)<br />
+<br />
+        {<br />
+<br />
+            return true;<br />
+<br />
+        }<br />
+<br />
+    }<br />
+<br />
+    return false;<br />
+<br />
+}<br />
+<br />
+}<br />
+<br />
+ <br />
+<br />
+======================================<br />
+<br />
+5.JSP页面判断代码：<br />
+<br />
+===================================<br />
+<br />
+ <br />
+<br />
+使用javascript在客户端进行不安全字符屏蔽<br />
+<br />
+ <br />
+<br />
+功能介绍：检查是否含有”‘”,”\\”,”/”<br />
+<br />
+参数说明：要检查的字符串<br />
+<br />
+返回值：0：是1：不是<br />
+<br />
+函数名是<br />
+<br />
+function check(a)<br />
+<br />
+{<br />
+<br />
+return 1;<br />
+<br />
+fibdn = new Array (”‘” ,”\\”,”/”);<br />
+<br />
+i=fibdn.length;<br />
+<br />
+j=a.length;<br />
+<br />
+for (ii=0; ii＜i; ii++)<br />
+<br />
+{ for (jj=0; jj＜j; jj++)<br />
+<br />
+{ temp1=a.charAt(jj);<br />
+<br />
+temp2=fibdn[ii];<br />
+<br />
+if (tem’; p1==temp2)<br />
+<br />
+{ return 0; }<br />
+<br />
+}<br />
+<br />
+}<br />
+<br />
+return 1;<br />
+<br />
+ <br />
+<br />
+}<br />
+<br />
+===================================<br />
+<br />
+ <br />
+<br />
+总的说来，防范一般的SQL注入只要在代码规范上下点功夫就可以了。</code></pre><p class='detail'> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Fate" title="Fate">Fate</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-013382" title="贵州省交通警察总队车辆管理所存在注入漏洞 导致车主信息数据泄露">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2012-10-20 18:45</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况，转由CNCERT贵州分中心协调涉事单位处置。<br />
+<br />
+按完全影响机密性（未涉及权限提升）进行评分，rank=7.79*1.0*1.5=11.685。信息泄露非小事。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="13382";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

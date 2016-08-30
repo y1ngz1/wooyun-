@@ -1,0 +1,292 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		钱方支付继续getshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		钱方支付继续getshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/瘦蛟舞">瘦蛟舞</a> 
+</li><li>提交时间：		2013-11-22 11:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-11-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-12-13：	细节向普通白帽子公开<br/>
+									2013-12-23：	细节向实习白帽子公开<br/>
+									2014-01-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">2013-11-21：最终确认由第三方wp主题造成，昨日下午已修复！<br />
+我晕倒，密码不改，shell不删，就升级了下wordpress。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.厂商对此漏洞理解有些误差，仅对wp进行了升级。管理员密码没有修改依旧可以进入。<br />
+<br />
+</p><p class="detail"><a href="../images/21212137cd29f01ffd5e79111b1b7a6487c8ee95.jpg" target="_blank"><img src="../images/21212137cd29f01ffd5e79111b1b7a6487c8ee95.jpg" alt="wp.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+2.这个漏洞主要问题是人员安全意识不足存在弱口令和wp后台审核机制也不是很完善，攻击可以利用比如wpscan对应用进行自动化攻击。<br />
+<br />
+3.上次的木马还在，shell都不删可见厂商对安全的理解还非常不充分。那估计就更没有分析日志了，害我瞎忙删日志，浪费时间。<br />
+<br />
+</p><p class="detail"><a href="../images/212131131b3c3036997c0c42f53a8aea94cee002.jpg" target="_blank"><img src="../images/212131131b3c3036997c0c42f53a8aea94cee002.jpg" alt=".jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">部分nginx配置文件，同服下很多网站均可以控制。<br />
+<br />
+</p><pre><code>server {<br />
+        listen       80;<br />
+        server_name  bbs.qfpay.com;<br />
+    	access_log /home/qfpay/nginx/logs/bbs_access.log;<br />
+	error_log /home/qfpay/nginx/logs/bbs_error.log;<br />
+	<br />
+	<br />
+        location / {<br />
+            fastcgi_pass unix:/home/qfpay/www/qfbbs/web.sock;<br />
+            fastcgi_param REQUEST_METHOD $request_method;<br />
+            fastcgi_param QUERY_STRING $query_string;<br />
+            fastcgi_param CONTENT_TYPE $content_type;<br />
+            fastcgi_param CONTENT_LENGTH $content_length;<br />
+            fastcgi_param GATEWAY_INTERFACE CGI/1.1;<br />
+            fastcgi_param SERVER_SOFTWARE nginx/$nginx_version;<br />
+            fastcgi_param REMOTE_ADDR $remote_addr;<br />
+            fastcgi_param REMOTE_PORT $remote_port;<br />
+            fastcgi_param SERVER_ADDR $server_addr;<br />
+            fastcgi_param SERVER_PORT $server_port;<br />
+            fastcgi_param SERVER_NAME $server_name;<br />
+            fastcgi_param SERVER_PROTOCOL $server_protocol;<br />
+            fastcgi_param SCRIPT_FILENAME $fastcgi_script_name;<br />
+            fastcgi_param PATH_INFO $fastcgi_script_name;<br />
+                 }<br />
+        <br />
+	location ~^/static {<br />
+                root /home/qfpay/www/bbs_static;<br />
+                expires 24h;<br />
+                access_log on;<br />
+                }<br />
+#	location ~^/static/admin {<br />
+#                root /home/qfpay/www/bbs_new/qfbbs/static/media;<br />
+#                expires 24h;<br />
+#                access_log on;<br />
+#                }        <br />
+<br />
+	    error_page   500 502 503 504  /50x.html;<br />
+            location = /50x.html {<br />
+<br />
+            root   html;<br />
+                }<br />
+        }<br />
+<br />
+<br />
+<br />
+<br />
+	server {<br />
+		listen     80;<br />
+		server_name	www.qfpay.com www.qfsyb.com;<br />
+		root /home/qfpay/www/wordpress;<br />
+        access_log /home/qfpay/nginx/logs/www_access.log;<br />
+        error_log /home/qfpay/nginx/logs/www_error.log;<br />
+		index index.php index.html;<br />
+<br />
+		location /nginx_status {<br />
+                	stub_status on;<br />
+                	access_log   off;<br />
+                	allow all;<br />
+		}<br />
+		location / {<br />
+			if (!-e $request_filename){<br />
+				rewrite (.*) /index.php;<br />
+			}<br />
+		}<br />
+		location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$ {<br />
+			expires 30d;<br />
+		}   <br />
+		location ~ .*\.(js|css) {<br />
+			expires 10d;<br />
+		}<br />
+		location /wp-content {<br />
+			access_log  off;<br />
+		}   <br />
+		location ~ \.php$ {<br />
+			fastcgi_index  index.php;<br />
+			fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;<br />
+			fastcgi_pass   127.0.0.1:9009;<br />
+			fastcgi_intercept_errors on;<br />
+			include      fastcgi_params;<br />
+		}<br />
+	}<br />
+<br />
+	server {<br />
+		listen 80;<br />
+		server_name app.qfsyb.com;<br />
+        access_log /home/qfpay/nginx/logs/appqfsyb_access.log;<br />
+        error_log /home/qfpay/nginx/logs/appqfsyb_error.log;<br />
+		<br />
+		location / {<br />
+		    root /home/qfpay/www/qfsyb;<br />
+		    index mobile/index.html;<br />
+		}<br />
+		location /app {<br />
+			root /home/qfpay/app2;<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+除了本地mysql外，内网还有其他mysql数据库，数个数据库用户信息泄漏风险<br />
+<br />
+</p><p class="detail"><a href="../images/212145111c79abc1bb189fd5ceaf2ccf393e64a7.jpg" target="_blank"><img src="../images/212145111c79abc1bb189fd5ceaf2ccf393e64a7.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+备份数据库<br />
+<br />
+</p><p class="detail"><a href="../images/21214917d9c238de20842c0e57530687d96809a1.jpg" target="_blank"><img src="../images/21214917d9c238de20842c0e57530687d96809a1.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+app可以替换为恶意应用<br />
+<br />
+</p><p class="detail"><a href="../images/212157021008293eaa02800a443fc2d6be9b8e4e.jpg" target="_blank"><img src="../images/212157021008293eaa02800a443fc2d6be9b8e4e.jpg" alt="app.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.对人员进行安全培训<br />
+<br />
+2.加强密码强度<br />
+<br />
+3.wp后台设置访问控制，如再加入basic认证或者直接外网不能访问后台。<br />
+<br />
+4.服务器权限合理设置，如nginx用户不应能访问配置数据库文件。<br />
+<br />
+5.定期审核日志 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/瘦蛟舞" title="瘦蛟舞">瘦蛟舞</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043653" title="钱方支付继续getshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-11-23 19:14</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">会对wp等漏洞建议进行逐项整改</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43653";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

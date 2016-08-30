@@ -1,0 +1,371 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		分享曾经破解的一个web应用Flex小插件  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		分享曾经破解的一个web应用Flex小插件  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/shine">shine</a> 
+</li><li>提交时间：		2012-02-13 22:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-02-13：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-02-13：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"> <br />
+  今天在乌云微薄上看到这样一句话：“自由共享曾是这个行业最伟大的精神 现在封闭狭隘已经成为这个行业的最普遍的陋习”<br />
+<br />
+  突然想到了自由软件精神（虽然这方面的理论知识我还未去查看过！），同时也想到了自己一年前破解的一个小插件。开始急需这个Flex插件，破解后，由于种种原因又不需要了。今天找了很久才把它翻出来，给大家分享一下，或许有人用得着，免得浪费了！<br />
+<br />
+<br />
+<br />
+<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">   PanTe Painter在线图像编辑器（官网：www.21441.com）， 是一款不错的增进用户交互体验的编辑器工具插件。<br />
+<br />
+<br />
+<br />
+当时，向官方咨询收费情况：<br />
+<br />
+<br />
+<br />
+ 1、一个域名授权 RMB 3K<br />
+<br />
+<br />
+<br />
+ 2、提供源代码  RMB  8K<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+  太贵了！用不起啊！只能这样做了！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+   <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">   所以尝试去破解它，由于破解方面是我的盲区，更不懂ActionScript语法（幸好跟<br />
+<br />
+<br />
+<br />
+Java差不多），没有方向，所以开始弄起来比较吃力。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ 后来发现，这个软件的授权是根据本地验证，判断该软件是根据浏览器的url地址对比保<br />
+<br />
+<br />
+<br />
+留在插件中的某个常量值来进行验证的。<br />
+<br />
+<br />
+<br />
+ 于是，先反编译.swf文件再说，得到源代码后，重构原工程太麻烦了（尝试过），便开始<br />
+<br />
+<br />
+<br />
+找那个负责验证的as类文件。<br />
+<br />
+<br />
+<br />
+在com\pante\managers这个包下的LicenseManager.as文件就是授权验证as类文件<br />
+<br />
+<br />
+<br />
+源代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>package com.pante.managers {<br />
+    import mx.core.*;<br />
+    import mx.managers.*;<br />
+    import flash.display.*;<br />
+    import flash.events.*;<br />
+    import com.pante.components.*;<br />
+<br />
+    public class LicenseManager extends EventDispatcher {<br />
+<br />
+        private static var availableURLS:String = &quot;localhost:8080&quot;;<br />
+        private static var fullUrlValidate:Boolean = false;<br />
+        private static var alertWindows:AlertWindows;<br />
+<br />
+        public function LicenseManager(_arg1:IEventDispatcher=null){<br />
+            super(_arg1);<br />
+        }<br />
+        public static function urlValidating(_arg1:String=null):Boolean{<br />
+            if (_arg1 == null){<br />
+                _arg1 = availableURLS;<br />
+            };<br />
+            var _local2:String = FlexGlobals.topLevelApplication.url.toLowerCase();<br />
+            _local2 = _local2.toLocaleLowerCase();<br />
+            _local2 = _local2.replace(&quot;http://&quot;, &quot;&quot;);<br />
+            _local2 = _local2.replace(&quot;file://&quot;, &quot;&quot;);<br />
+            if (_local2.indexOf(&quot;/&quot;) != -1){<br />
+                _local2 = _local2.substring(0, _local2.indexOf(&quot;/&quot;));<br />
+                if ((((fullUrlValidate == false)) &amp;&amp; ((_local2.split(&quot;.&quot;).length &gt; 2)))){<br />
+                    _local2 = _local2.substring((_local2.indexOf(&quot;.&quot;) + 1));<br />
+                };<br />
+            };<br />
+            var _local3:Array = _arg1.toLowerCase().split(&quot;,&quot;);<br />
+            var _local4:Number = 0;<br />
+            while (_local4 &lt; _local3.length) {<br />
+                if (_local3[_local4].toString() == _local2){<br />
+                    return (true);<br />
+                };<br />
+                _local4++;<br />
+            };<br />
+            return (false);<br />
+        }<br />
+        public static function openBadLicenseWindows():void{<br />
+            if (alertWindows == null){<br />
+                alertWindows = new AlertWindows();<br />
+            };<br />
+            alertWindows.alertLabel.text = &quot;非授权应用，请联系盘特在线图像编辑器官方客服！&quot;;<br />
+            alertWindows.width = 320;<br />
+            PopUpManager.addPopUp(alertWindows, (FlexGlobals.topLevelApplication as DisplayObject), true);<br />
+            PopUpManager.centerPopUp(alertWindows);<br />
+        }<br />
+<br />
+    }<br />
+}</code></pre><p class='detail'><br />
+<br />
+  仔细查看验证算法是有缺陷的，某些特定的字符串是可以绕过的，在查看两个版本中的验证程序是不一样的，说明该程序员是有这方面的安全意识的。如果使用特殊字符串去构造<br />
+<br />
+url地址，那插件就没什么实用性了。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+后来，我发现我太关注代码结构了，忽视了availableURLS这个常量，只要修改这个常量值不就ok了吗！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+  经过多方寻找软件，最终找了ASV（Action Script Viewer），它能修改swf的常量<br />
+<br />
+<br />
+<br />
+值，辛苦了两天终于搞定了，太累了，所以后来再也不敢搞这方面的尝试了！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+上图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13213343793b92cc0bf61afa57ac29fc5c533b9b.png" target="_blank"><img src="../images/13213343793b92cc0bf61afa57ac29fc5c533b9b.png" alt="" width="600"/></a></p><p class="detail"> <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+  那位想靠它挣钱的兄弟别怪我啊！在乌云帮你打个免费广告，或许能卖得更好！<br />
+<br />
+<br />
+<br />
+  第一次尝试软件破解，所以软件破解方面的大牛们别嘲讽啊！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+  </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">或许采用远程授权验证更不错！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/shine" title="shine">shine</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-04482" title="分享曾经破解的一个web应用Flex小插件">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：8 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="4482";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

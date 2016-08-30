@@ -1,0 +1,225 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		UChome 注入漏洞2  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		UChome 注入漏洞2  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2013-11-26 18:27</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-01：	厂商主动忽略漏洞，细节向第三方安全合作伙伴开放<br/>
+									2014-02-21：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">UChome 注入漏洞2 需要GPC=OFF和之前那个差不多</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>cp_blog.php<br />
+if(submitcheck(&#039;blogsubmit&#039;)) {<br />
+<br />
+	if(empty($blog[&#039;blogid&#039;])) {<br />
+		$blog = array();<br />
+	} else {<br />
+		if(!checkperm(&#039;allowblog&#039;)) {<br />
+			ckspacelog();<br />
+			showmessage(&#039;no_authority_to_add_log&#039;);<br />
+		}<br />
+	}<br />
+	<br />
+	//验证码<br />
+	if(checkperm(&#039;seccode&#039;) &amp;&amp; !ckseccode($_POST[&#039;seccode&#039;])) {<br />
+		showmessage(&#039;incorrect_code&#039;);<br />
+	}<br />
+	<br />
+	include_once(S_ROOT.&#039;./source/function_blog.php&#039;);<br />
+	if($newblog = blog_post($_POST, $blog)) {				//调用~~<br />
+		if(empty($blog) &amp;&amp; $newblog[&#039;topicid&#039;]) {<br />
+			$url = &#039;space.php?do=topic&amp;topicid=&#039;.$newblog[&#039;topicid&#039;].&#039;&amp;view=blog&#039;;<br />
+		} else {<br />
+			$url = &#039;space.php?uid=&#039;.$newblog[&#039;uid&#039;].&#039;&amp;do=blog&amp;id=&#039;.$newblog[&#039;blogid&#039;];<br />
+		}<br />
+		showmessage(&#039;do_success&#039;, $url, 0);<br />
+	} else {<br />
+		<br />
+<br />
+<br />
+function_log.php<br />
+function blog_post($POST, $olds=array()) {<br />
+	global $_SGLOBAL, $_SC, $space;<br />
+	<br />
+	//操作者角色切换<br />
+	$isself = 1;<br />
+	if(!empty($olds[&#039;uid&#039;]) &amp;&amp; $olds[&#039;uid&#039;] != $_SGLOBAL[&#039;supe_uid&#039;]) {<br />
+省略若干····<br />
+	$uploads = array();<br />
+	if(!empty($POST[&#039;picids&#039;])) {<br />
+		$picids = array_keys($POST[&#039;picids&#039;]);//注入在这里 pop了KEY出来<br />
+		$query = $_SGLOBAL[&#039;db&#039;]-&gt;query(&quot;SELECT * FROM &quot;.tname(&#039;pic&#039;).&quot; WHERE picid IN (&quot;.simplode($picids).&quot;) AND uid=&#039;$_SGLOBAL[supe_uid]&#039;&quot;);//带入了查询<br />
+		while ($value = $_SGLOBAL[&#039;db&#039;]-&gt;fetch_array($query)) {<br />
+			if(empty($titlepic) &amp;&amp; $value[&#039;thumb&#039;]) {<br />
+				$titlepic = $value[&#039;filepath&#039;].&#039;.thumb.jpg&#039;;<br />
+				$blogarr[&#039;picflag&#039;] = $value[&#039;remote&#039;]?2:1;<br />
+			}</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">利用方法 <br />
+<br />
+注册用户后登陆<br />
+<br />
+然后点击日志<br />
+<br />
+创建新日志<br />
+<br />
+然后打开BURP进行抓包<br />
+<br />
+找一个没有用的POST选项<br />
+<br />
+改成picids[&#039;]<br />
+<br />
+然后在提交 就可以看到结果了<br />
+<br />
+</p><p class="detail"><a href="../images/261823007e879394633b272d8cdefbed6e38fb0b.jpg" target="_blank"><img src="../images/261823007e879394633b272d8cdefbed6e38fb0b.jpg" alt="pl.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/26182311606849be4a9906d4acbde9d08c7c955e.jpg" target="_blank"><img src="../images/26182311606849be4a9906d4acbde9d08c7c955e.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/26182326b558c2fa5a2e975c9b83b50b3d750e4c.jpg" target="_blank"><img src="../images/26182326b558c2fa5a2e975c9b83b50b3d750e4c.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你猜啊~~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-044127" title="UChome 注入漏洞2">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-12-01 18:27</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="44127";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

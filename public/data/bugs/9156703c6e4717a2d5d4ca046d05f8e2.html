@@ -1,0 +1,184 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		上海清橙购物网站存在严重支付漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		上海清橙购物网站存在严重支付漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/风萧萧">风萧萧</a> 
+</li><li>提交时间：		2012-08-23 19:59</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-25：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-09-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-09-14：	细节向普通白帽子公开<br/>
+									2012-09-24：	细节向实习白帽子公开<br/>
+									2012-10-07：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">妹子说缺个乐phone，尼玛俺一个搬砖的实在买不起！看了青橙的网上购物，手机真心便宜啊！但是，还能更便宜么？</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.老规矩，站点如下：</p><pre><code>http://www.51greenorange.com</code></pre><p class='detail'></p><p class="detail"><a href="../images/231944374b6de353a68bf6707dfc37fef77511b7.jpg" target="_blank"><img src="../images/231944374b6de353a68bf6707dfc37fef77511b7.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+2.还是看俺如何一步一步购买的吧！先买个Mars1升级版小绿，￥599啊，这么便宜呢！</p><p class="detail"><a href="../images/231946367f98f80ca56a72fe482c74f4fb452c38.jpg" target="_blank"><img src="../images/231946367f98f80ca56a72fe482c74f4fb452c38.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+3.加入到购物车，嗯！这里是需要599元的哦。然后点继续购物啦！</p><p class="detail"><a href="../images/23194725958086fb1a1e7fe54e354cd4abafcce8.jpg" target="_blank"><img src="../images/23194725958086fb1a1e7fe54e354cd4abafcce8.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">4.买个便宜的吧，Mars1白色，只需499元，更便宜啦！加入到购物车：</p><p class="detail"><a href="../images/23194836ef4741b3606075209b72c45de00c7c4c.jpg" target="_blank"><img src="../images/23194836ef4741b3606075209b72c45de00c7c4c.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+5.这个时候，加上代理，操上burp suite，看下支付的数据，这里是GET方式提交给服务器的，抓包如下</p><pre><code>GET /addtocart.aspx?qty=1&amp;pid=1427&amp;color=%u82F9%u679C%u7EFF HTTP/1.1</code></pre><p class='detail'>这里当然pid应该是商品的编号，服务端根据这个pid，从数据库中查询出价格，所以这里确实是改不掉金额了。不过话说是不是可以改成其他的pid呢？qty是购买手机的个数。这里改成-1啦！如下</p><p class="detail"><a href="../images/231953539c52fd0cf2796ce21c73a60340928fdf.jpg" target="_blank"><img src="../images/231953539c52fd0cf2796ce21c73a60340928fdf.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+6.看看购物车里面的情况吧！</p><p class="detail"><a href="../images/2319555740ed2a8d2a2e62120c6d7ad5046a5352.jpg" target="_blank"><img src="../images/2319555740ed2a8d2a2e62120c6d7ad5046a5352.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+7.点击确认结账了，生成的最终订单只需110元哦，这个数字不吉利啊！我不干坏事啊不要找我呢！</p><p class="detail"><a href="../images/23195723d79252ea5f2b0517bae561204a129b44.jpg" target="_blank"><img src="../images/23195723d79252ea5f2b0517bae561204a129b44.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+8.购买吧，到支付宝支付啦！</p><p class="detail"><a href="../images/231957499ffee27b8f4bf15daccbb6136317b1e0.jpg" target="_blank"><img src="../images/231957499ffee27b8f4bf15daccbb6136317b1e0.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.像金额这样的信息不要放在页面上，确实有随时被篡改的风险，这些信息本来就在数据库中，可以定义一个字符型的字段代替金额的传输，或者直接由商品唯一标识来查询数据库得到金额；<br />
+<br />
+2.签名校验是最重要的了，将购买的商品、数量、金额（或替代字段）、订单的ID号生成一个校验字符串。在每次数据传输的过程中进行校验，当然这个校验的内容可以多次生成；<br />
+<br />
+3.银行或者第三方支付平台的支付接口都会检验商户的订单数据签名，这里当支付页面跳转到块钱的时候没有做签名校验，导致金额数据被篡改，请进一步确认接口问题；<br />
+<br />
+4.支付前需要做签名校验，支付之后同样需要再次做校验，按理说所有银行应该在支付完成之后返回一些信息（如支付金额等）给商户，这样可以通过回来的信息判断是否全额支付；<br />
+<br />
+5.还有什么比SSL更可靠的呢！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/风萧萧" title="风萧萧">风萧萧</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-011244" title="上海清橙购物网站存在严重支付漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2012-08-25 10:58</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">添加对漏洞的补充说明以及做出评价的理由</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="11244";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

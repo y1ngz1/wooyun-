@@ -1,0 +1,386 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		android系统sqlite数据库注入漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		android系统sqlite数据库注入漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/冷森">冷森</a> 
+</li><li>提交时间：		2012-02-15 18:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-02-15：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-02-15：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">android平台使用sqlite做为数据库，对于数据库查询，如果开发者采用字符串连接方式构造SQL语句，就会产生sql注入。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">android自身实现了一个sqlite操作类SQLiteOpenHelper，我们继承此类，然后重载onCreate,onUpgrade等方法<br />
+<br />
+DatabaseHelper.java如下：<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+package com.xiaod.sqlinj;<br />
+<br />
+ <br />
+<br />
+import android.content.Context;<br />
+<br />
+import android.database.sqlite.SQLiteDatabase;<br />
+<br />
+import android.database.sqlite.SQLiteDatabase.CursorFactory;<br />
+<br />
+import android.database.sqlite.SQLiteOpenHelper;<br />
+<br />
+ <br />
+<br />
+public class DatabaseHelper extends SQLiteOpenHelper {<br />
+<br />
+public static final String TB_NAME=&quot;usertable&quot;;<br />
+<br />
+public static final String ID=&quot;_id&quot;;<br />
+<br />
+public static final String USERNAME=&quot;username&quot;;<br />
+<br />
+public static final String PASSWORD=&quot;password&quot;;<br />
+<br />
+DatabaseHelper(Context context, String name, CursorFactory cursorFactory, int version) {<br />
+<br />
+super(context, name, cursorFactory, version);<br />
+<br />
+}<br />
+<br />
+ <br />
+<br />
+@Override<br />
+<br />
+public void onCreate(SQLiteDatabase db) {<br />
+<br />
+db.execSQL(&quot;CREATE TABLE IF NOT EXISTS &quot;+<br />
+<br />
+TB_NAME+&quot; (&quot;+ID+&quot; INTEGER PRIMARY KEY,&quot;+<br />
+<br />
+USERNAME+&quot; VARCHAR,&quot;+PASSWORD+&quot; VARCHAR )&quot;);<br />
+<br />
+db.execSQL(&quot;INSERT INTO &quot;+TB_NAME+&quot;(&quot;+USERNAME+&quot;,&quot;+PASSWORD+&quot;) VALUES&quot;+&quot;(&#039;admin&#039;,&#039;admin888&#039;)&quot;);<br />
+<br />
+db.execSQL(&quot;INSERT INTO &quot;+TB_NAME+&quot;(&quot;+USERNAME+&quot;,&quot;+PASSWORD+&quot;) VALUES&quot;+&quot;(&#039;root&#039;,&#039;root123&#039;)&quot;);<br />
+<br />
+db.execSQL(&quot;INSERT INTO &quot;+TB_NAME+&quot;(&quot;+USERNAME+&quot;,&quot;+PASSWORD+&quot;) VALUES&quot;+&quot;(&#039;xiaod&#039;,&#039;xiaodwin&#039;)&quot;);<br />
+<br />
+}<br />
+<br />
+ <br />
+<br />
+@Override<br />
+<br />
+public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {<br />
+<br />
+ <br />
+<br />
+}<br />
+<br />
+ <br />
+<br />
+@Override<br />
+<br />
+public void onOpen(SQLiteDatabase db) {<br />
+<br />
+super.onOpen(db);<br />
+<br />
+ <br />
+<br />
+}<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+ <br />
+<br />
+界面上添加一个查询框，查询按钮，在textview显示查询结果<br />
+<br />
+SqlinjActivity.java如下：<br />
+<br />
+<br />
+<br />
+package com.xiaod.sqlinj;<br />
+<br />
+ <br />
+<br />
+import android.app.Activity;<br />
+<br />
+import android.database.Cursor;<br />
+<br />
+import android.database.sqlite.SQLiteDatabase;<br />
+<br />
+import android.os.Bundle;<br />
+<br />
+import android.view.View;<br />
+<br />
+import android.view.View.OnClickListener;<br />
+<br />
+import android.widget.Button;<br />
+<br />
+import android.widget.EditText;<br />
+<br />
+import android.widget.TextView;<br />
+<br />
+ <br />
+<br />
+public class SqlinjActivity extends Activity {<br />
+<br />
+public static final String DB_NAME = &quot;sqlinj.db&quot;;<br />
+<br />
+public static final int VERSION = 1;<br />
+<br />
+private String result = &quot;&quot;;<br />
+<br />
+private TextView m_tv;<br />
+<br />
+private EditText m_et;<br />
+<br />
+DatabaseHelper m_dbhelper;<br />
+<br />
+SQLiteDatabase m_db;<br />
+<br />
+Button m_btnselect;<br />
+<br />
+/** Called when the activity is first created. */<br />
+<br />
+@Override<br />
+<br />
+public void onCreate(Bundle savedInstanceState) {<br />
+<br />
+super.onCreate(savedInstanceState);<br />
+<br />
+setContentView(R.layout.main);<br />
+<br />
+ <br />
+<br />
+m_tv = (TextView)findViewById(R.id.tv_view);<br />
+<br />
+m_btnselect = (Button)findViewById(R.id.btn_select);<br />
+<br />
+m_et = (EditText)findViewById(R.id.et_id);<br />
+<br />
+ <br />
+<br />
+m_btnselect.setOnClickListener(new OnClickListener(){<br />
+<br />
+ <br />
+<br />
+@Override<br />
+<br />
+public void onClick(View arg0) {<br />
+<br />
+// TODO Auto-generated method stub<br />
+<br />
+String m_id = m_et.getText().toString();<br />
+<br />
+m_tv.setText(ShowData(m_id));<br />
+<br />
+}<br />
+<br />
+ <br />
+<br />
+});<br />
+<br />
+ <br />
+<br />
+m_dbhelper = new DatabaseHelper(this, DB_NAME, null, VERSION);<br />
+<br />
+m_db = m_dbhelper.getWritableDatabase();<br />
+<br />
+ <br />
+<br />
+}<br />
+<br />
+ <br />
+<br />
+private String ShowData(String m_id)<br />
+<br />
+{<br />
+<br />
+result = &quot;&quot;;<br />
+<br />
+Cursor m_cursor;<br />
+<br />
+String m_argv[] = {m_id};<br />
+<br />
+m_cursor = m_db.rawQuery(&quot;SELECT * FROM usertable WHERE _id = &#039;&quot; + m_id +&quot;&#039;&quot;, null);<br />
+<br />
+m_cursor.moveToFirst();<br />
+<br />
+while(!m_cursor.isAfterLast()){<br />
+<br />
+result += &quot;id: &quot; + m_cursor.getInt(0) + &quot;\n&quot; +<br />
+<br />
+&quot;user: &quot; + m_cursor.getString(1) + &quot;\n&quot; +<br />
+<br />
+&quot;pass: &quot; + m_cursor.getString(2) + &quot;\n\n&quot;;<br />
+<br />
+m_cursor.moveToNext();<br />
+<br />
+}<br />
+<br />
+m_cursor.close();<br />
+<br />
+return result;<br />
+<br />
+}<br />
+<br />
+} </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在ShowData函数中，通过传递id号，来查询记录，而54行语句SELECT * FROM usertable WHERE _id= 使用字符串连接方式，构造SQL语句。我们运行程序，测试下是否能注入。<br />
+<br />
+运行后，提交1，返回正常</p><p class="detail"><a href="../images/15173754dd0d67bb055315fd94bbc6d341a7cec2.jpg" target="_blank"><img src="../images/15173754dd0d67bb055315fd94bbc6d341a7cec2.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+提交2′ and ’1′=’1返回正常<br />
+<br />
+</p><p class="detail"><a href="../images/1517382865e2778538fcef7aa8b71aa2ad273350.jpg" target="_blank"><img src="../images/1517382865e2778538fcef7aa8b71aa2ad273350.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+提交2′ and ’1′=’2查询不到数据<br />
+<br />
+</p><p class="detail"><a href="../images/15173852a0941f3b9cd326c4ecfebbbb50ca4b5a.jpg" target="_blank"><img src="../images/15173852a0941f3b9cd326c4ecfebbbb50ca4b5a.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+输入2′ or _id &lt;&gt; ‘ 返回所有数据<br />
+<br />
+</p><p class="detail"><a href="../images/15174001ccbdc18961466c173911029ec70bcffd.jpg" target="_blank"><img src="../images/15174001ccbdc18961466c173911029ec70bcffd.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">sql injection防护方式和常规思路一致，使用参数化查询<br />
+<br />
+增加一个数组存储查询参数 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/冷森" title="冷森">冷森</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-04550" title="android系统sqlite数据库注入漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：6 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="4550";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,269 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		网易微博存储型XSS 1  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		网易微博存储型XSS 1  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的胖子">心伤的胖子</a> 
+</li><li>提交时间：		2012-09-26 16:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-09-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-10-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-10-17：	细节向普通白帽子公开<br/>
+									2012-10-27：	细节向实习白帽子公开<br/>
+									2012-11-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">发微博处有个地方没有进行转义处理，存在存储型XSS漏洞。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">好吧我承认我是无意中发现的，然后才跟踪出来问题的。<br />
+<br />
+<br />
+<br />
+1、在首页发微博，截获包然后修改。<br />
+<br />
+<br />
+<br />
+</p><pre><code>content=test&amp;isRetweet=0&amp;replyOriginal=0&amp;replyIt=0&amp;flag=0&amp;imageUrl=&amp;voteUrl=bbb&quot;&gt;&lt;&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+修改了voteUrl参数为bbb&quot;&gt;&lt;&gt;，然后提交。<br />
+<br />
+<br />
+<br />
+2、回到首页，已经发布了一条微博。但是在Burp中有一个下面这样的请求：<br />
+<br />
+http://163.fm/getOriginal?callback=jQuery16109319937340915203_1348642196756&amp;q=T7n6r0L&amp;_=1348642200976<br />
+<br />
+（这个地址是我后来抓取的，不过已经能够说明问题了）<br />
+<br />
+<br />
+<br />
+内容为<br />
+<br />
+jQuery16109319937340915203_1348642196756(&quot;bbb&quot;&gt;&lt;&gt;&quot;);<br />
+<br />
+<br />
+<br />
+这是一个jsonp的请求，但是问题来了，这个数据没有进行任何处理。并且这段代码肯定是要加载到首页作为js代码执行的，我们构造闭合callback的代码，后面再插入我们自己的js代码肯定能够在首页执行的。<br />
+<br />
+<br />
+<br />
+3、然后在发送一条微博，voteUrl参数改为&quot;);alert(document.cookie);//，再次访问首页，发现没有弹框，也没有和之前类似的请求了。不过我们之前忽略一个问题就是，content这个参数为微博的内容，但是我们发的微博却包含一个网易微博的短链接地址 http://163.fm/T7n6r0L ，鼠标移到上面，奇迹出现，弹出了我们插入的js代码。<br />
+<br />
+<br />
+<br />
+4、voteUrl这个参数从字面上理解应该是投票地址，初步分析是网易微博没有对该参数校验就直接转换为短链接地址。从http://163.fm/getOriginal?callback=jQuery16109319937340915203_1348642196756&amp;q=T7n6r0L&amp;_=1348642200976这个地址返回的内容也能够判断出，传入到callback的参数就是我们voteUrl的值。<br />
+<br />
+<br />
+<br />
+5、执行了js代码，但是并不知道为什么执行？先在firebug中查找getOriginal，在<br />
+<br />
+http://img2.cache.netease.com/t/cssjs/439756/script/page/home.js<br />
+<br />
+中有找到：<br />
+<br />
+</p><pre><code>define(&quot;utils/DataSource&quot;,<br />
+function(a, b, c) {<br />
+	var d = a(&quot;external/jquery&quot;),<br />
+	e = a(&quot;model/UserData&quot;),<br />
+	f = a(&quot;utils/log/Logger&quot;),<br />
+	g = {<br />
+		keyFrom: null,<br />
+		requestMap: {<br />
+			longUrl: {<br />
+				url: &quot;http://163.fm/getOriginal&quot;,<br />
+				login: !1<br />
+			},</code></pre><p class='detail'><br />
+<br />
+这个只是定义，在home.js中再查找longUrl，有如下代码：<br />
+<br />
+</p><pre><code>define(&quot;task/shortURL&quot;,<br />
+function(a, b, c) {<br />
+	var d = a(&quot;task/TaskManager&quot;),<br />
+	e = a(&quot;task/Task&quot;);<br />
+	d.add(new e(&quot;shortURL&quot;,<br />
+	function() {<br />
+		var b = a(&quot;external/jquery&quot;),<br />
+		c = a(&quot;utils/DataSource&quot;);<br />
+		b(document.body).delegate(&quot;.short-url:not(.processed)&quot;, &quot;mouseenter&quot;,<br />
+		function(a) {<br />
+			var d = b(a.target),<br />
+			e = d.addClass(&quot;processed&quot;).text();<br />
+			if (e.indexOf(&quot;http://163.fm&quot;) === 0) {<br />
+				var f = e.substr(14);<br />
+				c.get(&quot;longUrl&quot;, {<br />
+					q: f<br />
+				},<br />
+				function(a) {<br />
+					d.attr(&quot;title&quot;, a)<br />
+				},<br />
+				&quot;jsonp&quot;)<br />
+			}<br />
+		})<br />
+	}))<br />
+});</code></pre><p class='detail'><br />
+<br />
+在上面的代码中我们大致可以知道问题产生的原因：<br />
+<br />
+<br />
+<br />
+a) 修改参数voteUrl发微博<br />
+<br />
+b) voteUrl会转换成一个短链接地址，短链接对应的长链接地址为voteUrl的值<br />
+<br />
+c) 微博中包含这个短链接地址，当鼠标移动到短链接地址会触发mouseenter事件<br />
+<br />
+d) 响应mouseenter事件后会先取短链接后面的7个字符，把这7个字符作为q参数的值，然后通过ajax去http://163.fm/getOriginal请求资源。在这一步中执行我们的js代码。<br />
+<br />
+e) 最后把短链接所对应真是的长链接地址放到微博中a标签的title属性。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/26152115cf6334e333465def4257c87449436822.jpg" target="_blank"><img src="../images/26152115cf6334e333465def4257c87449436822.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1、对voteUrl参数进行判断<br />
+<br />
+2、通过jsonp调用的时候先对voteUrl的值进行js转义。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的胖子" title="心伤的胖子">心伤的胖子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012746" title="网易微博存储型XSS 1">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2012-09-27 11:05</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对网易的关注，漏洞已经修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12746";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

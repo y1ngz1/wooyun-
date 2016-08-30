@@ -1,0 +1,245 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		汇文OPAC全版本通杀越权操作和存储xss  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		汇文OPAC全版本通杀越权操作和存储xss  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/nauscript">nauscript</a> 
+</li><li>提交时间：		2013-12-18 12:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-26：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-02：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-12：	细节向普通白帽子公开<br/>
+									2014-02-01：	细节向实习白帽子公开<br/>
+									2014-03-18：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">汇文OPAC全版本通杀越权操作和存储xss，算0day不？危害性并不大，只是可以影响到的用户很广泛，该图书馆web应用的普及程度让我惊讶（http://www.libsys.com.cn/userlist.php）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">本来想留着再做进一步深入挖掘，可是今天居然看到一个“路人甲”发了汇文的盲注，那就先发了吧，此次测试v4.0版本测试对象为南京审计学院图书馆，v5.0版本为中国石油大学图书馆以及某学校v4.0的图书馆终端<br />
+<br />
+首先是越权：<br />
+<br />
+评论处：<br />
+<br />
+1、删除任何人的评论（不需要登陆，游客身份也可以做到）<br />
+<br />
+   以下是用v4.0做的测试<br />
+<br />
+   http://网址/opac/book_review_del.php?marc_no=书籍编号&amp;certId=证件号(一般为学号或者身份证号)<br />
+<br />
+  ps:什么？书籍的编号是打开图书的url后面的几个位数你知道，但不知道证件号怎么办！右键源码告诉你，证件编号统统泄露，而这个编号恰恰可以当做用户名登陆，而初始密码大都是学号或者身份证号的几位位数或者123456.屡试不爽全部版本都涉及到了对读者账号信息的泄露，甚至可以以此收集身份证号和学生证号，这个问题的发现源自在后台删除自己评论时发现了这个规律，只要将书籍号和证件号稍作修改就是了，其他版本也只需要在评论管理处查看以下功能连接，稍作修改就是了。<br />
+<br />
+  <br />
+<br />
+2、删除任何人的任意书架<br />
+<br />
+  只需要在我的书架管理处，在源码中找到“删除”按钮处，将代码改为你想要删除的书架的ID，然后按下删除按钮提交后，你要删除的书架以及里面的藏书全部荡然无存（这个有点损，在测试的时候失手删了一个学霸的书架“本学期要借的书”，里面足足放了104本书，我对不起他啊。。。）<br />
+<br />
+  还可以删除任意书架里的书<br />
+<br />
+  打开一个自己已经创建的书架，里面一定要有已经添加的一本书，然后再源码处将</p><pre><code>delbook(&#039;书架号&#039;,&#039;书号&#039;)</code></pre><p class='detail'>改好后点击删除，想不让谁收藏这本书都可以<br />
+<br />
+  而每本书被哪个书架收藏了，早该书页面的右边栏也有显示，非常轻松，还可以用上面的方法继续查看书架属于哪个ID，这样平时谁看什么样的书这种隐私也会被泄露<br />
+<br />
+  书架功能只对4.0做了测试，因为大多数5.0都是近期才上线使用，而书架功能大都需要账号，所以无法测试到。<br />
+<br />
+<br />
+<br />
+3、对书评的认可，无上限评论，刷爆你的认可度<br />
+<br />
+  直接附上代码，只需要在你想要刷认可的书籍页面地址栏放上这个代码，随便刷，无限制，也不需要登陆<br />
+<br />
+</p><pre><code>v4.0代码（测试版本为v4.0普通版和v4.0工作组版）<br />
+  javascript:_replyReview(&#039;书号&#039;,&#039;证件号&#039;,&#039;support&#039;);   认可<br />
+  javascript:_replyReview(&#039;书号&#039;,&#039;证件号&#039;,&#039;against&#039;);   不认可<br />
+<br />
+  v5.0代码（测试版本为OPAC v5.0.1 ）<br />
+  javascript:_replyReview(&#039;书号&#039;,&#039;学号&#039;,&#039;评论时间&#039;,&#039;support&#039;);  认可  （这里要注意的是增加的这个评论时间，我测试的这个评论的评论时间是这样的格式，&#039;2011-12-08+22%3A08%3A09&#039;,后面的22%3A08%3A09只需要UrlEncode解码就可以得到22:08:09，当然你完全可以在评论者的名字旁边看到发布时间，只需要按照这个格式做一下UrlEncode编码即可，估计在v5.0的删除评论的功能上这个新添加的编码过的时间戳也被用到了）<br />
+  javascript:_replyReview(&#039;书号&#039;,&#039;学号&#039;,&#039;评论时间&#039;,&#039;against&#039;);  不认可</code></pre><p class='detail'><br />
+<br />
+  而这个问题的利用就在于当认可度被刷高后，该图书会被想应的放到推荐页面，会有更多的读者来访问，为后面的蠕虫传播做好准备。<br />
+<br />
+  4.0版本可以不停的执行，支持数也会很直接的跟随显示，v5.0也可以不停的执行，只是第一次执行后会显示“谢谢参与”，不过你执行几次后再刷新，评论处照样显示你刷票的增加次数<br />
+<br />
+<br />
+<br />
+存储xss<br />
+<br />
+这个是个小重点1、评论处没有任何的限制，放什么都可以，何况那些越权大都不需要登陆，暴漫帝小川哥哥说，越权加存储是最好滴搭档，结合前面的越权用存储来触发别人我的认可数，才一天多认可值就增加到了65<br />
+<br />
+             2、添加的书架类别名和说明出不论放&lt;script&gt;alert(1)&lt;/script&gt;还是alert(1)都可以执行，而放上alert(document.cookie)就更奇葩了，你每刷新一下，就产生一个新的同名书架，而如上所说，你讲一本书收藏在一个书架中后，该书页面的右边栏会显示，那么每当有人打开这个书籍的页面时这个恶意的“书架名”脚本就会被触发，而被书架收藏多的书也会被推荐到首页的推荐图书中，这个脚本要先于评论处的脚本触发。<br />
+<br />
+           其实这个利用起来很方便，添加好xss代码后，只需要将书目塞满这个书架就好了，只要有人查看这个书目就会中招，因为在该书目页面的右边有一个“收藏该书的书架”会显示我的书架并触发，下图是我在图书馆的终端查看的，浏览便可触发<br />
+<br />
+            </p><p class="detail"><a href="../images/18114621e30f4849c847331dede9ca30092835a2.jpeg" target="_blank"><img src="../images/18114621e30f4849c847331dede9ca30092835a2.jpeg" alt="YP20131218113441.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+             </p><p class="detail"><a href="../images/1811463696919444c6482706075a0d218c28f128.jpeg" target="_blank"><img src="../images/1811463696919444c6482706075a0d218c28f128.jpeg" alt="YP20131218113515.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+           3、个人信息的地址栏处也可以存储你的xss code<br />
+<br />
+           4、个人觉得那个&quot;添加外部RSS源&quot;的功能很不好，完全也可以存储xss code ，当然对于不了解的东西不乱说，只是听说国外有人利用绕过安全限制重定向rss源来执行恶意脚本，但不明原理也不知真伪就不做讨论了<br />
+<br />
+</p><p class="detail"><a href="../images/1811135316a4f4b39f87e2f3baefc039e41fed61.jpg" target="_blank"><img src="../images/1811135316a4f4b39f87e2f3baefc039e41fed61.jpg" alt="rss.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+另外因为我测试的账户权限很低，几乎等同于游客，只是可以发书评而已，权限较大的账户一但被破解，估计也可以利用相同的手法，仅仅只是修改图书的编码、证件号就可以做一些越权操作（仅仅只是推测），特别是一个读者荐购的功能，可以xss攻击，而欠款信息和欠书信息目测也可以越权添加和删除，因为测试账号没有权限，所以不做测试了。<br />
+<br />
+<br />
+<br />
+当然还有一处很无聊的，总体评价处没有任何提交限制，那个对于书籍的评价只需要改改change_rating()中的数值，正负值都可以，舆论就任你指挥了，星星数会被修改，一但超过5图片就显示错误了，不过你还可以用负数减回来，这方面的修改可以借鉴豆瓣。<br />
+<br />
+</p><p class="detail"><a href="../images/181118200b1ba4c6b2e4fbf07926be5ca220a9a9.jpg" target="_blank"><img src="../images/181118200b1ba4c6b2e4fbf07926be5ca220a9a9.jpg" alt="2121.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">v4.0测试页面：http://211.65.227.61:8010/opac/item.php?marc_no=0000207928<br />
+<br />
+v5.0测试页面：http://lib2.cup.edu.cn/opac/item.php?marc_no=0000313671<br />
+<br />
+另外还有工作组版等几个版本也做了测试，均可行，只是v5.0为最新版本，大都才刚刚使用，评论等很少，而且大都需要账号登陆，因此也给测试带来了限制<br />
+<br />
+（除了不需要登陆的越权操作，审核MM如果需要账号登陆来验证上述问题的话我可以提供哈） </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对提交要做限制和验证 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/nauscript" title="nauscript">nauscript</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046333" title="汇文OPAC全版本通杀越权操作和存储xss">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：13 </p>
+													<p class="detail">确认时间：2013-12-23 08:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认所述情况，该漏洞已经转报给教育网应急组织——上海交通大学网络信息中心，由其协调复现和处置</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46333";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,270 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		E创网络添加评论页面检查不严格，导致可以任意添加评论  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		E创网络添加评论页面检查不严格，导致可以任意添加评论  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/路人甲">路人甲</a> 
+</li><li>提交时间：		2013-05-10 16:15</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-10：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-05-10：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">addview.asp没有对用户身份进行验证，导致可以随意对新闻进行评论</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>&lt;%<br />
+reviewID=checkstr(Request.Form(&quot;reviewID&quot;))<br />
+NewsID=checkstr(Request.Form(&quot;NewsID&quot;))<br />
+title=checkstr(Request.Form(&quot;title&quot;))<br />
+Author=trim(checkstr((Request.Form(&quot;Author&quot;))))<br />
+dim ViewUrl<br />
+ViewUrl=request.cookies(eChsys)(&quot;ViewUrl&quot;)<br />
+if ViewUrl=&quot;&quot; then<br />
+	ViewUrl=&quot;index.asp&quot;<br />
+end if<br />
+<br />
+if author=&quot;&quot; then<br />
+	response.write &quot;&lt;script&gt;alert(&#039;请输入您的姓名！&#039;);history.back()&lt;/script&gt;&quot;<br />
+	Response.End<br />
+end if<br />
+author=htmlencode(author)<br />
+<br />
+email=trim(Request.Form(&quot;email&quot;))<br />
+if email=&quot;&quot; then<br />
+	response.write &quot;&lt;script&gt;alert(&#039;请输入您的EMAIL。&#039;);history.back()&lt;/script&gt;&quot;<br />
+	Response.End<br />
+end if<br />
+<br />
+if  IsValidEmail(email)=false  then<br />
+	response.write &quot;&lt;script&gt;alert(&#039;请输入正确的EMAIL。&#039;);history.back()&lt;/script&gt;&quot;<br />
+	Response.End<br />
+end if<br />
+<br />
+if Instr(request(&quot;content&quot;),&quot;&#039;&quot;)&gt;0 or Instr(request(&quot;content&quot;),&quot;script&quot;)&gt;0 or Instr(request(&quot;content&quot;),&quot;onClick&quot;)&gt;0  or Instr(request(&quot;content&quot;),&quot;onload&quot;)&gt;0 then<br />
+	Show_Err(&quot;对不起，您输入的留言内容包含有非法字符。&lt;br&gt;&lt;br&gt;&lt;a href=&#039;javascript:history.back()&#039;&gt;返回&lt;/a&gt;&quot;)<br />
+	Response.End <br />
+end if<br />
+<br />
+<br />
+<br />
+content=trim(htmlencode1((request.form(&quot;content&quot;))))<br />
+content=replace(content,&quot;&lt;p&gt; &quot;,&quot;&quot;)<br />
+content=replace(content,&quot;&lt;P&gt; &quot;,&quot;&quot;)<br />
+<br />
+Response.cookies(eChsys)(&quot;content&quot;)=content<br />
+<br />
+dim byte1<br />
+byte1=split(byteType,&quot;|&quot;)<br />
+<br />
+for i=0 to ubound(byte1)<br />
+	content=replace(content,trim(byte1(i)),&quot;***&quot;)<br />
+next<br />
+<br />
+dim byte2<br />
+byte2=split(byteipType,&quot;|&quot;)<br />
+<br />
+for i=0 to ubound(byte2)<br />
+if Request.serverVariables(&quot;REMOTE_ADDR&quot;)=byte2(i) then<br />
+	Show_Err(&quot;对不起，你的IP地址已被锁定，请联系管理员！！！。&lt;br&gt;&lt;br&gt;&lt;a href=&#039;javascript:history.back()&#039;&gt;返回&lt;/a&gt;&quot;)<br />
+	Response.cookies(eChsys)(&quot;content&quot;)=&quot;&quot;<br />
+	Response.End <br />
+end if<br />
+next<br />
+<br />
+dim byte3<br />
+byte3=split(bytezfType,&quot;|&quot;)<br />
+<br />
+for i=0 to ubound(byte3)<br />
+if Instr(request(&quot;content&quot;),byte3(i))&gt;0  then<br />
+	Show_Err(&quot;对不起，请不要发布非法小广告！！！。&lt;br&gt;&lt;br&gt;&lt;a href=&#039;javascript:history.back()&#039;&gt;返回&lt;/a&gt;&quot;)<br />
+	Response.cookies(eChsys)(&quot;content&quot;)=&quot;&quot;<br />
+	Response.End <br />
+end if<br />
+next<br />
+<br />
+if content=&quot;&quot; then<br />
+	response.write &quot;&lt;script&gt;alert(&#039;请输入评论内容！&#039;);history.back()&lt;/script&gt;&quot;<br />
+	Response.End<br />
+end if<br />
+<br />
+set rs=server.createobject(&quot;adodb.recordset&quot;)<br />
+sql=&quot;select * from &quot;&amp; db_EC_News_Table &amp;&quot; where NewsId=&quot; &amp; NewsId<br />
+rs.open sql,conn,1,3<br />
+if rs.eof and rs.bof then<br />
+	rs.close<br />
+	set rs=nothing<br />
+	response.write &quot;&lt;script&gt;alert(&#039;无法对不存在的文章进行评论！\n 确认是否为非法的提交。&#039;);history.back()&lt;/script&gt;&quot;<br />
+	response.end<br />
+else<br />
+	checked=rs(&quot;checkked&quot;)<br />
+	if checked&lt;&gt;1 then<br />
+		rs.close<br />
+		set rs=nothing<br />
+		response.write &quot;&lt;script&gt;alert(&#039;文章未通过审核，不能进行评论！&#039;);history.back()&lt;/script&gt;&quot;<br />
+		response.end<br />
+	else<br />
+		rs(&quot;titlesize&quot;)=1<br />
+		rs.update<br />
+		rs.close<br />
+		reviewip=Request.ServerVariables(&quot;REMOTE_ADDR&quot;)<br />
+		passed=checkstr(Request.Form(&quot;passed&quot;)) //评论是否通过flag竟然交给用户来提交！<br />
+	<br />
+		set rs=server.createobject(&quot;adodb.recordset&quot;)<br />
+		sql=&quot;select * from &quot;&amp; db_EC_Review_Table &amp;&quot;&quot; <br />
+		rs.open sql,conn,1,3<br />
+		rs.addnew<br />
+		rs(&quot;author&quot;)=author<br />
+		rs(&quot;content&quot;)=content<br />
+		rs(&quot;title&quot;)=title<br />
+		rs(&quot;NewsID&quot;)=NewsID<br />
+		rs(&quot;passed&quot;)=passed<br />
+		rs(&quot;reviewip&quot;)=reviewip<br />
+		rs(&quot;email&quot;)=email<br />
+		rs(&quot;updatetime&quot;)=now()<br />
+		rs.update<br />
+		rs.close<br />
+		reviewid=reviewID+1<br />
+		set rs=nothing<br />
+		Response.cookies(eChsys)(&quot;content&quot;)=&quot;&quot;<br />
+	end if<br />
+end if<br />
+Response.Redirect ViewUrl<br />
+%&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+提交内容包含newsid、passed、title、content、author、email就可以绕过评论审核机制直接对newsid对应的新闻进行评论了 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/092217244bbf8f79c0b3504753cd9eb324839597.jpg" target="_blank"><img src="../images/092217244bbf8f79c0b3504753cd9eb324839597.jpg" alt="v.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">addview.asp页面加入用户认证、验证码<br />
+<br />
+passed flag只能由管理员控制 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/路人甲" title="路人甲">路人甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-023395" title="E创网络添加评论页面检查不严格，导致可以任意添加评论">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="23395";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

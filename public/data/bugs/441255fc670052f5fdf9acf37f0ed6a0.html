@@ -1,0 +1,235 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop一处设计缺陷可以被二次利用  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop一处设计缺陷可以被二次利用  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/齐迹">齐迹</a> 
+</li><li>提交时间：		2013-05-29 12:19</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-29：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-29：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-06-01：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-08：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-18：	细节向普通白帽子公开<br/>
+									2013-07-08：	细节向实习白帽子公开<br/>
+									2013-08-27：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ecshop一处设计缺陷导致可以被二次利用。关于管理员密码那些事。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">本文前提 已经获得管理员密码的MD5！<br />
+<br />
+<br />
+<br />
+不知道从那个版本开始ec管理员密码加密方式发生了一些变化<br />
+<br />
+$ec_salt=rand(1,9999);<br />
+<br />
+md5(md5($pwd).$ec_salt;<br />
+<br />
+对于通过注入得到md5的兄弟们标识压力山大啊！爆破无望。<br />
+<br />
+<br />
+<br />
+不过。。ec后台的找回密码给了大家希望。<br />
+<br />
+这个Bug 很明显 可能已经被长期利用<br />
+<br />
+<br />
+<br />
+下面看代码<br />
+<br />
+admin/get_password.php 138行<br />
+<br />
+</p><pre><code>/* 验证新密码，更新管理员密码 */<br />
+    elseif (!empty($_POST[&#039;action&#039;]) &amp;&amp; $_POST[&#039;action&#039;] == &#039;reset_pwd&#039;)<br />
+    {<br />
+        $new_password = isset($_POST[&#039;password&#039;]) ? trim($_POST[&#039;password&#039;])  : &#039;&#039;;<br />
+        $adminid      = isset($_POST[&#039;adminid&#039;])  ? intval($_POST[&#039;adminid&#039;]) : 0;<br />
+        $code         = isset($_POST[&#039;code&#039;])     ? trim($_POST[&#039;code&#039;])      : &#039;&#039;;<br />
+<br />
+        if (empty($new_password) || empty($code) || $adminid == 0)<br />
+        {<br />
+            ecs_header(&quot;Location: privilege.php?act=login\n&quot;);<br />
+            exit;<br />
+        }<br />
+<br />
+        /* 以用户的原密码，与code的值匹配 */<br />
+        $sql = &#039;SELECT password FROM &#039; .$ecs-&gt;table(&#039;admin_user&#039;). &quot; WHERE user_id = &#039;$adminid&#039;&quot;;<br />
+        $password = $db-&gt;getOne($sql);<br />
+<br />
+        if (md5($adminid . $password) &lt;&gt; $code)<br />
+        {<br />
+            //此链接不合法<br />
+            $link[0][&#039;text&#039;] = $_LANG[&#039;back&#039;];<br />
+            $link[0][&#039;href&#039;] = &#039;privilege.php?act=login&#039;;<br />
+<br />
+            sys_msg($_LANG[&#039;code_param_error&#039;], 0, $link);<br />
+        }<br />
+<br />
+        //更新管理员的密码<br />
+		$ec_salt=rand(1,9999);<br />
+        $sql = &quot;UPDATE &quot; .$ecs-&gt;table(&#039;admin_user&#039;). &quot;SET password = &#039;&quot;.md5(md5($new_password).$ec_salt).&quot;&#039;,`ec_salt`=&#039;$ec_salt&#039; &quot;.<br />
+               &quot;WHERE user_id = &#039;$adminid&#039;&quot;;<br />
+        $result = $db-&gt;query($sql);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看出问题了把<br />
+<br />
+md5($adminid . $password) == $code<br />
+<br />
+即可重置密码<br />
+<br />
+前面已经说了前提了 2个值都有了 code是多少已经很明显了<br />
+<br />
+<br />
+<br />
+而且这里没有任何限制，存在暴力破解（密码字典+1-9999的盐）。成本较高。但是可以自动化。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">上面已经很清楚鸟！ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">换个更加严禁的code生成方式。增加验证码。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/齐迹" title="齐迹">齐迹</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024689" title="ecshop一处设计缺陷可以被二次利用">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：6 </p>
+													<p class="detail">确认时间：2013-05-29 20:52</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24689";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

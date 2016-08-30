@@ -1,0 +1,316 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PHPCMS 2008 最新漏洞（第一季）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PHPCMS 2008 最新漏洞（第一季）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/西毒">西毒</a> 
+</li><li>提交时间：		2013-03-21 22:47</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-03：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-13：	细节向普通白帽子公开<br/>
+									2013-04-23：	细节向实习白帽子公开<br/>
+									2013-05-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">先放第一季吧</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在include/common.inc.php中 ，这是phpcms的全局要加载的配置文件<br />
+<br />
+</p><pre><code>$dbclass = &#039;db_&#039;.DB_DATABASE;<br />
+require $dbclass.&#039;.class.php&#039;;<br />
+          <br />
+$db = new $dbclass;<br />
+$db-&gt;connect(DB_HOST, DB_USER, DB_PW, DB_NAME, DB_PCONNECT, DB_CHARSET);<br />
+          <br />
+require &#039;session_&#039;.SESSION_STORAGE.&#039;.class.php&#039;;<br />
+$session = new session();<br />
+session_set_cookie_params(0, COOKIE_PATH, COOKIE_DOMAIN);<br />
+          <br />
+if($_REQUEST)<br />
+{<br />
+    if(MAGIC_QUOTES_GPC)<br />
+    {<br />
+        $_REQUEST = new_stripslashes($_REQUEST);<br />
+        if($_COOKIE) $_COOKIE = new_stripslashes($_COOKIE);<br />
+        extract($db-&gt;escape($_REQUEST), EXTR_SKIP);<br />
+    }<br />
+    else<br />
+    {<br />
+        $_POST = $db-&gt;escape($_POST);<br />
+        $_GET = $db-&gt;escape($_GET);<br />
+        $_COOKIE = $db-&gt;escape($_COOKIE);<br />
+        @extract($_POST,EXTR_SKIP);<br />
+        @extract($_GET,EXTR_SKIP);<br />
+        @extract($_COOKIE,EXTR_SKIP);<br />
+    }<br />
+    if(!defined(&#039;IN_ADMIN&#039;)) $_REQUEST = filter_xss($_REQUEST, ALLOWED_HTMLTAGS);<br />
+    if($_COOKIE) $db-&gt;escape($_COOKIE);<br />
+}<br />
+//echo QUERY_STRING;<br />
+if(QUERY_STRING &amp;&amp; strpos(QUERY_STRING, &#039;=&#039;) === false &amp;&amp; preg_match(&quot;/^(.*)\.(htm|html|shtm|shtml)$/&quot;, QUERY_STRING, $urlvar))<br />
+{<br />
+    //var_dump($urlvar[1]);<br />
+    //echo &#039;test&#039;;<br />
+    parse_str(str_replace(array(&#039;/&#039;, &#039;-&#039;, &#039; &#039;), array(&#039;&amp;&#039;, &#039;=&#039;, &#039;&#039;), $urlvar[1]));<br />
+              <br />
+}</code></pre><p class='detail'><br />
+<br />
+这里的话首先实例化了这个数据库，产生了一个$db资源句柄，他是用来操作数据库的<br />
+<br />
+<br />
+<br />
+然后就是将我们传进来的参数进行变量化<br />
+<br />
+<br />
+<br />
+这里有一些小过滤，自己可以看，所以这里传进来的参数就作为了变量<br />
+<br />
+<br />
+<br />
+但是接下来这行呢？<br />
+<br />
+</p><pre><code>if(QUERY_STRING &amp;&amp; strpos(QUERY_STRING, &#039;=&#039;) === false &amp;&amp; preg_match(&quot;/^(.*)\.(htm|html|shtm|shtml)$/&quot;, QUERY_STRING, $urlvar))<br />
+{<br />
+    //var_dump($urlvar[1]);<br />
+    //echo &#039;test&#039;;<br />
+    parse_str(str_replace(array(&#039;/&#039;, &#039;-&#039;, &#039; &#039;), array(&#039;&amp;&#039;, &#039;=&#039;, &#039;&#039;), $urlvar[1]));<br />
+                <br />
+}</code></pre><p class='detail'><br />
+<br />
+看看这里？这里的QUERY_STRING来自前面<br />
+<br />
+这里有个过滤，但是不影响<br />
+<br />
+<br />
+<br />
+如果我们在这里进行覆盖这个db变量呢<br />
+<br />
+<br />
+<br />
+因为这里 parse_str(str_replace(array(&#039;/&#039;, &#039;-&#039;, &#039; &#039;), array(&#039;&amp;&#039;, &#039;=&#039;, &#039;&#039;), $urlvar[1]));<br />
+<br />
+<br />
+<br />
+可以将我们传进去的/ - 进行替换<br />
+<br />
+<br />
+<br />
+所以我们如果提交如下字符<br />
+<br />
+<br />
+<br />
+http://localhost/phpcms/index.php?db-5/gid-xd.html<br />
+<br />
+<br />
+<br />
+他由于这个db被覆盖就会出错，所以物理路径就爆出来了<br />
+<br />
+</p><p class="detail"><a href="../images/2122450283b3f70c449fe821ebc67a308331fcb1.jpg" target="_blank"><img src="../images/2122450283b3f70c449fe821ebc67a308331fcb1.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+在c.php中<br />
+<br />
+</p><pre><code>$db-&gt;query(&quot;UPDATE &quot;.DB_PRE.&quot;ads SET `clicks`=clicks+1 WHERE adsid=&quot;.$ads[&#039;adsid&#039;]);<br />
+$info[&#039;username&#039;] = $_username;<br />
+$info[&#039;clicktime&#039;] = time();<br />
+$info[&#039;ip&#039;] = IP;<br />
+$info[&#039;adsid&#039;] = $id;<br />
+$info[&#039;referer&#039;] = HTTP_REFERER;<br />
+$year = date(&#039;ym&#039;,TIME);<br />
+$table = DB_PRE.&#039;ads_&#039;.$year;<br />
+$table_status = $db-&gt;table_status($table);<br />
+//echo &#039;test&#039;;<br />
+if(!$table_status) {<br />
+    include MOD_ROOT.&#039;include/create.table.php&#039;;<br />
+}<br />
+$db-&gt;insert($table, $info);</code></pre><p class='detail'><br />
+<br />
+注意这里的HTTP_REFERER这个常量<br />
+<br />
+<br />
+<br />
+这里的常量是通过前面的common.inc.php定义好的<br />
+<br />
+<br />
+<br />
+define(&#039;HTTP_REFERER&#039;, isset($_SERVER[&#039;HTTP_REFERER&#039;]) ? $_SERVER[&#039;HTTP_REFERER&#039;] : &#039;&#039;);<br />
+<br />
+<br />
+<br />
+没有经过任何过滤操作，所以你懂的，我估计很多同学已经发现了，只是没去公布了，所以俺就替你们xxoo了，哈哈...别骂我<br />
+<br />
+<br />
+<br />
+然后<br />
+<br />
+$db-&gt;insert($table, $info);<br />
+<br />
+<br />
+<br />
+我们来看一下它这里的操作<br />
+<br />
+所以你懂的<br />
+<br />
+</p><p class="detail"><a href="../images/212246207aaaa4ec1839910be3913789617fce89.jpg" target="_blank"><img src="../images/212246207aaaa4ec1839910be3913789617fce89.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+所以就可以xxoo了，很简单，exp已经写好了<br />
+<br />
+<br />
+<br />
+暂时还只看一部分，可能一季一季的放吧<br />
+<br />
+exp 我就放到https://forum.90sec.org 以及www.linux520.com里面去<br />
+<br />
+<br />
+<br />
+大家去里面找 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/212246207aaaa4ec1839910be3913789617fce89.jpg" target="_blank"><img src="../images/212246207aaaa4ec1839910be3913789617fce89.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这个自己过滤吧！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/西毒" title="西毒">西毒</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020439" title="PHPCMS 2008 最新漏洞（第一季）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-03-24 15:57</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">希望还在使用08的朋友们尽快升级到v9。感谢提交问题。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20439";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

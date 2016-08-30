@@ -1,0 +1,207 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		iNodeManager远程拒绝服务或执行任意代码漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		iNodeManager远程拒绝服务或执行任意代码漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/cssembly">cssembly</a> 
+</li><li>提交时间：		2013-04-23 10:42</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-23：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-27：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-30：	细节向第三方安全合作伙伴开放<br/>
+									2013-05-07：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-05-17：	细节向普通白帽子公开<br/>
+									2013-06-06：	细节向实习白帽子公开<br/>
+									2013-07-22：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">iNodeManager存在远程拒绝服务或执行任意代码漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">由于完成SSL数据交互过程较困难，只做原理说明。在安装inode时，客户端存在认证过程所需的所有证书和key，所以一定能够构造出来。<br />
+<br />
+分析的目标程序的版本为H3C iNode PC 5.1 E0307，存在漏洞的进程为iNodeMngChecker.exe<br />
+<br />
+</p><p class="detail"><a href="../images/23095533a39e3a3a041bbe8462806e1683cf86e7.png" target="_blank"><img src="../images/23095533a39e3a3a041bbe8462806e1683cf86e7.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+可以看到程序绑定9090端口监听连接。<br />
+<br />
+</p><p class="detail"><a href="../images/23095650c4e1c426cd076832e315d89e34a2b960.png" target="_blank"><img src="../images/23095650c4e1c426cd076832e315d89e34a2b960.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+在线程函数int __stdcall sub_420430(SOCKET *a1)中调用sub_41F730(v8, v5)接收并处理数据。<br />
+<br />
+</p><p class="detail"><a href="../images/231000178718c043fe7198c6e6c50d330db1b195.png" target="_blank"><img src="../images/231000178718c043fe7198c6e6c50d330db1b195.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+在sub_415AE0函数中完成数据的接收，缓冲区v90存放接收到的数据，v52为接收数据的长度<br />
+<br />
+</p><p class="detail"><a href="../images/231002300d1b3fecac1c739a06fbe3b9d5c8d542.png" target="_blank"><img src="../images/231002300d1b3fecac1c739a06fbe3b9d5c8d542.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+函数sub_419600处理数据，参数1为接收到的数据，参数2为数据长度<br />
+<br />
+</p><p class="detail"><a href="../images/2310050057e090f18c4d4960c083c6e7d7525e6b.png" target="_blank"><img src="../images/2310050057e090f18c4d4960c083c6e7d7525e6b.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+sub_419600中调用sub_41B950(&amp;v105, a1, a2)函数，将a1中的数据拷贝到v105开始的缓冲区，并作一些初始化<br />
+<br />
+</p><p class="detail"><a href="../images/2310071573714db829c15d55fc65c89c7749ff63.png" target="_blank"><img src="../images/2310071573714db829c15d55fc65c89c7749ff63.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+sub_41BEE0函数完成对v105的处理<br />
+<br />
+</p><p class="detail"><a href="../images/231009426c2f32fc68a7ba06139349ecba74fb16.png" target="_blank"><img src="../images/231009426c2f32fc68a7ba06139349ecba74fb16.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+sub_41BEE0函数中首先判断接收数据的前4字节是否为0xA0BF007，然后取出v7 = *((_DWORD *)pRecvData + 2)，判断是否小于0x1000。取v6 = *((_DWORD *)pRecvData + 1)判断等于0xC1。如果构造数据使得v6 = 0xC1,v7 = 0x90C，就能执行到<br />
+<br />
+</p><p class="detail"><a href="../images/23101508ca8a122c656546fb4710940fbf871b10.png" target="_blank"><img src="../images/23101508ca8a122c656546fb4710940fbf871b10.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+while循环中，首先判断 v15 = (int)((char *)pRecvData + v8（12）)是否为0，显然不为0，取v16 = *(_DWORD *)(v15 + 4)，此时相当于取pRecvData + 16处的4字节， 此时v25 = v7 - 0xC = 0x900，此时如果构造的数据中v16的值为0x8FF,就能越过if ( v16 &gt; v25 || v16 &lt; 8 )的判断，同时v17 = v16 - 8 = 0x8F7;到达switch，可以构造v15处的值为 0x14，可以看到程序拷贝数据memcpy((char *)pRecvData + 4108, v15 + 8, v17)到(char *)pRecvData + 4108处，而pRecvData 为sub_419600中的v105缓冲区<br />
+<br />
+</p><p class="detail"><a href="../images/23102557c4e114dc8a4467763944b0e2fb910678.png" target="_blank"><img src="../images/23102557c4e114dc8a4467763944b0e2fb910678.png" alt=".PNG" width="600"/></a></p><p class="detail"><br />
+<br />
+缓冲区v105距离栈底为0x1340，而memcpy的目标地址为(char *)pRecvData + 4108，即v105 + 0x100C,而拷贝的数据长度为v17也就是我们所构造的0x8F7，显然已经覆盖了sub_419600的返回地址。所以当sub_41BEE0正常运行结束后，如果不发生异常，则最终能够导致拒绝服务攻击，否则导致执行任意代码<br />
+<br />
+溢出为位置显然包含后的多个memcpy </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">只有证明，木有POC </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/cssembly" title="cssembly">cssembly</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-022352" title="iNodeManager远程拒绝服务或执行任意代码漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：18 </p>
+													<p class="detail">确认时间：2013-04-27 11:32</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认漏洞所述情况（机理确认），暂未在互联网实例上复现。将在27日由CNVD直接联系华三公司处置。<br />
+<br />
+按潜在最大危害进行评分(溢出+代码执行)，rank 18</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="22352";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

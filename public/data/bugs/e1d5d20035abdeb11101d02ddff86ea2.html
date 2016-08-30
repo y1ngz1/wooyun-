@@ -1,0 +1,482 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		一次失败的漫游腾讯内部网络过程 #1  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		一次失败的漫游腾讯内部网络过程 #1  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪猪侠">猪猪侠</a> 
+</li><li>提交时间：		2013-09-22 15:43</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-22：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-24：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-04：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-14：	细节向普通白帽子公开<br/>
+									2013-10-24：	细节向实习白帽子公开<br/>
+									2013-11-06：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">安全是一个整体，保证安全不在于强大的地方有多强大，而在于真正薄弱的地方在哪里。<br />
+<br />
+利用上面这个原则通过互联网收集腾讯集团相关边缘系统的信息，成功展开的一次测试案例，由于中途使用的测试方法未考虑到腾讯的入侵检测系统等相关因素，最终被系统规则检测到，暴漏了整个测试行为！<br />
+<br />
+本次测试成功因素主要是：由于腾讯业务人员偷偷在自身服务器核心网络架设了一个团队网站(后续和腾讯相关人员沟通得知)，相关信息未在安全中心登记备案，也就导致该服务器未被专业安全人员加固，从而被白帽子钻空成功渗透进入腾讯内部网络。<br />
+<br />
+本漏洞报告会描述腾讯的相关防御机制供各大互联网公司、白帽子参考挑战之，同时规则只有经过长期的碰撞改进才能越来越强壮！<br />
+<br />
+欢迎腾讯选择忽略此漏洞，让白帽子们提前围观到细节。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">#1 获取边缘系统信息<br />
+<br />
+<br />
+<br />
+写了个自动化python脚本，通过google搜索tencent.com公司域名，site:tencent.com 之类的原理，可参考google hacking。<br />
+<br />
+<br />
+<br />
+#2 抽象信息细化<br />
+<br />
+<br />
+<br />
+收集网页内容可能出现的LINK，可正则匹配或人工判断是否也属于腾讯旗下，我最终在http://isux.tencent.com/about 腾讯设计团队下面的一堆连接找到了本次测试的目标；<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/221454291bd3939f91363e9fd315926457f1bcdf.jpg" target="_blank"><img src="../images/221454291bd3939f91363e9fd315926457f1bcdf.jpg" alt="tecent_边缘业务.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#3 目标确定、指纹分析<br />
+<br />
+<br />
+<br />
+通过针对收集到的业务系统列表，采取老太太吃柿子的方法：“捡软的吃”！<br />
+<br />
+<br />
+<br />
+</p><pre><code>http://isd.tencent.com/<br />
+http://impd.tencent.com/<br />
+http://isux.tencent.com/<br />
+http://flashteam.tencent.com/<br />
+http://cdc.tencent.com/<br />
+http://www.alloyteam.com</code></pre><p class='detail'>/<br />
+<br />
+<br />
+<br />
+指纹分析结果采用了： <br />
+<br />
+</p><pre><code>Nginx 中间件<br />
+Wordpress系统</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+#4 针对收集到的信息自动化FUZZ<br />
+<br />
+<br />
+<br />
+结果发现只有www.alloyteam.com这台服务器没有加固，wp-login.php wp-admin 后台均可以访问。<br />
+<br />
+<br />
+<br />
+</p><pre><code>--------------------------------<br />
+* Checking: <br />
+* http://www.alloyteam.com/<br />
+--------------------------------<br />
+TAT.iAzrael<br />
+pan<br />
+元彦<br />
+melody<br />
+Pel<br />
+TAT.Johnny<br />
+yussica<br />
+TAT.Kinvix<br />
+TAT.Chappell<br />
+TAT.林挺<br />
+TAT.sheran<br />
+yukin<br />
+TAT.dmyang<br />
+TAT.svenzeng<br />
+zhanglei<br />
+TAT.岑安<br />
+vienna<br />
+dingollw<br />
+TAT.Rehorn<br />
+czpae86<br />
+TAT.Cson<br />
+duwei</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+上面是针对Wordpress自动化的工具输出的用户列表，最终利用字典匹配到了Pel用户的密码：112***<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22150119da4de6dc43906aa9fbca53eb6836b200.jpg" target="_blank"><img src="../images/22150119da4de6dc43906aa9fbca53eb6836b200.jpg" alt="tencent_wp-admin.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+恩，有人会说了，没有插件、模板编辑，你拿不到shell呀~~ ，而且还不在qq.com、tencent.com的主域下(xss类的利用都没用)，傻逼了吧！<br />
+<br />
+<br />
+<br />
+#5 不要只看到表象，尽可能将自己已知的知识、测试方法都用上<br />
+<br />
+<br />
+<br />
+把能想的方法都测试了个遍，最后恰好服务器采用的Nginx中间件，恰好是业务人员自己搭建的服务器，恰好腾讯的安全团队对这台服务器没有备案！<br />
+<br />
+<br />
+<br />
+Thanks God! 这就是运气(运气有时可能只属于那些一直在坚持的人们！)<br />
+<br />
+恰好这台Nginx没配好，存在解析漏洞，上传附件后，直接/a.php获得SHELL<br />
+<br />
+<br />
+<br />
+还可以目录遍历，这里是我的SHELL图片。<br />
+<br />
+</p><p class="detail"><a href="../images/221507520252ead3596a64bda67d7be19a5dbb18.jpg" target="_blank"><img src="../images/221507520252ead3596a64bda67d7be19a5dbb18.jpg" alt="tencent_happy.gif.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#6 个人失误导致测试失败<br />
+<br />
+<br />
+<br />
+由于个人的一些测试习惯，喜欢将带有caidao.exe一句话的后门加载至图片中，上传到对方服务器，以确认是否测试成功。<br />
+<br />
+<br />
+<br />
+由于腾讯在服务端采用了全量HTTP日志监控+另外的一些变态行为(监控系统程序的调用/bin/sh，/bin/bash)，菜刀从客户端传入到服务端的参数名称早已列入黑名单，各种shell的cookie_name也列入黑名单。<br />
+<br />
+<br />
+<br />
+个人的习惯疏忽，小看了这种WAF规则，也小看了腾讯的资源处理能力，最后被入侵检测规则匹配到，宣告本次测试失败。<br />
+<br />
+<br />
+<br />
+各大互联网公司厂商可以学习腾讯的防御机制，白帽子们可以思考，遇到这种环境怎么破？<br />
+<br />
+<br />
+<br />
+#7 对抗会持续存在<br />
+<br />
+<br />
+<br />
+后续又对腾讯的某个基于java的边缘系统进行了测试，最终未被检测系统发现(本系列将会有续集)，看来腾讯暂时只在现有擅长的维度里强悍，但以腾讯的财力来说，被他们发现是迟早的事，所以对抗将永不停息。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">#1 成功获得SHELl<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22151538ebba3e13e54d793513008d0caf35a866.jpg" target="_blank"><img src="../images/22151538ebba3e13e54d793513008d0caf35a866.jpg" alt="tencent_shell.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/221515558aef1951a33781d095ad5f925c2c6811.jpg" target="_blank"><img src="../images/221515558aef1951a33781d095ad5f925c2c6811.jpg" alt="tencent_shell2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#2 腾讯系统监控系列<br />
+<br />
+</p><p class="detail"><a href="../images/2215170277d30ada52f8669ca5d470315d5bda84.jpg" target="_blank"><img src="../images/2215170277d30ada52f8669ca5d470315d5bda84.jpg" alt="tencent_monitor.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22151757acc4a34f9792b696c579e5ecb409ee4c.jpg" target="_blank"><img src="../images/22151757acc4a34f9792b696c579e5ecb409ee4c.jpg" alt="tencent_monitor2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#3 bash 监控<br />
+<br />
+/data/.my_history<br />
+<br />
+<br />
+<br />
+</p><pre><code>[ Fri Aug 2 09:06:05 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:05 exit ]<br />
+[ Fri Aug 2 09:06:06 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:06 cd /tmp/tools/qqsa/ntpupdate/ &amp;&amp; ./ntpupdate.sh --install ]<br />
+[ Fri Aug 2 09:06:07 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:06 sleep 1 ]<br />
+[ Fri Aug 2 09:06:08 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:07 exit ]<br />
+[ Fri Aug 2 09:06:09 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:09 cd /tmp/tools/qqsa/proc_monitor &amp;&amp; ./setup.sh ]<br />
+[ Fri Aug 2 09:06:10 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:09 sleep 1 ]<br />
+[ Fri Aug 2 09:06:10 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:10 exit ]<br />
+[ Fri Aug 2 09:06:11 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:11 cd /tmp/tools/qqsa/health_check &amp;&amp; ./setup.sh ]<br />
+[ Fri Aug 2 09:06:12 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:11 sleep 1 ]<br />
+[ Fri Aug 2 09:06:12 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:12 exit ]<br />
+[ Fri Aug 2 09:06:13 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:13 cd /tmp/tools/webbak_dir &amp;&amp; ./add_bak.sh /data ]<br />
+[ Fri Aug 2 09:06:14 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:13 sleep 1 ]<br />
+[ Fri Aug 2 09:06:15 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:14 exit ]<br />
+[ Fri Aug 2 09:06:16 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:16 cd /tmp/tools/server_monitor &amp;&amp; ./install.sh ]<br />
+[ Fri Aug 2 09:06:17 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:16 sleep 1 ]<br />
+[ Fri Aug 2 09:06:17 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:17 exit ]<br />
+[ Fri Aug 2 09:06:18 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:18 chmod 777 /data/.my_history ]<br />
+[ Fri Aug 2 09:06:19 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:18 sleep 1 ]<br />
+[ Fri Aug 2 09:06:19 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:19 exit ]<br />
+[ Fri Aug 2 09:06:21 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:20 cd /tmp/tools/yagent ; pgrep -f yagent || ( ./install.sh ; cd /usr/local/services/yagent-1.0/admin/ ; ./restart.sh ) ]<br />
+[ Fri Aug 2 09:06:22 2013 ][ root pts/4 Aug 2 09:06 (10.134.133.94) ][ 2013-08-02 09:06:21 sleep 1 ]<br />
+[ Fri Aug 2 10:13:03 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 09:06:22 exit ]<br />
+[ Fri Aug 2 10:13:05 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:05 cd /usr/local/services/ ]<br />
+[ Fri Aug 2 10:13:07 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:07 cd .. ]<br />
+[ Fri Aug 2 10:13:08 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:08 cd src ]<br />
+[ Fri Aug 2 10:13:08 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:08 ls ]<br />
+[ Fri Aug 2 10:13:15 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:13 tar zxf php-fpm-5.3.6.4-install.tar.gz ]<br />
+[ Fri Aug 2 10:13:16 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:16 ls ]<br />
+[ Fri Aug 2 10:13:17 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:17 cd php-fpm-5.3.6.4-install ]<br />
+[ Fri Aug 2 10:13:18 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:18 ls ]<br />
+[ Fri Aug 2 10:13:22 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:20 ./install.sh ]<br />
+[ Fri Aug 2 10:13:28 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:25 rz -be ]<br />
+[ Fri Aug 2 10:13:34 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:34 cd /usr/local/services/php-fpm-5.3.6/admin/ ]<br />
+[ Fri Aug 2 10:13:35 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:35 ./restart.sh ]<br />
+[ Fri Aug 2 10:13:41 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:40 yum search libtool ]<br />
+[ Fri Aug 2 10:14:12 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:13:58 yum install -y libtool-ltdl-devel libtool ]<br />
+[ Fri Aug 2 10:14:59 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:14:59 cd /lib64/ ]<br />
+[ Fri Aug 2 10:15:25 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:15:25 ls libltdl.so.3 ]<br />
+[ Fri Aug 2 10:15:40 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:15:40 ls /usr/lib/libltdl.so.7 -l ]<br />
+[ Fri Aug 2 10:19:17 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:19:17 ln /usr/lib/libltdl.so.7.2.1 /usr/lib/libltdl.so.3 ]<br />
+[ Fri Aug 2 10:19:23 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:19:23 cd /usr/local/services/php-fpm-5.3.6/admin/ ]<br />
+[ Fri Aug 2 10:19:28 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:19:25 ./restart.sh ]<br />
+[ Fri Aug 2 10:19:41 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:19:25 ./restart.sh ]<br />
+[ Fri Aug 2 10:19:43 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:19:43 ldconfig ]<br />
+[ Fri Aug 2 10:19:48 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:19:44 ./restart.sh ]<br />
+[ Fri Aug 2 10:20:17 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:20:17 ln /usr/lib/libltdl.so.7.2.1 /lib64/libltdl.so.3 ]<br />
+[ Fri Aug 2 10:20:22 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:20:19 ./restart.sh ]<br />
+[ Fri Aug 2 10:20:25 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:20:25 ldconfig ]<br />
+[ Fri Aug 2 10:20:34 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:20:34 rm usr/lib/libltdl.so.3 ]<br />
+[ Fri Aug 2 10:20:37 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:20:37 rm /usr/lib/libltdl.so.3 ]<br />
+[ Fri Aug 2 10:20:39 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:20:39 ldconfig ]<br />
+[ Fri Aug 2 10:20:44 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:20:40 ./restart.sh ]<br />
+[ Fri Aug 2 10:21:34 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:20:40 ./restart.sh ]<br />
+[ Fri Aug 2 10:21:40 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:21:40 cd .. ]<br />
+[ Fri Aug 2 10:21:42 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:21:42 cd sbin/ ]<br />
+[ Fri Aug 2 10:21:45 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:21:45 ldd php-fpm ]<br />
+[ Fri Aug 2 10:22:04 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:21:58 rz -be ]<br />
+[ Fri Aug 2 10:22:49 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:22:48 yum search liblt ]<br />
+[ Fri Aug 2 10:22:57 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:22:56 yum search libt ]<br />
+[ Fri Aug 2 10:23:06 2013 ][ root pts/4 Aug 2 10:13 (10.134.133.94) ][ 2013-08-02 10:23:05 yum install libtool ]<br />
+[ Fri Aug 2 11:34:38 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 09:06:22 exit ]<br />
+[ Fri Aug 2 11:34:41 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:34:41 cd tmp/ ]<br />
+[ Fri Aug 2 11:35:49 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:34:44 wget http://nodejs.org/dist/v0.8.25/node-v0.8.25.tar.gz ]<br />
+[ Fri Aug 2 11:36:22 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:36:21 tar -xzvf node-v0.8.25.tar.gz ]<br />
+[ Fri Aug 2 11:36:24 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:36:24 cd node-v0.8.25 ]<br />
+[ Fri Aug 2 11:36:28 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:36:27 ./configure ]<br />
+[ Fri Aug 2 11:44:14 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:36:30 make ]<br />
+[ Fri Aug 2 11:44:14 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:36:30 make ]<br />
+[ Fri Aug 2 11:44:14 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:36:30 make ]<br />
+[ Fri Aug 2 11:46:06 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:46:06 ll /usr/local/nginx/sbin/nginx ]<br />
+[ Fri Aug 2 11:46:34 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:46:34 source /etc/profile ]<br />
+[ Fri Aug 2 11:46:38 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:46:38 whereis nginx ]<br />
+[ Fri Aug 2 11:46:42 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:46:42 nginx -v ]<br />
+[ Fri Aug 2 11:46:48 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:46:48 nginx -s reload ]<br />
+[ Fri Aug 2 11:47:18 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:47:18 ps aux | grep nginx ]<br />
+[ Fri Aug 2 11:48:27 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:27 killall -9 nginx ]<br />
+[ Fri Aug 2 11:48:29 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:29 ps aux | grep nginx ]<br />
+[ Fri Aug 2 11:48:30 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:29 ps aux | grep nginx ]<br />
+[ Fri Aug 2 11:48:31 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:29 ps aux | grep nginx ]<br />
+[ Fri Aug 2 11:48:32 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:29 ps aux | grep nginx ]<br />
+[ Fri Aug 2 11:48:34 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:34 killall -9 nginx ]<br />
+[ Fri Aug 2 11:48:35 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:35 ps aux | grep nginx ]<br />
+[ Fri Aug 2 11:48:36 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:35 ps aux | grep nginx ]<br />
+[ Fri Aug 2 11:48:38 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:38 /usr/local/nginx/sbin/nginx -c /etc/nginx/nginx.conf ]<br />
+[ Fri Aug 2 11:49:06 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:48:52 vim /etc/nginx/nginx.conf ]<br />
+[ Fri Aug 2 11:49:07 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:49:07 /usr/local/nginx/sbin/nginx -c /etc/nginx/nginx.conf ]<br />
+[ Fri Aug 2 11:49:11 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:49:11 ps aux | grep nginx ]<br />
+[ Fri Aug 2 11:49:14 2013 ][ root pts/0 Aug 1 16:22 (172.16.11.162) ][ 2013-08-02 11:49:11 ps aux | grep nginx ]<br />
+[ Fri Aug 2 11:53:55 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:53:53 make install ]<br />
+[ Fri Aug 2 11:54:30 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:54:10 vim /etc/profile ]<br />
+[ Fri Aug 2 11:54:37 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:54:35 make install ]<br />
+[ Fri Aug 2 11:54:54 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:54:45 vim /etc/profile ]<br />
+[ Fri Aug 2 11:54:59 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:54:59 source /etc/profile ]<br />
+[ Fri Aug 2 11:55:03 2013 ][ root pts/5 Aug 2 11:34 (172.16.11.162) ][ 2013-08-02 11:55:03 node -v ]</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+#4 PHPINFO<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22153644f88ad187cf3c648e33fb284cbbee17dd.png" target="_blank"><img src="../images/22153644f88ad187cf3c648e33fb284cbbee17dd.png" alt="tencent_phpinfo.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#5 漫游内网<br />
+<br />
+参考结界师出现过的内网信息：<br />
+<br />
+ <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-026212">WooYun: 我是如何漫游腾讯内部网络的</a> <br />
+<br />
+<br />
+<br />
+海象平台<br />
+<br />
+http://10.130.74.19<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+$ch = curl_init();<br />
+curl_setopt($ch, CURLOPT_URL, &quot;http://10.130.74.19&quot;);<br />
+curl_setopt($ch, CURLOPT_HEADER, 0);<br />
+echo curl_exec($ch);<br />
+curl_close($ch);<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22154240b211bdb1b01ef6a74817eb6736ab2e93.jpg" target="_blank"><img src="../images/22154240b211bdb1b01ef6a74817eb6736ab2e93.jpg" alt=".jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+#6 最后，冲QB接口哟~<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/22155109922fd4de7623050a35c4d51c225523fe.jpg" target="_blank"><img src="../images/22155109922fd4de7623050a35c4d51c225523fe.jpg" alt="QB.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">#1 安全管理出现的缺陷（也只有腾讯这么牛的公司才能解决吧？）<br />
+<br />
+#2 跟腾讯将基线配置，还是不要丢人了~<br />
+<br />
+#3 写不下去了，怕被鄙视 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪猪侠" title="猪猪侠">猪猪侠</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037774" title="一次失败的漫游腾讯内部网络过程 #1">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-09-24 11:25</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢猪猪侠同学的友情检测，我们会继续提升能力，也请各位白帽子在安全测试中注意遵守国家相关法律。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37774";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

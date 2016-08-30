@@ -1,0 +1,232 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		躺在床上读代码之 php168分类系统之SQL注射修改管理员密码  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		躺在床上读代码之 php168分类系统之SQL注射修改管理员密码  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/快点啊！！">快点啊！！</a> 
+</li><li>提交时间：		2012-11-28 14:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-11-28：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-01-12：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">该产品又名：齐博分类信息系统 v6 bilud 20101112 <br />
+<br />
+不知道为什么该公司没有在wooyun注册，在chinaz的下载排行该应用排行第三，如果不是刷的话。<br />
+<br />
+该漏洞的描述估计更像是一篇漏洞利用示范。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在 /member/company.php 中的第13行：<br />
+<br />
+<br />
+<br />
+</p><pre><code>@extract($_POST);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这句代码会将POST中的所有东西注册未全局变量。<br />
+<br />
+<br />
+<br />
+那么，如何利用呢，比较有意思的是接下来的代码。<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><pre><code>$cpDB=$db-&gt;get_one(&quot;SELECT * FROM `{$pre}memberdata_1` WHERE uid=&#039;$lfjuid&#039;&quot;);<br />
+…… 省略X行。<br />
+if(!$cpDB){</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>/*{A}*/<br />
+$db-&gt;query(&quot;INSERT INTO `{$pre}memberdata_1` ( `uid` , `cpname` , `cplogo` , `cptype` , `cptrade` , `cpproduct` , `cpcity` , `cpfoundtime` , `cpfounder` , `cpmannum` , `cpmoney` , `cpcode` , `cppermit` , `cpweb` , `cppostcode` , `cptelephone` , `cpfax` , `cpaddress` ,`cplinkman`,`cpmobphone`,`cpqq`,`cpmsn`) VALUES ( &#039;$lfjuid&#039;,&#039;$cpname&#039;,&#039;$cplogo&#039;,&#039;$cptype&#039;,&#039;$cptrade&#039;,&#039;$cpproduct&#039;,&#039;$cpcity&#039;,&#039;$cpfoundtime&#039;,&#039;$cpfounder&#039;,&#039;$cpmannum&#039;,&#039;$cpmoney&#039;,&#039;$cpcode&#039;,&#039;$cppermit&#039;,&#039;$cpweb&#039;,&#039;$cppostcode&#039;,&#039;$cptelephone&#039;,&#039;$cpfax&#039;,&#039;$cpaddress&#039;,&#039;$cplinkman&#039;,&#039;$cpmobphone&#039;,&#039;$cpqq&#039;,&#039;$cpmsn&#039;)&quot;);<br />
+			$grouptype=$webdb[AutoPassCompany]?&#039;1&#039;:&#039;-1&#039;;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>$db-&gt;query(&quot;UPDATE {$pre}memberdata SET grouptype=&#039;$grouptype&#039; WHERE uid=&#039;$lfjuid&#039;&quot;);<br />
+			refreshto(&quot;company.php?job=edit&quot;,&quot;你的资料已经提交&quot;,1);	<br />
+		}else{</code></pre><p class='detail'><br />
+<br />
+</p><pre><code>/*{B}*/<br />
+			$db-&gt;query(&quot;UPDATE {$pre}memberdata_1 SET cpname=&#039;$cpname&#039;,cplogo=&#039;$cplogo&#039;,cptype=&#039;$cptype&#039;,cptrade=&#039;$cptrade&#039;,cpproduct=&#039;$cpproduct&#039;,cpcity=&#039;$cpcity&#039;,cpfoundtime=&#039;$cpfoundtime&#039;,cpfounder=&#039;$cpfounder&#039;,cpmannum=&#039;$cpmannum&#039;,cpmoney=&#039;$cpmoney&#039;,cpcode=&#039;$cpcode&#039;,cppermit=&#039;$cppermit&#039;,cpweb=&#039;$cpweb&#039;,cppostcode=&#039;$cppostcode&#039;,cptelephone=&#039;$cptelephone&#039;,cpfax=&#039;$cpfax&#039;,cpaddress=&#039;$cpaddress&#039;,cplinkman=&#039;$cplinkman&#039;,cpmobphone=&#039;$cpmobphone&#039;,cpqq=&#039;$cpqq&#039;,cpmsn=&#039;$cpmsn&#039; WHERE uid=&#039;$lfjuid&#039;&quot;);<br />
+			refreshto(&quot;company.php?job=edit&quot;,&quot;修改成功&quot;,1);<br />
+		}			<br />
+	}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+okay，看我注释为{B}的哪一行我们可以看出来，只要我们覆盖了pre变量，我们就可以执行任意update语句了，但是前提是我们必须知道原本的表前缀pre是什么。<br />
+<br />
+<br />
+<br />
+如何知道表前缀呢？有点意思的是标注为{A}的那一行。<br />
+<br />
+<br />
+<br />
+</p><pre><code>在数据库中，`{$pre}memberdata_1`表结构中的uid是唯一的，所以只要我们覆盖掉cpDB变量，再提交一次stpe=2走到{A}所在的SQL语句，SQL就会报错并告诉我们表前缀是什么。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/2814133870112e4e12f9c9884f9086c934fb84e5.jpg" target="_blank"><img src="../images/2814133870112e4e12f9c9884f9086c934fb84e5.jpg" alt="php168_1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><pre><code>好了，我们看到表前缀了，那还客气什么，覆盖pre走到{B}去修改管理员的密码吧。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/281419119aaf04b83c8c8d7994976081fa34f337.jpg" target="_blank"><img src="../images/281419119aaf04b83c8c8d7994976081fa34f337.jpg" alt="php168_2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+okay，到此为止，结束，可以把管理员密码改成12345了，这里其实update完全受你控制，你爱干什么干什么，别客气。<br />
+<br />
+<br />
+<br />
+</p><pre><code>注意：上面的例子我故意让它报错了来截图，实际操作中可以把{}和{内的东西删除}</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/281419119aaf04b83c8c8d7994976081fa34f337.jpg" target="_blank"><img src="../images/281419119aaf04b83c8c8d7994976081fa34f337.jpg" alt="php168_2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+okay，到此为止，结束，可以把管理员密码改成12345了，这里其实update完全受你控制，你爱干什么干什么，别客气。<br />
+<br />
+<br />
+<br />
+</p><pre><code>注意：上面的例子我故意让它报错了来截图，实际操作中可以把{}和{内的东西删除}</code></pre><p class='detail'><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">这里没必要用extract，你真的很想用的话可以加上EXTR_SKIP参数。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/快点啊！！" title="快点啊！！">快点啊！！</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-015364" title="躺在床上读代码之 php168分类系统之SQL注射修改管理员密码">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="15364";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

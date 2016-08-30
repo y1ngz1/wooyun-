@@ -1,0 +1,241 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		青果教务网络管理系统逻辑处理不严谨导致SQL注入，可至全国数百所高校教务系统沦陷  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		青果教务网络管理系统逻辑处理不严谨导致SQL注入，可至全国数百所高校教务系统沦陷  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/jerryl3e">jerryl3e</a> 
+</li><li>提交时间：		2012-10-10 11:30</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-10-10：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-10-15：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">在这个系统官网上发现该教务系统全国有535所高校在用，测试了几个都成功了，直接是SA权限的MSSQL，有个别貌似版本不一样不行，但是应该大多数都可以通杀。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">  这里可以看见该系统使用学校（http://www.kingosoft.com/cgal/index1.aspx），教务系统有535所学校在用，貌似这个系统有2个版本，有一个较新的不行，但是大多数都是老版本，可以成功利用该漏洞对服务器攻击，差不多可以影响上百所高校教务系统吧。<br />
+<br />
+  接下来分析一下漏洞形成：<br />
+<br />
+  该系统有个教师注册页面没有设置访问权限（漏洞页面：http://xxx/_data/index_JSRP.aspx）任何人都可以访问，并且随便注册教师，如图1，该站是南京林业大学的，我拿来演示一下.URL(http://jwk.njfu.edu.cn/_data/index_JSRP.aspx)<br />
+<br />
+</p><p class="detail"><a href="../images/242215292bfff6013e6a9f0fb00c6feabc589a30.png" target="_blank"><img src="../images/242215292bfff6013e6a9f0fb00c6feabc589a30.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图1<br />
+<br />
+然后这个页面对于表单提交的数据只进行了本地JS验证，没有进行服务端验证数据的合法性，如图2，反编译这个页面的DLL<br />
+<br />
+</p><p class="detail"><a href="../images/24223059e87a5777d68335d758531635375f13bb.png" target="_blank"><img src="../images/24223059e87a5777d68335d758531635375f13bb.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图2<br />
+<br />
+可以发现服务端对于输入数据完全没有过滤，业务逻辑是考虑了防SQL注入的，因为注册数据插入数据库是直接写的函数，然后用dataset的进行rowadd，貌似没有发现可以利用注入的地方，如图3是插入数据库的函数。<br />
+<br />
+</p><p class="detail"><a href="../images/24223118b5e11ef51bdc9b138d79b29f5ba725c9.png" target="_blank"><img src="../images/24223118b5e11ef51bdc9b138d79b29f5ba725c9.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图3<br />
+<br />
+ 但是，不是这样就意味着不能注入了，好歹服务器完全没有过滤刚刚的东西，然后我就继续去分析这个代码的处理流程，发现了一个有问题的地方，如图4<br />
+<br />
+</p><p class="detail"><a href="../images/24223144952da8ff6e5eb63ddeb365427f718a68.png" target="_blank"><img src="../images/24223144952da8ff6e5eb63ddeb365427f718a68.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图4<br />
+<br />
+ 这里对text9也就是输入的身份证号进行了验证，去查询数据库是否存在该身份证号，避免重复注册，然后跟进这个函数就会发现，如图5<br />
+<br />
+</p><p class="detail"><a href="../images/24223208217b16c2d03d1602236657ed62617747.png" target="_blank"><img src="../images/24223208217b16c2d03d1602236657ed62617747.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图5<br />
+<br />
+ 关键的地方就在这里了，这个函数对于text1的查询语句代入getds()执行，如图6<br />
+<br />
+</p><p class="detail"><a href="../images/24223226929099b78530fcaaefb057bae160020a.png" target="_blank"><img src="../images/24223226929099b78530fcaaefb057bae160020a.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图6<br />
+<br />
+<br />
+<br />
+利用SqlDataAdapter进行语句执行，可以执行多行语句，然后，大家都懂的。<br />
+<br />
+   我讲讲如何利用<br />
+<br />
+   首先自己测试自己POST数据进行注册（POST内容：txtxm=jerryl3ejerryl3e&amp;txtxb=7&amp;txtcsrq=1980-9-9&amp;txtxl=test&amp;txtxw=test&amp;txtzc=test&amp;txtmz=test&amp;txtjg=test&amp;txtlxdh=test&amp;txtdzyx=test&amp;txtjl=test&amp;txtsfzh=511111111111111122），发现可以注册成功。<br />
+<br />
+如图7，成功注册一个用户名为jerryl3e的教师用户，身份证号为511111111111111122<br />
+<br />
+</p><p class="detail"><a href="../images/242232551cfd0414d85b6db214c9de262153c273.png" target="_blank"><img src="../images/242232551cfd0414d85b6db214c9de262153c273.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图7<br />
+<br />
+ 再用该身份证号注册就会发现该身份证号已注册，说明进行了代码中有漏洞的语句，如图8<br />
+<br />
+</p><p class="detail"><a href="../images/2422332740df526bc8dfcfcb2d37fc60d3801bf9.png" target="_blank"><img src="../images/2422332740df526bc8dfcfcb2d37fc60d3801bf9.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图8<br />
+<br />
+ 然后就看就构造语句试试吧，如图9<br />
+<br />
+</p><p class="detail"><a href="../images/24223344b03315afe47b3642a9a3970ba0f8b9e7.png" target="_blank"><img src="../images/24223344b03315afe47b3642a9a3970ba0f8b9e7.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图9<br />
+<br />
+ 看看是否是SA权限(POST: txtxm=jerryl3ejerryl3e&amp;txtxb=7&amp;txtcsrq=1980-9-9&amp;txtxl=test&amp;txtxw=test&amp;txtzc=test&amp;txtmz=test&amp;txtjg=test&amp;txtlxdh=test&amp;txtdzyx=test&amp;txtjl=test&amp;txtsfzh=511111111111111122&#039; and 1=(select is_srvrolemember(&#039;sysadmin&#039;));select &#039;1&#039;=&#039;1)，如图10<br />
+<br />
+</p><p class="detail"><a href="../images/24223404db2042fc17289497939527d6ac4b75e3.png" target="_blank"><img src="../images/24223404db2042fc17289497939527d6ac4b75e3.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图10<br />
+<br />
+看看可不可以执行CMD(POST: txtxm=jerryl3ejerryl3e&amp;txtxb=7&amp;txtcsrq=1980-9-9&amp;txtxl=test&amp;txtxw=test&amp;txtzc=test&amp;txtmz=test&amp;txtjg=test&amp;txtlxdh=test&amp;txtdzyx=test&amp;txtjl=test&amp;txtsfzh=511111111111111122&#039; and 1=(SELECT count(*) FROM master.dbo.sysobjects WHERE name= &#039;xp_cmdshell&#039;);select &#039;1&#039;=&#039;1)，如图11<br />
+<br />
+</p><p class="detail"><a href="../images/24223430bb7683844df412dc0dd3c90d7883cb56.png" target="_blank"><img src="../images/24223430bb7683844df412dc0dd3c90d7883cb56.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+图11<br />
+<br />
+ 接下来就不用证明什么了，没有继续搞下去，本来想搞试试插入一个管理员，分析了登陆代码，数据插入对了，就是一直密码不对，不知道是不是版本升级什么把密码加密方式变了吧。<br />
+<br />
+   然后这个系统应该默认安装时候数据库是SA用户吧，所以危害很大，再结合我曾经分析的数据库字符串加密算法（http://hi.baidu.com/jerryl3e/item/565675077c15f70e3a53eeeb），很容易就进行数据库进行改成绩之类的。也可以通过这个注入点直接拿webshell，这个系统默认安装目录是：D:\KINGOSOFT\KINGOJWGL2006\JWWEB\<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">同上。。。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对这个页面的访问设置权限，然后服务端验证输入数据。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/jerryl3e" title="jerryl3e">jerryl3e</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-012680" title="青果教务网络管理系统逻辑处理不严谨导致SQL注入，可至全国数百所高校教务系统沦陷">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-10-10 11:30</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2012-10-15：已修复</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="12680";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

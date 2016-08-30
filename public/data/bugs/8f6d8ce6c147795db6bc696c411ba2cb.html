@@ -1,0 +1,315 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		QQ空间某功能缺陷导致日志存储型XSS - 4  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		QQ空间某功能缺陷导致日志存储型XSS - 4  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/gainover">gainover</a> 
+</li><li>提交时间：		2013-03-18 21:24</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-03-18：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-03-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-03-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-04-08：	细节向普通白帽子公开<br/>
+									2013-04-18：	细节向实习白帽子公开<br/>
+									2013-05-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">依然是某处功能缺陷，加上开发人员犯了某种古老的过滤错误导致我不好意思的又来了。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1. 模板日志，看到有这么一个播放器，在播放器里加一首歌，随便发个日志，同时抓包。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18211743dbf3726c971f4c9061f293dd5d7b0993.jpg" target="_blank"><img src="../images/18211743dbf3726c971f4c9061f293dd5d7b0993.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/182118092ad174ecbbc7867ab77f0a218764f062.jpg" target="_blank"><img src="../images/182118092ad174ecbbc7867ab77f0a218764f062.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+2. 我们搜索 MusicPlayer.swf， 可以定位到 http://ctc.qzs.qq.com/qzone/app/blog/v6/script/content_templateblog_parser.js<br />
+<br />
+<br />
+<br />
+看下日志源代码，我们可以看到这里实际上是一个 &lt;div data=&quot;xxxxx&quot; name=&quot;xxxxx&quot;&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/182118339fa058c8a5c10d517c43d6b754c355ad.jpg" target="_blank"><img src="../images/182118339fa058c8a5c10d517c43d6b754c355ad.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这个可以给我们在定位代码的时候有所启示。 搜索 &quot;data&quot; 或 &#039;data&#039;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/182118449625afc58255c5078f7510f550333f3c.jpg" target="_blank"><img src="../images/182118449625afc58255c5078f7510f550333f3c.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到Music.Parser调用了 data 属性里的数据并返回，<br />
+<br />
+<br />
+<br />
+3. 那么哪里调用了 Music.Parser呢？搜索 &quot;Music.Parser(&quot;<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/182118551f86d8fcb11ee33e3891ffe32700cea8.jpg" target="_blank"><img src="../images/182118551f86d8fcb11ee33e3891ffe32700cea8.jpg" alt="5.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，数据进一步到了 TemplateBlogParser.music<br />
+<br />
+<br />
+<br />
+4. 接着 TemplateBlogParser.music 被哪里用到了呢？ <br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18211905a8b808799a0bf9252f88f137a4d6187d.jpg" target="_blank"><img src="../images/18211905a8b808799a0bf9252f88f137a4d6187d.jpg" alt="6.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到数据进一步到了aData.content <br />
+<br />
+<br />
+<br />
+5.  稍微继续往下看，可以看到 aData进入了一处 eval, 不过这里eval处是无法利用的。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18211912f2ad12788bb2426f5549ee686548ffdc.jpg" target="_blank"><img src="../images/18211912f2ad12788bb2426f5549ee686548ffdc.jpg" alt="7.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+如上图，这里的代码相当于是执行了<br />
+<br />
+<br />
+<br />
+aObj=new MusicPlayer(itemId,aData);<br />
+<br />
+<br />
+<br />
+6. 进一步跟踪，找到MusicPlayer对象的定义。搜索 &quot;function MusicPlayer&quot; <br />
+<br />
+<br />
+<br />
+找到MusicPlayer后，我们观察它的第2个参数（即data）的流向。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1821192310161d958e0b204059a237d865af0c54.jpg" target="_blank"><img src="../images/1821192310161d958e0b204059a237d865af0c54.jpg" alt="8.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+可以看到，data.content 进入了 this.data.content。<br />
+<br />
+<br />
+<br />
+7. 继续往下面代码看。<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18211930b639e9314f5197248cf2734be6593a76.jpg" target="_blank"><img src="../images/18211930b639e9314f5197248cf2734be6593a76.jpg" alt="9.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+接着this.data.content进入了 this.convertKorean() 函数，看样子是做了一次转换。<br />
+<br />
+<br />
+<br />
+8. 我们进而看看，this.convertKorean 函数对数据进行了什么处理。<br />
+<br />
+<br />
+<br />
+</p><pre><code>this.convertKorean = function(str) {<br />
+        var div = document.createElement(&quot;div&quot;);<br />
+        div.innerHTML = str;<br />
+        str = div.innerText || div.textContent;<br />
+        return str;<br />
+    };</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看到这段代码，顿时觉得有戏！！我们的str被传入到了 div.innerHTML中。<br />
+<br />
+<br />
+<br />
+这段代码的功能，实际上是去掉 str中的 html标签，<br />
+<br />
+<br />
+<br />
+然而这段代码实际上是犯了一个很经典的&quot;过滤错误&quot;，开发人员建立一个临时的div，然后取出innerText/textContent。但是实际上无论 div 是否被追加到DOM中，innerHTML=&quot;&lt;img src=1 onerror=alert(1)&gt;&quot; 都是会被执行的。<br />
+<br />
+<br />
+<br />
+9. 这里一来，我们回溯回去，我们的str实际上就是来自于我们最初的 data中的值。<br />
+<br />
+<br />
+<br />
+接下来的就好办啦！我们找到最开始抓到的数据，修改并发包。<br />
+<br />
+<br />
+<br />
+&lt;div class=&quot;blog_details_20120222&quot;&gt;&lt;div name=&quot;title&quot;&gt;xxxxxxxxxxx&lt;/div&gt;&lt;div name=&quot;text&quot;&gt;&lt;br /&gt;x&lt;br /&gt;xxxxxxx&lt;/div&gt;&lt;img name=&quot;pic&quot; style=&quot;display:block;&quot; width=&quot;280&quot; height=&quot;230&quot; alt=&quot;??&quot; position=&quot;0_-7&quot; isDefaultPhoto=&quot;1&quot; rotation=&quot;0&quot; scale=&quot;0&quot; src=&quot;http://ctc.qzs.qq.com/qzone/space_item/orig/3/87731/module_1.jpg&quot; /&gt;&lt;div name=&quot;title&quot;&gt;xxxxxx&lt;/div&gt;&lt;div name=&quot;title&quot;&gt;xxxx&lt;/div&gt;&lt;div name=&quot;title&quot;&gt;xxxx&lt;/div&gt;&lt;div name=&quot;MultiImageController&quot; data=&quot;&quot;&gt;&lt;/div&gt;&lt;div name=&quot;music&quot; data=&quot;http://stream16.qqmusic.qq.com/31303066.mp3|&lt;img src=1 onerror=&amp;quot;alert(document.cookie)&amp;quot;&gt;|A-Ha|0&quot;&gt;&lt;/div&gt;&lt;/div&gt;<br />
+<br />
+<br />
+<br />
+11. 可以看到成功弹出cookies<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/18211947a72eea887516490cdfdaa67b4c46f581.jpg" target="_blank"><img src="../images/18211947a72eea887516490cdfdaa67b4c46f581.jpg" alt="10.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+IE下一样。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">见详细说明 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">数据进入 this.convertKorean 之前，或者从 getAttribute(&quot;data&quot;) 取出数据之后，对数据进行 HTMLEncode. </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/gainover" title="gainover">gainover</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-020277" title="QQ空间某功能缺陷导致日志存储型XSS - 4">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：15 </p>
+													<p class="detail">确认时间：2013-03-19 10:51</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您的报告。这个问题我们已经确认，正在与业务部门进行沟通制定解决方案。如有任何新的进展我们将会及时同步。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="20277";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

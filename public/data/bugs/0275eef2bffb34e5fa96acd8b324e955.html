@@ -1,0 +1,170 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Flash应用安全系列[5]--QQ邮箱永久劫持漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Flash应用安全系列[5]--QQ邮箱永久劫持漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/p.z">p.z</a> 
+</li><li>提交时间：		2013-01-18 00:03</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-18：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-03-04：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">QQ邮箱对于跨域请求过滤不严，可能导致用户邮件被持久劫持</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">我们知道，在浏览器的安全模型中，同源策略--SOP（Same Origin Policy）是最为基础的一环，它决定了WEB上的哪些资源是可以被脚本访问的，哪些资源则是被拒绝的。撇开HTML5中的 Access-Control-Allow-Origin头不说，执行域在A.com域下的脚本是不能直接访问到B.com的资源的，而我们所寻找的那些跨站漏洞，正是为了绕过这个SOP的限制。但是作为第三方插件在浏览器内安装的Flash Player，却破坏了SOP，只需要对方的crossdomain.xml运行，一个B.com的SWF文件就可以读取到A.com的资源。<br />
+<br />
+<br />
+<br />
+    现在让我们来看看QQ邮箱的corssdoamain.xml<br />
+<br />
+</p><pre><code>&lt;cross-domain-policy&gt;<br />
+    &lt;allow-access-from domain=&quot;*.qqmail.com&quot;/&gt;<br />
+    &lt;allow-access-from domain=&quot;*.qq.com&quot;/&gt;<br />
+&lt;/cross-domain-policy&gt;</code></pre><p class='detail'><br />
+<br />
+使用了通配符，使得任意qq.com子域下的SWF都可以读取到mail.qq.com的资源。<br />
+<br />
+<br />
+<br />
+    现在我们要做的就是在*.qq.com下寻找一个可以上传SWF的地方，由于SWF能够执行JS脚本，因此允许上传SWF文件相当于允许在上传域下执行脚本，所以很少有站点能够上传SWF文件，但是允许上传JPG的地方却不少。Flash Player对于SWF文件的后缀名并不敏感，因此我们只需要找到一个可以上传JPG且没检验图像文件合法性的上传点就可以了。比如这个：act.news.qq.com/show_umodify.php<br />
+<br />
+<br />
+<br />
+    QQ邮箱在设置转发的时候会检验post过来数据的sid，但是这个sid是附在url中的，很容易通过在发送到外域的数据包referrer头被取到。而且我们现在已经可以读取mail.qq.com上的数据，可以直接读取mail.qq.com/cgi-bin/login?vt=passport&amp;vm=wsk&amp;delegate_url=得到sid。<br />
+<br />
+    除了token，检测referre头常被作为防止CSRF的另一种手段，经过测试，QQ邮箱在这里也进行了检测，对于外域发送过来的数据包直接废弃，但是对于qq.com子域下发送的请求，是全部接受的，恰好我们的swf也在qq.com的某个子域下，刚好能满足这个条件。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"><embed src="http://player.youku.com/player.php/sid/XNTAzMzY2MTAw/v.swf" type="application/x-shockwave-flash" allowscriptaccess="never" allowfullscreen="true" wmode="opaque" width="480" height="370"></embed><br />
+<br />
+    qqmail.csrf.as http://swfpoc.appspot.com/source/qqmail.csrf.as </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">改改crossdomain.xml？再管管referre？ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/p.z" title="p.z">p.z</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017459" title="Flash应用安全系列[5]--QQ邮箱永久劫持漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17459";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

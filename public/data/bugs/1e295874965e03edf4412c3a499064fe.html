@@ -1,0 +1,228 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		it168/51cto/opera等多个厂商memcache端口对外开放(批量检测实例)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		it168/51cto/opera等多个厂商memcache端口对外开放(批量检测实例)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/farmer">farmer</a> 
+</li><li>提交时间：		2013-09-21 23:23</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-21：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-06：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-16：	细节向普通白帽子公开<br/>
+									2013-10-26：	细节向实习白帽子公开<br/>
+									2013-11-05：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">简单脚本实现:批量检测存在对外开放memcache的厂商</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1.抓乌云厂商域名,抓后使用grep awk把域名提取出来,excel分列功能也可以，略过<br />
+<br />
+</p><pre><code>#!/bin/bash<br />
+for ((i=1;i&lt;24;i++))<br />
+do<br />
+        curl http://www.wooyun.org/corps/page/$i|grep nofollow &gt;&gt; wooyun.txt<br />
+done</code></pre><p class='detail'><br />
+<br />
+2.域名解析为IP地址，获取厂商所在的IP段。<br />
+<br />
+</p><pre><code>#!/bin/bash<br />
+while read oneline  <br />
+do    <br />
+  dig ${oneline}|grep IN|grep A|tail -n 1|awk &#039;{printf $5&quot;\n&quot;}&#039; &gt;&gt; ip.txt<br />
+done &lt; wooyun.org.txt</code></pre><p class='detail'><br />
+<br />
+3.批量扫描开放11211的端口的IP<br />
+<br />
+</p><pre><code>#!/bin/bash<br />
+while read oneline  <br />
+do    <br />
+  nmap -sT -p 11211 ${oneline}/24 &gt;&gt; 11211.txt<br />
+done &lt; ip.txt</code></pre><p class='detail'><br />
+<br />
+扫描后的结果如下:<br />
+<br />
+</p><pre><code>Interesting ports on 220.181.xx.xx:<br />
+PORT      STATE    SERVICE<br />
+11211/tcp filtered unknown</code></pre><p class='detail'><br />
+<br />
+需要简单处理下，获取open标识的IP<br />
+<br />
+</p><pre><code>cat 11211.txt |grep -v PORT|tr -t &#039;\n&#039; &#039;,&#039;|sed &#039;s/unknown/\n/g&#039;|grep open</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+注意：脚本中扛n 被乌云转换成扛扛n了 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">筛选了一些结果如下：<br />
+<br />
+</p><pre><code>宜搜 118.145.13.3 <br />
+<br />
+http://moto.it168.com/ <br />
+,,Interesting ports on 219.148.35.195:,11211/tcp open  <br />
+,,Interesting ports on 219.148.35.196:,11211/tcp open  <br />
+<br />
+opera.com<br />
+,,Interesting ports on s-02-08.opera.com (195.189.143.156):,11211/tcp open  <br />
+,,Interesting ports on 195.189.143.157:,11211/tcp open  <br />
+,,Interesting ports on p21-10.opera.com (195.189.143.159):,11211/tcp open  <br />
+,,Interesting ports on h3.opera.com (195.189.143.164):,11211/tcp open  <br />
+,,Interesting ports on h4.opera.com (195.189.143.165):,11211/tcp open  <br />
+,,Interesting ports on h5.opera.com (195.189.143.166):,11211/tcp open  <br />
+,,Interesting ports on h6.opera.com (195.189.143.167):,11211/tcp open  <br />
+,,Interesting ports on h8.opera.com (195.189.143.169):,11211/tcp open  <br />
+,,Interesting ports on h9.opera.com (195.189.143.176):,11211/tcp open  <br />
+,,Interesting ports on p21-15.opera.com (195.189.143.186):,11211/tcp open  <br />
+,,Interesting ports on p21-16.opera.com (195.189.143.187):,11211/tcp open <br />
+<br />
+<br />
+newsletter2.51cto.com  118.144.78.44</code></pre><p class='detail'><br />
+<br />
+使用php程序连接：<br />
+<br />
+</p><p class="detail"><a href="../images/212306358552ced3f6f28c817980e9d72a1a126d.jpg" target="_blank"><img src="../images/212306358552ced3f6f28c817980e9d72a1a126d.jpg" alt="it168.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/21230705824b71750b33b64112fb7fe4ed56c11a.jpg" target="_blank"><img src="../images/21230705824b71750b33b64112fb7fe4ed56c11a.jpg" alt="mx45.dns.com.cn.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/21230731e8e6429333a40540af17903802ada218.jpg" target="_blank"><img src="../images/21230731e8e6429333a40540af17903802ada218.jpg" alt="memcache.jpg" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/212316047f47da04da7e2979086b3537883b9837.jpg" target="_blank"><img src="../images/212316047f47da04da7e2979086b3537883b9837.jpg" alt="memcache.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">禁止外网访问缓存服务端口 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/farmer" title="farmer">farmer</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-037729" title="it168/51cto/opera等多个厂商memcache端口对外开放(批量检测实例)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：20 </p>
+													<p class="detail">确认时间：2013-09-26 22:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">CNVD确认并复现所述情况,对于所述案例评估构成部分信息泄露,但未对可用性\完整性构成影响.由于涉及案例较多,暂无法一一处置.不过对于这种批量获取检测的方式,在面向互联网目标的预警中有重要的意义.<br />
+<br />
+rank 20</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="37729";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

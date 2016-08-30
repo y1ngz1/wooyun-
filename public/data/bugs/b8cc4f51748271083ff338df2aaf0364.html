@@ -1,0 +1,252 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ECSHOP 后台sql注入漏洞2枚（鸡肋）  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ECSHOP 后台sql注入漏洞2枚（鸡肋）  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Matt">Matt</a> 
+</li><li>提交时间：		2013-12-19 17:25</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-22：	细节向第三方安全合作伙伴开放<br/>
+									2013-12-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-08：	细节向普通白帽子公开<br/>
+									2014-01-28：	细节向实习白帽子公开<br/>
+									2014-03-19：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ECSHOP 后台注入漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail"></p><pre><code>admin/affiliate_ck.php<br />
+<br />
+if ($_REQUEST[&#039;act&#039;] == &#039;list&#039;)<br />
+{<br />
+    $logdb = get_affiliate_ck();<br />
+    $smarty-&gt;assign(&#039;full_page&#039;,  1);<br />
+    $smarty-&gt;assign(&#039;ur_here&#039;, $_LANG[&#039;affiliate_ck&#039;]);<br />
+    $smarty-&gt;assign(&#039;on&#039;, $separate_on);<br />
+<br />
+<br />
+function get_affiliate_ck()<br />
+{<br />
+<br />
+    $affiliate = unserialize($GLOBALS[&#039;_CFG&#039;][&#039;affiliate&#039;]);<br />
+    empty($affiliate) &amp;&amp; $affiliate = array();<br />
+    $separate_by = $affiliate[&#039;config&#039;][&#039;separate_by&#039;];<br />
+<br />
+    $sqladd = &#039;&#039;;<br />
+    if (isset($_REQUEST[&#039;status&#039;]))<br />
+    {<br />
+        $sqladd = &#039; AND o.is_separate = &#039; . (int)$_REQUEST[&#039;status&#039;];<br />
+        $filter[&#039;status&#039;] = (int)$_REQUEST[&#039;status&#039;];<br />
+    }<br />
+    if (isset($_REQUEST[&#039;order_sn&#039;]))<br />
+    {<br />
+        $sqladd = &#039; AND o.order_sn LIKE \&#039;%&#039; . trim($_REQUEST[&#039;order_sn&#039;]) . &#039;%\&#039;&#039;;<br />
+        $filter[&#039;order_sn&#039;] = $_REQUEST[&#039;order_sn&#039;];<br />
+    }<br />
+    if (isset($_GET[&#039;auid&#039;]))<br />
+    {</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+漏洞2：<br />
+<br />
+</p><pre><code>admin/agency.php<br />
+if ($_REQUEST[&#039;act&#039;] == &#039;list&#039;)<br />
+{<br />
+    $smarty-&gt;assign(&#039;ur_here&#039;,      $_LANG[&#039;agency_list&#039;]);<br />
+    $smarty-&gt;assign(&#039;action_link&#039;,  array(&#039;text&#039; =&gt; $_LANG[&#039;add_agency&#039;], &#039;href&#039; =&gt; &#039;agency.php?act=add&#039;));<br />
+    $smarty-&gt;assign(&#039;full_page&#039;,    1);<br />
+<br />
+    $agency_list = get_agencylist();<br />
+    $smarty-&gt;assign(&#039;agency_list&#039;,  $agency_list[&#039;agency&#039;]);<br />
+    $smarty-&gt;assign(&#039;filter&#039;,       $agency_list[&#039;filter&#039;]);<br />
+    $smarty-&gt;assign(&#039;record_count&#039;, $agency_list[&#039;record_count&#039;]);<br />
+    $smarty-&gt;assign(&#039;page_count&#039;,   $agency_list[&#039;page_count&#039;]);<br />
+<br />
+<br />
+function get_agencylist()<br />
+{<br />
+    $result = get_filter();<br />
+    if ($result === false)<br />
+    {<br />
+        /* 初始化分页参数 */<br />
+        $filter = array();<br />
+        $filter[&#039;sort_by&#039;]    = empty($_REQUEST[&#039;sort_by&#039;]) ? &#039;agency_id&#039; : trim($_REQUEST[&#039;sort_by&#039;]);//这俩个参数都可以注入<br />
+        $filter[&#039;sort_order&#039;] = empty($_REQUEST[&#039;sort_order&#039;]) ? &#039;DESC&#039; : trim($_REQUEST[&#039;sort_order&#039;]);<br />
+<br />
+        /* 查询记录总数，计算分页数 */<br />
+        $sql = &quot;SELECT COUNT(*) FROM &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;agency&#039;);<br />
+        $filter[&#039;record_count&#039;] = $GLOBALS[&#039;db&#039;]-&gt;getOne($sql);<br />
+        $filter = page_and_size($filter);<br />
+<br />
+        /* 查询记录 */<br />
+        $sql = &quot;SELECT * FROM &quot; . $GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;agency&#039;) . &quot; ORDER BY $filter[sort_by] $filter[sort_order]&quot;;<br />
+<br />
+        set_filter($filter, $sql);<br />
+    }<br />
+    else<br />
+    {<br />
+        $sql    = $result</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">测试方法<br />
+<br />
+127.0.0.1/ec/admin/affiliate_ck.php?act=list&amp;auid=1&#039;<br />
+<br />
+</p><p class="detail"><a href="../images/19172117f41089d1f3f9133f4245270c30be4163.jpg" target="_blank"><img src="../images/19172117f41089d1f3f9133f4245270c30be4163.jpg" alt="_20131219171825.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+测试方法 <br />
+<br />
+127.0.0.1/ec/admin/agency.php?act=list<br />
+<br />
+POST 提交sort_by=111111&#039;<br />
+<br />
+</p><p class="detail"><a href="../images/19172935fb0721769603285fa70f9b0525eb37ad.jpg" target="_blank"><img src="../images/19172935fb0721769603285fa70f9b0525eb37ad.jpg" alt="_20131219172736.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你猜 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Matt" title="Matt">Matt</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046480" title="ECSHOP 后台sql注入漏洞2枚（鸡肋）">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2013-12-19 17:44</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46480";
+var bugRating="-3";
+var myRating="";
+var ratingCount="1";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

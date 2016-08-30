@@ -1,0 +1,174 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		PPS某分站逻辑错误导致内网沦陷大量数据告急  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		PPS某分站逻辑错误导致内网沦陷大量数据告急  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/Chora">Chora</a> 
+</li><li>提交时间：		2014-02-15 19:13</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-02-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-02-17：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-02-27：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-03-09：	细节向普通白帽子公开<br/>
+									2014-03-19：	细节向实习白帽子公开<br/>
+									2014-04-01：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">本来是看奇艺的，听说结婚了。求送个VIP，我老婆喜欢看无广告电影啊。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">还是nslookup查询了下pps的内网段IP，发现目标yun.pps.tv。<br />
+<br />
+还是老规矩先收集信息，Superscan先扫描着，手动来看看web,先用御剑收集下敏感信息。</p><p class="detail"><a href="../images/1517571805bff650131361d4802d78af5253a186.png" target="_blank"><img src="../images/1517571805bff650131361d4802d78af5253a186.png" alt="0.png" width="600"/></a></p><p class="detail"><br />
+<br />
+看看WEB层有没有什么漏洞，一般我都是先看未授权访问，其次就是找上传，最后才是看注入跟XSS，发现一处可以上传文件的地方。用百度的logo改成.php后缀上传成功，burp截取后发现后缀名是php，并且返回了地址，看来有戏。于是加个GIF89a文件头直接上传一句话，但是失败了，看来还是懒不得，copy /b 1.php+2.php 3.php生成一个图片马上传成功。</p><p class="detail"><a href="../images/1518040231259026b2436254579abad59b89c2ed.png" target="_blank"><img src="../images/1518040231259026b2436254579abad59b89c2ed.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+地址为http://s1.ppsimg.com/vod/file/poster_200/9a/68/9a68db1de3878383821d82cb8ecab0c6.php<br />
+<br />
+高兴的去访问上传的图片马，结果弹出下载提示蛋疼了。看来在图片服务器做了禁止脚本执行的处理。</p><p class="detail"><a href="../images/1518122740deb396d71da6444fc303ca6b13fcf7.png" target="_blank"><img src="../images/1518122740deb396d71da6444fc303ca6b13fcf7.png" alt="5.png" width="600"/></a></p><p class="detail">突然想起来御剑不是扫描到一个file文件夹么，会不会是在这服务器上做的映射？于是开始尝试访问http://yun.pps.tv/file/poster_200发现403，</p><p class="detail"><a href="../images/151824254d77557e2a7a642643428a62a1e47b2d.png" target="_blank"><img src="../images/151824254d77557e2a7a642643428a62a1e47b2d.png" alt="6.png" width="600"/></a></p><p class="detail">打上全部地址访问确实存在但是并没有执行，我们看到是GIF87a，这个图片是处理过的，并没有一句话代码在里面，陷入了僵局，思考了下自己要是写程序的话应该也会上传原图片，而且根据经验大多数处理过的图片跟原图片只是添加了后缀、目录名添加了名称总之还是有细微差别的，细心观察了下URL：yun.pps.tv/file/poster_200/9a/68/9a68db1de3878383821d82cb8ecab0c6.php 发现9a/68 9a68xxxx.php，说明这个程序员喜欢有规律的编程，那就好办了，看到poster_200想到去访问poster看看有没有，结果存在顺利拿到SHELL。</p><p class="detail"><a href="../images/151826432e45beb8a8809f67fdfd02dc8230a56b.png" target="_blank"><img src="../images/151826432e45beb8a8809f67fdfd02dc8230a56b.png" alt="7.png" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">两张内网一张usb网卡，就不继续深入内部了，</p><p class="detail"><a href="../images/15183117b82b8c8acdaf1c2551ddf1349d8d3577.png" target="_blank"><img src="../images/15183117b82b8c8acdaf1c2551ddf1349d8d3577.png" alt="8.png" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/1518312565bde6319ce8fa672a3fd576ab549842.png" target="_blank"><img src="../images/1518312565bde6319ce8fa672a3fd576ab549842.png" alt="9.png" width="600"/></a></p><p class="detail"><br />
+<br />
+点到为止。数据都没有进行连接，你们可以去查看数据库日志验证。其他配置文件也没有再去翻，只是证明就行。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们更专业。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/Chora" title="Chora">Chora</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-051058" title="PPS某分站逻辑错误导致内网沦陷大量数据告急">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-02-17 10:28</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您的提交，我们将尽快修复</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="51058";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

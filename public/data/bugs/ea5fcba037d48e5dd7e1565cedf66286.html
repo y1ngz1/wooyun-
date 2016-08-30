@@ -1,0 +1,517 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		网易任何删除文件漏洞[严重]  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		网易任何删除文件漏洞[严重]  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/鬼哥">鬼哥</a> 
+</li><li>提交时间：		2012-07-15 22:53</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2012-07-15：	细节已通知厂商并且等待厂商处理中<br/>
+									2012-07-16：	厂商已经确认，细节仅向厂商公开<br/>
+									2012-07-26：	细节向核心白帽子及相关领域专家公开<br/>
+									2012-08-05：	细节向普通白帽子公开<br/>
+									2012-08-15：	细节向实习白帽子公开<br/>
+									2012-08-29：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">网易任何删除文件漏洞[严重]</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">漏洞地址：https://mima.163.com/nie/ts_game_upload_remove.aspx?again=&amp;ran=../nie/images/ts/&amp;id=topImg.jpg<br />
+<br />
+<br />
+<br />
+想删哪个换目录即可。。测试时删除了2个文件，已备份。<br />
+<br />
+<br />
+<br />
+Validator_nV2.js<br />
+<br />
+</p><pre><code>String.prototype.trim = function() {<br />
+	return this.replace(/(^\s*)|(\s*$)/g, &quot;&quot;);<br />
+}<br />
+Validator = {<br />
+	MimaIdCard : &quot;this.IsMimaIdCard(value)&quot;,<br />
+	Pingma : &quot;this.IsPingma(value)&quot;,<br />
+	Require : /.+/,<br />
+	// Email : /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/,<br />
+	Email : &quot;this.IsEmail(value)&quot;,<br />
+	Phone : /^((\(\d{2,3}\))|(\d{3}\-))?(\(0\d{2,3}\)|0\d{2,3}-)?[1-9]\d{6,7}(\-\d{1,4})?$/,<br />
+	Mobile : /^1[3458]\d{9}$/,<br />
+	Url : /^http:\/\/[A-Za-z0-9]+\.[A-Za-z0-9]+[\/=\?%\-&amp;_~`@[\]\&#039;:+!]*([^&lt;&gt;\&quot;\&quot;])*$/,<br />
+	IdCard : &quot;this.IsIdCard(value)&quot;,<br />
+	Currency : /^\d+(\.\d+)?$/,<br />
+	Number : /^\d+$/,<br />
+	Zip : /^[1-9]\d{5}$/,<br />
+	QQ : &quot;this.IsQQ(value)&quot;,<br />
+	Integer : /^[-\+]?\d+$/,<br />
+	Double : /^[-\+]?\d+(\.\d+)?$/,<br />
+	English : /^[A-Za-z]+$/,<br />
+	Chinese : /^[\u0391-\uFFE5]+$/,<br />
+	Username : /^[a-z]\w{3,}$/i,<br />
+	UnSafe : /^(([A-Z]*|[a-z]*|\d*|[-_\~!@#\$%\^&amp;\*\.\(\)\[\]\{\}&lt;&gt;\?\\\/\&#039;\&quot;]*)|.{0,5})$|\s/,<br />
+	IsSafe : function(str) {<br />
+		return !this.UnSafe.test(str);<br />
+	},<br />
+	SafeString : &quot;this.IsSafe(value)&quot;,<br />
+	Filter : &quot;this.DoFilter(value, getAttribute(&#039;accept&#039;))&quot;,<br />
+	Limit : &quot;this.limit(value.length,getAttribute(&#039;min&#039;), getAttribute(&#039;max&#039;))&quot;,<br />
+	Limit2 : &quot;this.limit2(value.length, getAttribute(&#039;min&#039;), getAttribute(&#039;max&#039;))&quot;,<br />
+	LimitB : &quot;this.limit(this.LenB(value), getAttribute(&#039;min&#039;), getAttribute(&#039;max&#039;))&quot;,<br />
+	Date : &quot;this.IsDate(value, getAttribute(&#039;min&#039;), getAttribute(&#039;format&#039;))&quot;,<br />
+	Repeat : &quot;value == document.getElementsByName(getAttribute(&#039;to&#039;))[0].value&quot;,<br />
+	Range : &quot;getAttribute(&#039;min&#039;) &lt; (value|0) &amp;&amp; (value|0) &lt; getAttribute(&#039;max&#039;)&quot;,<br />
+	Compare : &quot;this.compare(value,getAttribute(&#039;operator&#039;),getAttribute(&#039;to&#039;))&quot;,<br />
+	Custom : &quot;this.Exec(value, getAttribute(&#039;regexp&#039;))&quot;,<br />
+	Group : &quot;this.MustChecked(getAttribute(&#039;name&#039;), getAttribute(&#039;min&#039;), getAttribute(&#039;max&#039;))&quot;,<br />
+	ErrorItem : [ document.forms[0] ],<br />
+	ErrorMessage : [ &quot;以下原因导致提交失败：\t&quot; ],<br />
+	Validate : function(theForm, mode) {<br />
+		var obj = theForm || event.srcElement;<br />
+		var count = obj.elements.length;<br />
+		this.ErrorMessage.length = 1;<br />
+		this.ErrorItem.length = 1;<br />
+		this.ErrorItem[0] = obj;<br />
+		for ( var i = 0; i &lt; count; i++) {<br />
+			var breakFor = false;<br />
+			with (obj.elements[i]) {<br />
+				var j_show = true;<br />
+				try{<br />
+					j_show = j(&quot;#&quot;+obj.elements[i].id).is(&quot;:visible&quot;)					<br />
+				}catch(e){<br />
+					j_show = true;<br />
+				}<br />
+				<br />
+				if (obj.elements[i].style.display != &#039;none&#039; &amp;&amp; j_show) {<br />
+<br />
+					var _tipId = obj.elements[i].getAttribute(&quot;tipId&quot;);<br />
+					if (_tipId != null) {<br />
+						$(_tipId).style.display = &#039;none&#039;;<br />
+					}<br />
+					var _dataType = getAttribute(&quot;dataType&quot;);<br />
+<br />
+					if (typeof (_dataType) == &quot;object&quot;<br />
+							|| typeof (this[_dataType]) == &quot;undefined&quot;)<br />
+						continue;<br />
+					if (getAttribute(&quot;require&quot;) == &quot;false&quot;<br />
+							&amp;&amp; value.trim() == &quot;&quot;)<br />
+						continue;<br />
+					switch (_dataType) {<br />
+					case &quot;MimaIdCard&quot;:<br />
+					case &quot;Pingma&quot;:<br />
+					case &quot;IdCard&quot;:<br />
+					case &quot;Email&quot;:<br />
+					case &quot;QQ&quot;:<br />
+					case &quot;Date&quot;:<br />
+					case &quot;Repeat&quot;:<br />
+					case &quot;Range&quot;:<br />
+					case &quot;Compare&quot;:<br />
+					case &quot;Custom&quot;:<br />
+					case &quot;Group&quot;:<br />
+					case &quot;Limit&quot;:<br />
+					case &quot;Limit2&quot;:<br />
+					case &quot;LimitB&quot;:<br />
+					case &quot;SafeString&quot;:<br />
+					case &quot;Filter&quot;:<br />
+						if (!eval(this[_dataType])) {<br />
+							this.AddError(i, getAttribute(&quot;msg&quot;));<br />
+							breakFor = true;<br />
+						}<br />
+						break;<br />
+					default:<br />
+						if (!this[_dataType].test(value.trim())) {<br />
+							this.AddError(i, getAttribute(&quot;msg&quot;));<br />
+							breakFor = true;<br />
+						}<br />
+					}<br />
+				}<br />
+				if (breakFor)<br />
+					break;<br />
+			}<br />
+		}<br />
+		if (this.ErrorMessage.length &gt; 1) {<br />
+			mode = mode || 1;<br />
+			var errCount = this.ErrorItem.length;<br />
+			switch (mode) {<br />
+			/* ---------------------------------------- */<br />
+			case 4:<br />
+				alert(this.ErrorMessage.join(&quot;\n&quot;));<br />
+				try {<br />
+					this.ErrorItem[1].focus();<br />
+				} catch (e) {<br />
+				}<br />
+				break;<br />
+			/* ---------------------------------------- */<br />
+			case 5:<br />
+				for ( var i = 1; i &lt; errCount; i++) {<br />
+					try {<br />
+						var _tipId = this.ErrorItem[i].getAttribute(&quot;tipId&quot;);<br />
+						if (_tipId == null) {<br />
+							// this.ErrorItem[i].parentNode.style.backgroundColor<br />
+							// = &quot;red&quot;;<br />
+						} else {<br />
+<br />
+							if ($(this.ErrorItem[i].getAttribute(&quot;tipId&quot;)).className == &#039;tips&#039;) {<br />
+								$(this.ErrorItem[i].getAttribute(&quot;tipId&quot;)).className = &#039;error_tips&#039;;<br />
+							} else if ($(this.ErrorItem[i]<br />
+									.getAttribute(&quot;tipId&quot;)).className == &#039;tip4textarea&#039;) {<br />
+								$(this.ErrorItem[i].getAttribute(&quot;tipId&quot;)).className = &#039;error_tip4textarea&#039;;<br />
+							}<br />
+<br />
+							if (this.ErrorMessage[i] != &quot;&quot;) {<br />
+								$(this.ErrorItem[i].getAttribute(&quot;tipId&quot;)).innerHTML = this.ErrorMessage[i]<br />
+										.replace(/\d+:/, &quot;&quot;);<br />
+							}<br />
+<br />
+							if (this.ErrorItem[i].getAttribute(&quot;tipId&quot;) == &#039;tip2&#039;) {<br />
+								$(this.ErrorItem[i].getAttribute(&quot;tipId&quot;)).style.margin = &#039;0px&#039;;<br />
+							}<br />
+<br />
+							$(this.ErrorItem[i].getAttribute(&quot;tipId&quot;)).style.display = &#039;block&#039;;<br />
+<br />
+						}<br />
+					} catch (e) {<br />
+						alert(e.description + &quot; 5 &quot;);<br />
+					}<br />
+				}<br />
+<br />
+				if (this.ErrorItem[1].getAttribute(&quot;fId&quot;) == null) {<br />
+					// this.ErrorItem[1].focus();<br />
+				} else {<br />
+					// alert(this.ErrorItem[1].getAttribute(&quot;fId&quot;));<br />
+					// $(this.ErrorItem[1].getAttribute(&quot;fId&quot;)).focus();<br />
+				}<br />
+<br />
+				break;<br />
+			/* ---------------------------------------- */<br />
+			default:<br />
+				for ( var i = 1; i &lt; errCount; i++) {<br />
+					try {<br />
+						var _tipId = this.ErrorItem[i].getAttribute(&quot;tipId&quot;);<br />
+						if (_tipId != null) {<br />
+							if ($(_tipId).className == &#039;xPro&#039;) {<br />
+								$(_tipId).className = &#039;xProerr&#039;;<br />
+								$(_tipId).style.display = &quot;&quot;;<br />
+								$(_tipId).parentNode.parentNode.className = &#039;prompt&#039;;<br />
+							} else if ($(this.ErrorItem[i]<br />
+									.getAttribute(&quot;tipId&quot;)).className == &#039;tip4textarea&#039;) {<br />
+								$(this.ErrorItem[i].getAttribute(&quot;tipId&quot;)).className = &#039;error_tip4textarea&#039;;<br />
+							}<br />
+						}<br />
+					} catch (e) {<br />
+						alert(e.description + &quot; 6 &quot;);<br />
+					}<br />
+				}<br />
+			}<br />
+			return false;<br />
+		}<br />
+		return true;<br />
+	},<br />
+	limit : function(len, min, max) {<br />
+		min = min || 0;<br />
+		max = max || Number.MAX_VALUE;<br />
+		return min &lt;= len &amp;&amp; len &lt;= max;<br />
+	},<br />
+	limit2 : function(len, min, max) {<br />
+		if (len == 0)<br />
+			return true;<br />
+		min = min || 0;<br />
+		max = max || Number.MAX_VALUE;<br />
+		return min &lt;= len &amp;&amp; len &lt;= max;<br />
+	},<br />
+	LenB : function(str) {<br />
+		return str.replace(/[^\x00-\xff]/g, &quot;**&quot;).length;<br />
+	},<br />
+	AddError : function(index, str) {<br />
+		this.ErrorItem[this.ErrorItem.length] = this.ErrorItem[0].elements[index];<br />
+		this.ErrorMessage[this.ErrorMessage.length] = this.ErrorMessage.length<br />
+				+ &quot;:&quot; + str;<br />
+	},<br />
+	Exec : function(op, reg) {<br />
+		return new RegExp(reg, &quot;g&quot;).test(op);<br />
+	},<br />
+	compare : function(op1, operator, op2) {<br />
+		switch (operator) {<br />
+		case &quot;NotEqual&quot;:<br />
+			return (op1 != op2);<br />
+		case &quot;GreaterThan&quot;:<br />
+			return (op1 &gt; op2);<br />
+		case &quot;GreaterThanEqual&quot;:<br />
+			return (op1 &gt;= op2);<br />
+		case &quot;LessThan&quot;:<br />
+			return (op1 &lt; op2);<br />
+		case &quot;LessThanEqual&quot;:<br />
+			return (op1 &lt;= op2);<br />
+		default:<br />
+			return (op1 == op2);<br />
+		}<br />
+	},<br />
+	MustChecked : function(name, min, max) {<br />
+		var groups = document.getElementsByName(name);<br />
+		var hasChecked = 0;<br />
+		min = min || 1;<br />
+		max = max || groups.length;<br />
+		for ( var i = groups.length - 1; i &gt;= 0; i--)<br />
+			if (groups[i].checked)<br />
+				hasChecked++;<br />
+		return min &lt;= hasChecked &amp;&amp; hasChecked &lt;= max;<br />
+	},<br />
+	DoFilter : function(input, filter) {<br />
+		return new RegExp(&quot;^.+\.(?=EXT)(EXT)$&quot;.replace(/EXT/g, filter.split(<br />
+				/\s*,\s*/).join(&quot;|&quot;)), &quot;gi&quot;).test(input);<br />
+	},<br />
+	IsQQ : function(number) {<br />
+		if (number.trim() == &#039;&#039;) {<br />
+			return true;<br />
+		}<br />
+		return /^[1-9]\d{0,15}$/.test(number.trim());<br />
+	},<br />
+	IsMimaIdCard : function(number) {<br />
+		if (!number || number.trim() == &#039;&#039;) {<br />
+			return false;<br />
+		}<br />
+		// 连续7个相同数字则不通过<br />
+		// return !(/(.)\1{6}/.test(number.trim()));<br />
+		return true;<br />
+	},<br />
+	IsPingma : function(number) {<br />
+		 /* if (number || number != &#039;&#039;) {<br />
+		 return (/^[0-9a-zA-Z\\._]{6,16}$/.test(number));<br />
+		 }<br />
+		 return true;<br />
+		*/<br />
+		number = number.trim();<br />
+		if (number == &#039;&#039;) {<br />
+			return true;<br />
+		}else{<br />
+			min = 6;<br />
+			max = 16;<br />
+			return min &lt;= number.length &amp;&amp; number.length &lt;= max;<br />
+		} <br />
+	},<br />
+<br />
+	IsEmail : function(value) {<br />
+		return (/^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/.test(value));<br />
+	},<br />
+	IsIdCard : function(number) {<br />
+		var date, Ai;<br />
+		var verify = &quot;10x98765432&quot;;<br />
+		var Wi = [ 7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2 ];<br />
+		var area = [ &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;北京&#039;, &#039;天津&#039;,<br />
+				&#039;河北&#039;, &#039;山西&#039;, &#039;内蒙古&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;辽宁&#039;, &#039;吉林&#039;, &#039;黑龙江&#039;, &#039;&#039;,<br />
+				&#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;上海&#039;, &#039;江苏&#039;, &#039;浙江&#039;, &#039;安微&#039;, &#039;福建&#039;, &#039;江西&#039;,<br />
+				&#039;山东&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;河南&#039;, &#039;湖北&#039;, &#039;湖南&#039;, &#039;广东&#039;, &#039;广西&#039;, &#039;海南&#039;, &#039;&#039;, &#039;&#039;,<br />
+				&#039;&#039;, &#039;重庆&#039;, &#039;四川&#039;, &#039;贵州&#039;, &#039;云南&#039;, &#039;西藏&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;陕西&#039;,<br />
+				&#039;甘肃&#039;, &#039;青海&#039;, &#039;宁夏&#039;, &#039;新疆&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;台湾&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;,<br />
+				&#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;香港&#039;, &#039;澳门&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;, &#039;&#039;,<br />
+				&#039;&#039;, &#039;国外&#039; ];<br />
+		var re = number<br />
+				.match(/^(\d{2})\d{4}(((\d{2})(\d{2})(\d{2})(\d{3}))|((\d{4})(\d{2})(\d{2})(\d{3}[x\d])))$/i);<br />
+		if (re == null)<br />
+			return false;<br />
+		if (re[1] &gt;= area.length || area[re[1]] == &quot;&quot;)<br />
+			return false;<br />
+		if (re[2].length == 12) {<br />
+			Ai = number.substr(0, 17);<br />
+			date = [ re[9], re[10], re[11] ].join(&quot;-&quot;);<br />
+		} else {<br />
+			Ai = number.substr(0, 6) + &quot;19&quot; + number.substr(6);<br />
+			date = [ &quot;19&quot; + re[4], re[5], re[6] ].join(&quot;-&quot;);<br />
+		}<br />
+		if (!this.IsDate(date, &quot;ymd&quot;))<br />
+			return false;<br />
+		var sum = 0;<br />
+		for ( var i = 0; i &lt;= 16; i++) {<br />
+			sum += Ai.charAt(i) * Wi[i];<br />
+		}<br />
+		Ai += verify.charAt(sum % 11);<br />
+		return (number.length == 15 || number.length == 18 &amp;&amp; number == Ai);<br />
+	},<br />
+	IsDate : function(op, formatString) {<br />
+		formatString = formatString || &quot;ymd&quot;;<br />
+		var m, year, month, day;<br />
+		switch (formatString) {<br />
+		case &quot;ymd&quot;:<br />
+			m = op.match(new RegExp(<br />
+					&quot;^((\\d{4})|(\\d{2}))([-./])(\\d{1,2})\\4(\\d{1,2})$&quot;));<br />
+			if (m == null)<br />
+				return false;<br />
+			day = m[6];<br />
+			month = m[5] * 1;<br />
+			year = (m[2].length == 4) ? m[2] : GetFullYear(parseInt(m[3], 10));<br />
+			break;<br />
+		case &quot;dmy&quot;:<br />
+			m = op.match(new RegExp(<br />
+					&quot;^(\\d{1,2})([-./])(\\d{1,2})\\2((\\d{4})|(\\d{2}))$&quot;));<br />
+			if (m == null)<br />
+				return false;<br />
+			day = m[1];<br />
+			month = m[3] * 1;<br />
+			year = (m[5].length == 4) ? m[5] : GetFullYear(parseInt(m[6], 10));<br />
+			break;<br />
+		default:<br />
+			break;<br />
+		}<br />
+		if (!parseInt(month))<br />
+			return false;<br />
+		month = month == 0 ? 12 : month;<br />
+		var date = new Date(year, month - 1, day);<br />
+		return (typeof (date) == &quot;object&quot; &amp;&amp; year == date.getFullYear()<br />
+				&amp;&amp; month == (date.getMonth() + 1) &amp;&amp; day == date.getDate());<br />
+		function GetFullYear(y) {<br />
+			return ((y &lt; 30 ? &quot;20&quot; : &quot;19&quot;) + y) | 0;<br />
+		}<br />
+	}<br />
+}</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+一个图片：<br />
+<br />
+topImg.jpg<br />
+<br />
+</p><p class="detail"><a href="../images/15225249c6db20f7cf50e3d445fe2b403b89bbd8.jpg" target="_blank"><img src="../images/15225249c6db20f7cf50e3d445fe2b403b89bbd8.jpg" alt="" width="600"/></a></p><p class="detail"> </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">漏洞地址：https://mima.163.com/nie/ts_game_upload_remove.aspx?again=&amp;ran=../nie/images/ts/&amp;id=topImg.jpg </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">你们懂。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/鬼哥" title="鬼哥">鬼哥</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-09695" title="网易任何删除文件漏洞[严重]">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：高</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2012-07-16 17:20</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">感谢您对网易的关注，漏洞已修复。</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="9695";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

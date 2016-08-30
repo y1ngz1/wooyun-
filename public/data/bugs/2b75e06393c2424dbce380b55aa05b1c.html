@@ -1,0 +1,263 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		ecshop最新版本几处用户权限越权(其它版本亦可)  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		ecshop最新版本几处用户权限越权(其它版本亦可)  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/blue">blue</a> 
+</li><li>提交时间：		2013-05-26 22:12</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-05-26：	细节已通知厂商并且等待厂商处理中<br/>
+									2013-05-26：	厂商已经确认，细节仅向厂商公开<br/>
+									2013-05-29：	细节向第三方安全合作伙伴开放<br/>
+									2013-06-05：	细节向核心白帽子及相关领域专家公开<br/>
+									2013-06-15：	细节向普通白帽子公开<br/>
+									2013-07-05：	细节向实习白帽子公开<br/>
+									2013-08-24：	细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">就是可以帮助管理员管理订单啥的，匿名活雷锋呐～</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">当开启WAP功能(手机商城)时，未登录可对其它用户订单操作：查看非注册用户订单、取消任意用户订单、任意用户订单确认收货等。<br />
+<br />
+漏洞存在于 /mobile/user.php 页面<br />
+<br />
+1.查看非注册用户订单<br />
+<br />
+</p><pre><code>elseif ($act == &#039;order_list&#039;) // /mobile/user.php 49行起<br />
+{<br />
+    $record_count = $db-&gt;getOne(&quot;SELECT COUNT(*) FROM &quot; .$ecs-&gt;table(&#039;order_info&#039;). &quot; WHERE user_id = {$_SESSION[&#039;user_id&#039;]}&quot;);  //未注册用户可直接下订单<br />
+...<br />
+    $orders = get_user_orders($_SESSION[&#039;user_id&#039;], $page_num, $page_num * ($page - 1));  //100行，get_user_orders位于/includes/lib_transaction.php，可以看到取的是user_id=0的用户订单</code></pre><p class='detail'><br />
+<br />
+2.取消任意用户订单<br />
+<br />
+</p><pre><code>elseif ($act == &#039;cancel_order&#039;)  // /mobile/user.php 118行起<br />
+{<br />
+    include_once(ROOT_PATH . &#039;includes/lib_transaction.php&#039;);<br />
+    include_once(ROOT_PATH . &#039;includes/lib_order.php&#039;);<br />
+<br />
+    $order_id = isset($_GET[&#039;order_id&#039;]) ? intval($_GET[&#039;order_id&#039;]) : 0;<br />
+    if (cancel_order($order_id, $_SESSION[&#039;user_id&#039;]))<br />
+    {<br />
+        ecs_header(&quot;Location: user.php?act=order_list\n&quot;);<br />
+        exit;<br />
+    }<br />
+}<br />
+....<br />
+/* cancel_order位于/includes/lib_transaction.php 353行起 */<br />
+function cancel_order($order_id, $user_id = 0)<br />
+{<br />
+    /* 查询订单信息，检查状态 */<br />
+    $sql = &quot;SELECT user_id, order_id, order_sn , surplus , integral , bonus_id, order_status, shipping_status, pay_status FROM &quot; .$GLOBALS[&#039;ecs&#039;]-&gt;table(&#039;order_info&#039;) .&quot; WHERE order_id = &#039;$order_id&#039;&quot;;<br />
+    $order = $GLOBALS[&#039;db&#039;]-&gt;GetRow($sql);<br />
+<br />
+    if (empty($order))<br />
+    {<br />
+        $GLOBALS[&#039;err&#039;]-&gt;add($GLOBALS[&#039;_LANG&#039;][&#039;order_exist&#039;]);<br />
+        return false;<br />
+    }<br />
+<br />
+    // 如果用户ID大于0，检查订单是否属于该用户<br />
+    if ($user_id &gt; 0 &amp;&amp; $order[&#039;user_id&#039;] != $user_id)  //这里是重点，此时未登录，所以$user_id=0，绕过了～～<br />
+    {<br />
+        $GLOBALS[&#039;err&#039;] -&gt;add($GLOBALS[&#039;_LANG&#039;][&#039;no_priv&#039;]);<br />
+<br />
+        return false;<br />
+    }<br />
+.....</code></pre><p class='detail'><br />
+<br />
+3.任意用户订单确认收货<br />
+<br />
+</p><pre><code>elseif ($act == &#039;affirm_received&#039;) // /mobile/user.php 118行起<br />
+{<br />
+    include_once(ROOT_PATH . &#039;includes/lib_transaction.php&#039;);<br />
+<br />
+    $order_id = isset($_GET[&#039;order_id&#039;]) ? intval($_GET[&#039;order_id&#039;]) : 0;<br />
+    $_LANG[&#039;buyer&#039;] = &#039;买家&#039;;<br />
+    if (affirm_received($order_id, $_SESSION[&#039;user_id&#039;]))<br />
+    {<br />
+        ecs_header(&quot;Location: user.php?act=order_list\n&quot;);<br />
+        exit;<br />
+    }<br />
+<br />
+}<br />
+/* affirm_received方法位于/includes/lib_transaction.php，和cancel_order一样的user_id判断 */</code></pre><p class='detail'><br />
+<br />
+出现以上问题的原因是未对用户是否登录进行判断，来看一下/user.php (非手机版) 的代码<br />
+<br />
+/user.php 40行起<br />
+<br />
+* 未登录处理 */<br />
+<br />
+</p><pre><code>if (empty($_SESSION[&#039;user_id&#039;]))<br />
+{<br />
+    if (!in_array($action, $not_login_arr))<br />
+    {<br />
+        if (in_array($action, $ui_arr))<br />
+        {<br />
+......</code></pre><p class='detail'><br />
+<br />
+这里的未登录处理杜绝了未登录时越权操作的发生，而手机版/mobile/user.php没有，忘加了？<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/26220744937eb3747d1f6a5051b45f3d84bf56b0.png" target="_blank"><img src="../images/26220744937eb3747d1f6a5051b45f3d84bf56b0.png" alt="1.png" width="600"/></a></p><p class="detail"><br />
+<br />
+未登录时执行：http://localhost/test/ecshop/mobile/user.php?act=cancel_order&amp;order_id=31<br />
+<br />
+</p><p class="detail"><a href="../images/26220756738a9f17248899a911cbbe6a512fb5d1.png" target="_blank"><img src="../images/26220756738a9f17248899a911cbbe6a512fb5d1.png" alt="2.png" width="600"/></a></p><p class="detail"> </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">参考 /user.php 40行起<br />
+<br />
+* 未登录处理 */<br />
+<br />
+</p><pre><code>if (empty($_SESSION[&#039;user_id&#039;]))<br />
+{<br />
+    if (!in_array($action, $not_login_arr))<br />
+    {<br />
+        if (in_array($action, $ui_arr))<br />
+        {<br />
+......</code></pre><p class='detail'> </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/blue" title="blue">blue</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-024566" title="ecshop最新版本几处用户权限越权(其它版本亦可)">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+															<h3 class="detailTitle">厂商回应：</h3>
+						<p class="detail">危害等级：中</p>
+						<p class="detail">漏洞Rank：10 </p>
+													<p class="detail">确认时间：2013-05-26 23:19</p>
+												<h3 class="detailTitle">厂商回复：</h3>				
+						<p class="detail">非常感谢您为shopex信息安全做的贡献<br />
+我们将尽快修复<br />
+非常感谢</p>
+					
+
+					
+					
+					<h3 class="detailTitle">最新状态：</h3>
+
+											<p class="detail">暂无</p>
+					
+
+							
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="24566";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>

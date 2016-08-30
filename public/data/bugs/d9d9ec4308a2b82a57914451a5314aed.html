@@ -1,0 +1,182 @@
+﻿<!doctype html>
+                        <html lang="en">
+                        <head>
+	                        <meta charset="UTF-8">
+	                        <title>		Winsock Ftp Daemon内存溢出漏洞  </title>
+	                        <link href="../css/css.css" rel="stylesheet" /> 
+                        </head>
+                        <body> 
+                        <ul><li>标题：		Winsock Ftp Daemon内存溢出漏洞  </li><li>作者：		<a href="http://www.wooyun.org/whitehats/杀破狼">杀破狼</a> 
+</li><li>提交时间：		2013-09-02 15:09</li></ul>
+                        <div class="con">
+                        <h2>漏洞详情</h2>
+		<h3 class="detailTitle">披露状态：</h3>
+		<p class="detail" style="padding-bottom:0">
+					</p>
+		<p class="detail">
+									2013-09-02：	积极联系厂商并且等待厂商认领中，细节不对外公开<br/>
+									2013-12-01：	厂商已经主动忽略漏洞，细节向公众公开<br/>
+					</p>
+		<h3 class="detailTitle">简要描述：</h3>
+
+		<p class="detail">当输入的命令行超过172个字符（后接1个\n），程序发生访问异常。<br />
+</p>
+
+				
+						<h3 class="detailTitle">详细说明：</h3>
+		
+			<p class="detail">向ftp server发送如下方式构造的数据包：<br />
+<br />
+  if s_block_start(&quot;body&quot;):<br />
+<br />
+    s_static(&quot;1&quot;*32)<br />
+<br />
+    s_static(&quot;2&quot;*32)<br />
+<br />
+    s_static(&quot;3&quot;*32)<br />
+<br />
+    s_static(&quot;4&quot;*32)<br />
+<br />
+    s_static(&quot;5&quot;*32)<br />
+<br />
+    s_static(&quot;6&quot;*32)<br />
+<br />
+    s_static(&quot;7&quot;*12)<br />
+<br />
+    s_static(&quot;\n&quot;)<br />
+<br />
+    s_delim(&quot; &quot;)<br />
+<br />
+s_block_end()<br />
+<br />
+当输入的命令行超过172个字符（后接1个\n），0041A661处指令发生访问异常。<br />
+<br />
+原因是用全局变量dword_4321F8给ecx赋值时(0040836B指令处)，dword_4321F8已经被改写为用户输入命令。<br />
+<br />
+漏洞的原因是：<br />
+<br />
+在 00402936指令处调用vsprintf之前没有判断目标缓冲区0x432130（只有200字节）的边界，导致后面紧跟的全局变量dword_4321F8被改写。由于程序在向目标缓冲区0x432130打印字符串时会在前面加入“500 undefined command ”这样的前缀，所以用户输入只要超过172个字符就会导致目标缓冲区溢出,程序出错退出。<br />
+<br />
+ </p>
+				
+									<h3 class="detailTitle">漏洞证明：</h3>
+
+			<p class="detail"></p><p class="detail"><a href="../images/011133310d3a4640038e96c47e1d3ecfcd483368.jpg" target="_blank"><img src="../images/011133310d3a4640038e96c47e1d3ecfcd483368.jpg" alt="proof-video_201391112924.JPG" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/0111331297c97050e7f6240cef143bff3604104e.jpg" target="_blank"><img src="../images/0111331297c97050e7f6240cef143bff3604104e.jpg" alt="proof-video_201391112624.JPG" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/011133233ad0640be8972e34fb456bbf27fd7106.jpg" target="_blank"><img src="../images/011133233ad0640be8972e34fb456bbf27fd7106.jpg" alt="proof-video_201391112813.JPG" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/01113254a1c4d7d9db13969cc8e9932b965bed13.jpg" target="_blank"><img src="../images/01113254a1c4d7d9db13969cc8e9932b965bed13.jpg" alt="proof-video_201391112560.JPG" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/0111324020fa38c2bbc5104a729f6641f32ae25a.jpg" target="_blank"><img src="../images/0111324020fa38c2bbc5104a729f6641f32ae25a.jpg" alt="proof-video_201391112442.JPG" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/011132280a7197bebc2c28c439b7dff9a91bc044.jpg" target="_blank"><img src="../images/011132280a7197bebc2c28c439b7dff9a91bc044.jpg" alt="proof-video_201391112353.JPG" width="600"/></a></p><p class="detail"></p><p class="detail"><a href="../images/01113207d1dfe6e7893a860715a67c6836531263.jpg" target="_blank"><img src="../images/01113207d1dfe6e7893a860715a67c6836531263.jpg" alt="proof-video_201391112256.JPG" width="600"/></a></p><p class="detail"><br />
+<br />
+导致程序出错退出 </p>
+
+									<h3 class="detailTitle">修复方案：</h3>
+			<p class="detail">修复的方式：在 00402936指令处调用sprintf函数时，判断源字符串的长度。程序里类似这样的问题还有很多。 </p>
+										<h3 class="detailTitle">版权声明：转载请注明来源 <a style="font-weight:normal" href="http://www.wooyun.org/whitehats/杀破狼" title="杀破狼">杀破狼</a>@<a style="font-weight:normal" href="http://www.wooyun.org/bugs/wooyun-2010-035825" title="Winsock Ftp Daemon内存溢出漏洞">乌云</a></h3>
+		<hr align="center"/>
+
+				
+			<h2>漏洞回应</h2>
+			
+			
+									<h3 class="detailTitle">厂商回应：</h3>
+										<p class="detail">未能联系到厂商或者厂商积极拒绝</p>
+																	
+					
+		
+<hr align="center" />
+<script type="text/javascript">
+var bugid="35825";
+var bugRating="-3";
+var myRating="";
+var ratingCount="0";
+
+
+
+function ShowBugRating(k){
+	var ratingItems=$(".myrating span");
+	$.each(ratingItems,function(i,n){
+		var nk=parseInt($(n).attr("rel"));
+		if(nk<=k){
+			$(n).addClass("on");
+		}else{
+			$(n).removeClass("on");
+		}
+	});
+	$(".myrating span").hover(
+		function(){
+			$("#ratingShow").html($(this).attr("data-title"));
+		},
+		function(){
+			$("#ratingShow").html("");
+		}
+	);
+}
+$(document).ready(function(){
+	if(myRating==""){
+		var ratingItems=$(".myrating span");
+		$(".myrating span").hover(
+			function(){
+				$(this).addClass("hover");
+				var k=parseInt($(this).attr("rel"));
+				$.each(ratingItems,function(i,n){
+					var nk=parseInt($(n).attr("rel"));
+					if(nk<k) $(n).addClass("on");
+					if(nk>k) $(n).removeClass("on");
+				});
+				$("#ratingShow").html($(this).attr("data-title"));
+			},
+			function(){
+				$(this).removeClass("hover");
+				if($("#myRating").val()==""){
+					$.each(ratingItems,function(i,n){
+						$(n).removeClass("on");
+					});
+				}
+				$("#ratingShow").html("");
+			}
+		);
+
+		$(".myrating span").click(function(){
+			var rating=$(this).attr("rel");
+			var k=parseInt($(this).attr("rel"));
+			$.post("/ajaxdo.php?module=bugrating",{"id":bugid,"rating":rating,"token":$("#token").val()},function(re){
+				//消除操作绑定
+				$(".myrating span").unbind();
+				re=parseInt(re);
+				switch(re){
+					case 1:
+						$("#ratingShow").html("评分成功");
+						$("#ratingSpan").html(parseInt($("#ratingSpan").html())+1);
+						$.each(ratingItems,function(i,n){
+							var nk=parseInt($(n).attr("rel"));
+							if(nk<=k){
+								$(n).addClass("on");
+							}else{
+								$(n).removeClass("on");
+							}
+						});
+						ShowBugRating(rating);
+						break;
+					case 2:
+						$("#ratingShow").html("请先登录");
+						break;
+					case 4:
+						$("#ratingShow").html("已对此漏洞进行过评分");
+						break;
+					case 6:
+						$("#ratingShow").html("不能对自己发布的漏洞进行评分");
+						break;
+					default:break;
+				}
+			});
+		});
+	}else{
+		if(ratingCount>2){
+			ShowBugRating(bugRating);
+		}else{
+			ShowBugRating(-3);
+		}
+	}
+});
+
+</script>
+<h3 class="detailTitle">漏洞评价：</h3>
+                        </div>
+                        </body>
+                        </html>
