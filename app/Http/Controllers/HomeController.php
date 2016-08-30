@@ -59,11 +59,22 @@ class HomeController extends Controller{
     public function getIndex()
     {
         $articles = DB::table("article")->get();
-        $str = '';
-        foreach ($articles as $key => $article) {
-            $str .= '<a href="'.$article->path.'" target="_blank">'.$article->title.'</a><br>';
+        return view("articles", compact("articles"));
+    }
+
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getArticle($id)
+    {
+        $article = DB::table("article")->find($id);
+        if(is_null($article)){
+            abort(404);
         }
-        echo $str;
+        $article->content = file_get_contents(base_path().'\public\\'.$article->path);
+        return view("article", compact("article"));
     }
 
     /**
