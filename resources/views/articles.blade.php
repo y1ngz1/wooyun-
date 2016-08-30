@@ -54,7 +54,13 @@
                                     <img src="/res/default.png" alt="{{ $article->id }}"></a>
                                 <div>
                                     <p class="list-top">
-                                        <a class="author-name blue-link" target="_blank" href="javascript:void(0)">管理员</a> <em>·</em>
+                                        <a class="author-name blue-link" target="_blank" href="javascript:void(0)">
+                                            @if ($article->column == 'drops')
+                                                管理员
+                                            @else
+                                                {{ $article->author }}
+                                            @endif
+                                        </a> <em>·</em>
                                         <span class="time" data-shared-at="{{ $article->created_at }}">{{ $article->created_at }}</span>
                                     </p>
                                     <h4 class="title">

@@ -17,6 +17,23 @@ class HomeController extends Controller{
      */
     public function getTest(){
         set_time_limit(0);
+        $num = 0;
+        include_once app_path().'\Library\simple_html_dom.php';
+        $articles = DB::table("article")->where("column","bugs")->get();
+        foreach ($articles as $key => $article) {
+            $html = file_get_html(public_path().$article->path);
+            $author = $html->find('ul',0)->find("li",1)->find("a",0)->text();
+            $time = $html->find('ul',0)->find("li",2)->text();
+            $time = trim(str_replace("提交时间：", "", $time)).":00";
+            $num++;
+            $data = array(
+                'author' => $author,
+                'created_at' => $time,
+                );
+            DB::table("article")->where("id",$article->id)->update($data);
+            unset($html);
+        }
+        die;
         $path = public_path().'\data\bugs';
         $path2 = public_path().'\data\bugs2';
         $num = 0;
@@ -120,7 +137,7 @@ class HomeController extends Controller{
     {
         $column = "bugs";
         $keyword = "";
-        $articles = DB::table("article")->where('column', $column)->take(30)->get();
+        $articles = DB::table("article")->where('column', $column)->orderBy("created_at","desc")->take(30)->get();
         return view("articles", compact("articles","column","keyword"));
     }
 
@@ -133,7 +150,7 @@ class HomeController extends Controller{
     {
         $column = "drops";
         $keyword = "";
-        $articles = DB::table("article")->where('column', $column)->take(30)->get();
+        $articles = DB::table("article")->where('column', $column)->orderBy("created_at","desc")->take(30)->get();
         return view("articles", compact("articles","column","keyword"));
     }
 
@@ -151,7 +168,7 @@ class HomeController extends Controller{
         if(!is_null($keyword)){
             $db_obj->where('title','like','%'.$keyword.'%');
         }
-        $articles = $db_obj->get();
+        $articles = $db_obj->orderBy("created_at","desc")->take(30)->get();
         return view("articles", compact("articles","column","keyword"));
     }
 
