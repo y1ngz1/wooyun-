@@ -211,6 +211,8 @@ class HomeController extends Controller{
         if(is_null($article)){
             abort(404);
         }
+        $article->view += 1;
+        DB::table("article")->where('id',$id)->update(['view'=>$article->view]);
         $article->content = file_get_contents(base_path().'\public\\'.$article->path);
         $column = $article->column;
         $keyword = "";

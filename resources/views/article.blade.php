@@ -15,7 +15,6 @@
                             <h1>{{ $article->title }}</h1>
                         </div>
                         {!! $article->content !!}
-                        <!-- <iframe src="{{ $article->path }}" frameborder="no" width="100%" height="100%"></iframe> -->
                     </ul>
 
                 </div>
