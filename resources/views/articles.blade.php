@@ -132,7 +132,7 @@
            var windowHeight = $(this).height();  
            if (scrollTop + windowHeight == scrollHeight) {  
                 loadindex = layer.load();
-                setTimeout("loaddata()",1000);
+                setTimeout("loaddata()",1500);
            }  
         });  
         function loaddata(){
@@ -148,12 +148,19 @@
                     var _html = "";
                     $(msg.data).each(function(index,article){
                         var url = "/article/"+article.id;
-                         _html += ['<li class="have-img">',
+                        var author = "";
+                        if(article.column == 'drops'){
+                            author = "管理员";
+                        }else{
+                            author = article.author;
+                        }
+                        _html += ['<li class="have-img">',
                             '<a class="wrap-img" href="'+url+'">',
                                 '<img src="/res/default.png" alt="'+article.id+'"></a>',
                             '<div>',
                                 '<p class="list-top">',
-                                    '<a class="author-name blue-link" target="_blank" href="javascript:void(0)"></a> <em>·</em>',
+                                    '<a class="author-name blue-link" target="_blank" href="javascript:void(0)">'+author+'</a>',
+                                    ' <em>·</em>',
                                     '<span class="time" data-shared-at="'+article.created_at+'">'+article.created_at+'</span>',
                                 '</p>',
                                 '<h4 class="title">',
