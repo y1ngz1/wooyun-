@@ -16,7 +16,21 @@ class HomeController extends Controller{
      * @return \Illuminate\Http\Response
      */
     public function getTest(){
+        die;
         set_time_limit(0);
+        $num = 0;
+        $image_domain = config('app.image_domain');
+        $articles = DB::table("article")->where("column","bugs")->get();
+        foreach ($articles as $key => $article) {
+            $filepath = public_path().$article->path;
+            $content = file_get_contents($filepath);
+            $content = str_replace("../images/",'{{$image_domain}}/',$content);
+            file_put_contents($filepath, $content);
+            p($content);
+            unset($content);
+            die;
+        }
+        die;
         $num = 0;
         include_once app_path().'\Library\simple_html_dom.php';
         $articles = DB::table("article")->where("column","bugs")->get();
@@ -214,6 +228,10 @@ class HomeController extends Controller{
         $article->view += 1;
         DB::table("article")->where('id',$id)->update(['view'=>$article->view]);
         $article->content = file_get_contents(base_path().'\public\\'.$article->path);
+
+        $image_domain = config('app.image_domain');
+        $article->content = str_replace("../images/",$image_domain,$article->content);
+
         $column = $article->column;
         $keyword = "";
         return view("article", compact("article","column","keyword"));

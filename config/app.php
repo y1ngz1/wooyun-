@@ -28,6 +28,8 @@ return [
 
     'url' => 'http://localhost',
 
+    'image_domain' => 'http://ocqauliw7.bkt.clouddn.com/',
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
