@@ -173,6 +173,34 @@ class HomeController extends Controller{
     }
 
     /**
+     * 异步加载数据
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getDatas()
+    {
+        $column = I('column');
+        $column = $column != 'drops' ? 'bugs' : 'drops';
+        $keyword = I('q');
+        $p = intval(I('p'));
+        $p = $p <= 0 ? 1 : $p;
+        $db_obj = DB::table("article")->where('column',$column);
+        if(!is_null($keyword)){
+            $db_obj->where('title','like','%'.$keyword.'%');
+        }
+        $size = 30;
+        $articles = $db_obj->orderBy("created_at","desc")->skip(($p-1)*$size)->take($size)->get();
+        $data = array(
+            'result' => 0,
+            'description' => '获取数据成功',
+            'data' => $articles
+            );
+        echo json_encode($data);
+        die;
+    }
+    
+
+    /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response

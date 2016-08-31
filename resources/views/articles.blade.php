@@ -75,8 +75,8 @@
 
                     </ul>
 
-                    <!-- div class="load-more">
-                        <button class="ladda-button " data-style="slide-left" data-type="script" data-remote="" data-size="medium" data-url="/top/daily?note_ids%5B%5D=5529382&amp;note_ids%5B%5D=5439417&amp;note_ids%5B%5D=5520646&amp;note_ids%5B%5D=5517872&amp;note_ids%5B%5D=5526423&amp;note_ids%5B%5D=5527566&amp;note_ids%5B%5D=5497143&amp;note_ids%5B%5D=5529213&amp;note_ids%5B%5D=5481659&amp;note_ids%5B%5D=5529144&amp;note_ids%5B%5D=5476405&amp;note_ids%5B%5D=5522785&amp;note_ids%5B%5D=5510914&amp;note_ids%5B%5D=5526745&amp;note_ids%5B%5D=5517989&amp;note_ids%5B%5D=5526649&amp;note_ids%5B%5D=5529400&amp;note_ids%5B%5D=5524109&amp;note_ids%5B%5D=5513248&amp;note_ids%5B%5D=5514524&amp;page=2" data-color="maleskine" data-method="get">
+                    <!-- <div class="load-more">
+                        <button class="ladda-button more-btn" data-style="slide-left" data-type="script" data-remote="" data-size="medium" data-url="/" data-color="maleskine">
                             <span class="ladda-label">点击查看更多</span>
                             <span class="ladda-spinner"></span>
                         </button>
@@ -102,6 +102,8 @@
     <script src="/res/base.js"></script>
     <script src="/res/reading-base.js"></script>
     <script src="/res/home.js"></script>
+    <script src="/res/layer/layer.js"></script>
+    <script src="/res/requestAjax.js"></script>
 
     <script type="text/javascript">
   var _gaq = _gaq || [];
@@ -121,6 +123,57 @@
     <div style="display:none">
         <a href="https://s11.cnzz.com/z_stat.php?id=1260252451&web_id=1260252451" target="_blank" title="站长统计">站长统计</a>
     </div>
-
+    <script type="text/javascript">
+        var page = 1;
+        var loadindex;
+        $(window).scroll(function () {  
+           var scrollTop = $(this).scrollTop();  
+           var scrollHeight = $(document).height();  
+           var windowHeight = $(this).height();  
+           if (scrollTop + windowHeight == scrollHeight) {  
+                loadindex = layer.load();
+                setTimeout("loaddata()",1000);
+           }  
+        });  
+        function loaddata(){
+            var params = {p:page+1,column:"{{ $column }}",q:"{{ $keyword }}",_token:"{{csrf_token()}}"};
+            var callback = function(msg){
+                layer.close(loadindex);
+                if(msg.result == 0){
+                    if(!msg.data){
+                        layer.msg("没有更多数据了");
+                        return;
+                    }
+                    page++;
+                    var _html = "";
+                    $(msg.data).each(function(index,article){
+                        var url = "/article/"+article.id;
+                         _html += ['<li class="have-img">',
+                            '<a class="wrap-img" href="'+url+'">',
+                                '<img src="/res/default.png" alt="'+article.id+'"></a>',
+                            '<div>',
+                                '<p class="list-top">',
+                                    '<a class="author-name blue-link" target="_blank" href="javascript:void(0)"></a> <em>·</em>',
+                                    '<span class="time" data-shared-at="'+article.created_at+'">'+article.created_at+'</span>',
+                                '</p>',
+                                '<h4 class="title">',
+                                    '<a target="_blank" href="'+url+'">'+article.title+'</a>',
+                                '</h4>',
+                                '<div class="list-footer">',
+                                    '<a target="_blank" href="'+url+'">阅读 '+article.view+'</a>',
+                                '</div>',
+                            '</div>',
+                        '</li>'].join('');
+                    })
+                    if(_html){
+                        $(".article-list").append(_html);
+                    }
+                }else{
+                    layer.msg(msg.description);
+                }
+            }
+            requestAjax(params, 'get', '/datas', callback, true);
+        }
+    </script>
 </body>
 </html>
