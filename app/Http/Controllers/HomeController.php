@@ -16,19 +16,24 @@ class HomeController extends Controller{
      * @return \Illuminate\Http\Response
      */
     public function getTest(){
-        die;
         set_time_limit(0);
         $num = 0;
         $image_domain = config('app.image_domain');
-        $articles = DB::table("article")->where("column","bugs")->get();
+        $articles = DB::table("article")->where("column","drops")->get();
         foreach ($articles as $key => $article) {
             $filepath = public_path().$article->path;
             $content = file_get_contents($filepath);
-            $content = str_replace("../images/",'{{$image_domain}}/',$content);
-            file_put_contents($filepath, $content);
-            p($content);
+            preg_match_all('/src="(.+?)"/i', $content, $m);
+            $imgs = $m[1];
+            if(count($imgs)>0){
+                $thumbnail = $imgs[0];
+                $thumbnail = str_replace("../images/",'',$thumbnail);
+                $data = array(
+                    'thumbnail' => $thumbnail,
+                    );
+                DB::table("article")->where("id",$article->id)->update($data);
+            }
             unset($content);
-            die;
         }
         die;
         $num = 0;
@@ -152,7 +157,8 @@ class HomeController extends Controller{
         $column = "bugs";
         $keyword = "";
         $articles = DB::table("article")->where('column', $column)->orderBy("created_at","desc")->take(30)->get();
-        return view("articles", compact("articles","column","keyword"));
+        $image_domain = config('app.image_domain');
+        return view("articles", compact("articles","column","keyword","image_domain"));
     }
 
     /**
@@ -165,7 +171,8 @@ class HomeController extends Controller{
         $column = "drops";
         $keyword = "";
         $articles = DB::table("article")->where('column', $column)->orderBy("created_at","desc")->take(30)->get();
-        return view("articles", compact("articles","column","keyword"));
+        $image_domain = config('app.image_domain');
+        return view("articles", compact("articles","column","keyword","image_domain"));
     }
 
     /**
@@ -183,7 +190,8 @@ class HomeController extends Controller{
             $db_obj->where('title','like','%'.$keyword.'%');
         }
         $articles = $db_obj->orderBy("created_at","desc")->take(30)->get();
-        return view("articles", compact("articles","column","keyword"));
+        $image_domain = config('app.image_domain');
+        return view("articles", compact("articles","column","keyword","image_domain"));
     }
 
     /**
@@ -231,10 +239,9 @@ class HomeController extends Controller{
 
         $image_domain = config('app.image_domain');
         $article->content = str_replace("../images/",$image_domain,$article->content);
-
         $column = $article->column;
         $keyword = "";
-        return view("article", compact("article","column","keyword"));
+        return view("article", compact("article","column","keyword","image_domain"));
     }
 
     /**

@@ -47,31 +47,44 @@
                     </ul> -->
 
                     <ul class="article-list thumbnails">
-                        
-                        @foreach ($articles as $article)
-                            <li class="have-img">
-                                <a class="wrap-img" href="/article/{{ $article->id }}">
-                                    <img src="/res/default.png" alt="{{ $article->id }}"></a>
-                                <div>
-                                    <p class="list-top">
-                                        <a class="author-name blue-link" target="_blank" href="javascript:void(0)">
+                        @if ($articles)
+                            @foreach ($articles as $article)
+                                <li class="have-img">
+                                    <a class="wrap-img" href="/article/{{ $article->id }}">
+                                        @if ($article->thumbnail)
                                             @if ($article->column == 'drops')
-                                                管理员
+                                                <img src="{{$article->thumbnail}}" alt="{{ $article->id }}">
                                             @else
                                                 {{ $article->author }}
+                                                <img src="{{$image_domain}}{{$article->thumbnail}}" alt="{{ $article->id }}">
                                             @endif
-                                        </a> <em>·</em>
-                                        <span class="time" data-shared-at="{{ $article->created_at }}">{{ $article->created_at }}</span>
-                                    </p>
-                                    <h4 class="title">
-                                        <a target="_blank" href="/article/{{ $article->id }}">{{ $article->title }}</a>
-                                    </h4>
-                                    <div class="list-footer">
-                                        <a target="_blank" href="/article/{{ $article->id }}">阅读 {{ $article->view }}</a>
+                                        @else
+                                            <img src="/res/default.jpg" alt="{{ $article->id }}">
+                                        @endif
+                                    </a>
+                                    <div>
+                                        <p class="list-top">
+                                            <a class="author-name blue-link" target="_blank" href="javascript:void(0)">
+                                                @if ($article->column == 'drops')
+                                                    管理员
+                                                @else
+                                                    {{ $article->author }}
+                                                @endif
+                                            </a> <em>·</em>
+                                            <span class="time" data-shared-at="{{ $article->created_at }}">{{ $article->created_at }}</span>
+                                        </p>
+                                        <h4 class="title">
+                                            <a target="_blank" href="/article/{{ $article->id }}">{{ $article->title }}</a>
+                                        </h4>
+                                        <div class="list-footer">
+                                            <a target="_blank" href="/article/{{ $article->id }}">阅读 {{ $article->view }}</a>
+                                        </div>
                                     </div>
-                                </div>
-                            </li>
-                        @endforeach
+                                </li>
+                            @endforeach
+                        @else
+                            <div style="text-align:center;margin-bottom: 22px;"><h4>没有搜索到匹配的文章~</h4></div>
+                        @endif
 
                     </ul>
 
@@ -148,15 +161,24 @@
                     var _html = "";
                     $(msg.data).each(function(index,article){
                         var url = "/article/"+article.id;
-                        var author = "";
+                        var author,image;
                         if(article.column == 'drops'){
                             author = "管理员";
                         }else{
                             author = article.author;
                         }
+                        if(article.thumbnail){
+                            if(article.column == 'drops'){
+                                image = article.thumbnail;
+                            }else{
+                                image = "{{$image_domain}}"+article.thumbnail;
+                            }
+                        }else{
+                            image = "/res/default.jpg";
+                        }
                         _html += ['<li class="have-img">',
                             '<a class="wrap-img" href="'+url+'">',
-                                '<img src="/res/default.png" alt="'+article.id+'"></a>',
+                                '<img src="'+image+'" alt="'+article.id+'"></a>',
                             '<div>',
                                 '<p class="list-top">',
                                     '<a class="author-name blue-link" target="_blank" href="javascript:void(0)">'+author+'</a>',
